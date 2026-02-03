@@ -1,0 +1,71 @@
+# funkedupshift Project Rules
+
+## 1. Project Context & Architecture
+- **Description:** A serverless web app to maintain a shared database of websites with metadata: stars (1–5), tags, notes, photos/videos, and scraped content (e.g. GitHub README, about page). All sites and metadata are viewable by everyone; only admins add sites; logged-in users add their own metadata/comments.
+- **Frontend:** JavaScript (Framework-agnostic but modern; hosted on S3 Website). A light framework is acceptable for presentation; site functionality takes precedence over appearance.
+- **Auth:** AWS Cognito (User Pools for identity & API security).
+- **API:** AWS API Gateway (HTTP API mode).
+- **Backend:** Python AWS Lambda (Business logic).
+- **Database:** AWS DynamoDB (Single Table Design).
+- **Infrastructure:** Terraform (IaC).
+
+## 2. Product & Access Requirements
+- **Visibility:** All websites and their metadata are **public** — viewable by every user and by unauthenticated visitors. No login required to browse.
+- **Roles:** Users are grouped by role: **admin**, **manager**, **user**. Implement via Cognito groups and/or DynamoDB profile (e.g. `USER#<id>` with `role` attribute). Enforce in Lambda authorizers and API handlers.
+- **Permissions:**
+  - **Add new website items:** Admin only.
+  - **Add own metadata or comments (e.g. stars, notes):** Any logged-in user (user/manager/admin).
+- **Stars:** Numeric rating **1–5** (per user per site).
+- **Scraped content:** Support storing scraped content (e.g. from GitHub README, about page) as part of site metadata. Design scraping mechanism (on add, on-demand, or background) and storage schema when implementing sites.
+
+## 3. Directory Structure (Strict Adherence)
+Adhere to this structure for all new files. Do not create files outside these folders without explicit instruction.
+/
+├── .github/workflows/   # CI/CD pipelines (main.yml, dev.yml)
+├── infra/               # Terraform HCL files (Source of Truth for AWS)
+│   ├── modules/         # Reusable AWS modules
+│   └── main.tf          # Core infrastructure definition
+├── src/
+│   ├── lambda/          # Python Lambda source code
+│   │   ├── auth/        # Cognito triggers
+│   │   ├── api/         # CRUD handlers
+│   │   ├── common/      # Shared utilities (logging, response formatting)
+│   │   └── tests/       # Unit tests for Lambdas (pytest)
+│   └── web/             # JavaScript Frontend source
+├── docs/                # Architecture and API documentation
+└── .cursorrules         # Project rules
+
+## 4. Infrastructure & Deployment Rules
+- **Source of Truth:** If a resource is not in Terraform (`infra/`), it does not exist.
+- **State Management:** Terraform state is managed in the `aws-s3-terraform-state` bucket.
+- **Environment Strategy:**
+  - `development` branch -> Deploys to **Staging** (S3 Staging Bucket, Staging API).
+  - `main` branch -> Deploys to **Production** (S3 Prod Bucket, Prod API).
+- **Storage Buckets:**
+  - `s3-website`: Hosting the JS frontend.
+  - `s3-media`: User uploads (Images/Videos). **Must have CORS enabled.**
+  - `s3-artifacts`: Lambda deployment zips.
+
+## 5. Coding Standards
+- **Naming Conventions:**
+  - Files/Variables: `camelCase`.
+  - Constants/Env Vars: `UPPER_CASE` (e.g., `TABLE_NAME`, `MEDIA_BUCKET_URL`).
+- **Python Lambda (Backend):**
+  - **Inputs:** Parse `event['body']` cautiously.
+  - **Outputs:** Return standard JSON with CORS headers (`Access-Control-Allow-Origin`).
+  - **Logging:** `import logging` (Level: INFO). Always log the `event` object.
+  - **Testing:** Every function requires a corresponding `pytest` unit test in `src/lambda/tests/`.
+- **JavaScript (Frontend):**
+  - **Philosophy:** "Simple but modern." Use standard Fetch API.
+  - **Performance:** Prioritize speed. No heavy component libraries unless critical.
+
+## 6. Critical Patterns & Optimizations
+- **Media Uploads (Simplicity Rule):**
+  - **DO NOT** stream file data through Lambda/API Gateway.
+  - **Pattern:** 1. Frontend requests a **Presigned URL** from Lambda.
+    2. Frontend uploads file directly to `s3-media` bucket using `PUT`.
+- **Database (DynamoDB):**
+  - Use generic PK/SK naming (e.g., `PK=USER#123`, `SK=SITE#456`) for Single Table Design flexibility.
+  - Use **Global Secondary Indexes (GSI)** for querying by `Tags` or `Stars`.
+- **Verification:**
+  - GitHub Actions must pass `pytest` before running `terraform apply`.
