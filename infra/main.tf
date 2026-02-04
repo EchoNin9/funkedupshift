@@ -212,6 +212,13 @@ data "aws_iam_policy_document" "terraformManage" {
       "arn:aws:cognito-idp:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:userpool/*"
     ]
   }
+  # Cognito User Pool Domain – domain APIs use resource * in IAM
+  statement {
+    sid       = "TerraformManageCognitoDomain"
+    effect    = "Allow"
+    actions   = ["cognito-idp:DescribeUserPoolDomain", "cognito-idp:CreateUserPoolDomain", "cognito-idp:DeleteUserPoolDomain"]
+    resources = ["*"]
+  }
 }
 
 resource "aws_iam_policy" "terraformManage" {
@@ -472,6 +479,10 @@ resource "aws_cognito_user_pool" "main" {
 
   user_attribute_update_settings {
     attributes_require_verification_before_update = ["email"]
+  }
+
+  lifecycle {
+    ignore_changes = [schema]
   }
 }
 
