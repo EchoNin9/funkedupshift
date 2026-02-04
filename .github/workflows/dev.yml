@@ -28,7 +28,12 @@ jobs:
           python-version: "3.12"
 
       - name: Install test dependencies
-        run: pip install -r src/lambda/requirements-test.txt
+        run: |
+          if [ -f src/lambda/requirements-test.txt ]; then
+            pip install -r src/lambda/requirements-test.txt
+          else
+            pip install pytest
+          fi
 
       - name: Run pytest
         run: pytest src/lambda/tests -v
@@ -45,11 +50,11 @@ jobs:
 
       - name: Terraform plan
         working-directory: infra
-        run: terraform plan -var="githubOrgRepo=${{ github.repository }}" -no-color
+        run: terraform plan -var="githubOrgRepo=${{ github.repository }}" -var='awsProfile=""' -no-color
 
       - name: Terraform apply
         working-directory: infra
-        run: terraform apply -var="githubOrgRepo=${{ github.repository }}" -auto-approve -no-color
+        run: terraform apply -var="githubOrgRepo=${{ github.repository }}" -var='awsProfile=""' -auto-approve -no-color
 
       - name: Deploy frontend to S3
         run: |
