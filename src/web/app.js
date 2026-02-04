@@ -17,6 +17,8 @@
   var sitesData = [];
   var allCategoriesFromSites = [];
   var groupByIds = [];
+  var PAGE_SIZE = 10;
+  var currentPage = 1;
 
   function showError(msg) {
     loading.hidden = true;
@@ -76,42 +78,51 @@
     return list;
   }
 
+  function buildFlatList(sorted) {
+    if (groupByIds.length === 0) return sorted;
+    var catIds = groupByIds.slice();
+    var idToName = {};
+    allCategoriesFromSites.forEach(function (c) { idToName[c.id] = c.name; });
+    var flat = [];
+    catIds.forEach(function (cid) {
+      var inGroup = sorted.filter(function (s) {
+        var ids = (s.categoryIds || []).concat((s.categories || []).map(function (c) { return c.id; }));
+        return ids.indexOf(cid) !== -1;
+      });
+      flat = flat.concat(inGroup);
+    });
+    var inAny = {};
+    catIds.forEach(function (cid) { inAny[cid] = true; });
+    var other = sorted.filter(function (s) {
+      var ids = (s.categoryIds || []).concat((s.categories || []).map(function (c) { return c.id; }));
+      return !ids.some(function (id) { return inAny[id]; });
+    });
+    return flat.concat(other);
+  }
+
   function renderSites(sites) {
     sitesData = sites || [];
     var sortSelect = document.getElementById('sortOrder');
     var sortBy = (sortSelect && sortSelect.value) || 'avgDesc';
     var sorted = applySort(sitesData, sortBy);
+    var flatList = buildFlatList(sorted);
+    var totalPages = Math.max(1, Math.ceil(flatList.length / PAGE_SIZE));
+    if (currentPage > totalPages) currentPage = totalPages;
+    var start = (currentPage - 1) * PAGE_SIZE;
+    var pageList = flatList.slice(start, start + PAGE_SIZE);
 
-    if (sorted.length === 0) {
+    if (flatList.length === 0) {
       sitesContainer.innerHTML = '<ul class="sites"><li>No sites yet.</li></ul>';
-    } else if (groupByIds.length > 0) {
-      var catIds = groupByIds.slice();
-      var idToName = {};
-      allCategoriesFromSites.forEach(function (c) { idToName[c.id] = c.name; });
-      var html = '';
-      catIds.forEach(function (cid) {
-        var name = idToName[cid] || cid;
-        var inGroup = sorted.filter(function (s) {
-          var ids = (s.categoryIds || []).concat((s.categories || []).map(function (c) { return c.id; }));
-          return ids.indexOf(cid) !== -1;
-        });
-        if (inGroup.length > 0) {
-          html += '<div class="sites-group"><h3>' + escapeHtml(name) + '</h3><ul class="sites">' + inGroup.map(siteLi).join('') + '</ul></div>';
-        }
-      });
-      var inAny = {};
-      catIds.forEach(function (cid) { inAny[cid] = true; });
-      var other = sorted.filter(function (s) {
-        var ids = (s.categoryIds || []).concat((s.categories || []).map(function (c) { return c.id; }));
-        return !ids.some(function (id) { return inAny[id]; });
-      });
-      if (other.length > 0) {
-        html += '<div class="sites-group"><h3>Other</h3><ul class="sites">' + other.map(siteLi).join('') + '</ul></div>';
-      }
-      if (!html) html = '<ul class="sites">' + sorted.map(siteLi).join('') + '</ul>';
-      sitesContainer.innerHTML = html;
+      document.getElementById('sitesPagination').hidden = true;
     } else {
-      sitesContainer.innerHTML = '<ul class="sites">' + sorted.map(siteLi).join('') + '</ul>';
+      sitesContainer.innerHTML = '<ul class="sites">' + pageList.map(siteLi).join('') + '</ul>';
+      var pagEl = document.getElementById('sitesPagination');
+      pagEl.hidden = false;
+      pagEl.innerHTML = '<button type="button" class="secondary" id="sitesPrev">Prev</button><span>Page ' + currentPage + ' of ' + totalPages + '</span><button type="button" class="secondary" id="sitesNext">Next</button>';
+      document.getElementById('sitesPrev').disabled = currentPage <= 1;
+      document.getElementById('sitesNext').disabled = currentPage >= totalPages;
+      document.getElementById('sitesPrev').onclick = function () { if (currentPage > 1) { currentPage--; renderSites(sitesData); } };
+      document.getElementById('sitesNext').onclick = function () { if (currentPage < totalPages) { currentPage++; renderSites(sitesData); } };
     }
 
     if (canRate) {
@@ -188,6 +199,7 @@
       if (opt && opt.dataset.id) {
         if (groupByIds.indexOf(opt.dataset.id) === -1) {
           groupByIds.push(opt.dataset.id);
+          currentPage = 1;
           renderGroupBySelected();
           renderGroupByDropdown();
           renderSites(sitesData);
@@ -199,6 +211,7 @@
       var btn = e.target.closest('.group-by-chip-remove');
       if (btn && btn.dataset.id) {
         groupByIds = groupByIds.filter(function (x) { return x !== btn.dataset.id; });
+        currentPage = 1;
         renderGroupBySelected();
         renderGroupByDropdown();
         renderSites(sitesData);
@@ -365,7 +378,7 @@
       initGroupBy();
       var sortOrder = document.getElementById('sortOrder');
       if (sortOrder) {
-        sortOrder.addEventListener('change', function () { renderSites(sitesData); });
+        sortOrder.addEventListener('change', function () { currentPage = 1; renderSites(sitesData); });
       }
     })
     .catch(function (e) {
