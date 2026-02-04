@@ -36,10 +36,43 @@
       sitesList.innerHTML = '<li>No sites yet.</li>';
     } else {
       sitesList.innerHTML = sites.map(function (s) {
-        var title = s.title || s.url || s.PK || 'Untitled';
+        var id = s.PK || '';
+        var title = s.title || s.url || id || 'Untitled';
         var url = s.url ? '<a href="' + escapeHtml(s.url) + '" target="_blank" rel="noopener">' + escapeHtml(s.url) + '</a>' : '';
-        return '<li><strong>' + escapeHtml(title) + '</strong>' + (url ? ' ' + url : '') + '</li>';
+        var desc = s.description ? '<div>' + escapeHtml(s.description) + '</div>' : '';
+        var editBtn = id ? ' <button class="secondary edit-site" data-id="' + escapeHtml(id) +
+          '" data-title="' + escapeHtml(title) +
+          '" data-description="' + escapeHtml(s.description || '') + '">Edit</button>' : '';
+        return '<li><strong>' + escapeHtml(title) + '</strong>' + (url ? ' ' + url : '') + editBtn + desc + '</li>';
       }).join('');
+
+      // Attach edit handlers
+      Array.prototype.forEach.call(document.querySelectorAll('.edit-site'), function (btn) {
+        btn.addEventListener('click', function () {
+          var id = this.getAttribute('data-id');
+          var currentTitle = this.getAttribute('data-title') || '';
+          var currentDesc = this.getAttribute('data-description') || '';
+          var newTitle = window.prompt('Edit title:', currentTitle);
+          if (newTitle === null) return;
+          var newDesc = window.prompt('Edit description:', currentDesc);
+          if (newDesc === null) return;
+          fetchWithAuth(base + '/sites', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: id, title: newTitle, description: newDesc })
+          }).then(function (r) {
+            if (r.ok) return r.json();
+            return r.text().then(function (text) { throw new Error(text || 'Request failed'); });
+          }).then(function () {
+            // Refresh sites list
+            return fetch(base + '/sites').then(function (r) { return r.json(); });
+          }).then(function (data) {
+            renderSites(data.sites || []);
+          }).catch(function (e) {
+            alert('Edit failed: ' + e.message);
+          });
+        });
+      });
     }
     sitesWrap.hidden = false;
   }
@@ -124,6 +157,7 @@
       e.preventDefault();
       var url = document.getElementById('siteUrl').value.trim();
       var title = document.getElementById('siteTitle').value.trim();
+      var description = document.getElementById('siteDescription').value.trim();
       if (!url) {
         createSiteResult.textContent = 'URL is required';
         createSiteResult.className = 'status err';
@@ -135,7 +169,7 @@
       fetchWithAuth(base + '/sites', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: url, title: title })
+        body: JSON.stringify({ url: url, title: title, description: description })
       }).then(function (r) {
         if (r.ok) {
           return r.json();
@@ -148,6 +182,7 @@
         createSiteResult.className = 'status ok';
         document.getElementById('siteUrl').value = '';
         document.getElementById('siteTitle').value = '';
+         document.getElementById('siteDescription').value = '';
         // Reload sites list
         fetch(base + '/sites')
           .then(function (r) { return r.json(); })

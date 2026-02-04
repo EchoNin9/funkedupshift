@@ -86,6 +86,8 @@ def handler(event, context):
             return listSites(event)
         if method == "POST" and path == "/sites":
             return createSite(event)
+        if method == "PUT" and path == "/sites":
+            return updateSite(event)
         if method == "OPTIONS":
             # CORS preflight
             return jsonResponse({}, 200)
@@ -201,4 +203,62 @@ def createSite(event):
         return jsonResponse({"id": site_id, "url": url, "title": title or url}, 201)
     except Exception as e:
         logger.exception("createSite error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def updateSite(event):
+    """Update an existing site (admin only)."""
+    user = getUserInfo(event)
+    if not user.get("userId"):
+        return jsonResponse({"error": "Unauthorized"}, 401)
+    if "admin" not in user.get("groups", []):
+        return jsonResponse({"error": "Forbidden: admin role required"}, 403)
+
+    if not TABLE_NAME:
+        return jsonResponse({"error": "TABLE_NAME not set"}, 500)
+
+    try:
+        import boto3
+        import json
+        from datetime import datetime
+
+        body = json.loads(event.get("body", "{}"))
+        site_id = body.get("id", "").strip()
+        if not site_id:
+            return jsonResponse({"error": "id is required"}, 400)
+
+        title = body.get("title")
+        description = body.get("description")
+        now = datetime.utcnow().isoformat() + "Z"
+
+        update_expr = []
+        names = {}
+        values = {":updatedAt": {"S": now}}
+
+        if title is not None:
+            update_expr.append("#title = :title")
+            names["#title"] = "title"
+            values[":title"] = {"S": title}
+        if description is not None:
+            update_expr.append("#description = :description")
+            names["#description"] = "description"
+            values[":description"] = {"S": description}
+
+        if not update_expr:
+            return jsonResponse({"error": "Nothing to update"}, 400)
+
+        update_expr.append("updatedAt = :updatedAt")
+
+        dynamodb = boto3.client("dynamodb")
+        dynamodb.update_item(
+            TableName=TABLE_NAME,
+            Key={"PK": {"S": site_id}, "SK": {"S": "METADATA"}},
+            UpdateExpression="SET " + ", ".join(update_expr),
+            ExpressionAttributeNames=names or None,
+            ExpressionAttributeValues=values,
+        )
+
+        return jsonResponse({"id": site_id, "title": title, "description": description}, 200)
+    except Exception as e:
+        logger.exception("updateSite error")
         return jsonResponse({"error": str(e)}, 500)
