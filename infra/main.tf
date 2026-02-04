@@ -609,10 +609,12 @@ resource "aws_lambda_function" "api" {
   handler          = "api.handler.handler"
   source_code_hash = data.archive_file.api.output_base64sha256
   runtime          = "python3.12"
+  timeout          = 30
 
   environment {
     variables = {
       TABLE_NAME = aws_dynamodb_table.main.name
+      AWS_REGION = var.awsRegion
     }
   }
 }
