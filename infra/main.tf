@@ -486,9 +486,9 @@ resource "aws_cognito_user_pool" "main" {
   }
 
   verification_message_template {
-    default_email_option = "CONFIRM_WITH_CODE"
-    email_subject       = "Funkedupshift verification code"
-    email_message       = "Your verification code is {####}"
+    default_email_option = "CONFIRM_WITH_LINK"
+    email_subject       = "Funkedupshift - Verify your email"
+    email_message       = "Please click the link to verify your email: {##Verify Email##}. Code: {####}"
   }
 
   mfa_configuration = "OFF"
