@@ -40,6 +40,9 @@
       sitesList.innerHTML = sites.map(function (s) {
         var id = s.PK || '';
         var title = s.title || s.url || id || 'Untitled';
+        var avg = (typeof s.averageRating === 'number')
+          ? ' (' + s.averageRating.toFixed(1) + '★)'
+          : '';
         var url = s.url ? '<a href="' + escapeHtml(s.url) + '" target="_blank" rel="noopener">' + escapeHtml(s.url) + '</a>' : '';
         var desc = s.description ? '<div>' + escapeHtml(s.description) + '</div>' : '';
         var editBtn = (id && isAdmin) ? ' <button class="secondary edit-site" data-id="' + escapeHtml(id) +
@@ -62,7 +65,7 @@
               '</label>' +
             '</div>';
         }
-        return '<li><strong>' + escapeHtml(title) + '</strong>' +
+        return '<li><strong>' + escapeHtml(title) + avg + '</strong>' +
           (url ? ' ' + url : '') + editBtn + desc + stars + '</li>';
       }).join('');
 

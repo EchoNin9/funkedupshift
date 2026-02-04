@@ -140,6 +140,13 @@ def listSites(event):
                     site[key] = int(val["N"]) if "." not in val["N"] else float(val["N"])
                 elif "L" in val:
                     site[key] = [v.get("S", "") for v in val["L"]]
+
+            # Compute averageRating if aggregates exist
+            total_sum = site.get("totalStarsSum")
+            total_count = site.get("totalStarsCount")
+            if isinstance(total_sum, (int, float)) and isinstance(total_count, (int, float)) and total_count > 0:
+                site["averageRating"] = round(float(total_sum) / float(total_count), 1)
+
             sites.append(site)
         logger.info("Found %d items", len(sites))
         return jsonResponse({"sites": sites})
@@ -309,6 +316,48 @@ def setStar(event):
         now = datetime.utcnow().isoformat() + "Z"
 
         dynamodb = boto3.client("dynamodb")
+
+        # Fetch existing rating for this user/site, if any
+        existing = dynamodb.get_item(
+            TableName=TABLE_NAME,
+            Key={"PK": {"S": site_id}, "SK": {"S": f"STAR#{user_id}"}},
+        )
+        old_rating = None
+        if "Item" in existing and "rating" in existing["Item"]:
+            try:
+                old_rating = int(existing["Item"]["rating"]["N"])
+            except Exception:
+                old_rating = None
+
+        # Ensure site METADATA exists
+        site = dynamodb.get_item(
+            TableName=TABLE_NAME,
+            Key={"PK": {"S": site_id}, "SK": {"S": "METADATA"}},
+        )
+        if "Item" not in site:
+            return jsonResponse({"error": "Site not found"}, 404)
+
+        # Compute deltas for aggregates
+        if old_rating is None:
+            sum_delta = rating_int
+            count_delta = 1
+        else:
+            sum_delta = rating_int - old_rating
+            count_delta = 0
+
+        # Update aggregate fields on METADATA item
+        dynamodb.update_item(
+            TableName=TABLE_NAME,
+            Key={"PK": {"S": site_id}, "SK": {"S": "METADATA"}},
+            UpdateExpression="ADD totalStarsSum :sumDelta, totalStarsCount :countDelta SET updatedAt = :updatedAt",
+            ExpressionAttributeValues={
+                ":sumDelta": {"N": str(sum_delta)},
+                ":countDelta": {"N": str(count_delta)},
+                ":updatedAt": {"S": now},
+            },
+        )
+
+        # Upsert the individual star record
         dynamodb.put_item(
             TableName=TABLE_NAME,
             Item={
