@@ -595,7 +595,13 @@ resource "aws_iam_role_policy" "lambdaApi" {
       },
       {
         Effect   = "Allow"
-        Action   = ["dynamodb:Query", "dynamodb:GetItem", "dynamodb:BatchGetItem"]
+        Action   = [
+          "dynamodb:Query",
+          "dynamodb:GetItem",
+          "dynamodb:BatchGetItem",
+          "dynamodb:PutItem",
+          "dynamodb:UpdateItem"
+        ]
         Resource = [aws_dynamodb_table.main.arn, "${aws_dynamodb_table.main.arn}/index/*"]
       }
     ]
@@ -609,6 +615,7 @@ resource "aws_lambda_function" "api" {
   handler          = "api.handler.handler"
   source_code_hash = data.archive_file.api.output_base64sha256
   runtime          = "python3.12"
+  timeout          = 30
 
   environment {
     variables = {
@@ -667,6 +674,22 @@ resource "aws_apigatewayv2_route" "sitesPost" {
   target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
   authorization_type = "JWT"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+# Update existing site (admin only)
+resource "aws_apigatewayv2_route" "sitesPut" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "PUT /sites"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+# OPTIONS routes for CORS preflight (HTTP API handles CORS automatically, but explicit routes ensure they work)
+resource "aws_apigatewayv2_route" "sitesOptions" {
+  api_id    = aws_apigatewayv2_api.main.id
+  route_key = "OPTIONS /sites"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
 }
 
 resource "aws_apigatewayv2_stage" "default" {
