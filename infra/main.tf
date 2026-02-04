@@ -669,6 +669,13 @@ resource "aws_apigatewayv2_route" "sitesPost" {
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
+# OPTIONS routes for CORS preflight (HTTP API handles CORS automatically, but explicit routes ensure they work)
+resource "aws_apigatewayv2_route" "sitesOptions" {
+  api_id    = aws_apigatewayv2_api.main.id
+  route_key = "OPTIONS /sites"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+}
+
 resource "aws_apigatewayv2_stage" "default" {
   api_id      = aws_apigatewayv2_api.main.id
   name        = "$default"

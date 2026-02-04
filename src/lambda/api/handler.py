@@ -1,10 +1,28 @@
 """
 API Gateway HTTP API (payload 2.0) handler. Routes by path.
 """
+import json
 import logging
 import os
+import sys
+from pathlib import Path
 
-from common.response import jsonResponse
+# Ensure common module is importable
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+try:
+    from common.response import jsonResponse
+except ImportError:
+    # Fallback if import fails
+    def jsonResponse(body, statusCode=200):
+        return {
+            "statusCode": statusCode,
+            "headers": {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*",
+            },
+            "body": json.dumps(body) if not isinstance(body, str) else body,
+        }
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -26,11 +44,19 @@ def getUserInfo(event):
 
 def handler(event, context):
     """Route request by path; return JSON with CORS headers."""
-    logger.info("event=%s", event)
-
     try:
-        path = event.get("rawPath") or event.get("requestContext", {}).get("http", {}).get("path") or ""
-        method = event.get("requestContext", {}).get("http", {}).get("method") or "GET"
+        logger.info("event=%s", event)
+        
+        # Extract path and method from API Gateway HTTP API v2 event
+        path = event.get("rawPath", "")
+        if not path:
+            request_context = event.get("requestContext", {})
+            http_info = request_context.get("http", {})
+            path = http_info.get("path", "")
+        
+        method = event.get("requestContext", {}).get("http", {}).get("method", "GET")
+        
+        logger.info("path=%s, method=%s", path, method)
 
         if method == "GET" and path == "/health":
             return jsonResponse({"ok": True})
@@ -38,10 +64,15 @@ def handler(event, context):
             return listSites(event)
         if method == "POST" and path == "/sites":
             return createSite(event)
-        return jsonResponse({"error": "Not Found"}, 404)
+        if method == "OPTIONS":
+            # CORS preflight
+            return jsonResponse({}, 200)
+        return jsonResponse({"error": "Not Found", "path": path, "method": method}, 404)
     except Exception as e:
-        logger.exception("handler error")
-        return jsonResponse({"error": str(e)}, 500)
+        logger.exception("handler error: %s", str(e))
+        import traceback
+        logger.error("traceback: %s", traceback.format_exc())
+        return jsonResponse({"error": str(e), "type": type(e).__name__}, 500)
 
 
 def listSites(event):

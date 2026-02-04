@@ -61,6 +61,15 @@
   <div id="health" class="status" hidden></div>
   <div id="sitesWrap" hidden>
     <h2>Sites</h2>
+    <div id="addSiteForm" hidden style="margin: 1rem 0; padding: 1rem; background: #f9f9f9; border-radius: 0.25rem;">
+      <h3>Add Site (Admin only)</h3>
+      <form id="createSiteForm">
+        <input type="url" id="siteUrl" placeholder="URL (e.g. https://example.com)" required style="width: 100%; max-width: 30rem;">
+        <input type="text" id="siteTitle" placeholder="Title (optional)" style="width: 100%; max-width: 30rem;">
+        <button type="submit">Add Site</button>
+      </form>
+      <div id="createSiteResult" style="margin-top: 0.5rem;"></div>
+    </div>
     <ul id="sites" class="sites"></ul>
   </div>
 
