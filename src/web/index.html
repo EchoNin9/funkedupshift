@@ -35,26 +35,7 @@
 </head>
 <body>
   <h1>Funkedupshift</h1>
-  
-  <div id="authSection" class="auth-section" hidden>
-    <h2 id="authTitle">Sign In</h2>
-    <div id="userInfo" class="user-info" hidden></div>
-    <form id="signInForm">
-      <input type="email" id="signInEmail" placeholder="Email" required>
-      <input type="password" id="signInPassword" placeholder="Password" required>
-      <button type="submit">Sign In</button>
-    </form>
-    <form id="signUpForm" hidden>
-      <input type="email" id="signUpEmail" placeholder="Email" required>
-      <input type="password" id="signUpPassword" placeholder="Password (min 8 chars)" required>
-      <button type="submit">Sign Up</button>
-      <button type="button" class="secondary" onclick="document.getElementById('signUpForm').hidden=true; document.getElementById('signInForm').hidden=false;">Cancel</button>
-    </form>
-    <div>
-      <button class="secondary" onclick="document.getElementById('signInForm').hidden=true; document.getElementById('signUpForm').hidden=false;" id="showSignUp">Sign Up</button>
-      <button class="secondary" onclick="window.auth.signOut(); location.reload();" id="signOutBtn" hidden>Sign Out</button>
-    </div>
-  </div>
+  <p><a href="auth.html">Sign in / Sign up</a></p>
 
   <div id="loading">Loading…</div>
   <div id="error" class="status err" hidden></div>

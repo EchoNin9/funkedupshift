@@ -88,6 +88,10 @@ def handler(event, context):
             return createSite(event)
         if method == "PUT" and path == "/sites":
             return updateSite(event)
+        if method == "GET" and path == "/me":
+            return getMe(event)
+        if method == "POST" and path == "/stars":
+            return setStar(event)
         if method == "OPTIONS":
             # CORS preflight
             return jsonResponse({}, 200)
@@ -133,9 +137,24 @@ def listSites(event):
                 if "S" in val:
                     site[key] = val["S"]
                 elif "N" in val:
-                    site[key] = int(val["N"]) if "." not in val["N"] else float(val["N"])
+                    # Convert numeric strings to Python numbers
+                    num_str = val["N"]
+                    site[key] = int(num_str) if "." not in num_str else float(num_str)
                 elif "L" in val:
                     site[key] = [v.get("S", "") for v in val["L"]]
+
+            # Compute averageRating if aggregates exist
+            total_sum = site.get("totalStarsSum")
+            total_count = site.get("totalStarsCount")
+            if isinstance(total_sum, (int, float)) and isinstance(total_count, (int, float)) and total_count > 0:
+                avg = float(total_sum) / float(total_count)
+                # Defensive clamp: average must stay within 1–5
+                if avg < 1.0:
+                    avg = 1.0
+                if avg > 5.0:
+                    avg = 5.0
+                site["averageRating"] = round(avg, 1)
+
             sites.append(site)
         logger.info("Found %d items", len(sites))
         return jsonResponse({"sites": sites})
@@ -197,7 +216,10 @@ def createSite(event):
                 "updatedAt": {"S": now},
                 "entityType": {"S": "SITE"},
                 "entitySk": {"S": site_id},
-            }
+                # Initialize rating aggregates
+                "totalStarsSum": {"N": "0"},
+                "totalStarsCount": {"N": "0"},
+            },
         )
 
         return jsonResponse({"id": site_id, "url": url, "title": title or url}, 201)
@@ -261,4 +283,125 @@ def updateSite(event):
         return jsonResponse({"id": site_id, "title": title, "description": description}, 200)
     except Exception as e:
         logger.exception("updateSite error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def getMe(event):
+    """Return current user info (requires auth)."""
+    user = getUserInfo(event)
+    if not user.get("userId"):
+        return jsonResponse({"error": "Unauthorized"}, 401)
+    return jsonResponse(user)
+
+
+def setStar(event):
+    """Set a 1-5 star rating for a site for the current user."""
+    user = getUserInfo(event)
+    user_id = user.get("userId")
+    if not user_id:
+        return jsonResponse({"error": "Unauthorized"}, 401)
+
+    if not TABLE_NAME:
+        return jsonResponse({"error": "TABLE_NAME not set"}, 500)
+
+    try:
+        import boto3
+        import json
+        from datetime import datetime
+
+        body = json.loads(event.get("body", "{}"))
+        site_id = body.get("siteId", "").strip()
+        rating = body.get("rating")
+
+        if not site_id:
+            return jsonResponse({"error": "siteId is required"}, 400)
+
+        try:
+            rating_int = int(rating)
+        except Exception:
+            return jsonResponse({"error": "rating must be an integer between 1 and 5"}, 400)
+
+        if rating_int < 1 or rating_int > 5:
+            return jsonResponse({"error": "rating must be between 1 and 5"}, 400)
+
+        now = datetime.utcnow().isoformat() + "Z"
+
+        dynamodb = boto3.client("dynamodb")
+
+        # Fetch existing rating for this user/site, if any
+        existing = dynamodb.get_item(
+            TableName=TABLE_NAME,
+            Key={"PK": {"S": site_id}, "SK": {"S": f"STAR#{user_id}"}},
+        )
+        old_rating = None
+        if "Item" in existing and "rating" in existing["Item"]:
+            try:
+                old_rating = int(existing["Item"]["rating"]["N"])
+            except Exception:
+                old_rating = None
+
+        # Ensure site METADATA exists
+        site = dynamodb.get_item(
+            TableName=TABLE_NAME,
+            Key={"PK": {"S": site_id}, "SK": {"S": "METADATA"}},
+        )
+        if "Item" not in site:
+            return jsonResponse({"error": "Site not found"}, 404)
+
+        site_item = site.get("Item", {})
+        has_count = "totalStarsCount" in site_item
+        current_count = None
+        if has_count:
+            try:
+                current_count = int(site_item["totalStarsCount"]["N"])
+            except Exception:
+                current_count = None
+
+        # Compute deltas for aggregates
+        if old_rating is None:
+            sum_delta = rating_int
+            # First rating for this user; always increment count
+            count_delta = 1
+        else:
+            sum_delta = rating_int - old_rating
+            # If count is missing or still zero on the site (legacy data), bump it to 1
+            if (not has_count) or (current_count is None) or (current_count == 0):
+                count_delta = 1
+            else:
+                count_delta = 0
+
+        # Update aggregate fields on METADATA item (handle legacy items with no attributes yet)
+        dynamodb.update_item(
+            TableName=TABLE_NAME,
+            Key={"PK": {"S": site_id}, "SK": {"S": "METADATA"}},
+            UpdateExpression=(
+                "SET totalStarsSum = if_not_exists(totalStarsSum, :zero) + :sumDelta, "
+                "totalStarsCount = if_not_exists(totalStarsCount, :zero) + :countDelta, "
+                "updatedAt = :updatedAt"
+            ),
+            ExpressionAttributeValues={
+                ":sumDelta": {"N": str(sum_delta)},
+                ":countDelta": {"N": str(count_delta)},
+                ":zero": {"N": "0"},
+                ":updatedAt": {"S": now},
+            },
+        )
+
+        # Upsert the individual star record
+        dynamodb.put_item(
+            TableName=TABLE_NAME,
+            Item={
+                "PK": {"S": site_id},
+                "SK": {"S": f"STAR#{user_id}"},
+                "rating": {"N": str(rating_int)},
+                "userId": {"S": user_id},
+                "entityType": {"S": "SITE_STAR"},
+                "entitySk": {"S": user_id},
+                "updatedAt": {"S": now},
+            },
+        )
+
+        return jsonResponse({"siteId": site_id, "rating": rating_int}, 200)
+    except Exception as e:
+        logger.exception("setStar error")
         return jsonResponse({"error": str(e)}, 500)

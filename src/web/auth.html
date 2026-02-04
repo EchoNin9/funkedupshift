@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Funkedupshift – Sign In</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      line-height: 1.5;
+      max-width: 32rem;
+      margin: 0 auto;
+      padding: 1.5rem;
+      color: #1a1a1a;
+    }
+    h1 { font-size: 1.5rem; margin-top: 0; }
+    a { color: #0066cc; }
+    .status { margin: 1rem 0; padding: 0.75rem; background: #f0f0f0; border-radius: 0.25rem; }
+    .status.err { background: #fce8e6; }
+    .auth-section { margin: 1rem 0; padding: 1rem; background: #f9f9f9; border-radius: 0.25rem; }
+    .auth-section h2 { font-size: 1.125rem; margin-top: 0; }
+    form { margin: 0.5rem 0; }
+    input, button { padding: 0.5rem; margin: 0.25rem 0; width: 100%; max-width: 20rem; }
+    button { background: #0066cc; color: white; border: none; border-radius: 0.25rem; cursor: pointer; }
+    button:hover { background: #0052a3; }
+    button.secondary { background: #666; }
+    button.secondary:hover { background: #555; }
+    .user-info { margin: 0.5rem 0; }
+  </style>
+</head>
+<body>
+  <h1>Funkedupshift – Sign In</h1>
+  <p><a href="index.html">← Back to sites</a></p>
+
+  <div id="authSection" class="auth-section">
+    <h2 id="authTitle">Sign In</h2>
+    <div id="userInfo" class="user-info" hidden></div>
+    <form id="signInForm">
+      <input type="email" id="signInEmail" placeholder="Email" required>
+      <input type="password" id="signInPassword" placeholder="Password" required>
+      <button type="submit">Sign In</button>
+    </form>
+    <form id="signUpForm" hidden>
+      <input type="email" id="signUpEmail" placeholder="Email" required>
+      <input type="password" id="signUpPassword" placeholder="Password (min 8 chars)" required>
+      <button type="submit">Sign Up</button>
+      <button type="button" class="secondary" onclick="document.getElementById('signUpForm').hidden=true; document.getElementById('signInForm').hidden=false;">Cancel</button>
+    </form>
+    <div>
+      <button class="secondary" onclick="document.getElementById('signInForm').hidden=true; document.getElementById('signUpForm').hidden=false;" id="showSignUp">Sign Up</button>
+      <button class="secondary" onclick="window.auth.signOut(); window.location.href='index.html';" id="signOutBtn" hidden>Sign Out</button>
+    </div>
+  </div>
+
+  <div id="error" class="status err" hidden></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/amazon-cognito-identity-js@6.3.0/dist/amazon-cognito-identity.min.js"></script>
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
+
