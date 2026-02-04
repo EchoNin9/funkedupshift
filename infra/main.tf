@@ -595,7 +595,13 @@ resource "aws_iam_role_policy" "lambdaApi" {
       },
       {
         Effect   = "Allow"
-        Action   = ["dynamodb:Query", "dynamodb:GetItem", "dynamodb:BatchGetItem"]
+        Action   = [
+          "dynamodb:Query",
+          "dynamodb:GetItem",
+          "dynamodb:BatchGetItem",
+          "dynamodb:PutItem",
+          "dynamodb:UpdateItem"
+        ]
         Resource = [aws_dynamodb_table.main.arn, "${aws_dynamodb_table.main.arn}/index/*"]
       }
     ]
