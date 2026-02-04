@@ -62,3 +62,8 @@ output "cognitoHostedUiUrl" {
   description = "Cognito hosted UI base URL (login/signup)."
   value       = length(var.cognitoDomainPrefix) > 0 ? "https://${var.cognitoDomainPrefix}.auth.${var.awsRegion}.amazoncognito.com" : ""
 }
+
+output "apiInvokeUrl" {
+  description = "API Gateway HTTP API invoke URL (for frontend)."
+  value       = aws_apigatewayv2_stage.default.invoke_url
+}

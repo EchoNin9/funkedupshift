@@ -56,3 +56,15 @@ variable "cognitoDomainPrefix" {
   type        = string
   default     = "fus-auth"
 }
+
+variable "lambdaApiFunctionName" {
+  description = "Lambda function name for the API handler."
+  type        = string
+  default     = "fus-api"
+}
+
+variable "apiGatewayName" {
+  description = "API Gateway HTTP API name."
+  type        = string
+  default     = "fus-api"
+}
