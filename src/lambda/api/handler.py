@@ -344,16 +344,25 @@ def setStar(event):
 
         site_item = site.get("Item", {})
         has_count = "totalStarsCount" in site_item
+        current_count = None
+        if has_count:
+            try:
+                current_count = int(site_item["totalStarsCount"]["N"])
+            except Exception:
+                current_count = None
 
         # Compute deltas for aggregates
         if old_rating is None:
             sum_delta = rating_int
-            # If count doesn't exist yet (legacy items), start at 1
+            # First rating for this user; always increment count
             count_delta = 1
         else:
             sum_delta = rating_int - old_rating
-            # For legacy items with no count set yet, treat this as first counted rating
-            count_delta = 1 if not has_count else 0
+            # If count is missing or still zero on the site (legacy data), bump it to 1
+            if (not has_count) or (current_count is None) or (current_count == 0):
+                count_delta = 1
+            else:
+                count_delta = 0
 
         # Update aggregate fields on METADATA item (handle legacy items with no attributes yet)
         dynamodb.update_item(
