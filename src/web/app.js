@@ -157,21 +157,29 @@
 
   function initAuth() {
     if (!window.auth) {
-      authSection.hidden = true;
+      if (authSection) authSection.hidden = true;
+      if (addSiteForm) addSiteForm.hidden = true;
       return;
     }
-    authSection.hidden = false;
+
+    var hasUi = !!authSection;
+    if (hasUi) {
+      authSection.hidden = false;
+    }
 
     window.auth.isAuthenticated(function (isAuth) {
       canRate = isAuth; // any authenticated user can rate
       if (!isAuth) {
         isAdmin = false;
-        signInForm.hidden = false;
-        signUpForm.hidden = true;
-        showSignUpBtn.hidden = false;
-        signOutBtn.hidden = true;
-        userInfo.hidden = true;
-        addSiteForm.hidden = true;
+        if (addSiteForm) addSiteForm.hidden = true;
+
+        if (hasUi) {
+          if (signInForm) signInForm.hidden = false;
+          if (signUpForm) signUpForm.hidden = true;
+          if (showSignUpBtn) showSignUpBtn.hidden = false;
+          if (signOutBtn) signOutBtn.hidden = true;
+          if (userInfo) userInfo.hidden = true;
+        }
         return;
       }
 
@@ -181,100 +189,114 @@
         .then(function (user) {
           var groups = user.groups || [];
           isAdmin = Array.isArray(groups) && groups.indexOf('admin') !== -1;
+          if (addSiteForm) addSiteForm.hidden = !isAdmin;
 
-          signInForm.hidden = true;
-          signUpForm.hidden = true;
-          showSignUpBtn.hidden = true;
-          signOutBtn.hidden = true; // show below after we know user
+          if (hasUi) {
+            if (signInForm) signInForm.hidden = true;
+            if (signUpForm) signUpForm.hidden = true;
+            if (showSignUpBtn) showSignUpBtn.hidden = true;
+            if (signOutBtn) signOutBtn.hidden = true; // show below after we know user
 
-          addSiteForm.hidden = !isAdmin;
+            window.auth.getCurrentUserEmail(function (email) {
+              if (userInfo) {
+                userInfo.textContent = 'Signed in as: ' + (email || 'user') +
+                  (isAdmin ? ' (admin)' : '');
+                userInfo.hidden = false;
+              }
+            });
 
-          window.auth.getCurrentUserEmail(function (email) {
-            userInfo.textContent = 'Signed in as: ' + (email || 'user') +
-              (isAdmin ? ' (admin)' : '');
-            userInfo.hidden = false;
-          });
-
-          signOutBtn.hidden = false;
+            if (signOutBtn) signOutBtn.hidden = false;
+          }
         })
         .catch(function () {
           // On error, treat as non-admin but still authenticated for rating
           isAdmin = false;
-          signInForm.hidden = true;
+          if (addSiteForm) addSiteForm.hidden = true;
+          if (hasUi) {
+            if (signInForm) signInForm.hidden = true;
+            if (signUpForm) signUpForm.hidden = true;
+            if (showSignUpBtn) showSignUpBtn.hidden = true;
+            if (signOutBtn) signOutBtn.hidden = false;
+          }
+        });
+    });
+
+    // Attach auth form handlers only when forms exist (auth page)
+    if (signInForm) {
+      signInForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var email = document.getElementById('signInEmail').value;
+        var password = document.getElementById('signInPassword').value;
+        window.auth.signIn(email, password, function (err) {
+          if (err) {
+            alert('Sign in failed: ' + (err.message || err));
+            return;
+          }
+          // After sign in, go back to main page
+          window.location.href = 'index.html';
+        });
+      });
+    }
+
+    if (signUpForm) {
+      signUpForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var email = document.getElementById('signUpEmail').value;
+        var password = document.getElementById('signUpPassword').value;
+        window.auth.signUp(email, password, function (err, result) {
+          if (err) {
+            alert('Sign up failed: ' + (err.message || err));
+            return;
+          }
+          alert('Sign up successful! Check your email for verification code.');
           signUpForm.hidden = true;
-          showSignUpBtn.hidden = true;
-          signOutBtn.hidden = false;
-          addSiteForm.hidden = true;
+          if (signInForm) signInForm.hidden = false;
         });
-    });
+      });
+    }
 
-    signInForm.addEventListener('submit', function (e) {
-      e.preventDefault();
-      var email = document.getElementById('signInEmail').value;
-      var password = document.getElementById('signInPassword').value;
-      window.auth.signIn(email, password, function (err) {
-        if (err) {
-          alert('Sign in failed: ' + (err.message || err));
+    // Attach create-site handler wherever the form exists (main page)
+    if (createSiteForm) {
+      createSiteForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var url = document.getElementById('siteUrl').value.trim();
+        var title = document.getElementById('siteTitle').value.trim();
+        var description = document.getElementById('siteDescription').value.trim();
+        if (!url) {
+          createSiteResult.textContent = 'URL is required';
+          createSiteResult.className = 'status err';
           return;
         }
-        location.reload();
-      });
-    });
-
-    signUpForm.addEventListener('submit', function (e) {
-      e.preventDefault();
-      var email = document.getElementById('signUpEmail').value;
-      var password = document.getElementById('signUpPassword').value;
-      window.auth.signUp(email, password, function (err, result) {
-        if (err) {
-          alert('Sign up failed: ' + (err.message || err));
-          return;
-        }
-        alert('Sign up successful! Check your email for verification code.');
-        signUpForm.hidden = true;
-        signInForm.hidden = false;
-      });
-    });
-
-    createSiteForm.addEventListener('submit', function (e) {
-      e.preventDefault();
-      var url = document.getElementById('siteUrl').value.trim();
-      var title = document.getElementById('siteTitle').value.trim();
-      var description = document.getElementById('siteDescription').value.trim();
-      if (!url) {
-        createSiteResult.textContent = 'URL is required';
-        createSiteResult.className = 'status err';
-        return;
-      }
-      createSiteResult.textContent = 'Creating...';
-      createSiteResult.className = 'status';
-      createSiteResult.hidden = false;
-      fetchWithAuth(base + '/sites', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: url, title: title, description: description })
-      }).then(function (r) {
-        if (r.ok) {
-          return r.json();
-        }
-        return r.text().then(function (text) {
-          throw new Error(text || 'Request failed');
+        createSiteResult.textContent = 'Creating...';
+        createSiteResult.className = 'status';
+        createSiteResult.hidden = false;
+        fetchWithAuth(base + '/sites', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: url, title: title, description: description })
+        }).then(function (r) {
+          if (r.ok) {
+            return r.json();
+          }
+          return r.text().then(function (text) {
+            throw new Error(text || 'Request failed');
+          });
+        }).then(function (data) {
+          createSiteResult.textContent = 'Site added: ' + (data.title || data.url);
+          createSiteResult.className = 'status ok';
+          document.getElementById('siteUrl').value = '';
+          document.getElementById('siteTitle').value = '';
+          document.getElementById('siteDescription').value = '';
+          // Reload sites list
+          fetch(base + '/sites')
+            .then(function (r) { return r.json(); })
+            .then(function (data) { renderSites(data.sites || []); });
+        }).catch(function (e) {
+          createSiteResult.textContent = 'Error: ' + e.message;
+          createSiteResult.className = 'status err';
         });
-      }).then(function (data) {
-        createSiteResult.textContent = 'Site added: ' + (data.title || data.url);
-        createSiteResult.className = 'status ok';
-        document.getElementById('siteUrl').value = '';
-        document.getElementById('siteTitle').value = '';
-         document.getElementById('siteDescription').value = '';
-        // Reload sites list
-        fetch(base + '/sites')
-          .then(function (r) { return r.json(); })
-          .then(function (data) { renderSites(data.sites || []); });
-      }).catch(function (e) {
-        createSiteResult.textContent = 'Error: ' + e.message;
-        createSiteResult.className = 'status err';
       });
-    });
+    }
   }
 
   if (!base) {
