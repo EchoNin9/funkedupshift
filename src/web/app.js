@@ -4,7 +4,7 @@
   var errorEl = document.getElementById('error');
   var healthEl = document.getElementById('health');
   var sitesWrap = document.getElementById('sitesWrap');
-  var sitesList = document.getElementById('sites');
+  var sitesContainer = document.getElementById('sitesContainer');
   var adminLinks = document.getElementById('adminLinks');
   var authSection = document.getElementById('authSection');
   var signInForm = document.getElementById('signInForm');
@@ -14,6 +14,9 @@
   var showSignUpBtn = document.getElementById('showSignUp');
   var canRate = false;
   var isAdmin = false;
+  var sitesData = [];
+  var allCategoriesFromSites = [];
+  var groupByIds = [];
 
   function showError(msg) {
     loading.hidden = true;
@@ -31,76 +34,180 @@
     healthEl.hidden = false;
   }
 
-  function renderSites(sites) {
-    if (!sites || sites.length === 0) {
-      sitesList.innerHTML = '<li>No sites yet.</li>';
-    } else {
-      sitesList.innerHTML = sites.map(function (s) {
-        var id = s.PK || '';
-        var title = s.title || s.url || id || 'Untitled';
-        var avg = '';
-        if (s.averageRating != null) {
-          var n = parseFloat(s.averageRating);
-          if (!isNaN(n)) {
-            avg = ' (' + n.toFixed(1) + '★)';
-          }
-        }
-        var url = s.url ? '<a href="' + escapeHtml(s.url) + '" target="_blank" rel="noopener">' + escapeHtml(s.url) + '</a>' : '';
-        var desc = s.description ? '<div>' + escapeHtml(s.description) + '</div>' : '';
-        var cats = (s.categories && s.categories.length) ? ' <span class="site-categories">[' + s.categories.map(function (c) { return escapeHtml(c.name); }).join(', ') + ']</span>' : '';
-        var editBtn = (id && isAdmin) ? ' <a href="edit-site.html?id=' + encodeURIComponent(id) + '" class="secondary">Edit</a>' : '';
-        var stars = '';
-        if (id && canRate) {
-          stars =
-            '<div class="stars" data-id="' + escapeHtml(id) + '">' +
-              '<label>Rate: ' +
-              '<select class="star-select">' +
-                '<option value="">--</option>' +
-                '<option value="1">1</option>' +
-                '<option value="2">2</option>' +
-                '<option value="3">3</option>' +
-                '<option value="4">4</option>' +
-                '<option value="5">5</option>' +
-              '</select>' +
-              '<button type="button" class="secondary star-save">Save</button>' +
-              '</label>' +
-            '</div>';
-        }
-        return '<li><strong>' + escapeHtml(title) + avg + '</strong>' +
-          (url ? ' ' + url : '') + cats + editBtn + desc + stars + '</li>';
-      }).join('');
+  function siteLi(s) {
+    var id = s.PK || '';
+    var title = s.title || s.url || id || 'Untitled';
+    var avg = '';
+    if (s.averageRating != null) {
+      var n = parseFloat(s.averageRating);
+      if (!isNaN(n)) avg = ' (' + n.toFixed(1) + '★)';
+    }
+    var url = s.url ? '<a href="' + escapeHtml(s.url) + '" target="_blank" rel="noopener">' + escapeHtml(s.url) + '</a>' : '';
+    var desc = s.description ? '<div>' + escapeHtml(s.description) + '</div>' : '';
+    var cats = (s.categories && s.categories.length) ? ' <span class="site-categories">[' + s.categories.map(function (c) { return escapeHtml(c.name); }).join(', ') + ']</span>' : '';
+    var editBtn = (id && isAdmin) ? ' <a href="edit-site.html?id=' + encodeURIComponent(id) + '" class="secondary">Edit</a>' : '';
+    var stars = '';
+    if (id && canRate) {
+      stars = '<div class="stars" data-id="' + escapeHtml(id) + '"><label>Rate: <select class="star-select"><option value="">--</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option></select><button type="button" class="secondary star-save">Save</button></label></div>';
+    }
+    return '<li><strong>' + escapeHtml(title) + avg + '</strong>' + (url ? ' ' + url : '') + cats + editBtn + desc + stars + '</li>';
+  }
 
-
-      // Attach star handlers (any authenticated user)
-      if (canRate) {
-        Array.prototype.forEach.call(document.querySelectorAll('.stars .star-save'), function (btn) {
-          btn.addEventListener('click', function () {
-            var container = this.closest('.stars');
-            if (!container) return;
-            var siteId = container.getAttribute('data-id');
-            var select = container.querySelector('.star-select');
-            var value = select && select.value;
-            if (!value) {
-              alert('Please choose a rating between 1 and 5.');
-              return;
-            }
-            fetchWithAuth(base + '/stars', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ siteId: siteId, rating: parseInt(value, 10) })
-            }).then(function (r) {
-              if (r.ok) return r.json();
-              return r.text().then(function (text) { throw new Error(text || 'Request failed'); });
-            }).then(function () {
-              alert('Rating saved.');
-            }).catch(function (e) {
-              alert('Failed to save rating: ' + e.message);
-            });
-          });
-        });
+  function applySort(sites, sortBy) {
+    var list = (sites || []).slice();
+    var key = sortBy || 'avgDesc';
+    list.sort(function (a, b) {
+      var titleA = (a.title || a.url || a.PK || '').toLowerCase();
+      var titleB = (b.title || b.url || b.PK || '').toLowerCase();
+      var avgA = a.averageRating != null ? parseFloat(a.averageRating) : 0;
+      var avgB = b.averageRating != null ? parseFloat(b.averageRating) : 0;
+      if (key === 'avgDesc') {
+        if (avgB !== avgA) return avgB - avgA;
+        return titleA.localeCompare(titleB);
       }
+      if (key === 'avgAsc') {
+        if (avgA !== avgB) return avgA - avgB;
+        return titleA.localeCompare(titleB);
+      }
+      if (key === 'alphaAsc') return titleA.localeCompare(titleB);
+      if (key === 'alphaDesc') return titleB.localeCompare(titleA);
+      return 0;
+    });
+    return list;
+  }
+
+  function renderSites(sites) {
+    sitesData = sites || [];
+    var sortSelect = document.getElementById('sortOrder');
+    var sortBy = (sortSelect && sortSelect.value) || 'avgDesc';
+    var sorted = applySort(sitesData, sortBy);
+
+    if (sorted.length === 0) {
+      sitesContainer.innerHTML = '<ul class="sites"><li>No sites yet.</li></ul>';
+    } else if (groupByIds.length > 0) {
+      var catIds = groupByIds.slice();
+      var idToName = {};
+      allCategoriesFromSites.forEach(function (c) { idToName[c.id] = c.name; });
+      var html = '';
+      catIds.forEach(function (cid) {
+        var name = idToName[cid] || cid;
+        var inGroup = sorted.filter(function (s) {
+          var ids = (s.categoryIds || []).concat((s.categories || []).map(function (c) { return c.id; }));
+          return ids.indexOf(cid) !== -1;
+        });
+        if (inGroup.length > 0) {
+          html += '<div class="sites-group"><h3>' + escapeHtml(name) + '</h3><ul class="sites">' + inGroup.map(siteLi).join('') + '</ul></div>';
+        }
+      });
+      var inAny = {};
+      catIds.forEach(function (cid) { inAny[cid] = true; });
+      var other = sorted.filter(function (s) {
+        var ids = (s.categoryIds || []).concat((s.categories || []).map(function (c) { return c.id; }));
+        return !ids.some(function (id) { return inAny[id]; });
+      });
+      if (other.length > 0) {
+        html += '<div class="sites-group"><h3>Other</h3><ul class="sites">' + other.map(siteLi).join('') + '</ul></div>';
+      }
+      if (!html) html = '<ul class="sites">' + sorted.map(siteLi).join('') + '</ul>';
+      sitesContainer.innerHTML = html;
+    } else {
+      sitesContainer.innerHTML = '<ul class="sites">' + sorted.map(siteLi).join('') + '</ul>';
+    }
+
+    if (canRate) {
+      Array.prototype.forEach.call(sitesContainer.querySelectorAll('.stars .star-save'), function (btn) {
+        btn.addEventListener('click', function () {
+          var container = this.closest('.stars');
+          if (!container) return;
+          var siteId = container.getAttribute('data-id');
+          var select = container.querySelector('.star-select');
+          var value = select && select.value;
+          if (!value) { alert('Please choose a rating between 1 and 5.'); return; }
+          fetchWithAuth(base + '/stars', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ siteId: siteId, rating: parseInt(value, 10) })
+          }).then(function (r) {
+            if (r.ok) return;
+            return r.text().then(function (t) { throw new Error(t || 'Request failed'); });
+          }).then(function () { alert('Rating saved.'); }).catch(function (e) { alert('Failed: ' + e.message); });
+        });
+      });
     }
     sitesWrap.hidden = false;
+  }
+
+  function buildCategoriesFromSites(sites) {
+    var seen = {};
+    var list = [];
+    (sites || []).forEach(function (s) {
+      (s.categories || []).forEach(function (c) {
+        var id = c.id || c.PK;
+        if (id && !seen[id]) { seen[id] = true; list.push({ id: id, name: c.name || id }); }
+      });
+    });
+    list.sort(function (a, b) { return (a.name || '').toLowerCase().localeCompare((b.name || '').toLowerCase()); });
+    return list;
+  }
+
+  function renderGroupByDropdown(filter) {
+    var dropdown = document.getElementById('groupByDropdown');
+    var search = document.getElementById('groupBySearch');
+    if (!dropdown || !search) return;
+    var q = (filter || search.value || '').toLowerCase().trim();
+    var opts = allCategoriesFromSites.filter(function (c) {
+      if (groupByIds.indexOf(c.id) !== -1) return false;
+      return !q || (c.name || '').toLowerCase().indexOf(q) !== -1;
+    });
+    dropdown.innerHTML = opts.length ? opts.map(function (c) {
+      return '<div class="group-by-option" data-id="' + escapeHtml(c.id) + '" data-name="' + escapeHtml(c.name) + '">' + escapeHtml(c.name) + '</div>';
+    }).join('') : '<div class="group-by-option" style="color:#666;cursor:default;">No matches</div>';
+    dropdown.hidden = false;
+  }
+
+  function renderGroupBySelected() {
+    var el = document.getElementById('groupBySelected');
+    if (!el) return;
+    el.innerHTML = groupByIds.map(function (id) {
+      var c = allCategoriesFromSites.find(function (x) { return x.id === id; });
+      var name = c ? c.name : id;
+      return '<span class="group-by-chip">' + escapeHtml(name) + '<button type="button" class="group-by-chip-remove" data-id="' + escapeHtml(id) + '" aria-label="Remove">×</button></span>';
+    }).join('');
+  }
+
+  function initGroupBy() {
+    allCategoriesFromSites = buildCategoriesFromSites(sitesData);
+    var search = document.getElementById('groupBySearch');
+    var dropdown = document.getElementById('groupByDropdown');
+    if (!search || !dropdown) return;
+    search.addEventListener('focus', function () { renderGroupByDropdown(); });
+    search.addEventListener('input', function () { renderGroupByDropdown(); });
+    search.addEventListener('keydown', function (e) { if (e.key === 'Escape') dropdown.hidden = true; });
+    dropdown.addEventListener('click', function (e) {
+      var opt = e.target.closest('.group-by-option');
+      if (opt && opt.dataset.id) {
+        if (groupByIds.indexOf(opt.dataset.id) === -1) {
+          groupByIds.push(opt.dataset.id);
+          renderGroupBySelected();
+          renderGroupByDropdown();
+          renderSites(sitesData);
+        }
+        search.value = '';
+      }
+    });
+    document.getElementById('groupBySelected').addEventListener('click', function (e) {
+      var btn = e.target.closest('.group-by-chip-remove');
+      if (btn && btn.dataset.id) {
+        groupByIds = groupByIds.filter(function (x) { return x !== btn.dataset.id; });
+        renderGroupBySelected();
+        renderGroupByDropdown();
+        renderSites(sitesData);
+      }
+    });
+    document.addEventListener('click', function (e) {
+      if (search && dropdown && !search.contains(e.target) && !dropdown.contains(e.target)) dropdown.hidden = true;
+    });
+    renderGroupBySelected();
   }
 
   function escapeHtml(s) {
@@ -253,7 +360,13 @@
       return r.json();
     })
     .then(function (data) {
-      renderSites(data.sites || []);
+      var list = data.sites || [];
+      renderSites(list);
+      initGroupBy();
+      var sortOrder = document.getElementById('sortOrder');
+      if (sortOrder) {
+        sortOrder.addEventListener('change', function () { renderSites(sitesData); });
+      }
     })
     .catch(function (e) {
       console.error('GET /sites error:', e);

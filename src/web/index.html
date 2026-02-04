@@ -34,6 +34,21 @@
     a.secondary:hover { background: #555; }
     .site-categories { color: #666; font-size: 0.9rem; }
     .user-info { margin: 0.5rem 0; }
+    .sites-toolbar { margin: 0.5rem 0 1rem; display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-start; }
+    .sites-toolbar label { margin-right: 0.5rem; }
+    .sites-toolbar select { padding: 0.35rem 0.5rem; }
+    .group-by-multiselect { position: relative; max-width: 24rem; min-width: 12rem; }
+    .group-by-multiselect input[type="text"] { width: 100%; padding: 0.35rem 0.5rem; font-size: 0.9rem; }
+    .group-by-dropdown { position: absolute; top: 100%; left: 0; right: 0; max-height: 10rem; overflow-y: auto; border: 1px solid #ccc; background: #fff; z-index: 5; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+    .group-by-dropdown[hidden] { display: none !important; }
+    .group-by-option { padding: 0.35rem 0.5rem; cursor: pointer; font-size: 0.9rem; }
+    .group-by-option:hover { background: #f0f0f0; }
+    .group-by-selected { display: inline-flex; flex-wrap: wrap; gap: 0.25rem; margin-top: 0.25rem; }
+    .group-by-chip { display: inline-flex; align-items: center; gap: 0.2rem; padding: 0.2rem 0.4rem; background: #e8e8e8; border-radius: 0.2rem; font-size: 0.85rem; }
+    .group-by-chip-remove { background: none; border: none; cursor: pointer; padding: 0; color: #666; font-size: 1rem; line-height: 1; }
+    .group-by-chip-remove:hover { color: #c00; }
+    .sites-group { margin: 1rem 0; }
+    .sites-group h3 { font-size: 1rem; margin: 0 0 0.35rem; color: #555; }
   </style>
 </head>
 <body>
@@ -46,7 +61,24 @@
   <div id="sitesWrap" hidden>
     <h2>Sites</h2>
     <p id="adminLinks" hidden><a href="add-site.html">Add site</a> | <a href="categories.html">Categories</a></p>
-    <ul id="sites" class="sites"></ul>
+    <div class="sites-toolbar">
+      <div>
+        <label for="sortOrder">Sort:</label>
+        <select id="sortOrder">
+          <option value="avgDesc">Avg stars (high first)</option>
+          <option value="avgAsc">Avg stars (low first)</option>
+          <option value="alphaAsc">Title A–Z</option>
+          <option value="alphaDesc">Title Z–A</option>
+        </select>
+      </div>
+      <div class="group-by-multiselect">
+        <label>Group by:</label>
+        <input type="text" id="groupBySearch" placeholder="Search categories..." autocomplete="off">
+        <div id="groupByDropdown" class="group-by-dropdown" hidden></div>
+        <div id="groupBySelected" class="group-by-selected"></div>
+      </div>
+    </div>
+    <div id="sitesContainer"></div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/amazon-cognito-identity-js@6.3.0/dist/amazon-cognito-identity.min.js"></script>
