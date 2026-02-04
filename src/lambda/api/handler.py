@@ -85,20 +85,33 @@ def listSites(event):
     try:
         logger.info("Importing boto3")
         import boto3
-        logger.info("Creating DynamoDB resource")
-        dynamo = boto3.resource("dynamodb")
-        logger.info("Getting table %s", TABLE_NAME)
-        table = dynamo.Table(TABLE_NAME)
-        logger.info("Querying GSI byEntity with entityType=SITE")
-        result = table.query(
+        logger.info("Creating DynamoDB client (not resource)")
+        # Use client instead of resource for better error handling
+        dynamodb = boto3.client("dynamodb", region_name=os.environ.get("AWS_REGION", "us-east-1"))
+        logger.info("Querying table %s, GSI byEntity", TABLE_NAME)
+        result = dynamodb.query(
+            TableName=TABLE_NAME,
             IndexName="byEntity",
             KeyConditionExpression="entityType = :et",
-            ExpressionAttributeValues={":et": "SITE"},
+            ExpressionAttributeValues={":et": {"S": "SITE"}},
         )
         logger.info("Query completed, processing results")
         items = result.get("Items", [])
-        logger.info("Found %d items", len(items))
-        return jsonResponse({"sites": items})
+        # Convert DynamoDB format to simple dicts
+        sites = []
+        for item in items:
+            site = {}
+            for key, val in item.items():
+                # DynamoDB returns {"S": "value"} format, extract the value
+                if "S" in val:
+                    site[key] = val["S"]
+                elif "N" in val:
+                    site[key] = int(val["N"]) if "." not in val["N"] else float(val["N"])
+                elif "L" in val:
+                    site[key] = [v.get("S", "") for v in val["L"]]
+            sites.append(site)
+        logger.info("Found %d items", len(sites))
+        return jsonResponse({"sites": sites})
     except Exception as e:
         logger.error("listSites exception: %s", str(e), exc_info=True)
         import traceback
@@ -138,22 +151,25 @@ def createSite(event):
         site_id = f"SITE#{uuid.uuid4()}"
         now = datetime.utcnow().isoformat() + "Z"
 
-        dynamo = boto3.resource("dynamodb")
-        table = dynamo.Table(TABLE_NAME)
-
+        dynamodb = boto3.client("dynamodb")
+        
+        # Convert Python types to DynamoDB format
+        tags_list = [{"S": str(tag)} for tag in (body.get("tags", []) or [])]
+        
         # Site metadata item
-        table.put_item(
+        dynamodb.put_item(
+            TableName=TABLE_NAME,
             Item={
-                "PK": site_id,
-                "SK": "METADATA",
-                "url": url,
-                "title": title or url,
-                "description": body.get("description", ""),
-                "tags": body.get("tags", []),
-                "createdAt": now,
-                "updatedAt": now,
-                "entityType": "SITE",
-                "entitySk": site_id,
+                "PK": {"S": site_id},
+                "SK": {"S": "METADATA"},
+                "url": {"S": url},
+                "title": {"S": title or url},
+                "description": {"S": body.get("description", "")},
+                "tags": {"L": tags_list},
+                "createdAt": {"S": now},
+                "updatedAt": {"S": now},
+                "entityType": {"S": "SITE"},
+                "entitySk": {"S": site_id},
             }
         )
 
