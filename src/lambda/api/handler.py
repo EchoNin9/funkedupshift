@@ -211,7 +211,7 @@ def listSites(event):
 
         _resolveCategoriesForSites(dynamodb, sites)
         sites.sort(key=lambda s: (
-            -(s.get("totalStarsCount") or 0),
+            -(s.get("averageRating") or 0),
             (s.get("title") or s.get("url") or s.get("PK") or "").lower(),
         ))
         logger.info("Found %d items", len(sites))
