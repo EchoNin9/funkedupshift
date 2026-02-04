@@ -24,7 +24,17 @@
     input, textarea { width: 100%; max-width: 30rem; display: block; }
     button { background: #0066cc; color: white; border: none; border-radius: 0.25rem; cursor: pointer; }
     button:hover { background: #0052a3; }
-    .checkbox { display: block; margin: 0.25rem 0; }
+    .category-multiselect { position: relative; margin: 0.5rem 0; max-width: 30rem; }
+    .category-multiselect label { display: block; margin-bottom: 0.25rem; }
+    .category-multiselect input[type="text"] { width: 100%; padding: 0.5rem; }
+    .category-dropdown { position: absolute; top: 100%; left: 0; right: 0; max-height: 12rem; overflow-y: auto; border: 1px solid #ccc; background: #fff; z-index: 10; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+    .category-dropdown[hidden] { display: none !important; }
+    .category-dropdown-option { padding: 0.5rem; cursor: pointer; }
+    .category-dropdown-option:hover { background: #f0f0f0; }
+    .category-selected { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.5rem; }
+    .category-chip { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.25rem 0.5rem; background: #e8e8e8; border-radius: 0.25rem; font-size: 0.9rem; }
+    .category-chip-remove { background: none; border: none; cursor: pointer; padding: 0; color: #666; font-size: 1.1rem; line-height: 1; }
+    .category-chip-remove:hover { color: #c00; }
   </style>
 </head>
 <body>
@@ -37,7 +47,13 @@
       <input type="hidden" id="siteId" name="siteId">
       <input type="text" id="siteTitle" placeholder="Title" required>
       <textarea id="siteDescription" placeholder="Description (optional)" rows="4"></textarea>
-      <div id="categoryChoices">Loading categories…</div>
+      <div id="categoryChoices" class="category-multiselect">
+        <label>Categories</label>
+        <input type="text" id="categorySearch" placeholder="Search or select categories..." autocomplete="off">
+        <div id="categoryDropdown" class="category-dropdown" hidden></div>
+        <div id="categorySelected" class="category-selected"></div>
+        <p id="categoryEmpty" hidden>No categories. <a href="categories.html">Create categories</a>.</p>
+      </div>
       <button type="submit">Save</button>
     </form>
     <div id="saveResult" style="margin-top: 0.5rem;"></div>

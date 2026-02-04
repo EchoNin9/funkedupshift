@@ -4,6 +4,8 @@
   var formWrap = document.getElementById('formWrap');
   var editSiteForm = document.getElementById('editSiteForm');
   var saveResult = document.getElementById('saveResult');
+  var allCategories = [];
+  var selectedIds = [];
 
   function getSiteId() {
     var params = new URLSearchParams(window.location.search);
@@ -29,6 +31,84 @@
         if (token) options.headers['Authorization'] = 'Bearer ' + token;
         fetch(url, options).then(resolve).catch(reject);
       });
+    });
+  }
+
+  function escapeHtml(s) {
+    if (s == null) return '';
+    var div = document.createElement('div');
+    div.textContent = s;
+    return div.innerHTML;
+  }
+
+  function renderDropdown(filter) {
+    var dropdown = document.getElementById('categoryDropdown');
+    var search = document.getElementById('categorySearch');
+    if (!dropdown || !search) return;
+    var q = (filter || search.value || '').toLowerCase().trim();
+    var opts = allCategories.filter(function (c) {
+      if (selectedIds.indexOf(c.id) !== -1) return false;
+      return !q || (c.name || '').toLowerCase().indexOf(q) !== -1;
+    });
+    dropdown.innerHTML = opts.length ? opts.map(function (c) {
+      return '<div class="category-dropdown-option" data-id="' + escapeHtml(c.id) + '" data-name="' + escapeHtml(c.name) + '">' + escapeHtml(c.name) + '</div>';
+    }).join('') : '<div class="category-dropdown-option" style="color:#666;cursor:default;">No matches</div>';
+    dropdown.hidden = false;
+  }
+
+  function renderSelected() {
+    var el = document.getElementById('categorySelected');
+    if (!el) return;
+    el.innerHTML = selectedIds.map(function (id) {
+      var c = allCategories.find(function (x) { return x.id === id; });
+      var name = c ? c.name : id;
+      return '<span class="category-chip">' + escapeHtml(name) + '<button type="button" class="category-chip-remove" data-id="' + escapeHtml(id) + '" aria-label="Remove">×</button></span>';
+    }).join('');
+  }
+
+  function addCategory(id) {
+    if (selectedIds.indexOf(id) === -1) {
+      selectedIds.push(id);
+      renderSelected();
+      renderDropdown();
+    }
+  }
+
+  function removeCategory(id) {
+    selectedIds = selectedIds.filter(function (x) { return x !== id; });
+    renderSelected();
+    renderDropdown();
+  }
+
+  function initCategoryMultiselect() {
+    var search = document.getElementById('categorySearch');
+    var dropdown = document.getElementById('categoryDropdown');
+    if (!search || !dropdown) return;
+
+    search.addEventListener('focus', function () { renderDropdown(); });
+    search.addEventListener('input', function () { renderDropdown(); });
+    search.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') dropdown.hidden = true;
+    });
+
+    dropdown.addEventListener('click', function (e) {
+      var opt = e.target.closest('.category-dropdown-option');
+      if (opt && opt.dataset.id) {
+        addCategory(opt.dataset.id);
+        search.value = '';
+        search.focus();
+      }
+    });
+
+    document.getElementById('categorySelected').addEventListener('click', function (e) {
+      var btn = e.target.closest('.category-chip-remove');
+      if (btn && btn.dataset.id) removeCategory(btn.dataset.id);
+    });
+
+    document.addEventListener('click', function (e) {
+      if (!search.contains(e.target) && !dropdown.contains(e.target)) {
+        dropdown.hidden = true;
+      }
     });
   }
 
@@ -79,16 +159,23 @@
         document.getElementById('siteTitle').value = site.title || '';
         document.getElementById('siteDescription').value = site.description || '';
 
-        var currentIds = site.categoryIds || [];
         var cats = (catData && catData.categories) || [];
-        var el = document.getElementById('categoryChoices');
-        if (el) {
-          el.innerHTML = '<label>Categories:</label>' + (cats.length ? cats.map(function (c) {
-            var id = c.PK || c.id || '';
-            var name = c.name || id;
-            var checked = currentIds.indexOf(id) !== -1 ? ' checked' : '';
-            return '<label class="checkbox"><input type="checkbox" name="category" value="' + id + '"' + checked + '> ' + name + '</label>';
-          }).join('') : '<p>No categories. <a href="categories.html">Create categories</a>.</p>');
+        allCategories = cats.map(function (c) {
+          var id = c.PK || c.id || '';
+          return { id: id, name: c.name || id };
+        });
+        selectedIds = site.categoryIds || [];
+
+        var searchEl = document.getElementById('categorySearch');
+        var emptyEl = document.getElementById('categoryEmpty');
+        if (allCategories.length === 0) {
+          if (searchEl) searchEl.style.display = 'none';
+          if (emptyEl) emptyEl.hidden = false;
+        } else {
+          if (searchEl) searchEl.style.display = '';
+          if (emptyEl) emptyEl.hidden = true;
+          initCategoryMultiselect();
+          renderSelected();
         }
 
         formWrap.hidden = false;
@@ -104,10 +191,7 @@
       var id = document.getElementById('siteId').value.trim();
       var title = document.getElementById('siteTitle').value.trim();
       var description = document.getElementById('siteDescription').value.trim();
-      var categoryIds = [];
-      Array.prototype.forEach.call(document.querySelectorAll('#categoryChoices input[name=category]:checked'), function (cb) {
-        if (cb.value) categoryIds.push(cb.value);
-      });
+      var categoryIds = selectedIds.slice();
 
       saveResult.textContent = 'Saving...';
       saveResult.className = 'status';
