@@ -77,23 +77,38 @@ def handler(event, context):
 
 def listSites(event):
     """Query DynamoDB byEntity (entityType=SITE) and return items."""
+    logger.info("listSites called, TABLE_NAME=%s", TABLE_NAME)
     if not TABLE_NAME:
+        logger.warning("TABLE_NAME not set")
         return jsonResponse({"sites": [], "error": "TABLE_NAME not set"}, 200)
 
     try:
+        logger.info("Importing boto3")
         import boto3
+        logger.info("Creating DynamoDB resource")
         dynamo = boto3.resource("dynamodb")
+        logger.info("Getting table %s", TABLE_NAME)
         table = dynamo.Table(TABLE_NAME)
+        logger.info("Querying GSI byEntity with entityType=SITE")
         result = table.query(
             IndexName="byEntity",
             KeyConditionExpression="entityType = :et",
             ExpressionAttributeValues={":et": "SITE"},
         )
+        logger.info("Query completed, processing results")
         items = result.get("Items", [])
+        logger.info("Found %d items", len(items))
         return jsonResponse({"sites": items})
     except Exception as e:
-        logger.exception("listSites error")
-        return jsonResponse({"error": str(e), "sites": []}, 500)
+        logger.error("listSites exception: %s", str(e), exc_info=True)
+        import traceback
+        error_detail = traceback.format_exc()
+        logger.error("Full traceback:\n%s", error_detail)
+        return jsonResponse({
+            "error": str(e),
+            "errorType": type(e).__name__,
+            "sites": []
+        }, 500)
 
 
 def createSite(event):
