@@ -147,7 +147,13 @@ def listSites(event):
             total_sum = site.get("totalStarsSum")
             total_count = site.get("totalStarsCount")
             if isinstance(total_sum, (int, float)) and isinstance(total_count, (int, float)) and total_count > 0:
-                site["averageRating"] = round(float(total_sum) / float(total_count), 1)
+                avg = float(total_sum) / float(total_count)
+                # Defensive clamp: average must stay within 1–5
+                if avg < 1.0:
+                    avg = 1.0
+                if avg > 5.0:
+                    avg = 5.0
+                site["averageRating"] = round(avg, 1)
 
             sites.append(site)
         logger.info("Found %d items", len(sites))
