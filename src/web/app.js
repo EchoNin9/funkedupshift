@@ -14,6 +14,8 @@
   var userInfo = document.getElementById('userInfo');
   var signOutBtn = document.getElementById('signOutBtn');
   var showSignUpBtn = document.getElementById('showSignUp');
+  var canRate = false;
+  var isAdmin = false;
 
   function showError(msg) {
     loading.hidden = true;
@@ -40,39 +42,88 @@
         var title = s.title || s.url || id || 'Untitled';
         var url = s.url ? '<a href="' + escapeHtml(s.url) + '" target="_blank" rel="noopener">' + escapeHtml(s.url) + '</a>' : '';
         var desc = s.description ? '<div>' + escapeHtml(s.description) + '</div>' : '';
-        var editBtn = id ? ' <button class="secondary edit-site" data-id="' + escapeHtml(id) +
+        var editBtn = (id && isAdmin) ? ' <button class="secondary edit-site" data-id="' + escapeHtml(id) +
           '" data-title="' + escapeHtml(title) +
           '" data-description="' + escapeHtml(s.description || '') + '">Edit</button>' : '';
-        return '<li><strong>' + escapeHtml(title) + '</strong>' + (url ? ' ' + url : '') + editBtn + desc + '</li>';
+        var stars = '';
+        if (id && canRate) {
+          stars =
+            '<div class="stars" data-id="' + escapeHtml(id) + '">' +
+              '<label>Rate: ' +
+              '<select class="star-select">' +
+                '<option value="">--</option>' +
+                '<option value="1">1</option>' +
+                '<option value="2">2</option>' +
+                '<option value="3">3</option>' +
+                '<option value="4">4</option>' +
+                '<option value="5">5</option>' +
+              '</select>' +
+              '<button type="button" class="secondary star-save">Save</button>' +
+              '</label>' +
+            '</div>';
+        }
+        return '<li><strong>' + escapeHtml(title) + '</strong>' +
+          (url ? ' ' + url : '') + editBtn + desc + stars + '</li>';
       }).join('');
 
-      // Attach edit handlers
-      Array.prototype.forEach.call(document.querySelectorAll('.edit-site'), function (btn) {
-        btn.addEventListener('click', function () {
-          var id = this.getAttribute('data-id');
-          var currentTitle = this.getAttribute('data-title') || '';
-          var currentDesc = this.getAttribute('data-description') || '';
-          var newTitle = window.prompt('Edit title:', currentTitle);
-          if (newTitle === null) return;
-          var newDesc = window.prompt('Edit description:', currentDesc);
-          if (newDesc === null) return;
-          fetchWithAuth(base + '/sites', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: id, title: newTitle, description: newDesc })
-          }).then(function (r) {
-            if (r.ok) return r.json();
-            return r.text().then(function (text) { throw new Error(text || 'Request failed'); });
-          }).then(function () {
-            // Refresh sites list
-            return fetch(base + '/sites').then(function (r) { return r.json(); });
-          }).then(function (data) {
-            renderSites(data.sites || []);
-          }).catch(function (e) {
-            alert('Edit failed: ' + e.message);
+      // Attach edit handlers (admin only)
+      if (isAdmin) {
+        Array.prototype.forEach.call(document.querySelectorAll('.edit-site'), function (btn) {
+          btn.addEventListener('click', function () {
+            var id = this.getAttribute('data-id');
+            var currentTitle = this.getAttribute('data-title') || '';
+            var currentDesc = this.getAttribute('data-description') || '';
+            var newTitle = window.prompt('Edit title:', currentTitle);
+            if (newTitle === null) return;
+            var newDesc = window.prompt('Edit description:', currentDesc);
+            if (newDesc === null) return;
+            fetchWithAuth(base + '/sites', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ id: id, title: newTitle, description: newDesc })
+            }).then(function (r) {
+              if (r.ok) return r.json();
+              return r.text().then(function (text) { throw new Error(text || 'Request failed'); });
+            }).then(function () {
+              // Refresh sites list
+              return fetch(base + '/sites').then(function (r) { return r.json(); });
+            }).then(function (data) {
+              renderSites(data.sites || []);
+            }).catch(function (e) {
+              alert('Edit failed: ' + e.message);
+            });
           });
         });
-      });
+      }
+
+      // Attach star handlers (any authenticated user)
+      if (canRate) {
+        Array.prototype.forEach.call(document.querySelectorAll('.stars .star-save'), function (btn) {
+          btn.addEventListener('click', function () {
+            var container = this.closest('.stars');
+            if (!container) return;
+            var siteId = container.getAttribute('data-id');
+            var select = container.querySelector('.star-select');
+            var value = select && select.value;
+            if (!value) {
+              alert('Please choose a rating between 1 and 5.');
+              return;
+            }
+            fetchWithAuth(base + '/stars', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ siteId: siteId, rating: parseInt(value, 10) })
+            }).then(function (r) {
+              if (r.ok) return r.json();
+              return r.text().then(function (text) { throw new Error(text || 'Request failed'); });
+            }).then(function () {
+              alert('Rating saved.');
+            }).catch(function (e) {
+              alert('Failed to save rating: ' + e.message);
+            });
+          });
+        });
+      }
     }
     sitesWrap.hidden = false;
   }
@@ -105,24 +156,49 @@
     authSection.hidden = false;
 
     window.auth.isAuthenticated(function (isAuth) {
-      if (isAuth) {
-        signInForm.hidden = true;
-        signUpForm.hidden = true;
-        showSignUpBtn.hidden = true;
-        signOutBtn.hidden = false;
-        addSiteForm.hidden = false;
-        window.auth.getCurrentUserEmail(function (email) {
-          userInfo.textContent = 'Signed in as: ' + (email || 'user');
-          userInfo.hidden = false;
-        });
-      } else {
+      canRate = isAuth; // any authenticated user can rate
+      if (!isAuth) {
+        isAdmin = false;
         signInForm.hidden = false;
         signUpForm.hidden = true;
         showSignUpBtn.hidden = false;
         signOutBtn.hidden = true;
         userInfo.hidden = true;
         addSiteForm.hidden = true;
+        return;
       }
+
+      // Authenticated: fetch user info (/me) to determine admin role
+      fetchWithAuth(base + '/me')
+        .then(function (r) { return r.ok ? r.json() : r.text().then(function (t) { throw new Error(t || 'Failed to load user'); }); })
+        .then(function (user) {
+          var groups = user.groups || [];
+          isAdmin = Array.isArray(groups) && groups.indexOf('admin') !== -1;
+
+          signInForm.hidden = true;
+          signUpForm.hidden = true;
+          showSignUpBtn.hidden = true;
+          signOutBtn.hidden = true; // show below after we know user
+
+          addSiteForm.hidden = !isAdmin;
+
+          window.auth.getCurrentUserEmail(function (email) {
+            userInfo.textContent = 'Signed in as: ' + (email || 'user') +
+              (isAdmin ? ' (admin)' : '');
+            userInfo.hidden = false;
+          });
+
+          signOutBtn.hidden = false;
+        })
+        .catch(function () {
+          // On error, treat as non-admin but still authenticated for rating
+          isAdmin = false;
+          signInForm.hidden = true;
+          signUpForm.hidden = true;
+          showSignUpBtn.hidden = true;
+          signOutBtn.hidden = false;
+          addSiteForm.hidden = true;
+        });
     });
 
     signInForm.addEventListener('submit', function (e) {

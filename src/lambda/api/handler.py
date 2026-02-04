@@ -88,6 +88,10 @@ def handler(event, context):
             return createSite(event)
         if method == "PUT" and path == "/sites":
             return updateSite(event)
+        if method == "GET" and path == "/me":
+            return getMe(event)
+        if method == "POST" and path == "/stars":
+            return setStar(event)
         if method == "OPTIONS":
             # CORS preflight
             return jsonResponse({}, 200)
@@ -261,4 +265,64 @@ def updateSite(event):
         return jsonResponse({"id": site_id, "title": title, "description": description}, 200)
     except Exception as e:
         logger.exception("updateSite error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def getMe(event):
+    """Return current user info (requires auth)."""
+    user = getUserInfo(event)
+    if not user.get("userId"):
+        return jsonResponse({"error": "Unauthorized"}, 401)
+    return jsonResponse(user)
+
+
+def setStar(event):
+    """Set a 1-5 star rating for a site for the current user."""
+    user = getUserInfo(event)
+    user_id = user.get("userId")
+    if not user_id:
+        return jsonResponse({"error": "Unauthorized"}, 401)
+
+    if not TABLE_NAME:
+        return jsonResponse({"error": "TABLE_NAME not set"}, 500)
+
+    try:
+        import boto3
+        import json
+        from datetime import datetime
+
+        body = json.loads(event.get("body", "{}"))
+        site_id = body.get("siteId", "").strip()
+        rating = body.get("rating")
+
+        if not site_id:
+            return jsonResponse({"error": "siteId is required"}, 400)
+
+        try:
+            rating_int = int(rating)
+        except Exception:
+            return jsonResponse({"error": "rating must be an integer between 1 and 5"}, 400)
+
+        if rating_int < 1 or rating_int > 5:
+            return jsonResponse({"error": "rating must be between 1 and 5"}, 400)
+
+        now = datetime.utcnow().isoformat() + "Z"
+
+        dynamodb = boto3.client("dynamodb")
+        dynamodb.put_item(
+            TableName=TABLE_NAME,
+            Item={
+                "PK": {"S": site_id},
+                "SK": {"S": f"STAR#{user_id}"},
+                "rating": {"N": str(rating_int)},
+                "userId": {"S": user_id},
+                "entityType": {"S": "SITE_STAR"},
+                "entitySk": {"S": user_id},
+                "updatedAt": {"S": now},
+            },
+        )
+
+        return jsonResponse({"siteId": site_id, "rating": rating_int}, 200)
+    except Exception as e:
+        logger.exception("setStar error")
         return jsonResponse({"error": str(e)}, 500)

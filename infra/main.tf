@@ -685,6 +685,24 @@ resource "aws_apigatewayv2_route" "sitesPut" {
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
+# Current user info
+resource "aws_apigatewayv2_route" "me" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /me"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+# Set star rating
+resource "aws_apigatewayv2_route" "starsPost" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /stars"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
 # OPTIONS routes for CORS preflight (HTTP API handles CORS automatically, but explicit routes ensure they work)
 resource "aws_apigatewayv2_route" "sitesOptions" {
   api_id    = aws_apigatewayv2_api.main.id
