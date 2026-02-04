@@ -169,6 +169,7 @@ data "aws_iam_policy_document" "terraformManage" {
       "iam:CreateRole",
       "iam:UpdateRole",
       "iam:DeleteRole",
+      "iam:PassRole",
       "iam:AttachRolePolicy",
       "iam:DetachRolePolicy",
       "iam:ListAttachedRolePolicies",
@@ -179,7 +180,8 @@ data "aws_iam_policy_document" "terraformManage" {
     ]
     resources = [
       "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/github-actions-funkedupshift-staging",
-      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/github-actions-funkedupshift-production"
+      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/github-actions-funkedupshift-production",
+      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/fus-api-lambda-role"
     ]
   }
   # S3 website buckets – full manage for Terraform (s3:* avoids provider refresh whack-a-mole)
@@ -562,7 +564,7 @@ data "archive_file" "api" {
   type        = "zip"
   source_dir  = "${path.module}/../src/lambda"
   output_path = "${path.module}/build/api.zip"
-  excludes    = ["tests", "**/__pycache__", "**/*.pyc", "requirements-test.txt"]
+  excludes    = ["**/__pycache__/**", "**/*.pyc"]
 }
 
 resource "aws_iam_role" "lambdaApi" {
