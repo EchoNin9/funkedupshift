@@ -35,10 +35,32 @@ def getUserInfo(event):
     authorizer = event.get("requestContext", {}).get("authorizer", {})
     jwt = authorizer.get("jwt", {})
     claims = jwt.get("claims", {})
+
+    raw_groups = claims.get("cognito:groups")
+    groups: list[str] = []
+
+    if isinstance(raw_groups, list):
+        groups = [str(g) for g in raw_groups]
+    elif isinstance(raw_groups, str) and raw_groups:
+        # Cognito sometimes returns groups as a JSON-ish string like "[admin]"
+        try:
+            parsed = json.loads(raw_groups)
+            if isinstance(parsed, list):
+                groups = [str(g) for g in parsed]
+            else:
+                groups = [str(parsed)]
+        except Exception:
+            # Fallback: split on commas and strip brackets/quotes/whitespace
+            parts = raw_groups.split(",")
+            for p in parts:
+                g = p.strip().strip("[]\"'")
+                if g:
+                    groups.append(g)
+
     return {
         "userId": claims.get("sub", ""),
         "email": claims.get("email", ""),
-        "groups": claims.get("cognito:groups", "").split(",") if claims.get("cognito:groups") else [],
+        "groups": groups,
     }
 
 

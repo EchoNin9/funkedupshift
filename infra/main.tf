@@ -614,7 +614,6 @@ resource "aws_lambda_function" "api" {
   environment {
     variables = {
       TABLE_NAME = aws_dynamodb_table.main.name
-      AWS_REGION = var.awsRegion
     }
   }
 }
