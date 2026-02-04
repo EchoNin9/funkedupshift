@@ -1,7 +1,9 @@
+# Use default credential chain (env vars in CI, AWS_PROFILE locally).
 provider "aws" {
-  region  = var.awsRegion
-  profile = var.awsProfile != "" ? var.awsProfile : null
+  region = var.awsRegion
 }
+
+data "aws_caller_identity" "current" {}
 
 # ------------------------------------------------------------------------------
 # GitHub OIDC provider (for Actions to assume IAM roles without long-lived keys)
@@ -121,6 +123,106 @@ resource "aws_iam_role_policy_attachment" "stagingTerraformState" {
 resource "aws_iam_role_policy_attachment" "productionTerraformState" {
   role       = aws_iam_role.githubProduction.name
   policy_arn = aws_iam_policy.terraformState.arn
+}
+
+# ------------------------------------------------------------------------------
+# Policy: Terraform manage (read/write all managed resources for plan/apply)
+# ------------------------------------------------------------------------------
+data "aws_iam_policy_document" "terraformManage" {
+  # IAM OIDC provider
+  statement {
+    sid    = "TerraformManageOIDC"
+    effect = "Allow"
+    actions = [
+      "iam:GetOpenIDConnectProvider",
+      "iam:CreateOpenIDConnectProvider",
+      "iam:UpdateOpenIDConnectProvider",
+      "iam:DeleteOpenIDConnectProvider"
+    ]
+    resources = [
+      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/token.actions.githubusercontent.com"
+    ]
+  }
+  # IAM managed policy (terraform state policy)
+  statement {
+    sid    = "TerraformManagePolicy"
+    effect = "Allow"
+    actions = [
+      "iam:GetPolicy",
+      "iam:CreatePolicy",
+      "iam:DeletePolicy",
+      "iam:GetPolicyVersion",
+      "iam:CreatePolicyVersion",
+      "iam:DeletePolicyVersion"
+    ]
+    resources = [
+      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/github-actions-funkedupshift-terraform-state"
+    ]
+  }
+  # IAM roles (staging + production) and inline role policies
+  statement {
+    sid    = "TerraformManageRoles"
+    effect = "Allow"
+    actions = [
+      "iam:GetRole",
+      "iam:CreateRole",
+      "iam:UpdateRole",
+      "iam:DeleteRole",
+      "iam:AttachRolePolicy",
+      "iam:DetachRolePolicy",
+      "iam:GetRolePolicy",
+      "iam:PutRolePolicy",
+      "iam:DeleteRolePolicy"
+    ]
+    resources = [
+      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/github-actions-funkedupshift-staging",
+      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/github-actions-funkedupshift-production"
+    ]
+  }
+  # S3 website buckets – full manage for Terraform (both buckets so either branch can plan/apply)
+  statement {
+    sid    = "TerraformManageWebsiteBuckets"
+    effect = "Allow"
+    actions = [
+      "s3:GetBucketLocation",
+      "s3:GetBucketPolicy",
+      "s3:PutBucketPolicy",
+      "s3:DeleteBucketPolicy",
+      "s3:GetBucketPublicAccessBlock",
+      "s3:PutBucketPublicAccessBlock",
+      "s3:GetBucketWebsite",
+      "s3:PutBucketWebsite",
+      "s3:DeleteBucketWebsite",
+      "s3:ListBucket",
+      "s3:GetObject",
+      "s3:PutObject",
+      "s3:DeleteObject",
+      "s3:CreateBucket",
+      "s3:DeleteBucket"
+    ]
+    resources = [
+      "arn:aws:s3:::${var.websiteStagingBucket}",
+      "arn:aws:s3:::${var.websiteStagingBucket}/*",
+      "arn:aws:s3:::${var.websiteProductionBucket}",
+      "arn:aws:s3:::${var.websiteProductionBucket}/*"
+    ]
+  }
+}
+
+resource "aws_iam_policy" "terraformManage" {
+  name        = "github-actions-funkedupshift-terraform-manage"
+  description = "Allow GitHub Actions to run Terraform plan/apply on funkedupshift infra."
+  policy      = data.aws_iam_policy_document.terraformManage.json
+}
+
+resource "aws_iam_role_policy_attachment" "stagingTerraformManage" {
+  role       = aws_iam_role.githubStaging.name
+  policy_arn = aws_iam_policy.terraformManage.arn
+}
+
+resource "aws_iam_role_policy_attachment" "productionTerraformManage" {
+  role       = aws_iam_role.githubProduction.name
+  policy_arn = aws_iam_policy.terraformManage.arn
 }
 
 # ------------------------------------------------------------------------------

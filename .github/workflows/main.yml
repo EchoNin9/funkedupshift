@@ -50,11 +50,11 @@ jobs:
 
       - name: Terraform plan
         working-directory: infra
-        run: terraform plan -var="githubOrgRepo=${{ github.repository }}" -var='awsProfile=""' -no-color
+        run: terraform plan -var="githubOrgRepo=${{ github.repository }}" -no-color
 
       - name: Terraform apply
         working-directory: infra
-        run: terraform apply -var="githubOrgRepo=${{ github.repository }}" -var='awsProfile=""' -auto-approve -no-color
+        run: terraform apply -var="githubOrgRepo=${{ github.repository }}" -auto-approve -no-color
 
       - name: Deploy frontend to S3
         run: |
