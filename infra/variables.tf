@@ -4,12 +4,6 @@ variable "awsRegion" {
   default     = "us-east-1"
 }
 
-variable "awsProfile" {
-  description = "AWS CLI profile for Terraform (e.g. echo9). Leave empty for default credential chain (CI/OIDC)."
-  type        = string
-  default     = ""
-}
-
 variable "githubOrgRepo" {
   description = "GitHub org/repo for OIDC trust (e.g. EchoNin9/funkedupshift)."
   type        = string

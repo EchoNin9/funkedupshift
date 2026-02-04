@@ -1,6 +1,6 @@
+# Use default credential chain (env vars in CI, AWS_PROFILE locally).
 provider "aws" {
-  region  = var.awsRegion
-  profile = var.awsProfile != "" ? var.awsProfile : null
+  region = var.awsRegion
 }
 
 # ------------------------------------------------------------------------------
