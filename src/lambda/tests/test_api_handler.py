@@ -102,3 +102,34 @@ def test_createSite_requires_admin():
     }
     result = handler(event, None)
     assert result["statusCode"] == 403
+
+
+def test_listCategories_requires_auth():
+    from api.handler import handler
+    event = {
+        "rawPath": "/categories",
+        "requestContext": {"http": {"method": "GET", "path": "/categories"}},
+    }
+    result = handler(event, None)
+    assert result["statusCode"] == 401
+
+
+def test_listCategories_requires_admin():
+    from api.handler import handler
+    event = {
+        "rawPath": "/categories",
+        "requestContext": {
+            "http": {"method": "GET", "path": "/categories"},
+            "authorizer": {
+                "jwt": {
+                    "claims": {
+                        "sub": "user-123",
+                        "email": "user@example.com",
+                        "cognito:groups": "user",
+                    }
+                }
+            },
+        },
+    }
+    result = handler(event, None)
+    assert result["statusCode"] == 403

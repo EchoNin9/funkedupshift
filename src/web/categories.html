@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Funkedupshift – Categories</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      line-height: 1.5;
+      max-width: 40rem;
+      margin: 0 auto;
+      padding: 1.5rem;
+      color: #1a1a1a;
+    }
+    h1 { font-size: 1.5rem; margin-top: 0; }
+    a { color: #0066cc; }
+    .status { margin: 1rem 0; padding: 0.75rem; border-radius: 0.25rem; }
+    .status.ok { background: #e6f4ea; }
+    .status.err { background: #fce8e6; }
+    form { margin: 0.5rem 0; }
+    input, textarea, button { padding: 0.5rem; margin: 0.25rem 0; }
+    input, textarea { width: 100%; max-width: 24rem; display: block; }
+    button { background: #0066cc; color: white; border: none; border-radius: 0.25rem; cursor: pointer; }
+    button:hover { background: #0052a3; }
+    button.secondary { background: #666; }
+    button.secondary:hover { background: #555; }
+    button.danger { background: #c00; }
+    button.danger:hover { background: #a00; }
+    .category-list { list-style: none; padding: 0; margin: 0; }
+    .category-list li { padding: 0.5rem 0; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+    .category-list li:last-child { border-bottom: none; }
+    .category-name { font-weight: 600; }
+    .category-desc { color: #666; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <h1>Funkedupshift – Categories</h1>
+  <p><a href="index.html">← Back to sites</a></p>
+
+  <div id="message" class="status err" hidden></div>
+  <div id="formWrap" hidden>
+    <h2>Add category</h2>
+    <form id="createCategoryForm">
+      <input type="text" id="categoryName" placeholder="Name" required>
+      <input type="text" id="categoryDescription" placeholder="Description (optional)">
+      <button type="submit">Add</button>
+    </form>
+    <div id="createResult" style="margin-top: 0.5rem;"></div>
+  </div>
+
+  <h2>Categories</h2>
+  <ul id="categoryList" class="category-list"></ul>
+
+  <script src="https://cdn.jsdelivr.net/npm/amazon-cognito-identity-js@6.3.0/dist/amazon-cognito-identity.min.js"></script>
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
+  <script src="categories.js"></script>
+</body>
+</html>

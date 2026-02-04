@@ -5,7 +5,7 @@
   var healthEl = document.getElementById('health');
   var sitesWrap = document.getElementById('sitesWrap');
   var sitesList = document.getElementById('sites');
-  var addSiteLink = document.getElementById('addSiteLink');
+  var adminLinks = document.getElementById('adminLinks');
   var authSection = document.getElementById('authSection');
   var signInForm = document.getElementById('signInForm');
   var signUpForm = document.getElementById('signUpForm');
@@ -156,7 +156,7 @@
   function initAuth() {
     if (!window.auth) {
       if (authSection) authSection.hidden = true;
-      if (addSiteLink) addSiteLink.hidden = true;
+      if (adminLinks) adminLinks.hidden = true;
       return;
     }
 
@@ -169,7 +169,7 @@
       canRate = isAuth; // any authenticated user can rate
       if (!isAuth) {
         isAdmin = false;
-        if (addSiteLink) addSiteLink.hidden = true;
+        if (adminLinks) adminLinks.hidden = true;
 
         if (hasUi) {
           if (signInForm) signInForm.hidden = false;
@@ -187,7 +187,7 @@
         .then(function (user) {
           var groups = user.groups || [];
           isAdmin = Array.isArray(groups) && groups.indexOf('admin') !== -1;
-          if (addSiteLink) addSiteLink.hidden = !isAdmin;
+          if (adminLinks) adminLinks.hidden = !isAdmin;
 
           if (hasUi) {
             if (signInForm) signInForm.hidden = true;
@@ -209,7 +209,7 @@
         .catch(function () {
           // On error, treat as non-admin but still authenticated for rating
           isAdmin = false;
-          if (addSiteLink) addSiteLink.hidden = true;
+          if (adminLinks) adminLinks.hidden = true;
           if (hasUi) {
             if (signInForm) signInForm.hidden = true;
             if (signUpForm) signUpForm.hidden = true;

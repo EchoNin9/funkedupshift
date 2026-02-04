@@ -92,6 +92,14 @@ def handler(event, context):
             return getMe(event)
         if method == "POST" and path == "/stars":
             return setStar(event)
+        if method == "GET" and path == "/categories":
+            return listCategories(event)
+        if method == "POST" and path == "/categories":
+            return createCategory(event)
+        if method == "PUT" and path == "/categories":
+            return updateCategory(event)
+        if method == "DELETE" and path == "/categories":
+            return deleteCategory(event)
         if method == "OPTIONS":
             # CORS preflight
             return jsonResponse({}, 200)
@@ -404,4 +412,164 @@ def setStar(event):
         return jsonResponse({"siteId": site_id, "rating": rating_int}, 200)
     except Exception as e:
         logger.exception("setStar error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def _requireAdmin(event):
+    """Return (user, None) if admin, else (None, error_response)."""
+    user = getUserInfo(event)
+    if not user.get("userId"):
+        return None, jsonResponse({"error": "Unauthorized"}, 401)
+    if "admin" not in user.get("groups", []):
+        return None, jsonResponse({"error": "Forbidden: admin role required"}, 403)
+    return user, None
+
+
+def _dynamoItemToDict(item):
+    """Convert DynamoDB item format to plain dict."""
+    out = {}
+    for key, val in item.items():
+        if "S" in val:
+            out[key] = val["S"]
+        elif "N" in val:
+            num_str = val["N"]
+            out[key] = int(num_str) if "." not in num_str else float(num_str)
+        elif "L" in val:
+            out[key] = [v.get("S", "") for v in val["L"]]
+    return out
+
+
+def listCategories(event):
+    """List all categories (admin only)."""
+    _, err = _requireAdmin(event)
+    if err:
+        return err
+    if not TABLE_NAME:
+        return jsonResponse({"categories": [], "error": "TABLE_NAME not set"}, 200)
+    try:
+        import boto3
+        dynamodb = boto3.client("dynamodb")
+        result = dynamodb.query(
+            TableName=TABLE_NAME,
+            IndexName="byEntity",
+            KeyConditionExpression="entityType = :et",
+            ExpressionAttributeValues={":et": {"S": "CATEGORY"}},
+        )
+        items = result.get("Items", [])
+        categories = [_dynamoItemToDict(i) for i in items]
+        return jsonResponse({"categories": categories})
+    except Exception as e:
+        logger.exception("listCategories error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def createCategory(event):
+    """Create a category (admin only)."""
+    _, err = _requireAdmin(event)
+    if err:
+        return err
+    if not TABLE_NAME:
+        return jsonResponse({"error": "TABLE_NAME not set"}, 500)
+    try:
+        import boto3
+        import uuid
+        from datetime import datetime
+        body = json.loads(event.get("body", "{}"))
+        name = (body.get("name") or "").strip()
+        if not name:
+            return jsonResponse({"error": "name is required"}, 400)
+        cat_id = f"CATEGORY#{uuid.uuid4()}"
+        now = datetime.utcnow().isoformat() + "Z"
+        dynamodb = boto3.client("dynamodb")
+        dynamodb.put_item(
+            TableName=TABLE_NAME,
+            Item={
+                "PK": {"S": cat_id},
+                "SK": {"S": "METADATA"},
+                "name": {"S": name},
+                "description": {"S": body.get("description", "")},
+                "entityType": {"S": "CATEGORY"},
+                "entitySk": {"S": cat_id},
+                "createdAt": {"S": now},
+                "updatedAt": {"S": now},
+            },
+        )
+        return jsonResponse({"id": cat_id, "name": name}, 201)
+    except Exception as e:
+        logger.exception("createCategory error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def updateCategory(event):
+    """Update a category (admin only)."""
+    _, err = _requireAdmin(event)
+    if err:
+        return err
+    if not TABLE_NAME:
+        return jsonResponse({"error": "TABLE_NAME not set"}, 500)
+    try:
+        import boto3
+        from datetime import datetime
+        body = json.loads(event.get("body", "{}"))
+        cat_id = (body.get("id") or "").strip()
+        if not cat_id:
+            return jsonResponse({"error": "id is required"}, 400)
+        name = body.get("name")
+        description = body.get("description")
+        now = datetime.utcnow().isoformat() + "Z"
+        update_expr = ["updatedAt = :updatedAt"]
+        names = {}
+        values = {":updatedAt": {"S": now}}
+        if name is not None:
+            update_expr.append("#name = :name")
+            names["#name"] = "name"
+            values[":name"] = {"S": str(name)}
+        if description is not None:
+            update_expr.append("#description = :description")
+            names["#description"] = "description"
+            values[":description"] = {"S": str(description)}
+        dynamodb = boto3.client("dynamodb")
+        dynamodb.update_item(
+            TableName=TABLE_NAME,
+            Key={"PK": {"S": cat_id}, "SK": {"S": "METADATA"}},
+            UpdateExpression="SET " + ", ".join(update_expr),
+            ExpressionAttributeNames=names or None,
+            ExpressionAttributeValues=values,
+        )
+        return jsonResponse({"id": cat_id, "name": name, "description": description}, 200)
+    except Exception as e:
+        logger.exception("updateCategory error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def deleteCategory(event):
+    """Delete a category (admin only)."""
+    _, err = _requireAdmin(event)
+    if err:
+        return err
+    if not TABLE_NAME:
+        return jsonResponse({"error": "TABLE_NAME not set"}, 500)
+    try:
+        import boto3
+        # DELETE /categories?id=CATEGORY#uuid (query string) or body {"id": "..."}
+        body = event.get("body")
+        if body and isinstance(body, str):
+            try:
+                body = json.loads(body)
+            except Exception:
+                body = {}
+        elif not body:
+            body = {}
+        qs = event.get("queryStringParameters") or {}
+        cat_id = (body.get("id") or qs.get("id") or "").strip()
+        if not cat_id:
+            return jsonResponse({"error": "id is required"}, 400)
+        dynamodb = boto3.client("dynamodb")
+        dynamodb.delete_item(
+            TableName=TABLE_NAME,
+            Key={"PK": {"S": cat_id}, "SK": {"S": "METADATA"}},
+        )
+        return jsonResponse({"id": cat_id, "deleted": True}, 200)
+    except Exception as e:
+        logger.exception("deleteCategory error")
         return jsonResponse({"error": str(e)}, 500)
