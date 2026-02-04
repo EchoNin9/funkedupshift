@@ -194,47 +194,20 @@ data "aws_iam_policy_document" "terraformManage" {
       "arn:aws:s3:::${var.websiteProductionBucket}/*"
     ]
   }
-  # DynamoDB main table (for Terraform plan/apply)
+  # DynamoDB main table – full manage (covers DescribeContinuousBackups and any future provider APIs)
   statement {
-    sid    = "TerraformManageDynamo"
-    effect = "Allow"
-    actions = [
-      "dynamodb:CreateTable",
-      "dynamodb:DescribeTable",
-      "dynamodb:UpdateTable",
-      "dynamodb:DeleteTable",
-      "dynamodb:DescribeTimeToLive",
-      "dynamodb:UpdateTimeToLive",
-      "dynamodb:ListTagsOfResource",
-      "dynamodb:TagResource",
-      "dynamodb:UntagResource"
-    ]
+    sid       = "TerraformManageDynamo"
+    effect    = "Allow"
+    actions   = ["dynamodb:*"]
     resources = [
       "arn:aws:dynamodb:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:table/${var.dynamoTableName}"
     ]
   }
-  # Cognito User Pool (for Terraform plan/apply)
+  # Cognito User Pool – full manage (covers GetUserPoolMfaConfig and any future provider APIs)
   statement {
-    sid    = "TerraformManageCognito"
-    effect = "Allow"
-    actions = [
-      "cognito-idp:CreateUserPool",
-      "cognito-idp:DescribeUserPool",
-      "cognito-idp:UpdateUserPool",
-      "cognito-idp:DeleteUserPool",
-      "cognito-idp:CreateUserPoolClient",
-      "cognito-idp:DescribeUserPoolClient",
-      "cognito-idp:UpdateUserPoolClient",
-      "cognito-idp:DeleteUserPoolClient",
-      "cognito-idp:CreateGroup",
-      "cognito-idp:GetGroup",
-      "cognito-idp:UpdateGroup",
-      "cognito-idp:DeleteGroup",
-      "cognito-idp:ListGroups",
-      "cognito-idp:CreateUserPoolDomain",
-      "cognito-idp:DescribeUserPoolDomain",
-      "cognito-idp:DeleteUserPoolDomain"
-    ]
+    sid       = "TerraformManageCognito"
+    effect    = "Allow"
+    actions   = ["cognito-idp:*"]
     resources = [
       "arn:aws:cognito-idp:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:userpool/*"
     ]
