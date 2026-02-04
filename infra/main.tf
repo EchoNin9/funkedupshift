@@ -124,6 +124,51 @@ resource "aws_iam_role_policy_attachment" "productionTerraformState" {
 }
 
 # ------------------------------------------------------------------------------
+# Policy: Deploy frontend to website S3 buckets (for GitHub Actions)
+# ------------------------------------------------------------------------------
+data "aws_iam_policy_document" "websiteStagingDeploy" {
+  statement {
+    effect = "Allow"
+    actions = [
+      "s3:PutObject",
+      "s3:DeleteObject",
+      "s3:ListBucket"
+    ]
+    resources = [
+      aws_s3_bucket.websiteStaging.arn,
+      "${aws_s3_bucket.websiteStaging.arn}/*"
+    ]
+  }
+}
+
+data "aws_iam_policy_document" "websiteProductionDeploy" {
+  statement {
+    effect = "Allow"
+    actions = [
+      "s3:PutObject",
+      "s3:DeleteObject",
+      "s3:ListBucket"
+    ]
+    resources = [
+      aws_s3_bucket.websiteProduction.arn,
+      "${aws_s3_bucket.websiteProduction.arn}/*"
+    ]
+  }
+}
+
+resource "aws_iam_role_policy" "githubStagingWebsiteDeploy" {
+  name   = "website-deploy"
+  role   = aws_iam_role.githubStaging.id
+  policy = data.aws_iam_policy_document.websiteStagingDeploy.json
+}
+
+resource "aws_iam_role_policy" "githubProductionWebsiteDeploy" {
+  name   = "website-deploy"
+  role   = aws_iam_role.githubProduction.id
+  policy = data.aws_iam_policy_document.websiteProductionDeploy.json
+}
+
+# ------------------------------------------------------------------------------
 # S3 website buckets (frontend hosting)
 # ------------------------------------------------------------------------------
 resource "aws_s3_bucket" "websiteStaging" {
