@@ -137,46 +137,15 @@ def listSites(event):
                 if "S" in val:
                     site[key] = val["S"]
                 elif "N" in val:
-                    site[key] = int(val["N"]) if "." not in val["N"] else float(val["N"])
+                    # Convert numeric strings to Python numbers
+                    num_str = val["N"]
+                    site[key] = int(num_str) if "." not in num_str else float(num_str)
                 elif "L" in val:
                     site[key] = [v.get("S", "") for v in val["L"]]
 
-            site_id = site.get("PK")
-
-            # If aggregates missing, lazily compute them from STAR# items
+            # Compute averageRating if aggregates exist
             total_sum = site.get("totalStarsSum")
             total_count = site.get("totalStarsCount")
-            if site_id and (total_sum is None or total_count is None):
-                try:
-                    stars_resp = dynamodb.query(
-                        TableName=TABLE_NAME,
-                        KeyConditionExpression="PK = :pk AND begins_with(SK, :sk)",
-                        ExpressionAttributeValues={
-                            ":pk": {"S": site_id},
-                            ":sk": {"S": "STAR#"},
-                        },
-                    )
-                    star_items = stars_resp.get("Items", [])
-                    ssum = 0
-                    scount = 0
-                    for star in star_items:
-                        rating_attr = star.get("rating")
-                        if rating_attr and "N" in rating_attr:
-                            try:
-                                ssum += int(rating_attr["N"])
-                                scount += 1
-                            except Exception:
-                                continue
-                    if scount > 0:
-                        total_sum = ssum
-                        total_count = scount
-                        site["totalStarsSum"] = total_sum
-                        site["totalStarsCount"] = total_count
-                except Exception as _e:
-                    # If this fails, we just skip averages for this site
-                    pass
-
-            # Compute averageRating if aggregates exist
             if isinstance(total_sum, (int, float)) and isinstance(total_count, (int, float)) and total_count > 0:
                 site["averageRating"] = round(float(total_sum) / float(total_count), 1)
 
@@ -241,7 +210,10 @@ def createSite(event):
                 "updatedAt": {"S": now},
                 "entityType": {"S": "SITE"},
                 "entitySk": {"S": site_id},
-            }
+                # Initialize rating aggregates
+                "totalStarsSum": {"N": "0"},
+                "totalStarsCount": {"N": "0"},
+            },
         )
 
         return jsonResponse({"id": site_id, "url": url, "title": title or url}, 201)
