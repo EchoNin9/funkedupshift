@@ -59,7 +59,13 @@ jobs:
       - name: Deploy frontend to S3
         run: |
           API_URL=$(terraform -chdir=infra output -raw apiInvokeUrl)
-          echo "window.API_BASE_URL = \"$API_URL\";" > src/web/config.js
+          POOL_ID=$(terraform -chdir=infra output -raw cognitoUserPoolId)
+          CLIENT_ID=$(terraform -chdir=infra output -raw cognitoClientId)
+          cat > src/web/config.js <<EOF
+          window.API_BASE_URL = "$API_URL";
+          window.COGNITO_USER_POOL_ID = "$POOL_ID";
+          window.COGNITO_CLIENT_ID = "$CLIENT_ID";
+          EOF
           BUCKET=$(terraform -chdir=infra output -raw websiteStagingBucket)
           if [ -d "src/web/dist" ]; then
             aws s3 sync src/web/dist s3://$BUCKET/ --delete

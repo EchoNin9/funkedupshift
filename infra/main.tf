@@ -631,6 +631,17 @@ resource "aws_apigatewayv2_api" "main" {
   }
 }
 
+resource "aws_apigatewayv2_authorizer" "cognito" {
+  api_id           = aws_apigatewayv2_api.main.id
+  authorizer_type  = "JWT"
+  identity_sources = ["$request.header.Authorization"]
+  name             = "cognito-authorizer"
+  jwt_configuration {
+    audience = [aws_cognito_user_pool_client.web.id]
+    issuer   = "https://cognito-idp.${var.awsRegion}.amazonaws.com/${aws_cognito_user_pool.main.id}"
+  }
+}
+
 resource "aws_apigatewayv2_integration" "lambda" {
   api_id                 = aws_apigatewayv2_api.main.id
   integration_type       = "AWS_PROXY"
@@ -648,6 +659,14 @@ resource "aws_apigatewayv2_route" "sites" {
   api_id    = aws_apigatewayv2_api.main.id
   route_key = "GET /sites"
   target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+}
+
+resource "aws_apigatewayv2_route" "sitesPost" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /sites"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
 resource "aws_apigatewayv2_stage" "default" {
