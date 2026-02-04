@@ -5,9 +5,7 @@
   var healthEl = document.getElementById('health');
   var sitesWrap = document.getElementById('sitesWrap');
   var sitesList = document.getElementById('sites');
-  var addSiteForm = document.getElementById('addSiteForm');
-  var createSiteForm = document.getElementById('createSiteForm');
-  var createSiteResult = document.getElementById('createSiteResult');
+  var addSiteLink = document.getElementById('addSiteLink');
   var authSection = document.getElementById('authSection');
   var signInForm = document.getElementById('signInForm');
   var signUpForm = document.getElementById('signUpForm');
@@ -158,7 +156,7 @@
   function initAuth() {
     if (!window.auth) {
       if (authSection) authSection.hidden = true;
-      if (addSiteForm) addSiteForm.hidden = true;
+      if (addSiteLink) addSiteLink.hidden = true;
       return;
     }
 
@@ -171,7 +169,7 @@
       canRate = isAuth; // any authenticated user can rate
       if (!isAuth) {
         isAdmin = false;
-        if (addSiteForm) addSiteForm.hidden = true;
+        if (addSiteLink) addSiteLink.hidden = true;
 
         if (hasUi) {
           if (signInForm) signInForm.hidden = false;
@@ -189,7 +187,7 @@
         .then(function (user) {
           var groups = user.groups || [];
           isAdmin = Array.isArray(groups) && groups.indexOf('admin') !== -1;
-          if (addSiteForm) addSiteForm.hidden = !isAdmin;
+          if (addSiteLink) addSiteLink.hidden = !isAdmin;
 
           if (hasUi) {
             if (signInForm) signInForm.hidden = true;
@@ -211,7 +209,7 @@
         .catch(function () {
           // On error, treat as non-admin but still authenticated for rating
           isAdmin = false;
-          if (addSiteForm) addSiteForm.hidden = true;
+          if (addSiteLink) addSiteLink.hidden = true;
           if (hasUi) {
             if (signInForm) signInForm.hidden = true;
             if (signUpForm) signUpForm.hidden = true;
@@ -255,48 +253,6 @@
       });
     }
 
-    // Attach create-site handler wherever the form exists (main page)
-    if (createSiteForm) {
-      createSiteForm.addEventListener('submit', function (e) {
-        e.preventDefault();
-        var url = document.getElementById('siteUrl').value.trim();
-        var title = document.getElementById('siteTitle').value.trim();
-        var description = document.getElementById('siteDescription').value.trim();
-        if (!url) {
-          createSiteResult.textContent = 'URL is required';
-          createSiteResult.className = 'status err';
-          return;
-        }
-        createSiteResult.textContent = 'Creating...';
-        createSiteResult.className = 'status';
-        createSiteResult.hidden = false;
-        fetchWithAuth(base + '/sites', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url: url, title: title, description: description })
-        }).then(function (r) {
-          if (r.ok) {
-            return r.json();
-          }
-          return r.text().then(function (text) {
-            throw new Error(text || 'Request failed');
-          });
-        }).then(function (data) {
-          createSiteResult.textContent = 'Site added: ' + (data.title || data.url);
-          createSiteResult.className = 'status ok';
-          document.getElementById('siteUrl').value = '';
-          document.getElementById('siteTitle').value = '';
-          document.getElementById('siteDescription').value = '';
-          // Reload sites list
-          fetch(base + '/sites')
-            .then(function (r) { return r.json(); })
-            .then(function (data) { renderSites(data.sites || []); });
-        }).catch(function (e) {
-          createSiteResult.textContent = 'Error: ' + e.message;
-          createSiteResult.className = 'status err';
-        });
-      });
-    }
   }
 
   if (!base) {

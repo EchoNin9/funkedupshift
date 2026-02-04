@@ -1,0 +1,11 @@
+# Copy to terraform.tfvars and set values.
+# terraform.tfvars is typically not committed (add to .gitignore if desired).
+
+awsRegion     = "us-east-1"
+githubOrgRepo = "EchoNin9/funkedupshift"
+
+# For local runs with a named profile: export AWS_PROFILE=echo9 before terraform
+
+# Optional overrides for state backend (defaults in variables.tf)
+terraformStateBucket     = "fus-aws-s3-terraform-state"
+terraformStateLockTable  = "fus-terraform-state-lock"
