@@ -342,22 +342,32 @@ def setStar(event):
         if "Item" not in site:
             return jsonResponse({"error": "Site not found"}, 404)
 
+        site_item = site.get("Item", {})
+        has_count = "totalStarsCount" in site_item
+
         # Compute deltas for aggregates
         if old_rating is None:
             sum_delta = rating_int
+            # If count doesn't exist yet (legacy items), start at 1
             count_delta = 1
         else:
             sum_delta = rating_int - old_rating
-            count_delta = 0
+            # For legacy items with no count set yet, treat this as first counted rating
+            count_delta = 1 if not has_count else 0
 
-        # Update aggregate fields on METADATA item
+        # Update aggregate fields on METADATA item (handle legacy items with no attributes yet)
         dynamodb.update_item(
             TableName=TABLE_NAME,
             Key={"PK": {"S": site_id}, "SK": {"S": "METADATA"}},
-            UpdateExpression="ADD totalStarsSum :sumDelta, totalStarsCount :countDelta SET updatedAt = :updatedAt",
+            UpdateExpression=(
+                "SET totalStarsSum = if_not_exists(totalStarsSum, :zero) + :sumDelta, "
+                "totalStarsCount = if_not_exists(totalStarsCount, :zero) + :countDelta, "
+                "updatedAt = :updatedAt"
+            ),
             ExpressionAttributeValues={
                 ":sumDelta": {"N": str(sum_delta)},
                 ":countDelta": {"N": str(count_delta)},
+                ":zero": {"N": "0"},
                 ":updatedAt": {"S": now},
             },
         )
