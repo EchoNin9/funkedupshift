@@ -27,3 +27,38 @@ output "websiteProductionUrl" {
   description = "Production website URL (S3 website endpoint)."
   value       = "http://${aws_s3_bucket_website_configuration.websiteProduction.website_endpoint}"
 }
+
+output "dynamoTableName" {
+  description = "DynamoDB main table name (single table)."
+  value       = aws_dynamodb_table.main.name
+}
+
+output "dynamoTableArn" {
+  description = "DynamoDB main table ARN (for Lambda IAM)."
+  value       = aws_dynamodb_table.main.arn
+}
+
+output "cognitoUserPoolId" {
+  description = "Cognito User Pool ID (for frontend and Lambda)."
+  value       = aws_cognito_user_pool.main.id
+}
+
+output "cognitoUserPoolArn" {
+  description = "Cognito User Pool ARN (for Lambda authorizer)."
+  value       = aws_cognito_user_pool.main.arn
+}
+
+output "cognitoClientId" {
+  description = "Cognito App Client ID (for frontend)."
+  value       = aws_cognito_user_pool_client.web.id
+}
+
+output "cognitoDomain" {
+  description = "Cognito hosted UI domain (if domain prefix set)."
+  value       = length(aws_cognito_user_pool_domain.main) > 0 ? aws_cognito_user_pool_domain.main[0].domain : ""
+}
+
+output "cognitoHostedUiUrl" {
+  description = "Cognito hosted UI base URL (login/signup)."
+  value       = length(var.cognitoDomainPrefix) > 0 ? "https://${var.cognitoDomainPrefix}.auth.${var.awsRegion}.amazoncognito.com" : ""
+}

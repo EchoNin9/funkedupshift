@@ -32,3 +32,27 @@ variable "websiteProductionBucket" {
   type        = string
   default     = "fus-website-production"
 }
+
+variable "dynamoTableName" {
+  description = "DynamoDB table name (single table for sites, users, ratings, etc.)."
+  type        = string
+  default     = "fus-main"
+}
+
+variable "cognitoUserPoolName" {
+  description = "Cognito User Pool name."
+  type        = string
+  default     = "fus-user-pool"
+}
+
+variable "cognitoAppClientName" {
+  description = "Cognito User Pool App Client name (frontend)."
+  type        = string
+  default     = "fus-web"
+}
+
+variable "cognitoDomainPrefix" {
+  description = "Cognito hosted UI domain prefix (e.g. fus-auth). Empty to skip domain."
+  type        = string
+  default     = "fus-auth"
+}

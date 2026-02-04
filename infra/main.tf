@@ -194,6 +194,51 @@ data "aws_iam_policy_document" "terraformManage" {
       "arn:aws:s3:::${var.websiteProductionBucket}/*"
     ]
   }
+  # DynamoDB main table (for Terraform plan/apply)
+  statement {
+    sid    = "TerraformManageDynamo"
+    effect = "Allow"
+    actions = [
+      "dynamodb:CreateTable",
+      "dynamodb:DescribeTable",
+      "dynamodb:UpdateTable",
+      "dynamodb:DeleteTable",
+      "dynamodb:DescribeTimeToLive",
+      "dynamodb:UpdateTimeToLive",
+      "dynamodb:ListTagsOfResource",
+      "dynamodb:TagResource",
+      "dynamodb:UntagResource"
+    ]
+    resources = [
+      "arn:aws:dynamodb:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:table/${var.dynamoTableName}"
+    ]
+  }
+  # Cognito User Pool (for Terraform plan/apply)
+  statement {
+    sid    = "TerraformManageCognito"
+    effect = "Allow"
+    actions = [
+      "cognito-idp:CreateUserPool",
+      "cognito-idp:DescribeUserPool",
+      "cognito-idp:UpdateUserPool",
+      "cognito-idp:DeleteUserPool",
+      "cognito-idp:CreateUserPoolClient",
+      "cognito-idp:DescribeUserPoolClient",
+      "cognito-idp:UpdateUserPoolClient",
+      "cognito-idp:DeleteUserPoolClient",
+      "cognito-idp:CreateGroup",
+      "cognito-idp:GetGroup",
+      "cognito-idp:UpdateGroup",
+      "cognito-idp:DeleteGroup",
+      "cognito-idp:ListGroups",
+      "cognito-idp:CreateUserPoolDomain",
+      "cognito-idp:DescribeUserPoolDomain",
+      "cognito-idp:DeleteUserPoolDomain"
+    ]
+    resources = [
+      "arn:aws:cognito-idp:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:userpool/*"
+    ]
+  }
 }
 
 resource "aws_iam_policy" "terraformManage" {
@@ -342,4 +387,172 @@ resource "aws_s3_bucket_website_configuration" "websiteProduction" {
   error_document {
     key = "index.html"
   }
+}
+
+# ------------------------------------------------------------------------------
+# DynamoDB single table (sites, user metadata, ratings, tags)
+# ------------------------------------------------------------------------------
+resource "aws_dynamodb_table" "main" {
+  name         = var.dynamoTableName
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "PK"
+  range_key    = "SK"
+
+  attribute {
+    name = "PK"
+    type = "S"
+  }
+  attribute {
+    name = "SK"
+    type = "S"
+  }
+  attribute {
+    name = "entityType"
+    type = "S"
+  }
+  attribute {
+    name = "entitySk"
+    type = "S"
+  }
+  attribute {
+    name = "tag"
+    type = "S"
+  }
+  attribute {
+    name = "siteId"
+    type = "S"
+  }
+  attribute {
+    name = "starRating"
+    type = "N"
+  }
+
+  # List all sites: query GSI byEntity where entityType = SITE
+  global_secondary_index {
+    name            = "byEntity"
+    hash_key        = "entityType"
+    range_key       = "entitySk"
+    projection_type = "ALL"
+  }
+
+  # Query sites by tag: query GSI byTag where tag = <tagValue>
+  global_secondary_index {
+    name            = "byTag"
+    hash_key        = "tag"
+    range_key       = "siteId"
+    projection_type = "ALL"
+  }
+
+  # Query by star rating: query GSI byStars where starRating = 1..5
+  global_secondary_index {
+    name            = "byStars"
+    hash_key        = "starRating"
+    range_key       = "siteId"
+    projection_type = "ALL"
+  }
+}
+
+# ------------------------------------------------------------------------------
+# Cognito User Pool (auth for admin / manager / user roles)
+# ------------------------------------------------------------------------------
+resource "aws_cognito_user_pool" "main" {
+  name = var.cognitoUserPoolName
+
+  username_attributes      = ["email"]
+  auto_verified_attributes = ["email"]
+
+  password_policy {
+    minimum_length    = 8
+    require_lowercase = true
+    require_uppercase = true
+    require_numbers   = true
+    require_symbols  = true
+  }
+
+  account_recovery_setting {
+    recovery_mechanism {
+      name     = "verified_email"
+      priority = 1
+    }
+  }
+
+  schema {
+    name                = "email"
+    attribute_data_type = "String"
+    required            = true
+    mutable             = true
+  }
+  schema {
+    name                = "preferred_username"
+    attribute_data_type = "String"
+    required            = false
+    mutable             = true
+  }
+
+  verification_message_template {
+    default_email_option = "CONFIRM_WITH_CODE"
+    email_subject       = "Funkedupshift verification code"
+    email_message       = "Your verification code is {####}"
+  }
+
+  mfa_configuration = "OFF"
+
+  user_attribute_update_settings {
+    attributes_require_verification_before_update = ["email"]
+  }
+}
+
+resource "aws_cognito_user_pool_client" "web" {
+  name         = var.cognitoAppClientName
+  user_pool_id = aws_cognito_user_pool.main.id
+
+  generate_secret = false
+
+  explicit_auth_flows = [
+    "ALLOW_USER_PASSWORD_AUTH",
+    "ALLOW_REFRESH_TOKEN_AUTH",
+    "ALLOW_USER_SRP_AUTH"
+  ]
+
+  prevent_user_existence_errors = "ENABLED"
+
+  access_token_validity  = 1
+  id_token_validity      = 1
+  refresh_token_validity = 30
+
+  token_validity_units {
+    access_token  = "hours"
+    id_token      = "hours"
+    refresh_token = "days"
+  }
+
+  read_attributes  = ["email", "email_verified", "preferred_username"]
+  write_attributes = ["email", "preferred_username"]
+}
+
+resource "aws_cognito_user_pool_domain" "main" {
+  count        = length(var.cognitoDomainPrefix) > 0 ? 1 : 0
+  domain       = var.cognitoDomainPrefix
+  user_pool_id = aws_cognito_user_pool.main.id
+}
+
+resource "aws_cognito_user_group" "admin" {
+  name         = "admin"
+  user_pool_id = aws_cognito_user_pool.main.id
+  description  = "Admins can add new website items"
+  precedence   = 1
+}
+
+resource "aws_cognito_user_group" "manager" {
+  name         = "manager"
+  user_pool_id = aws_cognito_user_pool.main.id
+  description  = "Managers"
+  precedence   = 2
+}
+
+resource "aws_cognito_user_group" "user" {
+  name         = "user"
+  user_pool_id = aws_cognito_user_pool.main.id
+  description  = "Users can add own metadata and comments"
+  precedence   = 3
 }
