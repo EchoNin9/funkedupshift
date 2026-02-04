@@ -195,6 +195,8 @@ data "aws_iam_policy_document" "terraformManage" {
       "s3:DeleteBucketPolicy",
       "s3:GetBucketPublicAccessBlock",
       "s3:PutBucketPublicAccessBlock",
+      "s3:GetBucketVersioning",
+      "s3:PutBucketVersioning",
       "s3:GetBucketCors",
       "s3:PutBucketCors",
       "s3:DeleteBucketCors",
