@@ -47,9 +47,8 @@
         }
         var url = s.url ? '<a href="' + escapeHtml(s.url) + '" target="_blank" rel="noopener">' + escapeHtml(s.url) + '</a>' : '';
         var desc = s.description ? '<div>' + escapeHtml(s.description) + '</div>' : '';
-        var editBtn = (id && isAdmin) ? ' <button class="secondary edit-site" data-id="' + escapeHtml(id) +
-          '" data-title="' + escapeHtml(title) +
-          '" data-description="' + escapeHtml(s.description || '') + '">Edit</button>' : '';
+        var cats = (s.categories && s.categories.length) ? ' <span class="site-categories">[' + s.categories.map(function (c) { return escapeHtml(c.name); }).join(', ') + ']</span>' : '';
+        var editBtn = (id && isAdmin) ? ' <a href="edit-site.html?id=' + encodeURIComponent(id) + '" class="secondary">Edit</a>' : '';
         var stars = '';
         if (id && canRate) {
           stars =
@@ -68,38 +67,9 @@
             '</div>';
         }
         return '<li><strong>' + escapeHtml(title) + avg + '</strong>' +
-          (url ? ' ' + url : '') + editBtn + desc + stars + '</li>';
+          (url ? ' ' + url : '') + cats + editBtn + desc + stars + '</li>';
       }).join('');
 
-      // Attach edit handlers (admin only)
-      if (isAdmin) {
-        Array.prototype.forEach.call(document.querySelectorAll('.edit-site'), function (btn) {
-          btn.addEventListener('click', function () {
-            var id = this.getAttribute('data-id');
-            var currentTitle = this.getAttribute('data-title') || '';
-            var currentDesc = this.getAttribute('data-description') || '';
-            var newTitle = window.prompt('Edit title:', currentTitle);
-            if (newTitle === null) return;
-            var newDesc = window.prompt('Edit description:', currentDesc);
-            if (newDesc === null) return;
-            fetchWithAuth(base + '/sites', {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ id: id, title: newTitle, description: newDesc })
-            }).then(function (r) {
-              if (r.ok) return r.json();
-              return r.text().then(function (text) { throw new Error(text || 'Request failed'); });
-            }).then(function () {
-              // Refresh sites list
-              return fetch(base + '/sites').then(function (r) { return r.json(); });
-            }).then(function (data) {
-              renderSites(data.sites || []);
-            }).catch(function (e) {
-              alert('Edit failed: ' + e.message);
-            });
-          });
-        });
-      }
 
       // Attach star handlers (any authenticated user)
       if (canRate) {
