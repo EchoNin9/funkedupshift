@@ -210,6 +210,10 @@ def listSites(event):
             sites.append(site)
 
         _resolveCategoriesForSites(dynamodb, sites)
+        sites.sort(key=lambda s: (
+            -(s.get("totalStarsCount") or 0),
+            (s.get("title") or s.get("url") or s.get("PK") or "").lower(),
+        ))
         logger.info("Found %d items", len(sites))
         return jsonResponse({"sites": sites})
     except Exception as e:
@@ -507,6 +511,7 @@ def listCategories(event):
         )
         items = result.get("Items", [])
         categories = [_dynamoItemToDict(i) for i in items]
+        categories.sort(key=lambda c: (c.get("name") or c.get("PK") or "").lower())
         return jsonResponse({"categories": categories})
     except Exception as e:
         logger.exception("listCategories error")
