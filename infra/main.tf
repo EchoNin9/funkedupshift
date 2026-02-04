@@ -219,6 +219,20 @@ data "aws_iam_policy_document" "terraformManage" {
     actions   = ["cognito-idp:DescribeUserPoolDomain", "cognito-idp:CreateUserPoolDomain", "cognito-idp:DeleteUserPoolDomain"]
     resources = ["*"]
   }
+  # Lambda API function (for Terraform plan/apply)
+  statement {
+    sid       = "TerraformManageLambda"
+    effect    = "Allow"
+    actions   = ["lambda:*"]
+    resources = ["arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:function:${var.lambdaApiFunctionName}"]
+  }
+  # API Gateway HTTP API (for Terraform plan/apply)
+  statement {
+    sid       = "TerraformManageAPIGateway"
+    effect    = "Allow"
+    actions   = ["apigateway:*", "execute-api:*"]
+    resources = ["*"]
+  }
 }
 
 resource "aws_iam_policy" "terraformManage" {
@@ -539,4 +553,111 @@ resource "aws_cognito_user_group" "user" {
   user_pool_id = aws_cognito_user_pool.main.id
   description  = "Users can add own metadata and comments"
   precedence   = 3
+}
+
+# ------------------------------------------------------------------------------
+# Lambda API handler (health, list sites)
+# ------------------------------------------------------------------------------
+data "archive_file" "api" {
+  type        = "zip"
+  source_dir  = "${path.module}/../src/lambda"
+  output_path = "${path.module}/build/api.zip"
+  excludes    = ["tests", "**/__pycache__", "**/*.pyc", "requirements-test.txt"]
+}
+
+resource "aws_iam_role" "lambdaApi" {
+  name = "fus-api-lambda-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = {
+        Service = "lambda.amazonaws.com"
+      }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "lambdaApi" {
+  name   = "fus-api-lambda"
+  role   = aws_iam_role.lambdaApi.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"]
+        Resource = "arn:aws:logs:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["dynamodb:Query", "dynamodb:GetItem", "dynamodb:BatchGetItem"]
+        Resource = [aws_dynamodb_table.main.arn, "${aws_dynamodb_table.main.arn}/index/*"]
+      }
+    ]
+  })
+}
+
+resource "aws_lambda_function" "api" {
+  filename         = data.archive_file.api.output_path
+  function_name    = var.lambdaApiFunctionName
+  role             = aws_iam_role.lambdaApi.arn
+  handler          = "api.handler.handler"
+  source_code_hash = data.archive_file.api.output_base64sha256
+  runtime          = "python3.12"
+
+  environment {
+    variables = {
+      TABLE_NAME = aws_dynamodb_table.main.name
+    }
+  }
+}
+
+# ------------------------------------------------------------------------------
+# API Gateway HTTP API
+# ------------------------------------------------------------------------------
+resource "aws_apigatewayv2_api" "main" {
+  name          = var.apiGatewayName
+  protocol_type = "HTTP"
+
+  cors_configuration {
+    allow_origins = ["*"]
+    allow_methods = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+    allow_headers = ["*"]
+  }
+}
+
+resource "aws_apigatewayv2_integration" "lambda" {
+  api_id                 = aws_apigatewayv2_api.main.id
+  integration_type       = "AWS_PROXY"
+  integration_uri        = aws_lambda_function.api.invoke_arn
+  payload_format_version = "2.0"
+}
+
+resource "aws_apigatewayv2_route" "health" {
+  api_id    = aws_apigatewayv2_api.main.id
+  route_key = "GET /health"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+}
+
+resource "aws_apigatewayv2_route" "sites" {
+  api_id    = aws_apigatewayv2_api.main.id
+  route_key = "GET /sites"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+}
+
+resource "aws_apigatewayv2_stage" "default" {
+  api_id      = aws_apigatewayv2_api.main.id
+  name        = "$default"
+  auto_deploy = true
+}
+
+resource "aws_lambda_permission" "apiGateway" {
+  statement_id  = "AllowAPIGatewayInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.api.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.main.execution_arn}/*/*"
 }
