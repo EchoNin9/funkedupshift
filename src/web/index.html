@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Funkedupshift</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      line-height: 1.5;
+      max-width: 48rem;
+      margin: 0 auto;
+      padding: 1.5rem;
+      color: #1a1a1a;
+    }
+    h1 { font-size: 1.5rem; margin-top: 0; }
+    .status { margin: 1rem 0; padding: 0.75rem; background: #f0f0f0; border-radius: 0.25rem; }
+    .status.ok { background: #e6f4ea; }
+    .status.err { background: #fce8e6; }
+    .sites { list-style: none; padding: 0; margin: 0; }
+    .sites li { padding: 0.5rem 0; border-bottom: 1px solid #eee; }
+    .sites li:last-child { border-bottom: none; }
+    #loading, #error { margin: 1rem 0; }
+  </style>
+</head>
+<body>
+  <h1>Funkedupshift</h1>
+  <div id="loading">Loading…</div>
+  <div id="error" class="status err" hidden></div>
+  <div id="health" class="status" hidden></div>
+  <div id="sitesWrap" hidden>
+    <h2>Sites</h2>
+    <ul id="sites" class="sites"></ul>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
