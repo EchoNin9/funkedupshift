@@ -5,6 +5,12 @@
   var healthEl = document.getElementById('health');
   var sitesWrap = document.getElementById('sitesWrap');
   var sitesList = document.getElementById('sites');
+  var authSection = document.getElementById('authSection');
+  var signInForm = document.getElementById('signInForm');
+  var signUpForm = document.getElementById('signUpForm');
+  var userInfo = document.getElementById('userInfo');
+  var signOutBtn = document.getElementById('signOutBtn');
+  var showSignUpBtn = document.getElementById('showSignUp');
 
   function showError(msg) {
     loading.hidden = true;
@@ -42,12 +48,82 @@
     return div.innerHTML;
   }
 
+  function fetchWithAuth(url, options) {
+    options = options || {};
+    options.headers = options.headers || {};
+    return new Promise(function (resolve, reject) {
+      window.auth.getAccessToken(function (token) {
+        if (token) {
+          options.headers['Authorization'] = 'Bearer ' + token;
+        }
+        fetch(url, options).then(resolve).catch(reject);
+      });
+    });
+  }
+
+  function initAuth() {
+    if (!window.auth) {
+      authSection.hidden = true;
+      return;
+    }
+    authSection.hidden = false;
+
+    window.auth.isAuthenticated(function (isAuth) {
+      if (isAuth) {
+        signInForm.hidden = true;
+        signUpForm.hidden = true;
+        showSignUpBtn.hidden = true;
+        signOutBtn.hidden = false;
+        window.auth.getCurrentUserEmail(function (email) {
+          userInfo.textContent = 'Signed in as: ' + (email || 'user');
+          userInfo.hidden = false;
+        });
+      } else {
+        signInForm.hidden = false;
+        signUpForm.hidden = true;
+        showSignUpBtn.hidden = false;
+        signOutBtn.hidden = true;
+        userInfo.hidden = true;
+      }
+    });
+
+    signInForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var email = document.getElementById('signInEmail').value;
+      var password = document.getElementById('signInPassword').value;
+      window.auth.signIn(email, password, function (err) {
+        if (err) {
+          alert('Sign in failed: ' + (err.message || err));
+          return;
+        }
+        location.reload();
+      });
+    });
+
+    signUpForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var email = document.getElementById('signUpEmail').value;
+      var password = document.getElementById('signUpPassword').value;
+      window.auth.signUp(email, password, function (err, result) {
+        if (err) {
+          alert('Sign up failed: ' + (err.message || err));
+          return;
+        }
+        alert('Sign up successful! Check your email for verification code.');
+        signUpForm.hidden = true;
+        signInForm.hidden = false;
+      });
+    });
+  }
+
   if (!base) {
     showError('API URL not set. Deploy via CI or set window.API_BASE_URL in config.js.');
     return;
   }
 
   base = base.replace(/\/$/, '');
+
+  initAuth();
 
   fetch(base + '/health')
     .then(function (r) { return r.json(); })

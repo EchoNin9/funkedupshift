@@ -69,3 +69,36 @@ def test_unknown_route_returns_404():
     }
     result = handler(event, None)
     assert result["statusCode"] == 404
+
+
+def test_createSite_requires_auth():
+    from api.handler import handler
+    event = {
+        "rawPath": "/sites",
+        "requestContext": {"http": {"method": "POST", "path": "/sites"}},
+        "body": '{"url": "https://example.com"}',
+    }
+    result = handler(event, None)
+    assert result["statusCode"] == 401
+
+
+def test_createSite_requires_admin():
+    from api.handler import handler
+    event = {
+        "rawPath": "/sites",
+        "requestContext": {
+            "http": {"method": "POST", "path": "/sites"},
+            "authorizer": {
+                "jwt": {
+                    "claims": {
+                        "sub": "user-123",
+                        "email": "user@example.com",
+                        "cognito:groups": "user",
+                    }
+                }
+            },
+        },
+        "body": '{"url": "https://example.com"}',
+    }
+    result = handler(event, None)
+    assert result["statusCode"] == 403
