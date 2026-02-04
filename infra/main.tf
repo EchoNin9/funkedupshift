@@ -182,34 +182,11 @@ data "aws_iam_policy_document" "terraformManage" {
       "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/github-actions-funkedupshift-production"
     ]
   }
-  # S3 website buckets – full manage for Terraform (both buckets so either branch can plan/apply)
+  # S3 website buckets – full manage for Terraform (s3:* avoids provider refresh whack-a-mole)
   statement {
     sid    = "TerraformManageWebsiteBuckets"
     effect = "Allow"
-    actions = [
-      "s3:GetBucketLocation",
-      "s3:GetBucketAcl",
-      "s3:PutBucketAcl",
-      "s3:GetBucketPolicy",
-      "s3:PutBucketPolicy",
-      "s3:DeleteBucketPolicy",
-      "s3:GetBucketPublicAccessBlock",
-      "s3:PutBucketPublicAccessBlock",
-      "s3:GetBucketVersioning",
-      "s3:PutBucketVersioning",
-      "s3:GetBucketCors",
-      "s3:PutBucketCors",
-      "s3:DeleteBucketCors",
-      "s3:GetBucketWebsite",
-      "s3:PutBucketWebsite",
-      "s3:DeleteBucketWebsite",
-      "s3:ListBucket",
-      "s3:GetObject",
-      "s3:PutObject",
-      "s3:DeleteObject",
-      "s3:CreateBucket",
-      "s3:DeleteBucket"
-    ]
+    actions = ["s3:*"]
     resources = [
       "arn:aws:s3:::${var.websiteStagingBucket}",
       "arn:aws:s3:::${var.websiteStagingBucket}/*",
