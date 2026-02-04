@@ -143,7 +143,7 @@ data "aws_iam_policy_document" "terraformManage" {
       "arn:aws:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/token.actions.githubusercontent.com"
     ]
   }
-  # IAM managed policy (terraform state policy)
+  # IAM managed policies (terraform state + terraform manage)
   statement {
     sid    = "TerraformManagePolicy"
     effect = "Allow"
@@ -156,7 +156,8 @@ data "aws_iam_policy_document" "terraformManage" {
       "iam:DeletePolicyVersion"
     ]
     resources = [
-      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/github-actions-funkedupshift-terraform-state"
+      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/github-actions-funkedupshift-terraform-state",
+      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/github-actions-funkedupshift-terraform-manage"
     ]
   }
   # IAM roles (staging + production) and inline role policies
@@ -170,6 +171,7 @@ data "aws_iam_policy_document" "terraformManage" {
       "iam:DeleteRole",
       "iam:AttachRolePolicy",
       "iam:DetachRolePolicy",
+      "iam:ListRolePolicies",
       "iam:GetRolePolicy",
       "iam:PutRolePolicy",
       "iam:DeleteRolePolicy"
@@ -185,6 +187,8 @@ data "aws_iam_policy_document" "terraformManage" {
     effect = "Allow"
     actions = [
       "s3:GetBucketLocation",
+      "s3:GetBucketAcl",
+      "s3:PutBucketAcl",
       "s3:GetBucketPolicy",
       "s3:PutBucketPolicy",
       "s3:DeleteBucketPolicy",
