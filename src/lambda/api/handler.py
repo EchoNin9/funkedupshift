@@ -87,7 +87,10 @@ def listSites(event):
         import boto3
         logger.info("Creating DynamoDB client (not resource)")
         # Use client instead of resource for better error handling
-        dynamodb = boto3.client("dynamodb", region_name=os.environ.get("AWS_REGION", "us-east-1"))
+        region = os.environ.get("AWS_REGION", "us-east-1")
+        logger.info("Region: %s", region)
+        dynamodb = boto3.client("dynamodb", region_name=region)
+        logger.info("DynamoDB client created, about to query")
         logger.info("Querying table %s, GSI byEntity", TABLE_NAME)
         result = dynamodb.query(
             TableName=TABLE_NAME,
