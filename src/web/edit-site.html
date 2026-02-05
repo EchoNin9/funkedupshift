@@ -35,6 +35,13 @@
     .category-chip { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.25rem 0.5rem; background: #e8e8e8; border-radius: 0.25rem; font-size: 0.9rem; }
     .category-chip-remove { background: none; border: none; cursor: pointer; padding: 0; color: #666; font-size: 1.1rem; line-height: 1; }
     .category-chip-remove:hover { color: #c00; }
+    .logo-field { margin: 0.5rem 0; }
+    .logo-field label { display: block; margin-bottom: 0.25rem; }
+    .logo-current { margin: 0.5rem 0; }
+    .logo-current img { max-width: 100px; max-height: 100px; object-fit: cover; border-radius: 0.25rem; display: block; margin-bottom: 0.35rem; }
+    .logo-preview { margin-top: 0.5rem; }
+    .logo-preview img { max-width: 100px; max-height: 100px; object-fit: cover; border-radius: 0.25rem; }
+    .logo-error { color: #c00; font-size: 0.9rem; display: block; margin-top: 0.25rem; }
   </style>
 </head>
 <body>
@@ -47,6 +54,16 @@
       <input type="hidden" id="siteId" name="siteId">
       <input type="text" id="siteTitle" placeholder="Title" required>
       <textarea id="siteDescription" placeholder="Description (optional)" rows="4"></textarea>
+      <div class="logo-field">
+        <label>Logo (min 100×100 px, max 5 MB)</label>
+        <div id="currentLogoWrap" class="logo-current" hidden>
+          <img id="currentLogoImg" alt="Current logo">
+          <button type="button" id="removeLogoBtn" class="secondary">Remove logo</button>
+        </div>
+        <input type="file" id="siteLogo" accept="image/png,image/jpeg,image/gif,image/webp">
+        <div id="logoPreview" class="logo-preview" hidden></div>
+        <span id="logoError" class="logo-error" hidden></span>
+      </div>
       <div id="categoryChoices" class="category-multiselect">
         <label>Categories</label>
         <input type="text" id="categorySearch" placeholder="Search or select categories..." autocomplete="off">

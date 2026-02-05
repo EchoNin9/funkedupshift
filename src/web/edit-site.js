@@ -6,6 +6,11 @@
   var saveResult = document.getElementById('saveResult');
   var allCategories = [];
   var selectedIds = [];
+  var currentLogoKey = null;
+  var removeLogoRequested = false;
+  var DEFAULT_LOGO_PATH = 'img/default-site-logo.png';
+  var MIN_LOGO_SIZE = 100;
+  var MAX_LOGO_BYTES = 5 * 1024 * 1024;
 
   function getSiteId() {
     var params = new URLSearchParams(window.location.search);
@@ -159,6 +164,25 @@
         document.getElementById('siteTitle').value = site.title || '';
         document.getElementById('siteDescription').value = site.description || '';
 
+        currentLogoKey = (site.logoKey && site.logoKey.trim()) ? site.logoKey : null;
+        removeLogoRequested = false;
+        var currentWrap = document.getElementById('currentLogoWrap');
+        var currentImg = document.getElementById('currentLogoImg');
+        if (currentWrap && currentImg) {
+          if (site.logoUrl && site.logoUrl.trim()) {
+            currentImg.src = site.logoUrl;
+          } else {
+            currentImg.src = DEFAULT_LOGO_PATH;
+          }
+          currentWrap.hidden = !currentLogoKey;
+        }
+        var logoInput = document.getElementById('siteLogo');
+        if (logoInput) logoInput.value = '';
+        var previewEl = document.getElementById('logoPreview');
+        if (previewEl) { previewEl.innerHTML = ''; previewEl.hidden = true; }
+        var errEl = document.getElementById('logoError');
+        if (errEl) { errEl.textContent = ''; errEl.hidden = true; }
+
         var cats = (catData && catData.categories) || [];
         allCategories = cats.map(function (c) {
           var id = c.PK || c.id || '';
@@ -185,6 +209,62 @@
       });
   });
 
+  var logoFileInput = document.getElementById('siteLogo');
+  var removeLogoBtn = document.getElementById('removeLogoBtn');
+
+  function validateLogoFile(file, callback) {
+    var errEl = document.getElementById('logoError');
+    var previewEl = document.getElementById('logoPreview');
+    if (!file) {
+      if (errEl) { errEl.textContent = ''; errEl.hidden = true; }
+      if (previewEl) { previewEl.innerHTML = ''; previewEl.hidden = true; }
+      callback(null);
+      return;
+    }
+    if (file.size > MAX_LOGO_BYTES) {
+      if (errEl) { errEl.textContent = 'Logo must be 5 MB or smaller.'; errEl.hidden = false; }
+      callback(new Error('Logo must be 5 MB or smaller'));
+      return;
+    }
+    var img = new Image();
+    img.onload = function () {
+      if (img.naturalWidth < MIN_LOGO_SIZE || img.naturalHeight < MIN_LOGO_SIZE) {
+        if (errEl) { errEl.textContent = 'Logo must be at least 100×100 pixels.'; errEl.hidden = false; }
+        callback(new Error('Logo must be at least 100×100 pixels'));
+        return;
+      }
+      if (errEl) { errEl.textContent = ''; errEl.hidden = true; }
+      if (previewEl) {
+        var u = URL.createObjectURL(file);
+        previewEl.innerHTML = '<img src="' + u + '" alt="New logo">';
+        previewEl.hidden = false;
+      }
+      callback(null);
+    };
+    img.onerror = function () {
+      if (errEl) { errEl.textContent = 'Please choose a valid image file.'; errEl.hidden = false; }
+      callback(new Error('Invalid image'));
+    };
+    img.src = URL.createObjectURL(file);
+  }
+
+  if (removeLogoBtn) {
+    removeLogoBtn.addEventListener('click', function () {
+      removeLogoRequested = true;
+      var w = document.getElementById('currentLogoWrap');
+      if (w) w.hidden = true;
+      if (logoFileInput) logoFileInput.value = '';
+      var previewEl = document.getElementById('logoPreview');
+      if (previewEl) { previewEl.innerHTML = ''; previewEl.hidden = true; }
+    });
+  }
+  if (logoFileInput) {
+    logoFileInput.addEventListener('change', function () {
+      removeLogoRequested = false;
+      validateLogoFile(logoFileInput.files[0], function () {});
+    });
+  }
+
   if (editSiteForm) {
     editSiteForm.addEventListener('submit', function (e) {
       e.preventDefault();
@@ -192,29 +272,76 @@
       var title = document.getElementById('siteTitle').value.trim();
       var description = document.getElementById('siteDescription').value.trim();
       var categoryIds = selectedIds.slice();
+      var file = logoFileInput && logoFileInput.files[0];
 
       saveResult.textContent = 'Saving...';
       saveResult.className = 'status';
       saveResult.hidden = false;
 
-      fetchWithAuth(base + '/sites', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: id, title: title, description: description, categoryIds: categoryIds })
-      })
-        .then(function (r) {
-          if (r.ok) return r.json();
-          return r.text().then(function (t) { throw new Error(t || 'Failed'); });
+      function doUpdate(payload) {
+        return fetchWithAuth(base + '/sites', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
         })
-        .then(function () {
-          saveResult.textContent = 'Saved.';
-          saveResult.className = 'status ok';
-          window.location.href = 'index.html';
-        })
-        .catch(function (e) {
+          .then(function (r) {
+            if (r.ok) return r.json();
+            return r.text().then(function (t) { throw new Error(t || 'Failed'); });
+          })
+          .then(function () {
+            saveResult.textContent = 'Saved.';
+            saveResult.className = 'status ok';
+            window.location.href = 'index.html';
+          });
+      }
+
+      var payload = { id: id, title: title, description: description, categoryIds: categoryIds };
+      if (removeLogoRequested) {
+        payload.deleteLogo = true;
+        doUpdate(payload).catch(function (e) {
           saveResult.textContent = 'Error: ' + e.message;
           saveResult.className = 'status err';
         });
+        return;
+      }
+      if (file) {
+        validateLogoFile(file, function (err) {
+          if (err) {
+            saveResult.textContent = err.message || 'Invalid logo';
+            saveResult.className = 'status err';
+            return;
+          }
+          fetchWithAuth(base + '/sites/logo-upload', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ siteId: id, contentType: file.type || 'image/png' })
+          })
+            .then(function (r) {
+              if (r.ok) return r.json();
+              return r.text().then(function (t) { throw new Error(t || 'Upload failed'); });
+            })
+            .then(function (data) {
+              return fetch(data.uploadUrl, { method: 'PUT', body: file, headers: { 'Content-Type': file.type || 'image/png' } })
+                .then(function (putRes) {
+                  if (!putRes.ok) throw new Error('Upload failed');
+                  return data.key;
+                });
+            })
+            .then(function (key) {
+              payload.logoKey = key;
+              return doUpdate(payload);
+            })
+            .catch(function (e) {
+              saveResult.textContent = 'Error: ' + e.message;
+              saveResult.className = 'status err';
+            });
+        });
+      } else {
+        doUpdate(payload).catch(function (e) {
+          saveResult.textContent = 'Error: ' + e.message;
+          saveResult.className = 'status err';
+        });
+      }
     });
   }
 })();

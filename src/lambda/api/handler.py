@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 TABLE_NAME = os.environ.get("TABLE_NAME", "")
+MEDIA_BUCKET = os.environ.get("MEDIA_BUCKET", "")
 
 
 def getUserInfo(event):
@@ -86,6 +87,8 @@ def handler(event, context):
             return listSites(event)
         if method == "POST" and path == "/sites":
             return createSite(event)
+        if method == "POST" and path == "/sites/logo-upload":
+            return getPresignedLogoUpload(event)
         if method == "PUT" and path == "/sites":
             return updateSite(event)
         if method == "GET" and path == "/me":
@@ -139,6 +142,27 @@ def _resolveCategoriesForSites(dynamodb, sites):
         ]
 
 
+def _addLogoUrls(sites, region=None):
+    """Set logoUrl (presigned GET) for each site that has logoKey. In-place."""
+    if not MEDIA_BUCKET or not sites:
+        return
+    try:
+        import boto3
+        region = region or os.environ.get("AWS_REGION", "us-east-1")
+        s3 = boto3.client("s3", region_name=region)
+        for s in sites:
+            key = s.get("logoKey")
+            if key and isinstance(key, str) and key.strip():
+                url = s3.generate_presigned_url(
+                    "get_object",
+                    Params={"Bucket": MEDIA_BUCKET, "Key": key},
+                    ExpiresIn=3600,
+                )
+                s["logoUrl"] = url
+    except Exception as e:
+        logger.warning("_addLogoUrls failed: %s", e)
+
+
 def listSites(event):
     """Query DynamoDB byEntity (entityType=SITE) and return items. Optional ?id= for single site."""
     logger.info("listSites called, TABLE_NAME=%s", TABLE_NAME)
@@ -176,6 +200,7 @@ def listSites(event):
                 avg = max(1.0, min(5.0, float(total_sum) / float(total_count)))
                 site["averageRating"] = round(avg, 1)
             _resolveCategoriesForSites(dynamodb, [site])
+            _addLogoUrls([site], region=region)
             return jsonResponse({"site": site})
 
         result = dynamodb.query(
@@ -210,6 +235,7 @@ def listSites(event):
             sites.append(site)
 
         _resolveCategoriesForSites(dynamodb, sites)
+        _addLogoUrls(sites, region=region)
         sites.sort(key=lambda s: (
             -(s.get("averageRating") or 0),
             (s.get("title") or s.get("url") or s.get("PK") or "").lower(),
@@ -254,6 +280,7 @@ def createSite(event):
 
         site_id = f"SITE#{uuid.uuid4()}"
         now = datetime.utcnow().isoformat() + "Z"
+        logo_key = (body.get("logoKey") or "").strip() or None
 
         dynamodb = boto3.client("dynamodb")
 
@@ -261,24 +288,24 @@ def createSite(event):
         category_ids = [str(c) for c in (body.get("categoryIds") or []) if c]
         category_ids_list = [{"S": cid} for cid in category_ids]
 
-        dynamodb.put_item(
-            TableName=TABLE_NAME,
-            Item={
-                "PK": {"S": site_id},
-                "SK": {"S": "METADATA"},
-                "url": {"S": url},
-                "title": {"S": title or url},
-                "description": {"S": body.get("description", "")},
-                "tags": {"L": tags_list},
-                "categoryIds": {"L": category_ids_list},
-                "createdAt": {"S": now},
-                "updatedAt": {"S": now},
-                "entityType": {"S": "SITE"},
-                "entitySk": {"S": site_id},
-                "totalStarsSum": {"N": "0"},
-                "totalStarsCount": {"N": "0"},
-            },
-        )
+        item = {
+            "PK": {"S": site_id},
+            "SK": {"S": "METADATA"},
+            "url": {"S": url},
+            "title": {"S": title or url},
+            "description": {"S": body.get("description", "")},
+            "tags": {"L": tags_list},
+            "categoryIds": {"L": category_ids_list},
+            "createdAt": {"S": now},
+            "updatedAt": {"S": now},
+            "entityType": {"S": "SITE"},
+            "entitySk": {"S": site_id},
+            "totalStarsSum": {"N": "0"},
+            "totalStarsCount": {"N": "0"},
+        }
+        if logo_key:
+            item["logoKey"] = {"S": logo_key}
+        dynamodb.put_item(TableName=TABLE_NAME, Item=item)
 
         return jsonResponse({"id": site_id, "url": url, "title": title or url}, 201)
     except Exception as e:
@@ -310,34 +337,66 @@ def updateSite(event):
         title = body.get("title")
         description = body.get("description")
         category_ids = body.get("categoryIds")
+        delete_logo = body.get("deleteLogo") is True
+        logo_key = (body.get("logoKey") or "").strip() or None
         now = datetime.utcnow().isoformat() + "Z"
 
-        update_expr = []
+        dynamodb = boto3.client("dynamodb")
+        region = os.environ.get("AWS_REGION", "us-east-1")
+        current_logo_key = None
+        if delete_logo or logo_key:
+            get_resp = dynamodb.get_item(
+                TableName=TABLE_NAME,
+                Key={"PK": {"S": site_id}, "SK": {"S": "METADATA"}},
+                ProjectionExpression="logoKey",
+            )
+            if "Item" in get_resp and "logoKey" in get_resp["Item"]:
+                current_logo_key = get_resp["Item"]["logoKey"].get("S", "").strip() or None
+
+        if MEDIA_BUCKET and current_logo_key and (delete_logo or logo_key):
+            try:
+                s3 = boto3.client("s3", region_name=region)
+                s3.delete_object(Bucket=MEDIA_BUCKET, Key=current_logo_key)
+            except Exception as e:
+                logger.warning("S3 delete_object for logo failed: %s", e)
+
+        set_parts = []
+        remove_parts = []
         names = {}
         values = {":updatedAt": {"S": now}}
 
         if title is not None:
-            update_expr.append("#title = :title")
+            set_parts.append("#title = :title")
             names["#title"] = "title"
             values[":title"] = {"S": title}
         if description is not None:
-            update_expr.append("#description = :description")
+            set_parts.append("#description = :description")
             names["#description"] = "description"
             values[":description"] = {"S": description}
         if category_ids is not None:
-            update_expr.append("categoryIds = :categoryIds")
+            set_parts.append("categoryIds = :categoryIds")
             values[":categoryIds"] = {"L": [{"S": str(c)} for c in category_ids]}
+        set_parts.append("updatedAt = :updatedAt")
 
-        if not update_expr:
+        if delete_logo:
+            remove_parts.append("logoKey")
+        elif logo_key:
+            set_parts.append("logoKey = :logoKey")
+            values[":logoKey"] = {"S": logo_key}
+
+        if not set_parts and not remove_parts:
             return jsonResponse({"error": "Nothing to update"}, 400)
 
-        update_expr.append("updatedAt = :updatedAt")
+        update_expr = ""
+        if set_parts:
+            update_expr += "SET " + ", ".join(set_parts)
+        if remove_parts:
+            update_expr += " REMOVE " + ", ".join(remove_parts)
 
-        dynamodb = boto3.client("dynamodb")
         dynamodb.update_item(
             TableName=TABLE_NAME,
             Key={"PK": {"S": site_id}, "SK": {"S": "METADATA"}},
-            UpdateExpression="SET " + ", ".join(update_expr),
+            UpdateExpression=update_expr.strip(),
             ExpressionAttributeNames=names if names else None,
             ExpressionAttributeValues=values,
         )
@@ -345,6 +404,43 @@ def updateSite(event):
         return jsonResponse({"id": site_id, "title": title, "description": description, "categoryIds": category_ids}, 200)
     except Exception as e:
         logger.exception("updateSite error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def getPresignedLogoUpload(event):
+    """Return presigned PUT URL for uploading a site logo (admin only)."""
+    user = getUserInfo(event)
+    if not user.get("userId"):
+        return jsonResponse({"error": "Unauthorized"}, 401)
+    if "admin" not in user.get("groups", []):
+        return jsonResponse({"error": "Forbidden: admin role required"}, 403)
+    if not MEDIA_BUCKET:
+        return jsonResponse({"error": "MEDIA_BUCKET not configured"}, 500)
+    try:
+        import boto3
+        import uuid as uuid_mod
+        body = json.loads(event.get("body", "{}"))
+        site_id = (body.get("siteId") or body.get("id") or "").strip() or "new"
+        contentType = (body.get("contentType") or "image/png").strip()
+        ext = "png"
+        if "jpeg" in contentType or "jpg" in contentType:
+            ext = "jpg"
+        elif "gif" in contentType:
+            ext = "gif"
+        elif "webp" in contentType:
+            ext = "webp"
+        unique = str(uuid_mod.uuid4())
+        key = f"logos/{site_id}/{unique}.{ext}"
+        region = os.environ.get("AWS_REGION", "us-east-1")
+        s3 = boto3.client("s3", region_name=region)
+        upload_url = s3.generate_presigned_url(
+            "put_object",
+            Params={"Bucket": MEDIA_BUCKET, "Key": key, "ContentType": contentType},
+            ExpiresIn=300,
+        )
+        return jsonResponse({"uploadUrl": upload_url, "key": key})
+    except Exception as e:
+        logger.exception("getPresignedLogoUpload error")
         return jsonResponse({"error": str(e)}, 500)
 
 

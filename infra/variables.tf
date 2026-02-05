@@ -68,3 +68,9 @@ variable "apiGatewayName" {
   type        = string
   default     = "fus-api"
 }
+
+variable "mediaBucketName" {
+  description = "S3 bucket name for user uploads (logos, media)."
+  type        = string
+  default     = "fus-media"
+}

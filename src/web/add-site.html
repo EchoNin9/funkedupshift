@@ -25,6 +25,11 @@
     button:hover { background: #0052a3; }
     button.secondary { background: #666; }
     button.secondary:hover { background: #555; }
+    .logo-field { margin: 0.5rem 0; }
+    .logo-field label { display: block; margin-bottom: 0.25rem; }
+    .logo-preview { margin-top: 0.5rem; }
+    .logo-preview img { max-width: 100px; max-height: 100px; object-fit: cover; border-radius: 0.25rem; }
+    .logo-error { color: #c00; font-size: 0.9rem; display: block; margin-top: 0.25rem; }
   </style>
 </head>
 <body>
@@ -37,6 +42,12 @@
       <input type="url" id="siteUrl" placeholder="URL (e.g. https://example.com)" required>
       <input type="text" id="siteTitle" placeholder="Title (optional)">
       <textarea id="siteDescription" placeholder="Description (optional)" rows="4"></textarea>
+      <div class="logo-field">
+        <label>Logo (optional, min 100×100 px, max 5 MB)</label>
+        <input type="file" id="siteLogo" accept="image/png,image/jpeg,image/gif,image/webp">
+        <div id="logoPreview" class="logo-preview" hidden></div>
+        <span id="logoError" class="logo-error" hidden></span>
+      </div>
       <div id="categoryChoices"><span class="muted">Loading categories…</span></div>
       <button type="submit">Add Site</button>
     </form>

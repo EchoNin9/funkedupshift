@@ -196,6 +196,16 @@ data "aws_iam_policy_document" "terraformManage" {
       "arn:aws:s3:::${var.websiteProductionBucket}/*"
     ]
   }
+  # S3 media bucket (logos/uploads) – create and full manage
+  statement {
+    sid    = "TerraformManageMediaBucket"
+    effect = "Allow"
+    actions = ["s3:*"]
+    resources = [
+      "arn:aws:s3:::${var.mediaBucketName}",
+      "arn:aws:s3:::${var.mediaBucketName}/*"
+    ]
+  }
   # DynamoDB main table – full manage (covers DescribeContinuousBackups and any future provider APIs)
   statement {
     sid       = "TerraformManageDynamo"
@@ -382,6 +392,24 @@ resource "aws_s3_bucket_website_configuration" "websiteProduction" {
   }
   error_document {
     key = "index.html"
+  }
+}
+
+# ------------------------------------------------------------------------------
+# S3 media bucket (user uploads: site logos; presigned PUT/GET, Lambda delete)
+# ------------------------------------------------------------------------------
+resource "aws_s3_bucket" "media" {
+  bucket = var.mediaBucketName
+}
+
+resource "aws_s3_bucket_cors_configuration" "media" {
+  bucket = aws_s3_bucket.media.id
+
+  cors_rule {
+    allowed_headers = ["*"]
+    allowed_methods = ["GET", "PUT", "HEAD"]
+    allowed_origins = ["*"]
+    expose_headers  = ["ETag"]
   }
 }
 
@@ -604,6 +632,11 @@ resource "aws_iam_role_policy" "lambdaApi" {
           "dynamodb:DeleteItem"
         ]
         Resource = [aws_dynamodb_table.main.arn, "${aws_dynamodb_table.main.arn}/index/*"]
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"]
+        Resource = "${aws_s3_bucket.media.arn}/*"
       }
     ]
   })
@@ -620,7 +653,8 @@ resource "aws_lambda_function" "api" {
 
   environment {
     variables = {
-      TABLE_NAME = aws_dynamodb_table.main.name
+      TABLE_NAME   = aws_dynamodb_table.main.name
+      MEDIA_BUCKET = aws_s3_bucket.media.id
     }
   }
 }
@@ -681,6 +715,15 @@ resource "aws_apigatewayv2_route" "sitesPost" {
 resource "aws_apigatewayv2_route" "sitesPut" {
   api_id             = aws_apigatewayv2_api.main.id
   route_key          = "PUT /sites"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+# Presigned URL for logo upload (admin only)
+resource "aws_apigatewayv2_route" "sitesLogoUpload" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /sites/logo-upload"
   target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
   authorization_type = "JWT"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
