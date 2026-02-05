@@ -36,6 +36,8 @@
     healthEl.hidden = false;
   }
 
+  var DEFAULT_LOGO_PATH = 'img/default-site-logo.png';
+
   function siteLi(s) {
     var id = s.PK || '';
     var title = s.title || s.url || id || 'Untitled';
@@ -44,6 +46,8 @@
       var n = parseFloat(s.averageRating);
       if (!isNaN(n)) avg = ' (' + n.toFixed(1) + '★)';
     }
+    var logoSrc = (s.logoUrl && s.logoUrl.trim()) ? s.logoUrl : DEFAULT_LOGO_PATH;
+    var logoImg = '<img class="site-logo" src="' + escapeHtml(logoSrc) + '" alt="" onerror="this.src=\'' + escapeHtml(DEFAULT_LOGO_PATH) + '\'">';
     var url = s.url ? '<a href="' + escapeHtml(s.url) + '" target="_blank" rel="noopener">' + escapeHtml(s.url) + '</a>' : '';
     var desc = s.description ? '<div>' + escapeHtml(s.description) + '</div>' : '';
     var cats = (s.categories && s.categories.length) ? ' <span class="site-categories">[' + s.categories.map(function (c) { return escapeHtml(c.name); }).join(', ') + ']</span>' : '';
@@ -52,7 +56,7 @@
     if (id && canRate) {
       stars = '<div class="stars" data-id="' + escapeHtml(id) + '"><label>Rate: <select class="star-select"><option value="">--</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option></select><button type="button" class="secondary star-save">Save</button></label></div>';
     }
-    return '<li><strong>' + escapeHtml(title) + avg + '</strong>' + (url ? ' ' + url : '') + cats + editBtn + desc + stars + '</li>';
+    return '<li class="site-row">' + logoImg + ' <span class="site-info"><strong>' + escapeHtml(title) + avg + '</strong>' + (url ? ' ' + url : '') + cats + editBtn + desc + stars + '</span></li>';
   }
 
   function applySort(sites, sortBy) {
