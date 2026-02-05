@@ -196,6 +196,16 @@ data "aws_iam_policy_document" "terraformManage" {
       "arn:aws:s3:::${var.websiteProductionBucket}/*"
     ]
   }
+  # S3 media bucket (logos/uploads) – create and full manage
+  statement {
+    sid    = "TerraformManageMediaBucket"
+    effect = "Allow"
+    actions = ["s3:*"]
+    resources = [
+      "arn:aws:s3:::${var.mediaBucketName}",
+      "arn:aws:s3:::${var.mediaBucketName}/*"
+    ]
+  }
   # DynamoDB main table – full manage (covers DescribeContinuousBackups and any future provider APIs)
   statement {
     sid       = "TerraformManageDynamo"
