@@ -118,11 +118,34 @@
       sitesContainer.innerHTML = '<ul class="sites">' + pageList.map(siteLi).join('') + '</ul>';
       var pagEl = document.getElementById('sitesPagination');
       pagEl.hidden = false;
-      pagEl.innerHTML = '<button type="button" class="secondary" id="sitesPrev">Prev</button><span>Page ' + currentPage + ' of ' + totalPages + '</span><button type="button" class="secondary" id="sitesNext">Next</button>';
+      var pageNums = [];
+      for (var p = 1; p <= totalPages; p++) pageNums.push(p);
+      if (totalPages > 7) {
+        var cur = currentPage;
+        var show = [1];
+        if (cur > 3) show.push('…');
+        for (var i = Math.max(2, cur - 1); i <= Math.min(totalPages - 1, cur + 1); i++) {
+          if (show.indexOf(i) === -1) show.push(i);
+        }
+        if (cur < totalPages - 2) show.push('…');
+        if (totalPages > 1) show.push(totalPages);
+        pageNums = show;
+      }
+      var numsHtml = pageNums.map(function (p) {
+        if (p === '…') return '<span class="page-num">…</span>';
+        var isCur = p === currentPage;
+        return isCur
+          ? '<span class="page-num current">' + p + '</span>'
+          : '<button type="button" class="secondary page-num" data-page="' + p + '">' + p + '</button>';
+      }).join('');
+      pagEl.innerHTML = '<button type="button" class="secondary" id="sitesPrev">Prev</button><span class="page-nums">' + numsHtml + '</span><button type="button" class="secondary" id="sitesNext">Next</button>';
       document.getElementById('sitesPrev').disabled = currentPage <= 1;
       document.getElementById('sitesNext').disabled = currentPage >= totalPages;
       document.getElementById('sitesPrev').onclick = function () { if (currentPage > 1) { currentPage--; renderSites(sitesData); } };
       document.getElementById('sitesNext').onclick = function () { if (currentPage < totalPages) { currentPage++; renderSites(sitesData); } };
+      pagEl.querySelectorAll('.page-num[data-page]').forEach(function (btn) {
+        btn.onclick = function () { currentPage = parseInt(btn.getAttribute('data-page'), 10); renderSites(sitesData); };
+      });
     }
 
     if (canRate) {

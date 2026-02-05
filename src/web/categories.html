@@ -33,9 +33,12 @@
     .category-list li:last-child { border-bottom: none; }
     .category-name { font-weight: 600; }
     .category-desc { color: #666; font-size: 0.9rem; }
-    .pagination { margin: 1rem 0; display: flex; align-items: center; gap: 0.75rem; }
+    .pagination { margin: 1rem 0; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
     .pagination button { padding: 0.35rem 0.6rem; }
     .pagination button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .pagination .page-nums { display: flex; align-items: center; gap: 0.25rem; flex-wrap: wrap; }
+    .pagination .page-num { min-width: 2rem; padding: 0.25rem 0.4rem; text-align: center; }
+    .pagination .page-num.current { font-weight: 600; cursor: default; }
   </style>
 </head>
 <body>

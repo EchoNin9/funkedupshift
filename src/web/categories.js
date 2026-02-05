@@ -108,11 +108,34 @@
 
     var pagEl = document.getElementById('categoryPagination');
     pagEl.hidden = false;
-    pagEl.innerHTML = '<button type="button" class="secondary" id="catPrev">Prev</button><span>Page ' + currentCategoryPage + ' of ' + totalPages + '</span><button type="button" class="secondary" id="catNext">Next</button>';
+    var pageNums = [];
+    for (var p = 1; p <= totalPages; p++) pageNums.push(p);
+    if (totalPages > 7) {
+      var cur = currentCategoryPage;
+      var show = [1];
+      if (cur > 3) show.push('…');
+      for (var i = Math.max(2, cur - 1); i <= Math.min(totalPages - 1, cur + 1); i++) {
+        if (show.indexOf(i) === -1) show.push(i);
+      }
+      if (cur < totalPages - 2) show.push('…');
+      if (totalPages > 1) show.push(totalPages);
+      pageNums = show;
+    }
+    var numsHtml = pageNums.map(function (p) {
+      if (p === '…') return '<span class="page-num">…</span>';
+      var isCur = p === currentCategoryPage;
+      return isCur
+        ? '<span class="page-num current">' + p + '</span>'
+        : '<button type="button" class="secondary page-num" data-page="' + p + '">' + p + '</button>';
+    }).join('');
+    pagEl.innerHTML = '<button type="button" class="secondary" id="catPrev">Prev</button><span class="page-nums">' + numsHtml + '</span><button type="button" class="secondary" id="catNext">Next</button>';
     document.getElementById('catPrev').disabled = currentCategoryPage <= 1;
     document.getElementById('catNext').disabled = currentCategoryPage >= totalPages;
     document.getElementById('catPrev').onclick = function () { if (currentCategoryPage > 1) { currentCategoryPage--; renderCategoryPage(); } };
     document.getElementById('catNext').onclick = function () { if (currentCategoryPage < totalPages) { currentCategoryPage++; renderCategoryPage(); } };
+    pagEl.querySelectorAll('.page-num[data-page]').forEach(function (btn) {
+      btn.onclick = function () { currentCategoryPage = parseInt(btn.getAttribute('data-page'), 10); renderCategoryPage(); };
+    });
   }
 
   function loadCategories() {
