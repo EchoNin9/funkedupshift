@@ -55,6 +55,26 @@
           return;
         }
         formWrap.hidden = false;
+        fetchWithAuth(base + '/categories')
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (data) {
+            var el = document.getElementById('categoryChoices');
+            if (!el) return;
+            var cats = (data && data.categories) || [];
+            if (cats.length === 0) {
+              el.innerHTML = '<p class="muted">No categories yet. <a href="categories.html">Create categories</a>.</p>';
+            } else {
+              el.innerHTML = '<label>Categories:</label>' + cats.map(function (c) {
+                var id = c.PK || c.id || '';
+                var name = (c.name || id);
+                return '<label class="checkbox"><input type="checkbox" name="category" value="' + id + '"> ' + name + '</label>';
+              }).join('');
+            }
+          })
+          .catch(function () {
+            var el = document.getElementById('categoryChoices');
+            if (el) el.innerHTML = '<p class="muted">Could not load categories.</p>';
+          });
       })
       .catch(function () {
         showMessage('Could not verify admin access.', true);
@@ -76,10 +96,14 @@
       createSiteResult.className = 'status';
       createSiteResult.hidden = false;
 
+      var categoryIds = [];
+      Array.prototype.forEach.call(document.querySelectorAll('#categoryChoices input[name=category]:checked'), function (cb) {
+        if (cb.value) categoryIds.push(cb.value);
+      });
       fetchWithAuth(base + '/sites', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: url, title: title, description: description })
+        body: JSON.stringify({ url: url, title: title, description: description, categoryIds: categoryIds })
       })
         .then(function (r) {
           if (r.ok) return r.json();

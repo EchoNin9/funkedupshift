@@ -600,7 +600,8 @@ resource "aws_iam_role_policy" "lambdaApi" {
           "dynamodb:GetItem",
           "dynamodb:BatchGetItem",
           "dynamodb:PutItem",
-          "dynamodb:UpdateItem"
+          "dynamodb:UpdateItem",
+          "dynamodb:DeleteItem"
         ]
         Resource = [aws_dynamodb_table.main.arn, "${aws_dynamodb_table.main.arn}/index/*"]
       }
@@ -698,6 +699,39 @@ resource "aws_apigatewayv2_route" "me" {
 resource "aws_apigatewayv2_route" "starsPost" {
   api_id             = aws_apigatewayv2_api.main.id
   route_key          = "POST /stars"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+# Categories (admin only)
+resource "aws_apigatewayv2_route" "categoriesGet" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /categories"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "categoriesPost" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /categories"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "categoriesPut" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "PUT /categories"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "categoriesDelete" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "DELETE /categories"
   target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
   authorization_type = "JWT"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
