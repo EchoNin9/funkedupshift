@@ -172,7 +172,9 @@
   </button>
 
   <h1>Funkedupshift – Websites</h1>
-  <p><a href="index.html">← Back to home</a></p>
+  <p>
+    <button type="button" class="secondary" onclick="window.location.href='index.html'">Home</button>
+  </p>
 
   <div id="loading" hidden></div>
   <div id="error" class="status err" hidden></div>
@@ -183,7 +185,11 @@
       <button type="submit" id="searchBtn">Search</button>
     </form>
     <p id="searchHint" class="search-hint">Enter a search term to find sites. Leave empty and search to browse all.</p>
-    <p id="adminLinks" hidden><a href="add-site.html">Add site</a> | <a href="categories.html">Categories</a> <button type="button" id="loadAllSitesBtn" class="secondary" title="Load all sites (debug)">Load all</button></p>
+    <p id="adminLinks" hidden>
+      <button type="button" class="secondary" onclick="window.location.href='add-site.html'">Add site</button>
+      <button type="button" class="secondary" onclick="window.location.href='categories.html'">Categories</button>
+      <button type="button" id="loadAllSitesBtn" class="secondary" title="Load all sites (debug)">Load all</button>
+    </p>
     <div class="sites-toolbar">
       <div>
         <label for="sortOrder">Sort:</label>
