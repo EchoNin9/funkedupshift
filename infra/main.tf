@@ -3,6 +3,12 @@ provider "aws" {
   region = var.awsRegion
 }
 
+# ACM for CloudFront must be in us-east-1
+provider "aws" {
+  alias  = "us_east_1"
+  region = "us-east-1"
+}
+
 data "aws_caller_identity" "current" {}
 
 # ------------------------------------------------------------------------------
@@ -245,6 +251,27 @@ data "aws_iam_policy_document" "terraformManage" {
     actions   = ["apigateway:*", "execute-api:*"]
     resources = ["*"]
   }
+  # CloudFront (for custom domains)
+  statement {
+    sid       = "TerraformManageCloudFront"
+    effect    = "Allow"
+    actions   = ["cloudfront:*"]
+    resources = ["*"]
+  }
+  # ACM (certificates for CloudFront, must be us-east-1)
+  statement {
+    sid       = "TerraformManageACM"
+    effect    = "Allow"
+    actions   = ["acm:*"]
+    resources = ["*"]
+  }
+  # Route 53 (hosted zones and records)
+  statement {
+    sid       = "TerraformManageRoute53"
+    effect    = "Allow"
+    actions   = ["route53:*"]
+    resources = ["*"]
+  }
 }
 
 resource "aws_iam_policy" "terraformManage" {
@@ -279,6 +306,11 @@ data "aws_iam_policy_document" "websiteStagingDeploy" {
       "${aws_s3_bucket.websiteStaging.arn}/*"
     ]
   }
+  statement {
+    effect   = "Allow"
+    actions  = ["cloudfront:CreateInvalidation"]
+    resources = ["arn:aws:cloudfront::${data.aws_caller_identity.current.account_id}:distribution/${aws_cloudfront_distribution.staging.id}"]
+  }
 }
 
 data "aws_iam_policy_document" "websiteProductionDeploy" {
@@ -293,6 +325,11 @@ data "aws_iam_policy_document" "websiteProductionDeploy" {
       aws_s3_bucket.websiteProduction.arn,
       "${aws_s3_bucket.websiteProduction.arn}/*"
     ]
+  }
+  statement {
+    effect   = "Allow"
+    actions  = ["cloudfront:CreateInvalidation"]
+    resources = ["arn:aws:cloudfront::${data.aws_caller_identity.current.account_id}:distribution/${aws_cloudfront_distribution.production.id}"]
   }
 }
 

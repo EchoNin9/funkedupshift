@@ -28,6 +28,36 @@ output "websiteProductionUrl" {
   value       = "http://${aws_s3_bucket_website_configuration.websiteProduction.website_endpoint}"
 }
 
+output "cloudfrontStagingId" {
+  description = "CloudFront distribution ID for staging (for cache invalidation)."
+  value       = aws_cloudfront_distribution.staging.id
+}
+
+output "cloudfrontProductionId" {
+  description = "CloudFront distribution ID for production (for cache invalidation)."
+  value       = aws_cloudfront_distribution.production.id
+}
+
+output "websiteStagingDomains" {
+  description = "Staging custom domains (HTTPS)."
+  value       = [for a in local.staging_aliases : "https://${a}"]
+}
+
+output "websiteProductionDomains" {
+  description = "Production custom domains (HTTPS)."
+  value       = [for a in local.production_aliases : "https://${a}"]
+}
+
+output "route53NameserversCom" {
+  description = "Route 53 nameservers for funkedupshift.com – update these at your domain registrar."
+  value       = aws_route53_zone.com.name_servers
+}
+
+output "route53NameserversCa" {
+  description = "Route 53 nameservers for funkedupshift.ca – update these at your domain registrar."
+  value       = aws_route53_zone.ca.name_servers
+}
+
 output "dynamoTableName" {
   description = "DynamoDB main table name (single table)."
   value       = aws_dynamodb_table.main.name

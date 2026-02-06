@@ -76,3 +76,7 @@ jobs:
           else
             echo "No frontend to deploy (add src/web or build output when ready)"
           fi
+      - name: Invalidate CloudFront cache
+        run: |
+          DIST_ID=$(terraform -chdir=infra output -raw cloudfrontStagingId)
+          aws cloudfront create-invalidation --distribution-id $DIST_ID --paths "/*"
