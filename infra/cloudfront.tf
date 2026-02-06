@@ -30,12 +30,11 @@ resource "aws_acm_certificate" "main" {
 
 resource "aws_route53_record" "cert_validation_com" {
   for_each = {
-    for dvo in aws_acm_certificate.main.domain_validation_options : dvo.domain_name => {
-      name   = dvo.resource_record_name
-      record = dvo.resource_record_value
-      type   = dvo.resource_record_type
+    for domain in local.cert_domains_com : domain => {
+      name   = [for dvo in aws_acm_certificate.main.domain_validation_options : dvo if dvo.domain_name == domain][0].resource_record_name
+      record = [for dvo in aws_acm_certificate.main.domain_validation_options : dvo if dvo.domain_name == domain][0].resource_record_value
+      type   = [for dvo in aws_acm_certificate.main.domain_validation_options : dvo if dvo.domain_name == domain][0].resource_record_type
     }
-    if strcontains(dvo.resource_record_name, var.domainCom)
   }
 
   allow_overwrite = true
@@ -48,12 +47,11 @@ resource "aws_route53_record" "cert_validation_com" {
 
 resource "aws_route53_record" "cert_validation_ca" {
   for_each = {
-    for dvo in aws_acm_certificate.main.domain_validation_options : dvo.domain_name => {
-      name   = dvo.resource_record_name
-      record = dvo.resource_record_value
-      type   = dvo.resource_record_type
+    for domain in local.cert_domains_ca : domain => {
+      name   = [for dvo in aws_acm_certificate.main.domain_validation_options : dvo if dvo.domain_name == domain][0].resource_record_name
+      record = [for dvo in aws_acm_certificate.main.domain_validation_options : dvo if dvo.domain_name == domain][0].resource_record_value
+      type   = [for dvo in aws_acm_certificate.main.domain_validation_options : dvo if dvo.domain_name == domain][0].resource_record_type
     }
-    if strcontains(dvo.resource_record_name, var.domainCa)
   }
 
   allow_overwrite = true
@@ -77,6 +75,10 @@ resource "aws_acm_certificate_validation" "main" {
 # CloudFront distributions
 # ------------------------------------------------------------------------------
 locals {
+  # Static keys for cert validation (for_each must be known at plan time)
+  cert_domains_com = [var.domainCom, "*.${var.domainCom}"]
+  cert_domains_ca  = [var.domainCa, "*.${var.domainCa}"]
+
   staging_aliases = [
     "${var.stagingSubdomain}.${var.domainCom}",
     "${var.stagingSubdomain}.${var.domainCa}"
