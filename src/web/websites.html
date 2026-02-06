@@ -13,10 +13,16 @@
       margin: 0 auto;
       padding: 1.5rem;
       color: #1a1a1a;
+      background: #ffffff;
+      transition: background 0.3s ease, color 0.3s ease;
     }
     h1 { font-size: 1.5rem; margin-top: 0; }
     .status { margin: 1rem 0; padding: 0.75rem; background: #f0f0f0; border-radius: 0.25rem; }
-    .status.ok { background: #e6f4ea; }
+    .status.ok {
+      background: #e6f4ea;
+      color: #ff6b35;
+      font-weight: 600;
+    }
     .status.err { background: #fce8e6; }
     .sites { list-style: none; padding: 0; margin: 0; }
     .sites li { padding: 0.5rem 0; border-bottom: 1px solid #eee; }
@@ -26,23 +32,101 @@
     .auth-section h2 { font-size: 1.125rem; margin-top: 0; }
     form { margin: 0.5rem 0; }
     input, button { padding: 0.5rem; margin: 0.25rem 0; width: 100%; max-width: 20rem; }
-    button { background: #0066cc; color: white; border: none; border-radius: 0.25rem; cursor: pointer; }
-    button:hover { background: #0052a3; }
-    button.secondary { background: #666; }
-    button.secondary:hover { background: #555; }
+    button {
+      background: linear-gradient(135deg, #ff6b35 0%, #ff8c5a 100%);
+      color: white;
+      border: none;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 500;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    button::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+      transition: left 0.5s ease;
+    }
+    button:hover::before {
+      left: 100%;
+    }
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 16px rgba(255, 107, 53, 0.3);
+    }
+    button.secondary {
+      background: linear-gradient(135deg, #004e89 0%, #0066cc 100%);
+    }
+    button.secondary:hover {
+      box-shadow: 0 8px 16px rgba(0, 78, 137, 0.3);
+    }
     a.secondary { display: inline-block; padding: 0.35rem 0.5rem; background: #666; color: white; border-radius: 0.25rem; text-decoration: none; font-size: 0.9rem; }
     a.secondary:hover { background: #555; }
     .site-categories { color: #666; font-size: 0.9rem; }
     .user-info { margin: 0.5rem 0; }
-    .sites-toolbar { margin: 0.5rem 0 1rem; display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-start; }
-    .sites-toolbar label { margin-right: 0.5rem; }
-    .sites-toolbar select { padding: 0.35rem 0.5rem; }
+    .sites-toolbar {
+      margin: 0.5rem 0 1rem;
+      padding: 1rem 1rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      align-items: flex-start;
+      background: linear-gradient(135deg, #004e89 0%, #0066cc 100%);
+      border-radius: 0.75rem;
+      border: 1px solid #0f172a;
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.15);
+      color: #f9fafb;
+    }
+    .sites-toolbar label {
+      margin-right: 0.5rem;
+      font-weight: 600;
+    }
+    .sites-toolbar select,
+    .sites-toolbar input[type="text"] {
+      padding: 0.35rem 0.5rem;
+      border-radius: 0.4rem;
+      border: 1px solid rgba(15, 23, 42, 0.35);
+      background: rgba(15, 23, 42, 0.15);
+      color: #f9fafb;
+    }
     .group-by-multiselect { position: relative; max-width: 24rem; min-width: 12rem; }
-    .group-by-multiselect input[type="text"] { width: 100%; padding: 0.35rem 0.5rem; font-size: 0.9rem; }
-    .group-by-dropdown { position: absolute; top: 100%; left: 0; right: 0; max-height: 10rem; overflow-y: auto; border: 1px solid #ccc; background: #fff; z-index: 5; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+    .group-by-multiselect input[type="text"] {
+      width: 100%;
+      padding: 0.35rem 0.5rem;
+      font-size: 0.9rem;
+      border-radius: 0.4rem;
+      border: 1px solid rgba(15, 23, 42, 0.35);
+      background: rgba(15, 23, 42, 0.06);
+    }
+    .group-by-dropdown {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      max-height: 10rem;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+      background: #ffffff;
+      z-index: 5;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
     .group-by-dropdown[hidden] { display: none !important; }
-    .group-by-option { padding: 0.35rem 0.5rem; cursor: pointer; font-size: 0.9rem; }
-    .group-by-option:hover { background: #f0f0f0; }
+    .group-by-option {
+      padding: 0.35rem 0.5rem;
+      cursor: pointer;
+      font-size: 0.9rem;
+      color: #111827;
+    }
+    .group-by-option:hover {
+      background: #f3f4f6;
+    }
     .group-by-selected { display: inline-flex; flex-wrap: wrap; gap: 0.25rem; margin-top: 0.25rem; }
     .group-by-chip { display: inline-flex; align-items: center; gap: 0.2rem; padding: 0.2rem 0.4rem; background: #e8e8e8; border-radius: 0.2rem; font-size: 0.85rem; }
     .group-by-chip-remove { background: none; border: none; cursor: pointer; padding: 0; color: #666; font-size: 1rem; line-height: 1; }
@@ -62,11 +146,96 @@
     .search-form input[type="text"] { flex: 1; min-width: 14rem; padding: 0.6rem 0.75rem; font-size: 1rem; }
     .search-form button { padding: 0.6rem 1.25rem; }
     .search-hint { color: #666; font-size: 0.9rem; margin: 0 0 1rem; }
+
+    .theme-toggle {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      z-index: 10000;
+      border: none;
+      border-radius: 999px;
+      padding: 0.4rem 0.9rem;
+      font-size: 0.9rem;
+      cursor: pointer;
+      background: rgba(0, 0, 0, 0.7);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .theme-toggle span {
+      font-size: 1rem;
+    }
+    .theme-dark {
+      background: #050608;
+      color: #f5f5f5;
+    }
+    .theme-dark .status { background: #1e293b; color: #e5e7eb; }
+    .theme-dark .status.err { background: #7f1d1d; }
+    .theme-dark .status.ok { background: #022c22; color: #ff6b35; }
+    .theme-dark .sites-toolbar {
+      background: linear-gradient(135deg, #06d6a0 0%, #118ab2 100%);
+      border-color: #0f172a;
+      box-shadow: 0 10px 28px rgba(15, 23, 42, 0.8);
+    }
+    .theme-dark .sites-toolbar label,
+    .theme-dark .search-hint { color: #cbd5f5; }
+    .theme-dark a { color: #93c5fd; }
+    .theme-dark .group-by-dropdown {
+      background: #1e293b;
+      border-color: #475569;
+    }
+    .theme-dark .group-by-option {
+      color: #f5f5f5;
+    }
+    .theme-dark .group-by-option:hover {
+      background: #334155;
+    }
+    .theme-dark button {
+      background: linear-gradient(135deg, #ff6b35 0%, #ff9f1c 100%);
+    }
+    .theme-dark button.secondary {
+      background: linear-gradient(135deg, #06d6a0 0%, #118ab2 100%);
+    }
+    .theme-dark .theme-toggle {
+      background: rgba(255, 255, 255, 0.9);
+      color: #050608;
+    }
+    .site-footer {
+      margin-top: 3rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid #e5e7eb;
+      font-size: 0.9rem;
+      color: #6b7280;
+    }
+    .site-footer nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+    .site-footer a {
+      color: inherit;
+      text-decoration: none;
+    }
+    .site-footer a:hover {
+      text-decoration: underline;
+    }
+    .theme-dark .site-footer {
+      border-top-color: #374151;
+      color: #9ca3af;
+    }
   </style>
 </head>
 <body>
+  <button class="theme-toggle" id="themeToggle" type="button" aria-label="Toggle light/dark mode">
+    <span id="themeIcon">☾</span>
+    <span id="themeLabel">Dark</span>
+  </button>
+
   <h1>Funkedupshift – Websites</h1>
-  <p><a href="index.html">← Back to home</a></p>
+  <p>
+    <button type="button" class="secondary" onclick="window.location.href='index.html'">Home</button>
+  </p>
 
   <div id="loading" hidden></div>
   <div id="error" class="status err" hidden></div>
@@ -77,7 +246,11 @@
       <button type="submit" id="searchBtn">Search</button>
     </form>
     <p id="searchHint" class="search-hint">Enter a search term to find sites. Leave empty and search to browse all.</p>
-    <p id="adminLinks" hidden><a href="add-site.html">Add site</a> | <a href="categories.html">Categories</a> <button type="button" id="loadAllSitesBtn" class="secondary" title="Load all sites (debug)">Load all</button></p>
+    <p id="adminLinks" hidden>
+      <button type="button" class="secondary" onclick="window.location.href='add-site.html'">Add site</button>
+      <button type="button" class="secondary" onclick="window.location.href='categories.html'">Categories</button>
+      <button type="button" id="loadAllSitesBtn" class="secondary" title="Load all sites (debug)">Load all</button>
+    </p>
     <div class="sites-toolbar">
       <div>
         <label for="sortOrder">Sort:</label>
@@ -98,6 +271,47 @@
     <div id="sitesContainer"></div>
     <div id="sitesPagination" class="pagination" hidden></div>
   </div>
+
+  <footer class="site-footer">
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="websites.html">Browse Websites</a>
+      <a href="add-site.html">Add Site</a>
+      <a href="categories.html">Categories</a>
+      <a href="auth.html">Sign in / Sign up</a>
+    </nav>
+  </footer>
+
+  <script>
+    (function() {
+      var body = document.body;
+      var toggle = document.getElementById('themeToggle');
+      var icon = document.getElementById('themeIcon');
+      var label = document.getElementById('themeLabel');
+      if (!toggle) return;
+
+      var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      var dark = prefersDark;
+
+      function applyTheme() {
+        if (dark) {
+          body.classList.add('theme-dark');
+          icon.textContent = '☀';
+          label.textContent = 'Light';
+        } else {
+          body.classList.remove('theme-dark');
+          icon.textContent = '☾';
+          label.textContent = 'Dark';
+        }
+      }
+
+      applyTheme();
+      toggle.addEventListener('click', function() {
+        dark = !dark;
+        applyTheme();
+      });
+    })();
+  </script>
 
   <script src="https://cdn.jsdelivr.net/npm/amazon-cognito-identity-js@6.3.0/dist/amazon-cognito-identity.min.js"></script>
   <script src="config.js"></script>
