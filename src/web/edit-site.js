@@ -291,7 +291,7 @@
           .then(function () {
             saveResult.textContent = 'Saved.';
             saveResult.className = 'status ok';
-            window.location.href = 'index.html';
+            window.location.href = 'websites.html';
           });
       }
 
