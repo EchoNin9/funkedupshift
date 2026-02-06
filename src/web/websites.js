@@ -388,7 +388,7 @@
             alert('Sign in failed: ' + (err.message || err));
             return;
           }
-          // After sign in, go to websites page
+          // After sign in, go back to main page
           window.location.href = 'websites.html';
         });
       });

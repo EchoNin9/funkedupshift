@@ -260,7 +260,7 @@
             renderSelected();
             var previewEl = document.getElementById('logoPreview');
             if (previewEl) { previewEl.innerHTML = ''; previewEl.hidden = true; }
-            window.location.href = 'index.html';
+            window.location.href = 'websites.html';
           });
       }
 
