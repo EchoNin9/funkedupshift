@@ -193,6 +193,9 @@
     var dropdown = document.getElementById('groupByDropdown');
     var search = document.getElementById('groupBySearch');
     if (!dropdown || !search) return;
+    var fromCache = (window.getCategoriesFromCache && window.getCategoriesFromCache()) || [];
+    var fromSites = buildCategoriesFromSites(sitesData);
+    allCategoriesFromSites = mergeCategories(fromCache, fromSites);
     var q = (filter || search.value || '').toLowerCase().trim();
     var opts = allCategoriesFromSites.filter(function (c) {
       if (groupByIds.indexOf(c.id) !== -1) return false;
@@ -224,6 +227,7 @@
   }
 
   function initGroupBy() {
+    if (window._groupByListenersAttached) return;
     var fromSites = buildCategoriesFromSites(sitesData);
     var fromCache = (window.getCategoriesFromCache && window.getCategoriesFromCache()) || [];
     allCategoriesFromSites = mergeCategories(fromCache, fromSites);
@@ -233,6 +237,7 @@
     search.addEventListener('focus', function () { renderGroupByDropdown(); });
     search.addEventListener('input', function () { renderGroupByDropdown(); });
     search.addEventListener('keydown', function (e) { if (e.key === 'Escape') dropdown.hidden = true; });
+    window._groupByListenersAttached = true;
     dropdown.addEventListener('click', function (e) {
       var opt = e.target.closest('.group-by-option');
       if (opt && opt.dataset.id) {
@@ -461,14 +466,35 @@
       .then(hideLoading);
   }
 
-  loading.hidden = true;
-
-  var cachedCats = (window.getCategoriesFromCache && window.getCategoriesFromCache()) || [];
-  if (cachedCats.length > 0) {
-    allCategoriesFromSites = cachedCats;
-    initGroupBy();
-    window._groupByInitialized = true;
+  function refreshCategoriesFromCache() {
+    var cachedCats = (window.getCategoriesFromCache && window.getCategoriesFromCache()) || [];
+    if (cachedCats.length > 0) {
+      var fromSites = buildCategoriesFromSites(sitesData);
+      allCategoriesFromSites = mergeCategories(cachedCats, fromSites);
+      if (window._groupByInitialized) {
+        renderGroupBySelected();
+        renderGroupByDropdown();
+      } else {
+        initGroupBy();
+        window._groupByInitialized = true;
+      }
+    }
   }
+
+  loading.hidden = true;
+  refreshCategoriesFromCache();
+
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) {
+      refreshCategoriesFromCache();
+    }
+  });
+
+  window.addEventListener('storage', function (e) {
+    if (e.key === (window.CATEGORIES_CACHE_KEY || 'funkedupshift_categories')) {
+      refreshCategoriesFromCache();
+    }
+  });
 
   var searchForm = document.getElementById('searchForm');
   var searchInput = document.getElementById('searchInput');
