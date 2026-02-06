@@ -510,8 +510,6 @@
     }
     var fromSites = buildCategoriesFromSites(sitesData);
     allCategoriesFromSites = mergeCategories(cachedCats, fromSites);
-    var search = document.getElementById('groupBySearch');
-    var dropdown = document.getElementById('groupByDropdown');
     if (window._groupByInitialized) {
       renderGroupBySelected();
       renderGroupByDropdown();
