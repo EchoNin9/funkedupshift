@@ -160,9 +160,6 @@
       background: #ff6b35;
       box-shadow: 0 0 12px rgba(0,0,0,0.25);
     }
-    body.hide-native-cursor {
-      cursor: none;
-    }
     .theme-dark {
       background: #050608;
       color: #f5f5f5;
@@ -207,13 +204,10 @@
       .custom-cursor {
         display: none;
       }
-      body.hide-native-cursor {
-        cursor: auto;
-      }
     }
   </style>
 </head>
-<body class="hide-native-cursor">
+<body>
   <button class="theme-toggle" id="themeToggle" type="button" aria-label="Toggle light/dark mode">
     <span id="themeIcon">☾</span>
     <span id="themeLabel">Dark</span>
@@ -258,6 +252,15 @@
         }
       })();
 
+      function resetLogoLetters() {
+        var letters = heroLogo.querySelectorAll('.logo-letter');
+        letters.forEach(function(letter) {
+          letter.style.transform = 'translate(0,0) scale(1)';
+          letter.style.opacity = '1';
+          letter.style.filter = 'blur(0)';
+        });
+      }
+
       // Poof effect on logo hover (blast of letters)
       heroLogo.addEventListener('mouseenter', function() {
         var letters = heroLogo.querySelectorAll('.logo-letter');
@@ -270,13 +273,11 @@
           letter.style.opacity = '0';
           letter.style.filter = 'blur(3px)';
         });
-        setTimeout(function() {
-          letters.forEach(function(letter) {
-            letter.style.transform = 'translate(0,0) scale(1)';
-            letter.style.opacity = '1';
-            letter.style.filter = 'blur(0)';
-          });
-        }, 500);
+        setTimeout(resetLogoLetters, 500);
+      });
+
+      heroLogo.addEventListener('mouseleave', function() {
+        resetLogoLetters();
       });
 
       // Floating logo effect with mouse movement
@@ -343,15 +344,11 @@
         applyTheme();
       });
 
-      // For accessibility: restore default cursor if JS disabled or on small screens
-      if (window.innerWidth <= 768) {
-        body.classList.remove('hide-native-cursor');
-      }
       window.addEventListener('resize', function() {
         if (window.innerWidth <= 768) {
-          body.classList.remove('hide-native-cursor');
-        } else {
-          body.classList.add('hide-native-cursor');
+          if (cursor) cursor.style.display = 'none';
+        } else if (cursor) {
+          cursor.style.display = 'block';
         }
       });
     })();
