@@ -511,15 +511,13 @@
     if (cachedCats.length > 0) {
       var fromSites = buildCategoriesFromSites(sitesData);
       allCategoriesFromSites = mergeCategories(cachedCats, fromSites);
-      var search = document.getElementById('groupBySearch');
-      var dropdown = document.getElementById('groupByDropdown');
-      if (window._groupByInitialized) {
-        renderGroupBySelected();
-        renderGroupByDropdown();
-      } else {
-        initGroupBy();
-        window._groupByInitialized = true;
-      }
+    }
+    if (!window._groupByInitialized) {
+      initGroupBy();
+      window._groupByInitialized = true;
+    } else if (cachedCats.length > 0) {
+      renderGroupBySelected();
+      renderGroupByDropdown();
     }
   }
 
