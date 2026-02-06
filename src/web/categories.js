@@ -147,12 +147,18 @@
         console.log('Categories loaded:', allCategoriesData.length, allCategoriesData);
         if (typeof localStorage === 'undefined') {
           console.error('localStorage is not available in this browser');
-        } else if (window.saveCategoriesToCache) {
-          window.saveCategoriesToCache(allCategoriesData);
-          var saved = localStorage.getItem(window.CATEGORIES_CACHE_KEY || 'funkedupshift_categories');
-          console.log('Cache save result:', saved ? 'SUCCESS (' + JSON.parse(saved).length + ' items)' : 'FAILED (null)');
         } else {
-          console.error('saveCategoriesToCache function not available');
+          try {
+            var cacheKey = window.CATEGORIES_CACHE_KEY || 'funkedupshift_categories';
+            var list = (allCategoriesData || []).map(function (c) {
+              return { id: c.PK || c.id || '', name: c.name || c.PK || c.id || '' };
+            });
+            localStorage.setItem(cacheKey, JSON.stringify(list));
+            var saved = localStorage.getItem(cacheKey);
+            console.log('Cache save result:', saved ? 'SUCCESS (' + JSON.parse(saved).length + ' items)' : 'FAILED (null)');
+          } catch (e) {
+            console.error('Failed to save categories to cache:', e);
+          }
         }
         renderCategoryPage();
       })
