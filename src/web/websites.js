@@ -206,6 +206,16 @@
     }
     var fromSites = buildCategoriesFromSites(sitesData);
     allCategoriesFromSites = mergeCategories(fromCache, fromSites);
+    if (allCategoriesFromSites.length === 0 && base && window.auth) {
+      dropdown.innerHTML = '<div class="group-by-option" style="color:#666;cursor:default;">Loading…</div>';
+      dropdown.hidden = false;
+      fetchCategoriesFromApi().then(function (apiList) {
+        var fromSitesAgain = buildCategoriesFromSites(sitesData);
+        allCategoriesFromSites = mergeCategories(apiList, fromSitesAgain);
+        renderGroupByDropdown(filter);
+      });
+      return;
+    }
     var q = (filter || search.value || '').toLowerCase().trim();
     var opts = allCategoriesFromSites.filter(function (c) {
       if (groupByIds.indexOf(c.id) !== -1) return false;
@@ -228,6 +238,31 @@
   }
 
   var groupByDropdownJustSelected = false;
+  var categoriesFetchPromise = null;
+
+  function fetchCategoriesFromApi() {
+    if (categoriesFetchPromise) return categoriesFetchPromise;
+    if (!base || !window.auth) return Promise.resolve([]);
+    categoriesFetchPromise = fetchWithAuth(base + '/categories')
+      .then(function (r) { return r.ok ? r.json() : r.text().then(function (t) { throw new Error(t || 'Failed'); }); })
+      .then(function (data) {
+        var list = (data.categories || []).map(function (c) {
+          return { id: c.PK || c.id || '', name: c.name || c.PK || c.id || '' };
+        }).filter(function (c) { return c.id; });
+        try {
+          if (window.saveCategoriesToCache && list.length) {
+            window.saveCategoriesToCache((data.categories || []).map(function (c) { return { PK: c.PK, id: c.id, name: c.name }; }));
+          } else if (typeof localStorage !== 'undefined' && list.length) {
+            var cacheKey = window.CATEGORIES_CACHE_KEY || 'funkedupshift_categories';
+            localStorage.setItem(cacheKey, JSON.stringify(list));
+          }
+        } catch (e) { }
+        return list;
+      })
+      .catch(function () { return []; })
+      .then(function (list) { categoriesFetchPromise = null; return list; });
+    return categoriesFetchPromise;
+  }
 
   function mergeCategories(cacheList, fromSitesList) {
     var byId = {};
