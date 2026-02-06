@@ -74,3 +74,24 @@ variable "mediaBucketName" {
   type        = string
   default     = "fus-media"
 }
+
+# ------------------------------------------------------------------------------
+# Custom domains (Route 53 + CloudFront)
+# ------------------------------------------------------------------------------
+variable "domainCom" {
+  description = "Primary domain (e.g. funkedupshift.com)."
+  type        = string
+  default     = "funkedupshift.com"
+}
+
+variable "domainCa" {
+  description = "Secondary domain (e.g. funkedupshift.ca)."
+  type        = string
+  default     = "funkedupshift.ca"
+}
+
+variable "stagingSubdomain" {
+  description = "Subdomain for staging (e.g. stage)."
+  type        = string
+  default     = "stage"
+}
