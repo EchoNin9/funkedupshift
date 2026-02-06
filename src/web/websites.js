@@ -206,22 +206,8 @@
     }
     var fromSites = buildCategoriesFromSites(sitesData);
     allCategoriesFromSites = mergeCategories(fromCache, fromSites);
-    if (allCategoriesFromSites.length === 0 && base && window.auth && !categoriesApiFetchAttempted) {
-      dropdown.innerHTML = '<div class="group-by-option" style="color:#666;cursor:default;">Loading…</div>';
-      dropdown.hidden = false;
-      fetchCategoriesFromApi().then(function (apiList) {
-        var fromSitesAgain = buildCategoriesFromSites(sitesData);
-        allCategoriesFromSites = mergeCategories(apiList, fromSitesAgain);
-        if (allCategoriesFromSites.length > 0) {
-          renderGroupByDropdown(filter);
-        } else {
-          dropdown.innerHTML = '<div class="group-by-option" style="color:#666;cursor:default;">No matches</div>';
-        }
-      });
-      return;
-    }
-    if (allCategoriesFromSites.length === 0 && categoriesApiFetchAttempted) {
-      dropdown.innerHTML = '<div class="group-by-option" style="color:#666;cursor:default;">No matches</div>';
+    if (allCategoriesFromSites.length === 0) {
+      dropdown.innerHTML = '<div class="group-by-option" style="color:#666;cursor:default;">No matches. Search sites first to load categories.</div>';
       dropdown.hidden = false;
       return;
     }
@@ -247,34 +233,6 @@
   }
 
   var groupByDropdownJustSelected = false;
-  var categoriesFetchPromise = null;
-  var categoriesApiFetchAttempted = false;
-
-  function fetchCategoriesFromApi() {
-    if (categoriesFetchPromise) return categoriesFetchPromise;
-    if (categoriesApiFetchAttempted) return Promise.resolve([]);
-    if (!base || !window.auth) return Promise.resolve([]);
-    categoriesApiFetchAttempted = true;
-    categoriesFetchPromise = fetchWithAuth(base + '/categories')
-      .then(function (r) { return r.ok ? r.json() : r.text().then(function (t) { throw new Error(t || 'Failed'); }); })
-      .then(function (data) {
-        var list = (data.categories || []).map(function (c) {
-          return { id: c.PK || c.id || '', name: c.name || c.PK || c.id || '' };
-        }).filter(function (c) { return c.id; });
-        try {
-          if (window.saveCategoriesToCache && list.length) {
-            window.saveCategoriesToCache((data.categories || []).map(function (c) { return { PK: c.PK, id: c.id, name: c.name }; }));
-          } else if (typeof localStorage !== 'undefined' && list.length) {
-            var cacheKey = window.CATEGORIES_CACHE_KEY || 'funkedupshift_categories';
-            localStorage.setItem(cacheKey, JSON.stringify(list));
-          }
-        } catch (e) { }
-        return list;
-      })
-      .catch(function () { return []; })
-      .then(function (list) { categoriesFetchPromise = null; return list; });
-    return categoriesFetchPromise;
-  }
 
   function mergeCategories(cacheList, fromSitesList) {
     var byId = {};
@@ -520,6 +478,16 @@
         } catch (e) {
         }
         allCategoriesFromSites = mergeCategories(fromCache, buildCategoriesFromSites(sitesData));
+        if (allCategoriesFromSites.length > 0) {
+          try {
+            if (window.saveCategoriesToCache) {
+              window.saveCategoriesToCache(allCategoriesFromSites.map(function (c) { return { id: c.id, name: c.name }; }));
+            } else if (typeof localStorage !== 'undefined') {
+              var cacheKey = window.CATEGORIES_CACHE_KEY || 'funkedupshift_categories';
+              localStorage.setItem(cacheKey, JSON.stringify(allCategoriesFromSites));
+            }
+          } catch (e) { }
+        }
         if (!window._groupByInitialized) {
           initGroupBy();
           window._groupByInitialized = true;
