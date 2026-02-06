@@ -19,6 +19,8 @@
   var groupByIds = [];
   var PAGE_SIZE = 10;
   var currentPage = 1;
+  var searchTerm = '';
+  var hasSearched = false;
 
   function showError(msg) {
     loading.hidden = true;
@@ -95,13 +97,7 @@
       });
       flat = flat.concat(inGroup);
     });
-    var inAny = {};
-    catIds.forEach(function (cid) { inAny[cid] = true; });
-    var other = sorted.filter(function (s) {
-      var ids = (s.categoryIds || []).concat((s.categories || []).map(function (c) { return c.id; }));
-      return !ids.some(function (id) { return inAny[id]; });
-    });
-    return flat.concat(other);
+    return flat;
   }
 
   function renderSites(sites) {
@@ -115,13 +111,18 @@
     var start = (currentPage - 1) * PAGE_SIZE;
     var pageList = flatList.slice(start, start + PAGE_SIZE);
 
+    var pagEl = document.getElementById('sitesPagination');
+    if (!hasSearched) {
+      sitesContainer.innerHTML = '';
+      if (pagEl) pagEl.hidden = true;
+      return;
+    }
     if (flatList.length === 0) {
-      sitesContainer.innerHTML = '<ul class="sites"><li>No sites yet.</li></ul>';
-      document.getElementById('sitesPagination').hidden = true;
+      sitesContainer.innerHTML = '<ul class="sites"><li>No sites found.</li></ul>';
+      if (pagEl) pagEl.hidden = true;
     } else {
       sitesContainer.innerHTML = '<ul class="sites">' + pageList.map(siteLi).join('') + '</ul>';
-      var pagEl = document.getElementById('sitesPagination');
-      pagEl.hidden = false;
+      if (pagEl) pagEl.hidden = false;
       var pageNums = [];
       for (var p = 1; p <= totalPages; p++) pageNums.push(p);
       if (totalPages > 7) {
@@ -213,6 +214,8 @@
     }).join('');
   }
 
+  var groupByDropdownJustSelected = false;
+
   function initGroupBy() {
     allCategoriesFromSites = buildCategoriesFromSites(sitesData);
     var search = document.getElementById('groupBySearch');
@@ -228,10 +231,13 @@
           groupByIds.push(opt.dataset.id);
           currentPage = 1;
           renderGroupBySelected();
+          groupByDropdownJustSelected = true;
           renderGroupByDropdown();
-          renderSites(sitesData);
+          loadSites(false);
+          setTimeout(function () { groupByDropdownJustSelected = false; }, 0);
         }
         search.value = '';
+        search.focus();
       }
     });
     document.getElementById('groupBySelected').addEventListener('click', function (e) {
@@ -241,10 +247,11 @@
         currentPage = 1;
         renderGroupBySelected();
         renderGroupByDropdown();
-        renderSites(sitesData);
+        loadSites(false);
       }
     });
     document.addEventListener('click', function (e) {
+      if (groupByDropdownJustSelected) return;
       if (search && dropdown && !search.contains(e.target) && !dropdown.contains(e.target)) dropdown.hidden = true;
     });
     renderGroupBySelected();
@@ -390,28 +397,78 @@
       setHealth(false, 'API health check failed: ' + e.message);
     });
 
-  fetch(base + '/sites')
-    .then(function (r) {
-      if (!r.ok) {
-        return r.text().then(function (text) {
-          throw new Error('HTTP ' + r.status + ': ' + text);
-        });
-      }
-      return r.json();
-    })
-    .then(function (data) {
-      var list = data.sites || [];
-      renderSites(list);
-      initGroupBy();
-      var sortOrder = document.getElementById('sortOrder');
-      if (sortOrder) {
-        sortOrder.addEventListener('change', function () { currentPage = 1; renderSites(sitesData); });
-      }
-    })
-    .catch(function (e) {
-      console.error('GET /sites error:', e);
-      showError('Failed to load sites: ' + e.message);
-      renderSites([]);
-    })
-    .then(hideLoading);
+  function buildSitesUrl(loadAll) {
+    var params = [];
+    if (searchTerm) params.push('q=' + encodeURIComponent(searchTerm));
+    if (loadAll) {
+      if (groupByIds.length > 0) params.push('categoryIds=' + encodeURIComponent(groupByIds.join(',')));
+      var qs = params.length ? '?' + params.join('&') : '';
+      return base + '/sites/all' + qs;
+    }
+    params.push('limit=100');
+    if (groupByIds.length > 0) params.push('categoryIds=' + encodeURIComponent(groupByIds.join(',')));
+    return base + '/sites?' + params.join('&');
+  }
+
+  function loadSites(loadAll) {
+    var url = buildSitesUrl(loadAll);
+    var fetcher = loadAll && window.auth ? fetchWithAuth(url) : fetch(url);
+    loading.hidden = false;
+    fetcher
+      .then(function (r) {
+        if (!r.ok) {
+          return r.text().then(function (text) {
+            throw new Error('HTTP ' + r.status + ': ' + text);
+          });
+        }
+        return r.json();
+      })
+      .then(function (data) {
+        var list = data.sites || [];
+        hasSearched = true;
+        renderSites(list);
+        allCategoriesFromSites = buildCategoriesFromSites(sitesData);
+        if (!window._groupByInitialized) {
+          initGroupBy();
+          window._groupByInitialized = true;
+        } else {
+          renderGroupBySelected();
+          renderGroupByDropdown();
+        }
+        var hintEl = document.getElementById('searchHint');
+        if (hintEl) hintEl.hidden = true;
+        var sortOrder = document.getElementById('sortOrder');
+        if (sortOrder && !sortOrder.hasAttribute('data-bound')) {
+          sortOrder.setAttribute('data-bound', '1');
+          sortOrder.addEventListener('change', function () { currentPage = 1; renderSites(sitesData); });
+        }
+      })
+      .catch(function (e) {
+        console.error('GET /sites error:', e);
+        showError('Failed to load sites: ' + e.message);
+        renderSites([]);
+      })
+      .then(hideLoading);
+  }
+
+  loading.hidden = true;
+
+  var searchForm = document.getElementById('searchForm');
+  var searchInput = document.getElementById('searchInput');
+  if (searchForm && searchInput) {
+    searchForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      searchTerm = (searchInput.value || '').trim();
+      loadSites(false);
+    });
+  }
+
+  var loadAllBtn = document.getElementById('loadAllSitesBtn');
+  if (loadAllBtn) {
+    loadAllBtn.addEventListener('click', function () {
+      searchTerm = (searchInput && searchInput.value || '').trim();
+      hasSearched = true;
+      loadSites(true);
+    });
+  }
 })();

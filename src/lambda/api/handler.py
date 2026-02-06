@@ -85,6 +85,8 @@ def handler(event, context):
             return jsonResponse({"ok": True})
         if method == "GET" and path == "/sites":
             return listSites(event)
+        if method == "GET" and path == "/sites/all":
+            return listSites(event, forceAll=True)
         if method == "POST" and path == "/sites":
             return createSite(event)
         if method == "POST" and path == "/sites/logo-upload":
@@ -163,8 +165,8 @@ def _addLogoUrls(sites, region=None):
         logger.warning("_addLogoUrls failed: %s", e)
 
 
-def listSites(event):
-    """Query DynamoDB byEntity (entityType=SITE) and return items. Optional ?id= for single site."""
+def listSites(event, forceAll=False):
+    """Query DynamoDB byEntity (entityType=SITE). Optional ?id= single site. Query constraints: limit (default 100), categoryIds (comma-separated). forceAll=True (GET /sites/all, JWT) = admin only, no limit."""
     logger.info("listSites called, TABLE_NAME=%s", TABLE_NAME)
     if not TABLE_NAME:
         logger.warning("TABLE_NAME not set")
@@ -203,13 +205,41 @@ def listSites(event):
             _addLogoUrls([site], region=region)
             return jsonResponse({"site": site})
 
-        result = dynamodb.query(
-            TableName=TABLE_NAME,
-            IndexName="byEntity",
-            KeyConditionExpression="entityType = :et",
-            ExpressionAttributeValues={":et": {"S": "SITE"}},
-        )
-        items = result.get("Items", [])
+        # Limit: forceAll (GET /sites/all with JWT) = admin only, no limit; else limit 100
+        if forceAll:
+            user = getUserInfo(event)
+            if not user.get("userId"):
+                return jsonResponse({"error": "Unauthorized"}, 401)
+            if "admin" not in user.get("groups", []):
+                return jsonResponse({"error": "Forbidden: admin required for full list"}, 403)
+            use_no_limit = True
+        else:
+            use_no_limit = False
+        try:
+            limit_param = int((qs.get("limit") or "").strip() or 100)
+        except ValueError:
+            limit_param = 100
+        limit_param = max(1, min(limit_param, 10000))
+        category_ids_param = (qs.get("categoryIds") or "").strip()
+        filter_category_ids = [x.strip() for x in category_ids_param.split(",") if x.strip()]
+
+        page_limit = None if use_no_limit else limit_param
+        items = []
+        request_kw = {
+            "TableName": TABLE_NAME,
+            "IndexName": "byEntity",
+            "KeyConditionExpression": "entityType = :et",
+            "ExpressionAttributeValues": {":et": {"S": "SITE"}},
+        }
+        if page_limit is not None:
+            request_kw["Limit"] = page_limit
+        result = dynamodb.query(**request_kw)
+        items.extend(result.get("Items", []))
+        while use_no_limit and result.get("LastEvaluatedKey"):
+            request_kw["ExclusiveStartKey"] = result["LastEvaluatedKey"]
+            result = dynamodb.query(**request_kw)
+            items.extend(result.get("Items", []))
+
         sites = []
         for item in items:
             site = {}
@@ -235,6 +265,17 @@ def listSites(event):
             sites.append(site)
 
         _resolveCategoriesForSites(dynamodb, sites)
+        if filter_category_ids:
+            sites = [s for s in sites if any(cid in (s.get("categoryIds") or []) for cid in filter_category_ids)]
+        search_q = (qs.get("q") or qs.get("search") or "").strip()
+        if search_q:
+            q_lower = search_q.lower()
+            sites = [
+                s for s in sites
+                if q_lower in (s.get("title") or "").lower()
+                or q_lower in (s.get("url") or "").lower()
+                or q_lower in (s.get("description") or "").lower()
+            ]
         _addLogoUrls(sites, region=region)
         sites.sort(key=lambda s: (
             -(s.get("averageRating") or 0),
