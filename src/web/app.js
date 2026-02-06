@@ -95,13 +95,7 @@
       });
       flat = flat.concat(inGroup);
     });
-    var inAny = {};
-    catIds.forEach(function (cid) { inAny[cid] = true; });
-    var other = sorted.filter(function (s) {
-      var ids = (s.categoryIds || []).concat((s.categories || []).map(function (c) { return c.id; }));
-      return !ids.some(function (id) { return inAny[id]; });
-    });
-    return flat.concat(other);
+    return flat;
   }
 
   function renderSites(sites) {
@@ -229,7 +223,7 @@
           currentPage = 1;
           renderGroupBySelected();
           renderGroupByDropdown();
-          renderSites(sitesData);
+          loadSites(false);
         }
         search.value = '';
       }
@@ -241,7 +235,7 @@
         currentPage = 1;
         renderGroupBySelected();
         renderGroupByDropdown();
-        renderSites(sitesData);
+        loadSites(false);
       }
     });
     document.addEventListener('click', function (e) {
@@ -390,28 +384,55 @@
       setHealth(false, 'API health check failed: ' + e.message);
     });
 
-  fetch(base + '/sites')
-    .then(function (r) {
-      if (!r.ok) {
-        return r.text().then(function (text) {
-          throw new Error('HTTP ' + r.status + ': ' + text);
-        });
-      }
-      return r.json();
-    })
-    .then(function (data) {
-      var list = data.sites || [];
-      renderSites(list);
-      initGroupBy();
-      var sortOrder = document.getElementById('sortOrder');
-      if (sortOrder) {
-        sortOrder.addEventListener('change', function () { currentPage = 1; renderSites(sitesData); });
-      }
-    })
-    .catch(function (e) {
-      console.error('GET /sites error:', e);
-      showError('Failed to load sites: ' + e.message);
-      renderSites([]);
-    })
-    .then(hideLoading);
+  function buildSitesUrl(loadAll) {
+    if (loadAll) {
+      var q = groupByIds.length > 0 ? '?categoryIds=' + encodeURIComponent(groupByIds.join(',')) : '';
+      return base + '/sites/all' + q;
+    }
+    var q = 'limit=100';
+    if (groupByIds.length > 0) {
+      q += '&categoryIds=' + encodeURIComponent(groupByIds.join(','));
+    }
+    return base + '/sites?' + q;
+  }
+
+  function loadSites(loadAll) {
+    var url = buildSitesUrl(loadAll);
+    var fetcher = loadAll && window.auth ? fetchWithAuth(url) : fetch(url);
+    loading.hidden = false;
+    fetcher
+      .then(function (r) {
+        if (!r.ok) {
+          return r.text().then(function (text) {
+            throw new Error('HTTP ' + r.status + ': ' + text);
+          });
+        }
+        return r.json();
+      })
+      .then(function (data) {
+        var list = data.sites || [];
+        renderSites(list);
+        initGroupBy();
+        var sortOrder = document.getElementById('sortOrder');
+        if (sortOrder && !sortOrder.hasAttribute('data-bound')) {
+          sortOrder.setAttribute('data-bound', '1');
+          sortOrder.addEventListener('change', function () { currentPage = 1; renderSites(sitesData); });
+        }
+      })
+      .catch(function (e) {
+        console.error('GET /sites error:', e);
+        showError('Failed to load sites: ' + e.message);
+        renderSites([]);
+      })
+      .then(hideLoading);
+  }
+
+  loadSites(false);
+
+  var loadAllBtn = document.getElementById('loadAllSitesBtn');
+  if (loadAllBtn) {
+    loadAllBtn.addEventListener('click', function () {
+      loadSites(true);
+    });
+  }
 })();
