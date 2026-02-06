@@ -143,7 +143,23 @@
       .then(function (r) { return r.ok ? r.json() : r.text().then(function (t) { throw new Error(t || 'Failed'); }); })
       .then(function (data) {
         allCategoriesData = data.categories || [];
+        allCategoriesData.sort(function (a, b) {
+          var nameA = (a.name || a.PK || '').toLowerCase();
+          var nameB = (b.name || b.PK || '').toLowerCase();
+          return nameA.localeCompare(nameB);
+        });
         currentCategoryPage = 1;
+        if (typeof localStorage !== 'undefined') {
+          try {
+            var cacheKey = window.CATEGORIES_CACHE_KEY || 'funkedupshift_categories';
+            var list = (allCategoriesData || []).map(function (c) {
+              return { id: c.PK || c.id || '', name: c.name || c.PK || c.id || '' };
+            });
+            localStorage.setItem(cacheKey, JSON.stringify(list));
+          } catch (e) {
+            console.error('Failed to save categories to cache:', e);
+          }
+        }
         renderCategoryPage();
       })
       .catch(function (e) {
