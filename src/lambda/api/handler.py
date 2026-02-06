@@ -267,6 +267,15 @@ def listSites(event, forceAll=False):
         _resolveCategoriesForSites(dynamodb, sites)
         if filter_category_ids:
             sites = [s for s in sites if any(cid in (s.get("categoryIds") or []) for cid in filter_category_ids)]
+        search_q = (qs.get("q") or qs.get("search") or "").strip()
+        if search_q:
+            q_lower = search_q.lower()
+            sites = [
+                s for s in sites
+                if q_lower in (s.get("title") or "").lower()
+                or q_lower in (s.get("url") or "").lower()
+                or q_lower in (s.get("description") or "").lower()
+            ]
         _addLogoUrls(sites, region=region)
         sites.sort(key=lambda s: (
             -(s.get("averageRating") or 0),

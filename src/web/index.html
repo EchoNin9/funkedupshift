@@ -58,17 +58,25 @@
     .site-row { display: flex; align-items: flex-start; gap: 0.75rem; }
     .site-row .site-logo { width: 48px; height: 48px; object-fit: cover; border-radius: 0.25rem; flex-shrink: 0; }
     .site-info { flex: 1; min-width: 0; }
+    .search-form { margin: 1.5rem 0; display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+    .search-form input[type="text"] { flex: 1; min-width: 14rem; padding: 0.6rem 0.75rem; font-size: 1rem; }
+    .search-form button { padding: 0.6rem 1.25rem; }
+    .search-hint { color: #666; font-size: 0.9rem; margin: 0 0 1rem; }
   </style>
 </head>
 <body>
   <h1>Funkedupshift</h1>
   <p><a href="auth.html">Sign in / Sign up</a></p>
 
-  <div id="loading">Loading…</div>
+  <div id="loading" hidden></div>
   <div id="error" class="status err" hidden></div>
   <div id="health" class="status" hidden></div>
-  <div id="sitesWrap" hidden>
-    <h2>Sites</h2>
+  <div id="sitesWrap">
+    <form id="searchForm" class="search-form">
+      <input type="text" id="searchInput" placeholder="Search sites (title, URL, description)..." autocomplete="off" autofocus>
+      <button type="submit" id="searchBtn">Search</button>
+    </form>
+    <p id="searchHint" class="search-hint">Enter a search term to find sites. Leave empty and search to browse all.</p>
     <p id="adminLinks" hidden><a href="add-site.html">Add site</a> | <a href="categories.html">Categories</a> <button type="button" id="loadAllSitesBtn" class="secondary" title="Load all sites (debug)">Load all</button></p>
     <div class="sites-toolbar">
       <div>

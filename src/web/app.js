@@ -19,6 +19,8 @@
   var groupByIds = [];
   var PAGE_SIZE = 10;
   var currentPage = 1;
+  var searchTerm = '';
+  var hasSearched = false;
 
   function showError(msg) {
     loading.hidden = true;
@@ -109,13 +111,18 @@
     var start = (currentPage - 1) * PAGE_SIZE;
     var pageList = flatList.slice(start, start + PAGE_SIZE);
 
+    var pagEl = document.getElementById('sitesPagination');
+    if (!hasSearched) {
+      sitesContainer.innerHTML = '';
+      if (pagEl) pagEl.hidden = true;
+      return;
+    }
     if (flatList.length === 0) {
-      sitesContainer.innerHTML = '<ul class="sites"><li>No sites yet.</li></ul>';
-      document.getElementById('sitesPagination').hidden = true;
+      sitesContainer.innerHTML = '<ul class="sites"><li>No sites found.</li></ul>';
+      if (pagEl) pagEl.hidden = true;
     } else {
       sitesContainer.innerHTML = '<ul class="sites">' + pageList.map(siteLi).join('') + '</ul>';
-      var pagEl = document.getElementById('sitesPagination');
-      pagEl.hidden = false;
+      if (pagEl) pagEl.hidden = false;
       var pageNums = [];
       for (var p = 1; p <= totalPages; p++) pageNums.push(p);
       if (totalPages > 7) {
@@ -391,15 +398,16 @@
     });
 
   function buildSitesUrl(loadAll) {
+    var params = [];
+    if (searchTerm) params.push('q=' + encodeURIComponent(searchTerm));
     if (loadAll) {
-      var q = groupByIds.length > 0 ? '?categoryIds=' + encodeURIComponent(groupByIds.join(',')) : '';
-      return base + '/sites/all' + q;
+      if (groupByIds.length > 0) params.push('categoryIds=' + encodeURIComponent(groupByIds.join(',')));
+      var qs = params.length ? '?' + params.join('&') : '';
+      return base + '/sites/all' + qs;
     }
-    var q = 'limit=100';
-    if (groupByIds.length > 0) {
-      q += '&categoryIds=' + encodeURIComponent(groupByIds.join(','));
-    }
-    return base + '/sites?' + q;
+    params.push('limit=100');
+    if (groupByIds.length > 0) params.push('categoryIds=' + encodeURIComponent(groupByIds.join(',')));
+    return base + '/sites?' + params.join('&');
   }
 
   function loadSites(loadAll) {
@@ -417,8 +425,18 @@
       })
       .then(function (data) {
         var list = data.sites || [];
+        hasSearched = true;
         renderSites(list);
-        initGroupBy();
+        allCategoriesFromSites = buildCategoriesFromSites(sitesData);
+        if (!window._groupByInitialized) {
+          initGroupBy();
+          window._groupByInitialized = true;
+        } else {
+          renderGroupBySelected();
+          renderGroupByDropdown();
+        }
+        var hintEl = document.getElementById('searchHint');
+        if (hintEl) hintEl.hidden = true;
         var sortOrder = document.getElementById('sortOrder');
         if (sortOrder && !sortOrder.hasAttribute('data-bound')) {
           sortOrder.setAttribute('data-bound', '1');
@@ -433,11 +451,23 @@
       .then(hideLoading);
   }
 
-  loadSites(false);
+  loading.hidden = true;
+
+  var searchForm = document.getElementById('searchForm');
+  var searchInput = document.getElementById('searchInput');
+  if (searchForm && searchInput) {
+    searchForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      searchTerm = (searchInput.value || '').trim();
+      loadSites(false);
+    });
+  }
 
   var loadAllBtn = document.getElementById('loadAllSitesBtn');
   if (loadAllBtn) {
     loadAllBtn.addEventListener('click', function () {
+      searchTerm = (searchInput && searchInput.value || '').trim();
+      hasSearched = true;
       loadSites(true);
     });
   }
