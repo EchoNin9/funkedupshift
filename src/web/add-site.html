@@ -23,10 +23,43 @@
     .status.err { background: #fce8e6; }
     form { margin: 0.5rem 0; }
     input, textarea, button { padding: 0.5rem; margin: 0.25rem 0; width: 100%; max-width: 30rem; display: block; }
-    button { background: #0066cc; color: white; border: none; border-radius: 0.25rem; cursor: pointer; width: auto; }
-    button:hover { background: #0052a3; }
-    button.secondary { background: #666; }
-    button.secondary:hover { background: #555; }
+    button {
+      background: linear-gradient(135deg, #ff6b35 0%, #ff8c5a 100%);
+      color: white;
+      border: none;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      width: auto;
+      font-size: 1rem;
+      font-weight: 500;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+      display: inline-block;
+    }
+    button::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+      transition: left 0.5s ease;
+    }
+    button:hover::before {
+      left: 100%;
+    }
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 16px rgba(255, 107, 53, 0.3);
+    }
+    button.secondary {
+      background: linear-gradient(135deg, #004e89 0%, #0066cc 100%);
+    }
+    button.secondary:hover {
+      box-shadow: 0 8px 16px rgba(0, 78, 137, 0.3);
+    }
     .logo-field { margin: 0.5rem 0; }
     .logo-field label { display: block; margin-bottom: 0.25rem; }
     .logo-preview { margin-top: 0.5rem; }
@@ -69,6 +102,16 @@
     .theme-dark a { color: #93c5fd; }
     .theme-dark .status.ok { background: #14532d; }
     .theme-dark .status.err { background: #7f1d1d; }
+    .theme-dark button {
+      background: linear-gradient(135deg, #ff6b35 0%, #ff9f1c 100%);
+    }
+    .theme-dark button.secondary {
+      background: linear-gradient(135deg, #06d6a0 0%, #118ab2 100%);
+    }
+    .theme-dark .theme-toggle {
+      background: rgba(255, 255, 255, 0.9);
+      color: #050608;
+    }
     .site-footer {
       margin-top: 3rem;
       padding-top: 1.5rem;
@@ -101,7 +144,9 @@
   </button>
 
   <h1>Funkedupshift – Add Site</h1>
-  <p><a href="websites.html">← Back to sites</a></p>
+  <p>
+    <button type="button" class="secondary" onclick="window.location.href='websites.html'">Back to sites</button>
+  </p>
 
   <div id="message" class="status err" hidden></div>
   <div id="formWrap" hidden>
