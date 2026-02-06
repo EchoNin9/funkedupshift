@@ -144,6 +144,7 @@
       .then(function (data) {
         allCategoriesData = data.categories || [];
         currentCategoryPage = 1;
+        if (window.saveCategoriesToCache) window.saveCategoriesToCache(allCategoriesData);
         renderCategoryPage();
       })
       .catch(function (e) {

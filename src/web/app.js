@@ -216,8 +216,17 @@
 
   var groupByDropdownJustSelected = false;
 
+  function mergeCategories(cacheList, fromSitesList) {
+    var byId = {};
+    (cacheList || []).forEach(function (c) { if (c.id) byId[c.id] = c; });
+    (fromSitesList || []).forEach(function (c) { if (c.id) byId[c.id] = c; });
+    return Object.keys(byId).map(function (id) { return byId[id]; }).sort(function (a, b) { return (a.name || '').toLowerCase().localeCompare((b.name || '').toLowerCase()); });
+  }
+
   function initGroupBy() {
-    allCategoriesFromSites = buildCategoriesFromSites(sitesData);
+    var fromSites = buildCategoriesFromSites(sitesData);
+    var fromCache = (window.getCategoriesFromCache && window.getCategoriesFromCache()) || [];
+    allCategoriesFromSites = mergeCategories(fromCache, fromSites);
     var search = document.getElementById('groupBySearch');
     var dropdown = document.getElementById('groupByDropdown');
     if (!search || !dropdown) return;
@@ -427,7 +436,8 @@
         var list = data.sites || [];
         hasSearched = true;
         renderSites(list);
-        allCategoriesFromSites = buildCategoriesFromSites(sitesData);
+        var fromCache = (window.getCategoriesFromCache && window.getCategoriesFromCache()) || [];
+        allCategoriesFromSites = mergeCategories(fromCache, buildCategoriesFromSites(sitesData));
         if (!window._groupByInitialized) {
           initGroupBy();
           window._groupByInitialized = true;
@@ -452,6 +462,13 @@
   }
 
   loading.hidden = true;
+
+  var cachedCats = (window.getCategoriesFromCache && window.getCategoriesFromCache()) || [];
+  if (cachedCats.length > 0) {
+    allCategoriesFromSites = cachedCats;
+    initGroupBy();
+    window._groupByInitialized = true;
+  }
 
   var searchForm = document.getElementById('searchForm');
   var searchInput = document.getElementById('searchInput');
