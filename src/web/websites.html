@@ -97,8 +97,27 @@
       color: #f9fafb;
     }
     .group-by-multiselect { position: relative; max-width: 24rem; min-width: 12rem; }
-    .group-by-multiselect input[type="text"] { width: 100%; padding: 0.35rem 0.5rem; font-size: 0.9rem; }
-    .group-by-dropdown { position: absolute; top: 100%; left: 0; right: 0; max-height: 10rem; overflow-y: auto; border: 1px solid #ccc; background: #fff; z-index: 5; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+    .group-by-multiselect input[type="text"] {
+      width: 100%;
+      padding: 0.35rem 0.5rem;
+      font-size: 0.9rem;
+      border-radius: 0.4rem;
+      border: 1px solid rgba(15, 23, 42, 0.35);
+      background: rgba(15, 23, 42, 0.06);
+    }
+    .group-by-dropdown {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      max-height: 10rem;
+      overflow-y: auto;
+      border: 1px solid rgba(15, 23, 42, 0.35);
+      background: rgba(15, 23, 42, 0.06);
+      z-index: 5;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      backdrop-filter: blur(4px);
+    }
     .group-by-dropdown[hidden] { display: none !important; }
     .group-by-option { padding: 0.35rem 0.5rem; cursor: pointer; font-size: 0.9rem; }
     .group-by-option:hover { background: #f0f0f0; }
