@@ -508,18 +508,14 @@
     } catch (e) {
       console.error('Failed to read categories cache:', e);
     }
-    if (cachedCats.length > 0) {
-      var fromSites = buildCategoriesFromSites(sitesData);
-      allCategoriesFromSites = mergeCategories(cachedCats, fromSites);
-      var search = document.getElementById('groupBySearch');
-      var dropdown = document.getElementById('groupByDropdown');
-      if (window._groupByInitialized) {
-        renderGroupBySelected();
-        renderGroupByDropdown();
-      } else {
-        initGroupBy();
-        window._groupByInitialized = true;
-      }
+    var fromSites = buildCategoriesFromSites(sitesData);
+    allCategoriesFromSites = mergeCategories(cachedCats, fromSites);
+    if (window._groupByInitialized) {
+      renderGroupBySelected();
+      renderGroupByDropdown();
+    } else {
+      initGroupBy();
+      window._groupByInitialized = true;
     }
   }
 
