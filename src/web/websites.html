@@ -20,7 +20,7 @@
     .status { margin: 1rem 0; padding: 0.75rem; background: #f0f0f0; border-radius: 0.25rem; }
     .status.ok {
       background: #e6f4ea;
-      color: #b91c1c;
+      color: #ff6b35;
       font-weight: 600;
     }
     .status.err { background: #fce8e6; }
@@ -82,9 +82,20 @@
       border-radius: 0.75rem;
       border: 1px solid #0f172a;
       box-shadow: 0 8px 20px rgba(15, 23, 42, 0.15);
+      color: #f9fafb;
     }
-    .sites-toolbar label { margin-right: 0.5rem; }
-    .sites-toolbar select { padding: 0.35rem 0.5rem; }
+    .sites-toolbar label {
+      margin-right: 0.5rem;
+      font-weight: 600;
+    }
+    .sites-toolbar select,
+    .sites-toolbar input[type="text"] {
+      padding: 0.35rem 0.5rem;
+      border-radius: 0.4rem;
+      border: 1px solid rgba(15, 23, 42, 0.35);
+      background: rgba(15, 23, 42, 0.15);
+      color: #f9fafb;
+    }
     .group-by-multiselect { position: relative; max-width: 24rem; min-width: 12rem; }
     .group-by-multiselect input[type="text"] { width: 100%; padding: 0.35rem 0.5rem; font-size: 0.9rem; }
     .group-by-dropdown { position: absolute; top: 100%; left: 0; right: 0; max-height: 10rem; overflow-y: auto; border: 1px solid #ccc; background: #fff; z-index: 5; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
@@ -136,6 +147,7 @@
     }
     .theme-dark .status { background: #1e293b; color: #e5e7eb; }
     .theme-dark .status.err { background: #7f1d1d; }
+    .theme-dark .status.ok { background: #022c22; color: #ff6b35; }
     .theme-dark .sites-toolbar {
       background: linear-gradient(135deg, #06d6a0 0%, #118ab2 100%);
       border-color: #0f172a;
