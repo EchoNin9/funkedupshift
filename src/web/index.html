@@ -53,10 +53,6 @@
       transform-origin: left;
       transition: transform 0.15s ease-out;
     }
-    .logo-letter {
-      display: inline-block;
-      transition: transform 0.6s ease, opacity 0.6s ease, filter 0.6s ease;
-    }
     .hero-subtitle {
       position: absolute;
       bottom: 2rem;
@@ -239,46 +235,6 @@
       var themeToggle = document.getElementById('themeToggle');
       var themeIcon = document.getElementById('themeIcon');
       var themeLabel = document.getElementById('themeLabel');
-
-      // Prepare logo letters for "poof" effect
-      (function wrapLogoLetters() {
-        var text = heroLogo.textContent;
-        heroLogo.textContent = '';
-        for (var i = 0; i < text.length; i++) {
-          var span = document.createElement('span');
-          span.textContent = text[i];
-          span.className = 'logo-letter';
-          heroLogo.appendChild(span);
-        }
-      })();
-
-      function resetLogoLetters() {
-        var letters = heroLogo.querySelectorAll('.logo-letter');
-        letters.forEach(function(letter) {
-          letter.style.transform = 'translate(0,0) scale(1)';
-          letter.style.opacity = '1';
-          letter.style.filter = 'blur(0)';
-        });
-      }
-
-      // Poof effect on logo hover (blast of letters)
-      heroLogo.addEventListener('mouseenter', function() {
-        var letters = heroLogo.querySelectorAll('.logo-letter');
-        letters.forEach(function(letter) {
-          var angle = Math.random() * Math.PI * 2;
-          var distance = 40 + Math.random() * 40;
-          var tx = Math.cos(angle) * distance;
-          var ty = Math.sin(angle) * distance;
-          letter.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(0.8)';
-          letter.style.opacity = '0';
-          letter.style.filter = 'blur(3px)';
-        });
-        setTimeout(resetLogoLetters, 500);
-      });
-
-      heroLogo.addEventListener('mouseleave', function() {
-        resetLogoLetters();
-      });
 
       // Floating logo effect with mouse movement
       hero.addEventListener('mousemove', function(e) {
