@@ -203,7 +203,6 @@
         if (raw) fromCache = JSON.parse(raw);
       }
     } catch (e) {
-      console.error('Failed to read categories cache in renderGroupByDropdown:', e);
     }
     var fromSites = buildCategoriesFromSites(sitesData);
     allCategoriesFromSites = mergeCategories(fromCache, fromSites);
@@ -250,7 +249,6 @@
         if (raw) fromCache = JSON.parse(raw);
       }
     } catch (e) {
-      console.error('Failed to read categories cache in initGroupBy:', e);
     }
     allCategoriesFromSites = mergeCategories(fromCache, fromSites);
     var search = document.getElementById('groupBySearch');
@@ -473,7 +471,6 @@
             if (raw) fromCache = JSON.parse(raw);
           }
         } catch (e) {
-          console.error('Failed to read categories cache in loadSites:', e);
         }
         allCategoriesFromSites = mergeCategories(fromCache, buildCategoriesFromSites(sitesData));
         if (!window._groupByInitialized) {
@@ -492,7 +489,6 @@
         }
       })
       .catch(function (e) {
-        console.error('GET /sites error:', e);
         showError('Failed to load sites: ' + e.message);
         renderSites([]);
       })
@@ -512,32 +508,23 @@
     } catch (e) {
       console.error('Failed to read categories cache:', e);
     }
-    console.log('refreshCategoriesFromCache: found', cachedCats.length, 'cached categories');
     if (cachedCats.length > 0) {
       var fromSites = buildCategoriesFromSites(sitesData);
       allCategoriesFromSites = mergeCategories(cachedCats, fromSites);
-      console.log('Merged categories:', allCategoriesFromSites.length, allCategoriesFromSites);
       var search = document.getElementById('groupBySearch');
       var dropdown = document.getElementById('groupByDropdown');
-      console.log('groupBySearch exists:', !!search, 'groupByDropdown exists:', !!dropdown);
       if (window._groupByInitialized) {
-        console.log('Group-by already initialized, refreshing...');
         renderGroupBySelected();
         renderGroupByDropdown();
       } else {
-        console.log('Initializing group-by for first time...');
         initGroupBy();
         window._groupByInitialized = true;
       }
-    } else {
-      console.log('No cached categories found');
     }
   }
 
   loading.hidden = true;
-  console.log('Initializing categories from cache...');
   refreshCategoriesFromCache();
-  console.log('After refreshCategoriesFromCache, allCategoriesFromSites:', allCategoriesFromSites.length, allCategoriesFromSites);
 
   document.addEventListener('visibilitychange', function () {
     if (!document.hidden) {
