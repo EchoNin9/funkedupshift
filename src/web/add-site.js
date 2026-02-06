@@ -4,6 +4,90 @@
   var formWrap = document.getElementById('formWrap');
   var createSiteForm = document.getElementById('createSiteForm');
   var createSiteResult = document.getElementById('createSiteResult');
+  var allCategories = [];
+  var selectedIds = [];
+  var categoryDropdownJustSelected = false;
+
+  function escapeHtml(s) {
+    if (s == null) return '';
+    var div = document.createElement('div');
+    div.textContent = s;
+    return div.innerHTML;
+  }
+
+  function renderDropdown() {
+    var dropdown = document.getElementById('categoryDropdown');
+    var search = document.getElementById('categorySearch');
+    if (!dropdown || !search) return;
+    var q = (search.value || '').toLowerCase().trim();
+    var opts = allCategories.filter(function (c) {
+      if (selectedIds.indexOf(c.id) !== -1) return false;
+      return !q || (c.name || '').toLowerCase().indexOf(q) !== -1;
+    });
+    dropdown.innerHTML = opts.length ? opts.map(function (c) {
+      return '<div class="category-dropdown-option" data-id="' + escapeHtml(c.id) + '" data-name="' + escapeHtml(c.name) + '">' + escapeHtml(c.name) + '</div>';
+    }).join('') : '<div class="category-dropdown-option" style="color:#666;cursor:default;">No matches</div>';
+    dropdown.hidden = false;
+  }
+
+  function renderSelected() {
+    var el = document.getElementById('categorySelected');
+    if (!el) return;
+    el.innerHTML = selectedIds.map(function (id) {
+      var c = allCategories.find(function (x) { return x.id === id; });
+      var name = c ? c.name : id;
+      return '<span class="category-chip">' + escapeHtml(name) + '<button type="button" class="category-chip-remove" data-id="' + escapeHtml(id) + '" aria-label="Remove">×</button></span>';
+    }).join('');
+  }
+
+  function addCategory(id) {
+    if (selectedIds.indexOf(id) === -1) {
+      selectedIds.push(id);
+      renderSelected();
+      renderDropdown();
+    }
+  }
+
+  function removeCategory(id) {
+    selectedIds = selectedIds.filter(function (x) { return x !== id; });
+    renderSelected();
+    renderDropdown();
+  }
+
+  function initCategoryMultiselect() {
+    var search = document.getElementById('categorySearch');
+    var dropdown = document.getElementById('categoryDropdown');
+    if (!search || !dropdown) return;
+
+    search.addEventListener('focus', function () { renderDropdown(); });
+    search.addEventListener('input', function () { renderDropdown(); });
+    search.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') dropdown.hidden = true;
+    });
+
+    dropdown.addEventListener('click', function (e) {
+      var opt = e.target.closest('.category-dropdown-option');
+      if (opt && opt.dataset.id) {
+        addCategory(opt.dataset.id);
+        search.value = '';
+        search.focus();
+        categoryDropdownJustSelected = true;
+        setTimeout(function () { categoryDropdownJustSelected = false; }, 0);
+      }
+    });
+
+    document.getElementById('categorySelected').addEventListener('click', function (e) {
+      var btn = e.target.closest('.category-chip-remove');
+      if (btn && btn.dataset.id) removeCategory(btn.dataset.id);
+    });
+
+    document.addEventListener('click', function (e) {
+      if (categoryDropdownJustSelected) return;
+      if (search && dropdown && !search.contains(e.target) && !dropdown.contains(e.target)) {
+        dropdown.hidden = true;
+      }
+    });
+  }
 
   function showMessage(msg, isError) {
     if (!messageEl) return;
@@ -58,22 +142,30 @@
         fetchWithAuth(base + '/categories')
           .then(function (r) { return r.ok ? r.json() : null; })
           .then(function (data) {
-            var el = document.getElementById('categoryChoices');
-            if (!el) return;
+            var searchEl = document.getElementById('categorySearch');
+            var emptyEl = document.getElementById('categoryEmpty');
+            if (!searchEl) return;
             var cats = (data && data.categories) || [];
-            if (cats.length === 0) {
-              el.innerHTML = '<p class="muted">No categories yet. <a href="categories.html">Create categories</a>.</p>';
+            allCategories = cats.map(function (c) {
+              var id = c.PK || c.id || '';
+              return { id: id, name: c.name || id };
+            });
+            selectedIds = [];
+            if (allCategories.length === 0) {
+              searchEl.style.display = 'none';
+              if (emptyEl) emptyEl.hidden = false;
             } else {
-              el.innerHTML = '<label>Categories:</label>' + cats.map(function (c) {
-                var id = c.PK || c.id || '';
-                var name = (c.name || id);
-                return '<label class="checkbox"><input type="checkbox" name="category" value="' + id + '"> ' + name + '</label>';
-              }).join('');
+              searchEl.style.display = '';
+              if (emptyEl) emptyEl.hidden = true;
+              initCategoryMultiselect();
+              renderSelected();
             }
           })
           .catch(function () {
-            var el = document.getElementById('categoryChoices');
-            if (el) el.innerHTML = '<p class="muted">Could not load categories.</p>';
+            var emptyEl = document.getElementById('categoryEmpty');
+            var searchEl = document.getElementById('categorySearch');
+            if (searchEl) searchEl.style.display = 'none';
+            if (emptyEl) { emptyEl.textContent = 'Could not load categories.'; emptyEl.hidden = false; }
           });
       })
       .catch(function () {
@@ -145,10 +237,7 @@
       createSiteResult.hidden = false;
 
       function doCreateSite(logoKey) {
-        var categoryIds = [];
-        Array.prototype.forEach.call(document.querySelectorAll('#categoryChoices input[name=category]:checked'), function (cb) {
-          if (cb.value) categoryIds.push(cb.value);
-        });
+        var categoryIds = selectedIds.slice();
         var payload = { url: url, title: title, description: description, categoryIds: categoryIds };
         if (logoKey) payload.logoKey = logoKey;
         return fetchWithAuth(base + '/sites', {
@@ -167,6 +256,8 @@
             document.getElementById('siteTitle').value = '';
             document.getElementById('siteDescription').value = '';
             if (logoFileInput) logoFileInput.value = '';
+            selectedIds = [];
+            renderSelected();
             var previewEl = document.getElementById('logoPreview');
             if (previewEl) { previewEl.innerHTML = ''; previewEl.hidden = true; }
             window.location.href = 'index.html';
