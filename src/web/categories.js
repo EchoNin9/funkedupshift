@@ -144,7 +144,16 @@
       .then(function (data) {
         allCategoriesData = data.categories || [];
         currentCategoryPage = 1;
-        if (window.saveCategoriesToCache) window.saveCategoriesToCache(allCategoriesData);
+        console.log('Categories loaded:', allCategoriesData.length, allCategoriesData);
+        if (typeof localStorage === 'undefined') {
+          console.error('localStorage is not available in this browser');
+        } else if (window.saveCategoriesToCache) {
+          window.saveCategoriesToCache(allCategoriesData);
+          var saved = localStorage.getItem(window.CATEGORIES_CACHE_KEY || 'funkedupshift_categories');
+          console.log('Cache save result:', saved ? 'SUCCESS (' + JSON.parse(saved).length + ' items)' : 'FAILED (null)');
+        } else {
+          console.error('saveCategoriesToCache function not available');
+        }
         renderCategoryPage();
       })
       .catch(function (e) {

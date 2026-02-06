@@ -7,9 +7,20 @@ window.COGNITO_CLIENT_ID = '';
 window.CATEGORIES_CACHE_KEY = 'funkedupshift_categories';
 window.saveCategoriesToCache = function (cats) {
   try {
-    var list = (cats || []).map(function (c) { return { id: c.PK || c.id || '', name: c.name || c.PK || c.id || '' }; });
+    if (typeof localStorage === 'undefined') {
+      console.warn('localStorage not available');
+      return;
+    }
+    if (!cats || !Array.isArray(cats)) {
+      console.warn('saveCategoriesToCache: invalid input', cats);
+      return;
+    }
+    var list = cats.map(function (c) { return { id: c.PK || c.id || '', name: c.name || c.PK || c.id || '' }; });
     localStorage.setItem(window.CATEGORIES_CACHE_KEY, JSON.stringify(list));
-  } catch (e) {}
+    console.log('Categories cached:', list.length, 'items', list);
+  } catch (e) {
+    console.error('saveCategoriesToCache error:', e);
+  }
 };
 window.getCategoriesFromCache = function () {
   try {
