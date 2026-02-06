@@ -67,7 +67,18 @@
     a.secondary:hover { background: #555; }
     .site-categories { color: #666; font-size: 0.9rem; }
     .user-info { margin: 0.5rem 0; }
-    .sites-toolbar { margin: 0.5rem 0 1rem; display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-start; }
+    .sites-toolbar {
+      margin: 0.5rem 0 1rem;
+      padding: 1rem 1rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      align-items: flex-start;
+      background: linear-gradient(135deg, #fef3f2 0%, #f1f5f9 100%);
+      border-radius: 0.75rem;
+      border: 1px solid #e5e7eb;
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+    }
     .sites-toolbar label { margin-right: 0.5rem; }
     .sites-toolbar select { padding: 0.35rem 0.5rem; }
     .group-by-multiselect { position: relative; max-width: 24rem; min-width: 12rem; }
@@ -121,6 +132,11 @@
     }
     .theme-dark .status { background: #1e293b; color: #e5e7eb; }
     .theme-dark .status.err { background: #7f1d1d; }
+    .theme-dark .sites-toolbar {
+      background: linear-gradient(135deg, #020617 0%, #0f172a 60%, #1e293b 100%);
+      border-color: #1e293b;
+      box-shadow: 0 10px 28px rgba(15, 23, 42, 0.6);
+    }
     .theme-dark .sites-toolbar label,
     .theme-dark .search-hint { color: #cbd5f5; }
     .theme-dark a { color: #93c5fd; }
