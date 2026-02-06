@@ -193,7 +193,18 @@
     var dropdown = document.getElementById('groupByDropdown');
     var search = document.getElementById('groupBySearch');
     if (!dropdown || !search) return;
-    var fromCache = (window.getCategoriesFromCache && window.getCategoriesFromCache()) || [];
+    var fromCache = [];
+    try {
+      if (window.getCategoriesFromCache) {
+        fromCache = window.getCategoriesFromCache();
+      } else {
+        var cacheKey = window.CATEGORIES_CACHE_KEY || 'funkedupshift_categories';
+        var raw = localStorage.getItem(cacheKey);
+        if (raw) fromCache = JSON.parse(raw);
+      }
+    } catch (e) {
+      console.error('Failed to read categories cache in renderGroupByDropdown:', e);
+    }
     var fromSites = buildCategoriesFromSites(sitesData);
     allCategoriesFromSites = mergeCategories(fromCache, fromSites);
     var q = (filter || search.value || '').toLowerCase().trim();
@@ -229,7 +240,18 @@
   function initGroupBy() {
     if (window._groupByListenersAttached) return;
     var fromSites = buildCategoriesFromSites(sitesData);
-    var fromCache = (window.getCategoriesFromCache && window.getCategoriesFromCache()) || [];
+    var fromCache = [];
+    try {
+      if (window.getCategoriesFromCache) {
+        fromCache = window.getCategoriesFromCache();
+      } else {
+        var cacheKey = window.CATEGORIES_CACHE_KEY || 'funkedupshift_categories';
+        var raw = localStorage.getItem(cacheKey);
+        if (raw) fromCache = JSON.parse(raw);
+      }
+    } catch (e) {
+      console.error('Failed to read categories cache in initGroupBy:', e);
+    }
     allCategoriesFromSites = mergeCategories(fromCache, fromSites);
     var search = document.getElementById('groupBySearch');
     var dropdown = document.getElementById('groupByDropdown');
@@ -441,7 +463,18 @@
         var list = data.sites || [];
         hasSearched = true;
         renderSites(list);
-        var fromCache = (window.getCategoriesFromCache && window.getCategoriesFromCache()) || [];
+        var fromCache = [];
+        try {
+          if (window.getCategoriesFromCache) {
+            fromCache = window.getCategoriesFromCache();
+          } else {
+            var cacheKey = window.CATEGORIES_CACHE_KEY || 'funkedupshift_categories';
+            var raw = localStorage.getItem(cacheKey);
+            if (raw) fromCache = JSON.parse(raw);
+          }
+        } catch (e) {
+          console.error('Failed to read categories cache in loadSites:', e);
+        }
         allCategoriesFromSites = mergeCategories(fromCache, buildCategoriesFromSites(sitesData));
         if (!window._groupByInitialized) {
           initGroupBy();
@@ -467,22 +500,44 @@
   }
 
   function refreshCategoriesFromCache() {
-    var cachedCats = (window.getCategoriesFromCache && window.getCategoriesFromCache()) || [];
+    var cachedCats = [];
+    try {
+      if (window.getCategoriesFromCache) {
+        cachedCats = window.getCategoriesFromCache();
+      } else {
+        var cacheKey = window.CATEGORIES_CACHE_KEY || 'funkedupshift_categories';
+        var raw = localStorage.getItem(cacheKey);
+        if (raw) cachedCats = JSON.parse(raw);
+      }
+    } catch (e) {
+      console.error('Failed to read categories cache:', e);
+    }
+    console.log('refreshCategoriesFromCache: found', cachedCats.length, 'cached categories');
     if (cachedCats.length > 0) {
       var fromSites = buildCategoriesFromSites(sitesData);
       allCategoriesFromSites = mergeCategories(cachedCats, fromSites);
+      console.log('Merged categories:', allCategoriesFromSites.length, allCategoriesFromSites);
+      var search = document.getElementById('groupBySearch');
+      var dropdown = document.getElementById('groupByDropdown');
+      console.log('groupBySearch exists:', !!search, 'groupByDropdown exists:', !!dropdown);
       if (window._groupByInitialized) {
+        console.log('Group-by already initialized, refreshing...');
         renderGroupBySelected();
         renderGroupByDropdown();
       } else {
+        console.log('Initializing group-by for first time...');
         initGroupBy();
         window._groupByInitialized = true;
       }
+    } else {
+      console.log('No cached categories found');
     }
   }
 
   loading.hidden = true;
+  console.log('Initializing categories from cache...');
   refreshCategoriesFromCache();
+  console.log('After refreshCategoriesFromCache, allCategoriesFromSites:', allCategoriesFromSites.length, allCategoriesFromSites);
 
   document.addEventListener('visibilitychange', function () {
     if (!document.hidden) {
