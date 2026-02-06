@@ -207,6 +207,8 @@
     }).join('');
   }
 
+  var groupByDropdownJustSelected = false;
+
   function initGroupBy() {
     allCategoriesFromSites = buildCategoriesFromSites(sitesData);
     var search = document.getElementById('groupBySearch');
@@ -222,10 +224,13 @@
           groupByIds.push(opt.dataset.id);
           currentPage = 1;
           renderGroupBySelected();
+          groupByDropdownJustSelected = true;
           renderGroupByDropdown();
           loadSites(false);
+          setTimeout(function () { groupByDropdownJustSelected = false; }, 0);
         }
         search.value = '';
+        search.focus();
       }
     });
     document.getElementById('groupBySelected').addEventListener('click', function (e) {
@@ -239,6 +244,7 @@
       }
     });
     document.addEventListener('click', function (e) {
+      if (groupByDropdownJustSelected) return;
       if (search && dropdown && !search.contains(e.target) && !dropdown.contains(e.target)) dropdown.hidden = true;
     });
     renderGroupBySelected();
