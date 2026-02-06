@@ -52,13 +52,13 @@
     var logoImg = '<img class="site-logo" src="' + escapeHtml(logoSrc) + '" alt="" onerror="this.src=\'' + escapeHtml(DEFAULT_LOGO_PATH) + '\'">';
     var url = s.url ? '<a href="' + escapeHtml(s.url) + '" target="_blank" rel="noopener">' + escapeHtml(s.url) + '</a>' : '';
     var desc = s.description ? '<div>' + escapeHtml(s.description) + '</div>' : '';
-    var cats = (s.categories && s.categories.length) ? ' <span class="site-categories">[' + s.categories.map(function (c) { return escapeHtml(c.name); }).join(', ') + ']</span>' : '';
+    var cats = (s.categories && s.categories.length) ? '<div class="site-categories-line"><span class="site-categories">' + s.categories.map(function (c) { return escapeHtml(c.name); }).join(', ') + '</span></div>' : '';
     var editBtn = (id && isAdmin) ? ' <a href="edit-site.html?id=' + encodeURIComponent(id) + '" class="secondary">Edit</a>' : '';
     var stars = '';
     if (id && canRate) {
       stars = '<div class="stars" data-id="' + escapeHtml(id) + '"><label>Rate: <select class="star-select"><option value="">--</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option></select><button type="button" class="secondary star-save">Save</button></label></div>';
     }
-    return '<li class="site-row">' + logoImg + ' <span class="site-info"><strong>' + escapeHtml(title) + avg + '</strong>' + (url ? ' ' + url : '') + cats + editBtn + desc + stars + '</span></li>';
+    return '<li class="site-item site-row">' + logoImg + ' <span class="site-info"><div class="site-title-line"><strong>' + escapeHtml(title) + avg + '</strong>' + (url ? ' ' + url : '') + editBtn + '</div>' + cats + desc + stars + '</span></li>';
   }
 
   function applySort(sites, sortBy) {
