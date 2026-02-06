@@ -206,14 +206,23 @@
     }
     var fromSites = buildCategoriesFromSites(sitesData);
     allCategoriesFromSites = mergeCategories(fromCache, fromSites);
-    if (allCategoriesFromSites.length === 0 && base && window.auth) {
+    if (allCategoriesFromSites.length === 0 && base && window.auth && !categoriesApiFetchAttempted) {
       dropdown.innerHTML = '<div class="group-by-option" style="color:#666;cursor:default;">Loading…</div>';
       dropdown.hidden = false;
       fetchCategoriesFromApi().then(function (apiList) {
         var fromSitesAgain = buildCategoriesFromSites(sitesData);
         allCategoriesFromSites = mergeCategories(apiList, fromSitesAgain);
-        renderGroupByDropdown(filter);
+        if (allCategoriesFromSites.length > 0) {
+          renderGroupByDropdown(filter);
+        } else {
+          dropdown.innerHTML = '<div class="group-by-option" style="color:#666;cursor:default;">No matches</div>';
+        }
       });
+      return;
+    }
+    if (allCategoriesFromSites.length === 0 && categoriesApiFetchAttempted) {
+      dropdown.innerHTML = '<div class="group-by-option" style="color:#666;cursor:default;">No matches</div>';
+      dropdown.hidden = false;
       return;
     }
     var q = (filter || search.value || '').toLowerCase().trim();
@@ -239,10 +248,13 @@
 
   var groupByDropdownJustSelected = false;
   var categoriesFetchPromise = null;
+  var categoriesApiFetchAttempted = false;
 
   function fetchCategoriesFromApi() {
     if (categoriesFetchPromise) return categoriesFetchPromise;
+    if (categoriesApiFetchAttempted) return Promise.resolve([]);
     if (!base || !window.auth) return Promise.resolve([]);
+    categoriesApiFetchAttempted = true;
     categoriesFetchPromise = fetchWithAuth(base + '/categories')
       .then(function (r) { return r.ok ? r.json() : r.text().then(function (t) { throw new Error(t || 'Failed'); }); })
       .then(function (data) {
