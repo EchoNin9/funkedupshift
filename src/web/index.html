@@ -5,37 +5,246 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Funkedupshift</title>
   <style>
-    * { box-sizing: border-box; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: system-ui, -apple-system, sans-serif;
       line-height: 1.5;
-      max-width: 32rem;
-      margin: 0 auto;
-      padding: 2rem 1.5rem;
       color: #1a1a1a;
+      overflow-x: hidden;
     }
-    h1 { font-size: 2rem; margin-top: 0; text-align: center; }
-    .nav-links { margin: 2rem 0; text-align: center; }
+    .hero {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #f5f5f5 0%, #ffffff 100%);
+      cursor: none;
+    }
+    .hero-logo-container {
+      position: relative;
+      perspective: 1000px;
+      transition: transform 0.1s ease-out;
+    }
+    .hero-logo {
+      font-size: clamp(3rem, 8vw, 6rem);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: #1a1a1a;
+      text-transform: uppercase;
+      transition: transform 0.1s ease-out;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .hero-logo::after {
+      content: '';
+      position: absolute;
+      bottom: -0.5rem;
+      left: 0;
+      width: 100%;
+      height: 4px;
+      background: linear-gradient(90deg, #ff6b35 0%, #004e89 100%);
+      transform-origin: left;
+      transition: transform 0.1s ease-out;
+    }
+    .hero-subtitle {
+      position: absolute;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.9rem;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      animation: fadeInUp 1s ease-out 0.5s both;
+    }
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+      }
+    }
+    .nav-section {
+      min-height: 50vh;
+      padding: 4rem 1.5rem;
+      max-width: 48rem;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2rem;
+    }
+    .nav-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      justify-content: center;
+    }
     .nav-links a {
       display: inline-block;
-      padding: 0.75rem 1.5rem;
-      margin: 0.5rem;
-      background: #0066cc;
+      padding: 1rem 2rem;
+      background: #1a1a1a;
       color: white;
       text-decoration: none;
-      border-radius: 0.25rem;
-      font-size: 1.1rem;
+      border-radius: 0.5rem;
+      font-size: 1rem;
+      font-weight: 500;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
     }
-    .nav-links a:hover {
-      background: #0052a3;
+    .nav-links a::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+      transition: left 0.5s ease;
+    }
+    .nav-links a:hover::before {
+      left: 100%;
+    }
+    .nav-links a:nth-child(1) {
+      background: linear-gradient(135deg, #ff6b35 0%, #ff8c5a 100%);
+    }
+    .nav-links a:nth-child(1):hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 16px rgba(255, 107, 53, 0.3);
+    }
+    .nav-links a:nth-child(2) {
+      background: linear-gradient(135deg, #004e89 0%, #0066cc 100%);
+    }
+    .nav-links a:nth-child(2):hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 16px rgba(0, 78, 137, 0.3);
+    }
+    .custom-cursor {
+      position: fixed;
+      width: 20px;
+      height: 20px;
+      border: 2px solid #ff6b35;
+      border-radius: 50%;
+      pointer-events: none;
+      transform: translate(-50%, -50%);
+      transition: width 0.2s, height 0.2s, border-color 0.2s;
+      z-index: 9999;
+      mix-blend-mode: difference;
+    }
+    .custom-cursor.hover {
+      width: 40px;
+      height: 40px;
+      border-color: #004e89;
+    }
+    @media (max-width: 768px) {
+      .hero-logo {
+        font-size: clamp(2rem, 12vw, 4rem);
+      }
+      .nav-section {
+        padding: 2rem 1rem;
+      }
+      .nav-links {
+        flex-direction: column;
+        width: 100%;
+      }
+      .nav-links a {
+        width: 100%;
+        text-align: center;
+      }
+      .custom-cursor {
+        display: none;
+      }
     }
   </style>
 </head>
 <body>
-  <h1>Funkedupshift</h1>
-  <div class="nav-links">
-    <a href="websites.html">Websites</a>
-    <a href="auth.html">Sign in / Sign up</a>
+  <div class="custom-cursor"></div>
+  <div class="hero" id="hero">
+    <div class="hero-logo-container" id="logoContainer">
+      <div class="hero-logo" id="heroLogo">Funkedupshift</div>
+    </div>
+    <div class="hero-subtitle">Scroll to explore</div>
   </div>
+  <div class="nav-section">
+    <div class="nav-links">
+      <a href="websites.html">Browse Websites</a>
+      <a href="auth.html">Sign in / Sign up</a>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      var hero = document.getElementById('hero');
+      var logoContainer = document.getElementById('logoContainer');
+      var heroLogo = document.getElementById('heroLogo');
+      var cursor = document.querySelector('.custom-cursor');
+      var navLinks = document.querySelectorAll('.nav-links a');
+
+      // Custom cursor
+      if (window.innerWidth > 768) {
+        document.addEventListener('mousemove', function(e) {
+          cursor.style.left = e.clientX + 'px';
+          cursor.style.top = e.clientY + 'px';
+        });
+
+        navLinks.forEach(function(link) {
+          link.addEventListener('mouseenter', function() {
+            cursor.classList.add('hover');
+          });
+          link.addEventListener('mouseleave', function() {
+            cursor.classList.remove('hover');
+          });
+        });
+      }
+
+      // Floating logo effect
+      hero.addEventListener('mousemove', function(e) {
+        var rect = hero.getBoundingClientRect();
+        var x = e.clientX - rect.left;
+        var y = e.clientY - rect.top;
+        var centerX = rect.width / 2;
+        var centerY = rect.height / 2;
+        
+        var moveX = (x - centerX) / centerX;
+        var moveY = (y - centerY) / centerY;
+        
+        var rotateX = moveY * 15;
+        var rotateY = moveX * -15;
+        var translateX = moveX * 20;
+        var translateY = moveY * 20;
+        
+        logoContainer.style.transform = 
+          'perspective(1000px) ' +
+          'rotateX(' + rotateX + 'deg) ' +
+          'rotateY(' + rotateY + 'deg) ' +
+          'translateZ(0)';
+        
+        heroLogo.style.transform = 
+          'translateX(' + translateX + 'px) ' +
+          'translateY(' + translateY + 'px)';
+      });
+
+      hero.addEventListener('mouseleave', function() {
+        logoContainer.style.transform = 'perspective(1000px) rotateX(0) rotateY(0) translateZ(0)';
+        heroLogo.style.transform = 'translateX(0) translateY(0)';
+      });
+
+      // Smooth scroll hint
+      var scrollHint = document.querySelector('.hero-subtitle');
+      if (scrollHint) {
+        setTimeout(function() {
+          scrollHint.style.opacity = '0.5';
+          setInterval(function() {
+            scrollHint.style.opacity = scrollHint.style.opacity === '0.5' ? '1' : '0.5';
+          }, 2000);
+        }, 2000);
+      }
+    })();
+  </script>
 </body>
 </html>
