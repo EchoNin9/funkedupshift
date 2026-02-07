@@ -176,6 +176,26 @@
           currentWrap.hidden = !m.mediaUrl;
         }
 
+        var thumbWrap = document.getElementById('thumbnailUploadWrap');
+        var thumbImg = document.getElementById('currentThumbImg');
+        var noThumbPlaceholder = document.getElementById('noThumbPlaceholder');
+        if (thumbWrap && thumbImg) {
+          if (m.mediaType === 'video') {
+            thumbWrap.hidden = false;
+            if (m.thumbnailUrl && m.thumbnailUrl.trim()) {
+              thumbImg.src = m.thumbnailUrl;
+              thumbImg.style.display = 'block';
+              if (noThumbPlaceholder) noThumbPlaceholder.hidden = true;
+            } else {
+              thumbImg.src = '';
+              thumbImg.style.display = 'none';
+              if (noThumbPlaceholder) { noThumbPlaceholder.textContent = 'Using auto-generated thumbnail'; noThumbPlaceholder.hidden = false; }
+            }
+          } else {
+            thumbWrap.hidden = true;
+          }
+        }
+
         if (mediaFileInput) mediaFileInput.value = '';
         var previewEl = document.getElementById('mediaPreview');
         if (previewEl) { previewEl.innerHTML = ''; previewEl.hidden = true; }
@@ -243,6 +263,74 @@
   if (mediaFileInput) {
     mediaFileInput.addEventListener('change', function () {
       validateMediaFile(mediaFileInput.files[0], function () {});
+    });
+  }
+
+  var thumbnailFileInput = document.getElementById('thumbnailFile');
+  if (thumbnailFileInput) {
+    thumbnailFileInput.addEventListener('change', function () {
+      var file = thumbnailFileInput.files[0];
+      if (!file) return;
+      var id = document.getElementById('mediaId').value.trim();
+      if (!id) return;
+      var thumbErr = document.getElementById('thumbnailError');
+      var thumbImg = document.getElementById('currentThumbImg');
+      var contentType = file.type || 'image/png';
+      if (!file.type.startsWith('image/')) {
+        if (thumbErr) { thumbErr.textContent = 'Please choose an image (PNG, JPEG, GIF, WebP).'; thumbErr.hidden = false; }
+        thumbnailFileInput.value = '';
+        return;
+      }
+      if (thumbErr) { thumbErr.textContent = ''; thumbErr.hidden = true; }
+      fetchWithAuth(base + '/media/thumbnail-upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mediaId: id, contentType: contentType })
+      })
+        .then(function (r) {
+          if (r.ok) return r.json();
+          return r.text().then(function (t) { throw new Error(t || 'Upload failed'); });
+        })
+        .then(function (data) {
+          return fetch(data.uploadUrl, {
+            method: 'PUT',
+            body: file,
+            headers: { 'Content-Type': contentType }
+          }).then(function (putRes) {
+            if (!putRes.ok) throw new Error('Upload failed');
+            return data.key;
+          });
+        })
+        .then(function (key) {
+          return fetchWithAuth(base + '/media', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: id, thumbnailKey: key })
+          }).then(function (r) {
+            if (!r.ok) throw new Error('Update failed');
+            return fetchWithAuth(base + '/media?id=' + encodeURIComponent(id));
+          });
+        })
+        .then(function (r) {
+          if (!r.ok) throw new Error('Refresh failed');
+          return r.json();
+        })
+        .then(function (data) {
+          var m = data && data.media;
+          var noThumbPlaceholder = document.getElementById('noThumbPlaceholder');
+          if (m && m.thumbnailUrl && thumbImg) {
+            thumbImg.src = m.thumbnailUrl;
+            thumbImg.style.display = 'block';
+            thumbImg.alt = 'Custom thumbnail';
+            if (noThumbPlaceholder) noThumbPlaceholder.hidden = true;
+          }
+          thumbnailFileInput.value = '';
+          if (thumbErr) { thumbErr.textContent = ''; thumbErr.hidden = true; }
+        })
+        .catch(function (e) {
+          if (thumbErr) { thumbErr.textContent = 'Error: ' + e.message; thumbErr.hidden = false; }
+          thumbnailFileInput.value = '';
+        });
     });
   }
 
