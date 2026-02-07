@@ -105,6 +105,7 @@ def test_createMedia_requires_admin():
     assert result["statusCode"] == 403
 
 
+@patch("api.handler.TABLE_NAME", "fus-main")
 def test_createMedia_requires_mediaKey():
     """POST /media without mediaKey returns 400."""
     from api.handler import handler
@@ -151,6 +152,7 @@ def test_mediaUpload_requires_auth():
     assert result["statusCode"] == 401
 
 
+@patch("api.handler.MEDIA_BUCKET", "test-media-bucket")
 def test_mediaUpload_requires_mediaId():
     """POST /media/upload without mediaId returns 400."""
     from api.handler import handler
@@ -197,6 +199,7 @@ def test_setMediaStar_requires_auth():
     assert result["statusCode"] == 401
 
 
+@patch("api.handler.TABLE_NAME", "fus-main")
 def test_setMediaStar_requires_mediaId():
     """POST /media/stars without mediaId returns 400."""
     from api.handler import handler
@@ -234,6 +237,7 @@ def test_createMediaCategory_requires_admin():
     assert result["statusCode"] == 403
 
 
+@patch("api.handler.TABLE_NAME", "fus-main")
 def test_media_all_requires_admin():
     """GET /media/all without admin returns 403."""
     from api.handler import handler
