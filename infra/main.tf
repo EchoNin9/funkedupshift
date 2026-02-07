@@ -798,7 +798,6 @@ resource "aws_lambda_function" "thumb" {
       TABLE_NAME            = aws_dynamodb_table.main.name
       MEDIA_BUCKET         = aws_s3_bucket.media.id
       MEDIACONVERT_ROLE_ARN = aws_iam_role.mediaconvert.arn
-      AWS_REGION           = var.awsRegion
     }
   }
 }
