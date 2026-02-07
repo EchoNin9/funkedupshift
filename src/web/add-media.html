@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Funkedupshift – Add Site</title>
+  <title>Funkedupshift – Add Media</title>
   <style>
     * { box-sizing: border-box; }
     body {
@@ -33,38 +33,16 @@
       font-size: 1rem;
       font-weight: 500;
       transition: all 0.3s ease;
-      position: relative;
-      overflow: hidden;
       display: inline-block;
     }
-    button::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: -100%;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-      transition: left 0.5s ease;
-    }
-    button:hover::before {
-      left: 100%;
-    }
-    button:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 16px rgba(255, 107, 53, 0.3);
-    }
+    button:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(255, 107, 53, 0.3); }
     button.secondary {
       background: linear-gradient(135deg, #004e89 0%, #0066cc 100%);
     }
-    button.secondary:hover {
-      box-shadow: 0 8px 16px rgba(0, 78, 137, 0.3);
-    }
-    .logo-field { margin: 0.5rem 0; }
-    .logo-field label { display: block; margin-bottom: 0.25rem; }
-    .logo-preview { margin-top: 0.5rem; }
-    .logo-preview img { max-width: 100px; max-height: 100px; object-fit: cover; border-radius: 0.25rem; }
-    .logo-error { color: #c00; font-size: 0.9rem; display: block; margin-top: 0.25rem; }
+    .media-field { margin: 0.5rem 0; }
+    .media-preview { margin-top: 0.5rem; }
+    .media-preview img, .media-preview video { max-width: 200px; max-height: 150px; object-fit: cover; border-radius: 0.25rem; }
+    .media-error { color: #c00; font-size: 0.9rem; display: block; margin-top: 0.25rem; }
     .category-multiselect { position: relative; margin: 0.5rem 0; max-width: 30rem; }
     .category-multiselect label { display: block; margin-bottom: 0.25rem; }
     .category-multiselect input[type="text"] { width: 100%; padding: 0.5rem; }
@@ -92,9 +70,6 @@
       align-items: center;
       gap: 0.35rem;
     }
-    .theme-toggle span {
-      font-size: 1rem;
-    }
     .theme-dark {
       background: #050608;
       color: #f5f5f5;
@@ -102,16 +77,9 @@
     .theme-dark a { color: #93c5fd; }
     .theme-dark .status.ok { background: #14532d; }
     .theme-dark .status.err { background: #7f1d1d; }
-    .theme-dark button {
-      background: linear-gradient(135deg, #ff6b35 0%, #ff9f1c 100%);
-    }
-    .theme-dark button.secondary {
-      background: linear-gradient(135deg, #06d6a0 0%, #118ab2 100%);
-    }
-    .theme-dark .theme-toggle {
-      background: rgba(255, 255, 255, 0.9);
-      color: #050608;
-    }
+    .theme-dark button { background: linear-gradient(135deg, #ff6b35 0%, #ff9f1c 100%); }
+    .theme-dark button.secondary { background: linear-gradient(135deg, #06d6a0 0%, #118ab2 100%); }
+    .theme-dark .theme-toggle { background: rgba(255, 255, 255, 0.9); color: #050608; }
     .site-footer {
       margin-top: 3rem;
       padding-top: 1.5rem;
@@ -119,22 +87,10 @@
       font-size: 0.9rem;
       color: #6b7280;
     }
-    .site-footer nav {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.75rem;
-    }
-    .site-footer a {
-      color: inherit;
-      text-decoration: none;
-    }
-    .site-footer a:hover {
-      text-decoration: underline;
-    }
-    .theme-dark .site-footer {
-      border-top-color: #374151;
-      color: #9ca3af;
-    }
+    .site-footer nav { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+    .site-footer a { color: inherit; text-decoration: none; }
+    .site-footer a:hover { text-decoration: underline; }
+    .theme-dark .site-footer { border-top-color: #374151; color: #9ca3af; }
   </style>
 </head>
 <body>
@@ -143,33 +99,32 @@
     <span id="themeLabel">Dark</span>
   </button>
 
-  <h1>Funkedupshift – Add Site</h1>
+  <h1>Funkedupshift – Add Media</h1>
   <p>
-    <button type="button" class="secondary" onclick="window.location.href='websites.html'">Back to sites</button>
+    <button type="button" class="secondary" onclick="window.location.href='media.html'">Back to media</button>
   </p>
 
   <div id="message" class="status err" hidden></div>
   <div id="formWrap" hidden>
-    <form id="createSiteForm">
-      <input type="url" id="siteUrl" placeholder="URL (e.g. https://example.com)" required>
-      <input type="text" id="siteTitle" placeholder="Title (optional)">
-      <textarea id="siteDescription" placeholder="Description (optional)" rows="4"></textarea>
-      <div class="logo-field">
-        <label>Logo (optional, min 100×100 px, max 5 MB)</label>
-        <input type="file" id="siteLogo" accept="image/png,image/jpeg,image/gif,image/webp">
-        <div id="logoPreview" class="logo-preview" hidden></div>
-        <span id="logoError" class="logo-error" hidden></span>
+    <form id="createMediaForm">
+      <input type="text" id="mediaTitle" placeholder="Title (optional)">
+      <textarea id="mediaDescription" placeholder="Description (optional)" rows="4"></textarea>
+      <div class="media-field">
+        <label>Image or video (required)</label>
+        <input type="file" id="mediaFile" accept="image/png,image/jpeg,image/gif,image/webp,video/mp4,video/webm">
+        <div id="mediaPreview" class="media-preview" hidden></div>
+        <span id="mediaError" class="media-error" hidden></span>
       </div>
       <div id="categoryChoices" class="category-multiselect">
-        <label>Categories (multiple)</label>
+        <label>Media categories (multiple)</label>
         <input type="text" id="categorySearch" placeholder="Search and select categories..." autocomplete="off">
         <div id="categoryDropdown" class="category-dropdown" hidden></div>
         <div id="categorySelected" class="category-selected"></div>
-        <p id="categoryEmpty" hidden>No categories. <a href="categories.html">Create categories</a>.</p>
+        <p id="categoryEmpty" hidden>No categories. <a href="media-categories.html">Create media categories</a>.</p>
       </div>
-      <button type="submit">Add Site</button>
+      <button type="submit">Add Media</button>
     </form>
-    <div id="createSiteResult" style="margin-top: 0.5rem;"></div>
+    <div id="createResult" style="margin-top: 0.5rem;"></div>
   </div>
 
   <footer class="site-footer">
@@ -177,9 +132,7 @@
       <a href="index.html">Home</a>
       <a href="websites.html">Browse Websites</a>
       <a href="media.html">Browse Media</a>
-      <a href="add-site.html">Add Site</a>
       <a href="add-media.html">Add Media</a>
-      <a href="categories.html">Categories</a>
       <a href="media-categories.html">Media Categories</a>
       <a href="auth.html">Sign in / Sign up</a>
     </nav>
@@ -191,34 +144,22 @@
       var toggle = document.getElementById('themeToggle');
       var icon = document.getElementById('themeIcon');
       var label = document.getElementById('themeLabel');
-      if (!toggle) return;
-
-      var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-      var dark = prefersDark;
-
-      function applyTheme() {
-        if (dark) {
-          body.classList.add('theme-dark');
-          icon.textContent = '☀';
-          label.textContent = 'Light';
-        } else {
-          body.classList.remove('theme-dark');
-          icon.textContent = '☾';
-          label.textContent = 'Dark';
+      if (toggle) {
+        var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var dark = prefersDark;
+        function applyTheme() {
+          if (dark) { body.classList.add('theme-dark'); icon.textContent = '☀'; label.textContent = 'Light'; }
+          else { body.classList.remove('theme-dark'); icon.textContent = '☾'; label.textContent = 'Dark'; }
         }
-      }
-
-      applyTheme();
-      toggle.addEventListener('click', function() {
-        dark = !dark;
         applyTheme();
-      });
+        toggle.addEventListener('click', function() { dark = !dark; applyTheme(); });
+      }
     })();
   </script>
 
   <script src="https://cdn.jsdelivr.net/npm/amazon-cognito-identity-js@6.3.0/dist/amazon-cognito-identity.min.js"></script>
   <script src="config.js"></script>
   <script src="auth.js"></script>
-  <script src="add-site.js"></script>
+  <script src="add-media.js"></script>
 </body>
 </html>

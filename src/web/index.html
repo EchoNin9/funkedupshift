@@ -125,6 +125,13 @@
       transform: translateY(-2px);
       box-shadow: 0 8px 16px rgba(0, 78, 137, 0.3);
     }
+    .nav-links a:nth-child(3) {
+      background: #1a1a1a;
+    }
+    .nav-links a:nth-child(3):hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+    }
     .theme-toggle {
       position: fixed;
       top: 1rem;
@@ -177,6 +184,9 @@
     }
     .theme-dark .nav-links a:nth-child(2) {
       background: linear-gradient(135deg, #06d6a0 0%, #118ab2 100%);
+    }
+    .theme-dark .nav-links a:nth-child(3) {
+      background: #1e293b;
     }
     .theme-dark .theme-toggle {
       background: rgba(255, 255, 255, 0.9);
@@ -246,6 +256,7 @@
     <div class="nav-heading">Explore the Funked Up Shift</div>
     <div class="nav-links">
       <a href="websites.html">Browse Websites</a>
+      <a href="media.html">Browse Media</a>
       <a href="auth.html">Sign in / Sign up</a>
     </div>
   </div>
@@ -254,8 +265,11 @@
     <nav>
       <a href="index.html">Home</a>
       <a href="websites.html">Browse Websites</a>
+      <a href="media.html">Browse Media</a>
       <a href="add-site.html">Add Site</a>
+      <a href="add-media.html">Add Media</a>
       <a href="categories.html">Categories</a>
+      <a href="media-categories.html">Media Categories</a>
       <a href="auth.html">Sign in / Sign up</a>
     </nav>
   </footer>
