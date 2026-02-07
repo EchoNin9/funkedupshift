@@ -326,4 +326,34 @@
       }
     });
   }
+
+  var deleteBtn = document.getElementById('deleteMediaBtn');
+  if (deleteBtn) {
+    deleteBtn.addEventListener('click', function () {
+      var id = document.getElementById('mediaId').value.trim();
+      if (!id) return;
+      if (!window.confirm('Delete this media item? This cannot be undone.')) return;
+      saveResult.textContent = 'Deleting...';
+      saveResult.className = 'status';
+      saveResult.hidden = false;
+      fetchWithAuth(base + '/media', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: id })
+      })
+        .then(function (r) {
+          if (r.ok) return r.json();
+          return r.text().then(function (t) { throw new Error(t || 'Delete failed'); });
+        })
+        .then(function () {
+          saveResult.textContent = 'Deleted.';
+          saveResult.className = 'status ok';
+          window.location.href = 'media.html';
+        })
+        .catch(function (e) {
+          saveResult.textContent = 'Error: ' + e.message;
+          saveResult.className = 'status err';
+        });
+    });
+  }
 })();
