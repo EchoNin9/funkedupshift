@@ -5,7 +5,9 @@
   var healthEl = document.getElementById('health');
   var mediaWrap = document.getElementById('mediaWrap');
   var mediaContainer = document.getElementById('mediaContainer');
-  var adminLinks = document.getElementById('adminLinks');
+  var navAddMedia = document.getElementById('navAddMedia');
+  var navMediaCategories = document.getElementById('navMediaCategories');
+  var navLoadAll = document.getElementById('navLoadAll');
   var canRate = false;
   var isAdmin = false;
   var mediaData = [];
@@ -300,7 +302,9 @@
 
   function initAuth() {
     if (!window.auth) {
-      if (adminLinks) adminLinks.hidden = true;
+      if (navAddMedia) navAddMedia.style.display = 'none';
+      if (navMediaCategories) navMediaCategories.style.display = 'none';
+      if (navLoadAll) navLoadAll.style.display = 'none';
       return;
     }
 
@@ -308,7 +312,9 @@
       canRate = isAuth;
       if (!isAuth) {
         isAdmin = false;
-        if (adminLinks) adminLinks.hidden = true;
+        if (navAddMedia) navAddMedia.style.display = 'none';
+        if (navMediaCategories) navMediaCategories.style.display = 'none';
+        if (navLoadAll) navLoadAll.style.display = 'none';
         return;
       }
 
@@ -317,11 +323,15 @@
         .then(function (user) {
           var groups = user.groups || [];
           isAdmin = Array.isArray(groups) && groups.indexOf('admin') !== -1;
-          if (adminLinks) adminLinks.hidden = !isAdmin;
+          if (navAddMedia) navAddMedia.style.display = isAdmin ? '' : 'none';
+          if (navMediaCategories) navMediaCategories.style.display = isAdmin ? '' : 'none';
+          if (navLoadAll) navLoadAll.style.display = isAdmin ? '' : 'none';
         })
         .catch(function () {
           isAdmin = false;
-          if (adminLinks) adminLinks.hidden = true;
+          if (navAddMedia) navAddMedia.style.display = 'none';
+          if (navMediaCategories) navMediaCategories.style.display = 'none';
+          if (navLoadAll) navLoadAll.style.display = 'none';
         });
     });
   }
@@ -457,9 +467,8 @@
     });
   }
 
-  var loadAllBtn = document.getElementById('loadAllMediaBtn');
-  if (loadAllBtn) {
-    loadAllBtn.addEventListener('click', function () {
+  if (navLoadAll) {
+    navLoadAll.addEventListener('click', function () {
       searchTerm = (searchInput && searchInput.value || '').trim();
       hasSearched = true;
       loadMedia(true);
