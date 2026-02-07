@@ -523,16 +523,14 @@
     } catch (e) {
       console.error('Failed to read categories cache:', e);
     }
-    if (cachedCats.length > 0) {
-      var fromSites = buildCategoriesFromSites(sitesData);
-      allCategoriesFromSites = mergeCategories(cachedCats, fromSites);
-    }
-    if (!window._groupByInitialized) {
-      initGroupBy();
-      window._groupByInitialized = true;
-    } else if (cachedCats.length > 0) {
+    var fromSites = buildCategoriesFromSites(sitesData);
+    allCategoriesFromSites = mergeCategories(cachedCats, fromSites);
+    if (window._groupByInitialized) {
       renderGroupBySelected();
       renderGroupByDropdown();
+    } else {
+      initGroupBy();
+      window._groupByInitialized = true;
     }
   }
 
