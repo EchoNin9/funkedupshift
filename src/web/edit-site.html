@@ -9,7 +9,7 @@
     body {
       font-family: system-ui, -apple-system, sans-serif;
       line-height: 1.5;
-      max-width: 32rem;
+      max-width: 48rem;
       margin: 0 auto;
       padding: 1.5rem;
       color: #1a1a1a;
@@ -18,27 +18,74 @@
     }
     h1 { font-size: 1.5rem; margin-top: 0; }
     a { color: #0066cc; }
-    .status { margin: 1rem 0; padding: 0.75rem; border-radius: 0.25rem; }
-    .status.ok { background: #e6f4ea; }
+    .status { margin: 1rem 0; padding: 0.75rem; background: #f0f0f0; border-radius: 0.25rem; }
+    .status.ok {
+      background: #e6f4ea;
+      color: #ff6b35;
+      font-weight: 600;
+    }
     .status.err { background: #fce8e6; }
     form { margin: 0.5rem 0; }
     input, textarea, button { padding: 0.5rem; margin: 0.25rem 0; }
     input, textarea { width: 100%; max-width: 30rem; display: block; }
-    button { background: #0066cc; color: white; border: none; border-radius: 0.25rem; cursor: pointer; }
-    button:hover { background: #0052a3; }
+    button {
+      background: linear-gradient(135deg, #ff6b35 0%, #ff8c5a 100%);
+      color: white;
+      border: none;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 500;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    button::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+      transition: left 0.5s ease;
+    }
+    button:hover::before {
+      left: 100%;
+    }
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 16px rgba(255, 107, 53, 0.3);
+    }
+    button.secondary {
+      background: linear-gradient(135deg, #004e89 0%, #0066cc 100%);
+    }
+    button.secondary:hover {
+      box-shadow: 0 8px 16px rgba(0, 78, 137, 0.3);
+    }
+    a.secondary { display: inline-block; padding: 0.35rem 0.5rem; background: #666; color: white; border-radius: 0.25rem; text-decoration: none; font-size: 0.9rem; }
+    a.secondary:hover { background: #555; }
+    .edit-form-section {
+      padding: 1rem;
+      border-radius: 0.75rem;
+      border: 1px solid rgba(15, 23, 42, 0.2);
+      background: #f9fafb;
+      box-shadow: 0 4px 8px rgba(15, 23, 42, 0.08);
+      margin: 1rem 0;
+    }
     .category-multiselect { position: relative; margin: 0.5rem 0; max-width: 30rem; }
-    .category-multiselect label { display: block; margin-bottom: 0.25rem; }
-    .category-multiselect input[type="text"] { width: 100%; padding: 0.5rem; }
-    .category-dropdown { position: absolute; top: 100%; left: 0; right: 0; max-height: 12rem; overflow-y: auto; border: 1px solid #ccc; background: #fff; z-index: 10; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+    .category-multiselect label { display: block; margin-bottom: 0.25rem; font-weight: 600; }
+    .category-multiselect input[type="text"] { width: 100%; padding: 0.5rem; border-radius: 0.4rem; border: 1px solid #d1d5db; }
+    .category-dropdown { position: absolute; top: 100%; left: 0; right: 0; max-height: 12rem; overflow-y: auto; border: 1px solid #d1d5db; background: #fff; z-index: 10; box-shadow: 0 4px 8px rgba(15,23,42,0.15); border-radius: 0.4rem; }
     .category-dropdown[hidden] { display: none !important; }
-    .category-dropdown-option { padding: 0.5rem; cursor: pointer; }
-    .category-dropdown-option:hover { background: #f0f0f0; }
-    .category-selected { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.5rem; }
-    .category-chip { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.25rem 0.5rem; background: #e8e8e8; border-radius: 0.25rem; font-size: 0.9rem; }
-    .category-chip-remove { background: none; border: none; cursor: pointer; padding: 0; color: #666; font-size: 1.1rem; line-height: 1; }
+    .category-dropdown-option { padding: 0.35rem 0.5rem; cursor: pointer; font-size: 0.9rem; color: #111827; }
+    .category-dropdown-option:hover { background: #f3f4f6; }
+    .category-selected { display: inline-flex; flex-wrap: wrap; gap: 0.25rem; margin-top: 0.5rem; }
+    .category-chip { display: inline-flex; align-items: center; gap: 0.2rem; padding: 0.2rem 0.4rem; background: #e8e8e8; color: #111827; border-radius: 0.2rem; font-size: 0.85rem; }
+    .category-chip-remove { background: none; border: none; cursor: pointer; padding: 0; color: #666; font-size: 1rem; line-height: 1; }
     .category-chip-remove:hover { color: #c00; }
     .logo-field { margin: 0.5rem 0; }
-    .logo-field label { display: block; margin-bottom: 0.25rem; }
+    .logo-field label { display: block; margin-bottom: 0.25rem; font-weight: 600; }
     .logo-current { margin: 0.5rem 0; }
     .logo-current img { max-width: 100px; max-height: 100px; object-fit: cover; border-radius: 0.25rem; display: block; margin-bottom: 0.35rem; }
     .logo-preview { margin-top: 0.5rem; }
@@ -68,8 +115,41 @@
       color: #f5f5f5;
     }
     .theme-dark a { color: #93c5fd; }
-    .theme-dark .status.ok { background: #14532d; }
+    .theme-dark .status { background: #1e293b; color: #e5e7eb; }
     .theme-dark .status.err { background: #7f1d1d; }
+    .theme-dark .status.ok { background: #022c22; color: #ff6b35; }
+    .theme-dark button {
+      background: linear-gradient(135deg, #ff6b35 0%, #ff9f1c 100%);
+    }
+    .theme-dark button.secondary {
+      background: linear-gradient(135deg, #06d6a0 0%, #118ab2 100%);
+    }
+    .theme-dark .theme-toggle {
+      background: rgba(255, 255, 255, 0.9);
+      color: #050608;
+    }
+    .theme-dark .edit-form-section {
+      background: rgba(30, 41, 59, 0.5);
+      border-color: rgba(71, 85, 105, 0.8);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    }
+    .theme-dark .category-chip { color: #111827; background: #e2e8f0; }
+    .theme-dark .category-dropdown {
+      background: #1e293b;
+      border-color: #475569;
+    }
+    .theme-dark .category-dropdown-option {
+      color: #f5f5f5;
+    }
+    .theme-dark .category-dropdown-option:hover {
+      background: #334155;
+    }
+    .theme-dark input,
+    .theme-dark textarea {
+      background: rgba(30, 41, 59, 0.6);
+      border-color: #475569;
+      color: #f5f5f5;
+    }
     .site-footer {
       margin-top: 3rem;
       padding-top: 1.5rem;
@@ -93,10 +173,6 @@
       border-top-color: #374151;
       color: #9ca3af;
     }
-    .theme-dark .theme-toggle {
-      background: rgba(255, 255, 255, 0.9);
-      color: #050608;
-    }
   </style>
 </head>
 <body>
@@ -106,10 +182,10 @@
   </button>
 
   <h1>Funkedupshift – Edit Site</h1>
-  <p><a href="websites.html">← Back to sites</a></p>
+  <p><a href="websites.html" class="secondary">← Back to sites</a></p>
 
   <div id="message" class="status err" hidden></div>
-  <div id="formWrap" hidden>
+  <div id="formWrap" class="edit-form-section" hidden>
     <form id="editSiteForm">
       <input type="hidden" id="siteId" name="siteId">
       <input type="text" id="siteTitle" placeholder="Title" required>
