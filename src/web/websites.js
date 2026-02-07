@@ -52,13 +52,13 @@
     var logoImg = '<img class="site-logo" src="' + escapeHtml(logoSrc) + '" alt="" onerror="this.src=\'' + escapeHtml(DEFAULT_LOGO_PATH) + '\'">';
     var url = s.url ? '<a href="' + escapeHtml(s.url) + '" target="_blank" rel="noopener">' + escapeHtml(s.url) + '</a>' : '';
     var desc = s.description ? '<div>' + escapeHtml(s.description) + '</div>' : '';
-    var cats = (s.categories && s.categories.length) ? ' <span class="site-categories">[' + s.categories.map(function (c) { return escapeHtml(c.name); }).join(', ') + ']</span>' : '';
+    var cats = (s.categories && s.categories.length) ? '<div class="site-categories-line"><span class="site-categories">' + s.categories.map(function (c) { return escapeHtml(c.name); }).join(', ') + '</span></div>' : '';
     var editBtn = (id && isAdmin) ? ' <a href="edit-site.html?id=' + encodeURIComponent(id) + '" class="secondary">Edit</a>' : '';
     var stars = '';
     if (id && canRate) {
       stars = '<div class="stars" data-id="' + escapeHtml(id) + '"><label>Rate: <select class="star-select"><option value="">--</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option></select><button type="button" class="secondary star-save">Save</button></label></div>';
     }
-    return '<li class="site-row">' + logoImg + ' <span class="site-info"><strong>' + escapeHtml(title) + avg + '</strong>' + (url ? ' ' + url : '') + cats + editBtn + desc + stars + '</span></li>';
+    return '<li class="site-item site-row">' + logoImg + ' <span class="site-info"><div class="site-title-line"><strong>' + escapeHtml(title) + avg + '</strong>' + (url ? ' ' + url : '') + editBtn + '</div>' + cats + desc + stars + '</span></li>';
   }
 
   function applySort(sites, sortBy) {
@@ -206,6 +206,11 @@
     }
     var fromSites = buildCategoriesFromSites(sitesData);
     allCategoriesFromSites = mergeCategories(fromCache, fromSites);
+    if (allCategoriesFromSites.length === 0) {
+      dropdown.innerHTML = '<div class="group-by-option" style="color:#666;cursor:default;">No matches. Search sites first to load categories.</div>';
+      dropdown.hidden = false;
+      return;
+    }
     var q = (filter || search.value || '').toLowerCase().trim();
     var opts = allCategoriesFromSites.filter(function (c) {
       if (groupByIds.indexOf(c.id) !== -1) return false;
@@ -473,6 +478,16 @@
         } catch (e) {
         }
         allCategoriesFromSites = mergeCategories(fromCache, buildCategoriesFromSites(sitesData));
+        if (allCategoriesFromSites.length > 0) {
+          try {
+            if (window.saveCategoriesToCache) {
+              window.saveCategoriesToCache(allCategoriesFromSites.map(function (c) { return { id: c.id, name: c.name }; }));
+            } else if (typeof localStorage !== 'undefined') {
+              var cacheKey = window.CATEGORIES_CACHE_KEY || 'funkedupshift_categories';
+              localStorage.setItem(cacheKey, JSON.stringify(allCategoriesFromSites));
+            }
+          } catch (e) { }
+        }
         if (!window._groupByInitialized) {
           initGroupBy();
           window._groupByInitialized = true;
