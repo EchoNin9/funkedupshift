@@ -126,9 +126,16 @@
       box-shadow: 0 8px 16px rgba(0, 78, 137, 0.3);
     }
     .nav-links a:nth-child(3) {
-      background: #1a1a1a;
+      background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%);
     }
     .nav-links a:nth-child(3):hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 16px rgba(13, 148, 136, 0.3);
+    }
+    .nav-links a:nth-child(4) {
+      background: #1a1a1a;
+    }
+    .nav-links a:nth-child(4):hover {
       transform: translateY(-2px);
       box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
     }
@@ -186,6 +193,9 @@
       background: linear-gradient(135deg, #06d6a0 0%, #118ab2 100%);
     }
     .theme-dark .nav-links a:nth-child(3) {
+      background: linear-gradient(135deg, #2dd4bf 0%, #0d9488 100%);
+    }
+    .theme-dark .nav-links a:nth-child(4) {
       background: #1e293b;
     }
     .auth-link-signed-in { background: #dc2626 !important; color: #fff !important; }
@@ -261,6 +271,7 @@
     <div class="nav-links">
       <a href="websites.html">Browse Websites</a>
       <a href="media.html">Browse Media</a>
+      <a href="internet-dashboard.html">Internet Dashboard</a>
       <a href="auth.html" class="auth-link">Sign in / Sign up</a>
     </div>
   </div>
@@ -270,6 +281,7 @@
       <a href="index.html">Home</a>
       <a href="websites.html">Browse Websites</a>
       <a href="media.html">Browse Media</a>
+      <a href="internet-dashboard.html">Internet Dashboard</a>
       <a href="add-site.html">Add Site</a>
       <a href="add-media.html">Add Media</a>
       <a href="categories.html">Categories</a>
