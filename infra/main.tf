@@ -187,7 +187,9 @@ data "aws_iam_policy_document" "terraformManage" {
     resources = [
       "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/github-actions-funkedupshift-staging",
       "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/github-actions-funkedupshift-production",
-      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/fus-api-lambda-role"
+      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/fus-api-lambda-role",
+      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/fus-thumb-lambda-role",
+      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/fus-mediaconvert-role"
     ]
   }
   # S3 website buckets – full manage for Terraform (s3:* avoids provider refresh whack-a-mole)
@@ -237,12 +239,28 @@ data "aws_iam_policy_document" "terraformManage" {
     actions   = ["cognito-idp:DescribeUserPoolDomain", "cognito-idp:CreateUserPoolDomain", "cognito-idp:DeleteUserPoolDomain"]
     resources = ["*"]
   }
-  # Lambda API function (for Terraform plan/apply)
+  # Lambda functions (for Terraform plan/apply)
   statement {
     sid       = "TerraformManageLambda"
     effect    = "Allow"
     actions   = ["lambda:*"]
-    resources = ["arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:function:${var.lambdaApiFunctionName}"]
+    resources = [
+      "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:function:${var.lambdaApiFunctionName}",
+      "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:function:fus-thumb"
+    ]
+  }
+  # EventBridge, MediaConvert, IAM roles for thumb pipeline
+  statement {
+    sid       = "TerraformManageEventBridge"
+    effect    = "Allow"
+    actions   = ["events:*"]
+    resources = ["*"]
+  }
+  statement {
+    sid       = "TerraformManageMediaConvert"
+    effect    = "Allow"
+    actions   = ["mediaconvert:*"]
+    resources = ["*"]
   }
   # API Gateway HTTP API (for Terraform plan/apply)
   statement {
@@ -306,11 +324,6 @@ data "aws_iam_policy_document" "websiteStagingDeploy" {
       "${aws_s3_bucket.websiteStaging.arn}/*"
     ]
   }
-  statement {
-    effect   = "Allow"
-    actions  = ["cloudfront:CreateInvalidation"]
-    resources = ["arn:aws:cloudfront::${data.aws_caller_identity.current.account_id}:distribution/${aws_cloudfront_distribution.staging.id}"]
-  }
 }
 
 data "aws_iam_policy_document" "websiteProductionDeploy" {
@@ -325,11 +338,6 @@ data "aws_iam_policy_document" "websiteProductionDeploy" {
       aws_s3_bucket.websiteProduction.arn,
       "${aws_s3_bucket.websiteProduction.arn}/*"
     ]
-  }
-  statement {
-    effect   = "Allow"
-    actions  = ["cloudfront:CreateInvalidation"]
-    resources = ["arn:aws:cloudfront::${data.aws_caller_identity.current.account_id}:distribution/${aws_cloudfront_distribution.production.id}"]
   }
 }
 
@@ -697,6 +705,156 @@ resource "aws_lambda_function" "api" {
 }
 
 # ------------------------------------------------------------------------------
+# Thumbnail Lambda (S3 trigger + MediaConvert completion)
+# ------------------------------------------------------------------------------
+resource "aws_iam_role" "mediaconvert" {
+  name = "fus-mediaconvert-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = { Service = "mediaconvert.amazonaws.com" }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "mediaconvert" {
+  name   = "fus-mediaconvert-s3"
+  role   = aws_iam_role.mediaconvert.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
+      Resource = "${aws_s3_bucket.media.arn}/*"
+    }]
+  })
+}
+
+resource "aws_iam_role" "lambdaThumb" {
+  name = "fus-thumb-lambda-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = { Service = "lambda.amazonaws.com" }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "lambdaThumb" {
+  name   = "fus-thumb-lambda"
+  role   = aws_iam_role.lambdaThumb.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"]
+        Resource = "arn:aws:logs:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["s3:GetObject", "s3:PutObject", "s3:CopyObject", "s3:DeleteObject"]
+        Resource = "${aws_s3_bucket.media.arn}/*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["dynamodb:UpdateItem"]
+        Resource = aws_dynamodb_table.main.arn
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["mediaconvert:CreateJob", "mediaconvert:GetJob", "mediaconvert:DescribeEndpoints"]
+        Resource = "*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["iam:PassRole"]
+        Resource = aws_iam_role.mediaconvert.arn
+        Condition = {
+          StringEquals = { "iam:PassedToService" = "mediaconvert.amazonaws.com" }
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_lambda_function" "thumb" {
+  filename         = data.archive_file.api.output_path
+  function_name    = "fus-thumb"
+  role             = aws_iam_role.lambdaThumb.arn
+  handler          = "thumb.handler.handler"
+  source_code_hash = data.archive_file.api.output_base64sha256
+  runtime          = "python3.12"
+  timeout          = 120
+
+  environment {
+    variables = {
+      TABLE_NAME            = aws_dynamodb_table.main.name
+      MEDIA_BUCKET         = aws_s3_bucket.media.id
+      MEDIACONVERT_ROLE_ARN = aws_iam_role.mediaconvert.arn
+    }
+  }
+}
+
+resource "aws_lambda_permission" "thumb_s3" {
+  statement_id  = "AllowS3Invoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.thumb.function_name
+  principal     = "s3.amazonaws.com"
+  source_arn    = aws_s3_bucket.media.arn
+}
+
+resource "aws_s3_bucket_notification" "media" {
+  bucket = aws_s3_bucket.media.id
+
+  lambda_function {
+    lambda_function_arn = aws_lambda_function.thumb.arn
+    events              = ["s3:ObjectCreated:*"]
+    filter_prefix       = "media/images/"
+  }
+
+  lambda_function {
+    lambda_function_arn = aws_lambda_function.thumb.arn
+    events              = ["s3:ObjectCreated:*"]
+    filter_prefix       = "media/videos/"
+  }
+
+  depends_on = [aws_lambda_permission.thumb_s3]
+}
+
+resource "aws_cloudwatch_event_rule" "mediaconvert_complete" {
+  name           = "fus-mediaconvert-complete"
+  description    = "MediaConvert job state change"
+  event_bus_name = "default"
+
+  event_pattern = jsonencode({
+    source      = ["aws.mediaconvert"]
+    detail-type = ["MediaConvert Job State Change"]
+    detail      = { status = ["COMPLETE"] }
+  })
+}
+
+resource "aws_cloudwatch_event_target" "thumb" {
+  rule      = aws_cloudwatch_event_rule.mediaconvert_complete.name
+  target_id = "ThumbLambda"
+  arn       = aws_lambda_function.thumb.arn
+}
+
+resource "aws_lambda_permission" "thumb_eventbridge" {
+  statement_id  = "AllowEventBridgeInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.thumb.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.mediaconvert_complete.arn
+}
+
+# ------------------------------------------------------------------------------
 # API Gateway HTTP API
 # ------------------------------------------------------------------------------
 resource "aws_apigatewayv2_api" "main" {
@@ -833,6 +991,93 @@ resource "aws_apigatewayv2_route" "sitesOptions" {
   api_id    = aws_apigatewayv2_api.main.id
   route_key = "OPTIONS /sites"
   target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+}
+
+# Media section
+resource "aws_apigatewayv2_route" "mediaGet" {
+  api_id    = aws_apigatewayv2_api.main.id
+  route_key = "GET /media"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+}
+
+resource "aws_apigatewayv2_route" "mediaGetAll" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /media/all"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "mediaPost" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /media"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "mediaPut" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "PUT /media"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "mediaDelete" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "DELETE /media"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "mediaUpload" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /media/upload"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "mediaStars" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /media/stars"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "mediaCategoriesGet" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /media-categories"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "mediaCategoriesPost" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /media-categories"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "mediaCategoriesPut" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "PUT /media-categories"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "mediaCategoriesDelete" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "DELETE /media-categories"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
 resource "aws_apigatewayv2_stage" "default" {

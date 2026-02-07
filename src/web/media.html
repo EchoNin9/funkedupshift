@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Funkedupshift – Websites</title>
+  <title>Funkedupshift – Media</title>
   <style>
     * { box-sizing: border-box; }
     body {
@@ -24,61 +24,19 @@
       font-weight: 600;
     }
     .status.err { background: #fce8e6; }
-    .sites { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.75rem; }
-    .site-item {
+    .media { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.75rem; }
+    .media-item {
       padding: 1rem;
       border-radius: 0.75rem;
       border: 1px solid rgba(15, 23, 42, 0.2);
       background: #f9fafb;
       box-shadow: 0 4px 8px rgba(15, 23, 42, 0.08);
     }
-    .site-title-line { margin-bottom: 0.25rem; }
-    .site-categories-line { margin: 0.35rem 0; }
-    .site-categories { color: #666; font-size: 0.9rem; }
+    .media-title-line { margin-bottom: 0.25rem; }
+    .media-categories-line { margin: 0.35rem 0; }
+    .media-categories { color: #666; font-size: 0.9rem; }
     #loading, #error { margin: 1rem 0; }
-    .auth-section { margin: 1rem 0; padding: 1rem; background: #f9f9f9; border-radius: 0.25rem; }
-    .auth-section h2 { font-size: 1.125rem; margin-top: 0; }
-    form { margin: 0.5rem 0; }
-    input, button { padding: 0.5rem; margin: 0.25rem 0; width: 100%; max-width: 20rem; }
-    button {
-      background: linear-gradient(135deg, #ff6b35 0%, #ff8c5a 100%);
-      color: white;
-      border: none;
-      border-radius: 0.5rem;
-      cursor: pointer;
-      font-size: 1rem;
-      font-weight: 500;
-      transition: all 0.3s ease;
-      position: relative;
-      overflow: hidden;
-    }
-    button::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: -100%;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-      transition: left 0.5s ease;
-    }
-    button:hover::before {
-      left: 100%;
-    }
-    button:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 16px rgba(255, 107, 53, 0.3);
-    }
-    button.secondary {
-      background: linear-gradient(135deg, #004e89 0%, #0066cc 100%);
-    }
-    button.secondary:hover {
-      box-shadow: 0 8px 16px rgba(0, 78, 137, 0.3);
-    }
-    a.secondary { display: inline-block; padding: 0.35rem 0.5rem; background: #666; color: white; border-radius: 0.25rem; text-decoration: none; font-size: 0.9rem; }
-    a.secondary:hover { background: #555; }
-    .user-info { margin: 0.5rem 0; }
-    .sites-toolbar {
+    .media-toolbar {
       margin: 0.5rem 0 1rem;
       padding: 1rem 1rem;
       display: flex;
@@ -91,12 +49,12 @@
       box-shadow: 0 8px 20px rgba(15, 23, 42, 0.15);
       color: #f9fafb;
     }
-    .sites-toolbar label {
+    .media-toolbar label {
       margin-right: 0.5rem;
       font-weight: 600;
     }
-    .sites-toolbar select,
-    .sites-toolbar input[type="text"] {
+    .media-toolbar select,
+    .media-toolbar input[type="text"] {
       padding: 0.35rem 0.5rem;
       border-radius: 0.4rem;
       border: 1px solid rgba(15, 23, 42, 0.35);
@@ -139,17 +97,24 @@
     .group-by-chip-remove { background: none; border: none; cursor: pointer; padding: 0; color: #666; font-size: 1rem; line-height: 1; }
     .group-by-chip-remove:hover { color: #c00; }
     .stars .star-save { width: auto; padding: 0.25rem 0.5rem; font-size: 0.85rem; }
-    .sites-group { margin: 1rem 0; }
-    .sites-group h3 { font-size: 1rem; margin: 0 0 0.35rem; color: #555; }
+    .media-group { margin: 1rem 0; }
+    .media-group h3 { font-size: 1rem; margin: 0 0 0.35rem; color: #555; }
     .pagination { margin: 1rem 0; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
     .pagination button { padding: 0.35rem 0.6rem; }
     .pagination button:disabled { opacity: 0.5; cursor: not-allowed; }
     .pagination .page-nums { display: flex; align-items: center; gap: 0.25rem; flex-wrap: wrap; }
     .pagination .page-num { min-width: 2rem; padding: 0.25rem 0.4rem; text-align: center; }
     .pagination .page-num.current { font-weight: 600; cursor: default; }
-    .site-row { display: flex; align-items: flex-start; gap: 0.75rem; }
-    .site-row .site-logo { width: 48px; height: 48px; object-fit: cover; border-radius: 0.25rem; flex-shrink: 0; }
-    .site-info { flex: 1; min-width: 0; }
+    .media-row { display: flex; align-items: flex-start; gap: 0.75rem; }
+    .media-row .media-thumb {
+      width: 80px;
+      height: 60px;
+      object-fit: cover;
+      border-radius: 0.25rem;
+      flex-shrink: 0;
+      border: 1px solid rgba(0,0,0,0.1);
+    }
+    .media-info { flex: 1; min-width: 0; }
     .search-form { margin: 1.5rem 0; display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
     .search-form input[type="text"] { flex: 1; min-width: 14rem; padding: 0.6rem 0.75rem; font-size: 1rem; }
     .search-form button { padding: 0.6rem 1.25rem; }
@@ -181,12 +146,12 @@
     .theme-dark .status { background: #1e293b; color: #e5e7eb; }
     .theme-dark .status.err { background: #7f1d1d; }
     .theme-dark .status.ok { background: #022c22; color: #ff6b35; }
-    .theme-dark .sites-toolbar {
+    .theme-dark .media-toolbar {
       background: linear-gradient(135deg, #06d6a0 0%, #118ab2 100%);
       border-color: #0f172a;
       box-shadow: 0 10px 28px rgba(15, 23, 42, 0.8);
     }
-    .theme-dark .sites-toolbar label,
+    .theme-dark .media-toolbar label,
     .theme-dark .search-hint { color: #cbd5f5; }
     .theme-dark a { color: #93c5fd; }
     .theme-dark .group-by-dropdown {
@@ -200,12 +165,12 @@
       background: #334155;
     }
     .theme-dark .group-by-chip { color: #111827; background: #e2e8f0; }
-    .theme-dark .site-item {
+    .theme-dark .media-item {
       background: rgba(30, 41, 59, 0.5);
       border-color: rgba(71, 85, 105, 0.8);
       box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
     }
-    .theme-dark .site-categories { color: #94a3b8; }
+    .theme-dark .media-categories { color: #94a3b8; }
     .theme-dark button {
       background: linear-gradient(135deg, #ff6b35 0%, #ff9f1c 100%);
     }
@@ -247,7 +212,7 @@
     <span id="themeLabel">Dark</span>
   </button>
 
-  <h1>Funkedupshift – Websites</h1>
+  <h1>Funkedupshift – Media</h1>
   <p>
     <button type="button" class="secondary" onclick="window.location.href='index.html'">Home</button>
   </p>
@@ -255,18 +220,18 @@
   <div id="loading" hidden></div>
   <div id="error" class="status err" hidden></div>
   <div id="health" class="status" hidden></div>
-  <div id="sitesWrap">
+  <div id="mediaWrap">
     <form id="searchForm" class="search-form">
-      <input type="text" id="searchInput" placeholder="Search sites (title, URL, description)..." autocomplete="off" autofocus>
+      <input type="text" id="searchInput" placeholder="Search media (title, description)..." autocomplete="off" autofocus>
       <button type="submit" id="searchBtn">Search</button>
     </form>
-    <p id="searchHint" class="search-hint">Enter a search term to find sites. Leave empty and search to browse all.</p>
+    <p id="searchHint" class="search-hint">Enter a search term to find media. Leave empty and search to browse all.</p>
     <p id="adminLinks" hidden>
-      <button type="button" class="secondary" onclick="window.location.href='add-site.html'">Add site</button>
-      <button type="button" class="secondary" onclick="window.location.href='categories.html'">Categories</button>
-      <button type="button" id="loadAllSitesBtn" class="secondary" title="Load all sites (debug)">Load all</button>
+      <button type="button" class="secondary" onclick="window.location.href='add-media.html'">Add media</button>
+      <button type="button" class="secondary" onclick="window.location.href='media-categories.html'">Media categories</button>
+      <button type="button" id="loadAllMediaBtn" class="secondary" title="Load all media (debug)">Load all</button>
     </p>
-    <div class="sites-toolbar">
+    <div class="media-toolbar">
       <div>
         <label for="sortOrder">Sort:</label>
         <select id="sortOrder">
@@ -283,8 +248,8 @@
         <div id="groupBySelected" class="group-by-selected"></div>
       </div>
     </div>
-    <div id="sitesContainer"></div>
-    <div id="sitesPagination" class="pagination" hidden></div>
+    <div id="mediaContainer"></div>
+    <div id="mediaPagination" class="pagination" hidden></div>
   </div>
 
   <footer class="site-footer">
@@ -292,9 +257,7 @@
       <a href="index.html">Home</a>
       <a href="websites.html">Browse Websites</a>
       <a href="media.html">Browse Media</a>
-      <a href="add-site.html">Add Site</a>
       <a href="add-media.html">Add Media</a>
-      <a href="categories.html">Categories</a>
       <a href="media-categories.html">Media Categories</a>
       <a href="auth.html">Sign in / Sign up</a>
     </nav>
@@ -334,6 +297,6 @@
   <script src="https://cdn.jsdelivr.net/npm/amazon-cognito-identity-js@6.3.0/dist/amazon-cognito-identity.min.js"></script>
   <script src="config.js"></script>
   <script src="auth.js"></script>
-  <script src="websites.js"></script>
+  <script src="media.js"></script>
 </body>
 </html>
