@@ -117,6 +117,8 @@ def handler(event, context):
             return deleteMedia(event)
         if method == "POST" and path == "/media/upload":
             return getPresignedMediaUpload(event)
+        if method == "POST" and path == "/media/thumbnail-upload":
+            return getPresignedThumbnailUpload(event)
         if method == "POST" and path == "/media/stars":
             return setMediaStar(event)
         if method == "GET" and path == "/media-categories":
@@ -1002,7 +1004,8 @@ def updateMedia(event):
     try:
         import boto3
         from datetime import datetime
-        body = json.loads(event.get("body", "{}"))
+        raw_body = event.get("body", "{}")
+        body = json.loads(raw_body) if isinstance(raw_body, str) else (raw_body or {})
         media_id = (body.get("id") or "").strip()
         if not media_id:
             return jsonResponse({"error": "id is required"}, 400)
@@ -1029,11 +1032,16 @@ def updateMedia(event):
         if media_key is not None:
             set_parts.append("mediaKey = :mediaKey")
             values[":mediaKey"] = {"S": media_key}
+        thumbnail_key = (body.get("thumbnailKey") or "").strip() or None
+        if thumbnail_key is not None:
+            set_parts.append("#thumbnailKey = :thumbnailKey")
+            names["#thumbnailKey"] = "thumbnailKey"
+            values[":thumbnailKey"] = {"S": thumbnail_key}
         dynamodb.update_item(
             TableName=TABLE_NAME,
             Key={"PK": {"S": media_id}, "SK": {"S": "METADATA"}},
             UpdateExpression="SET " + ", ".join(set_parts),
-            ExpressionAttributeNames=names or None,
+            ExpressionAttributeNames=names if names else None,
             ExpressionAttributeValues=values,
         )
         return jsonResponse({"id": media_id, "title": title, "description": description, "categoryIds": category_ids}, 200)
@@ -1130,6 +1138,43 @@ def getPresignedMediaUpload(event):
         return jsonResponse({"uploadUrl": upload_url, "key": key})
     except Exception as e:
         logger.exception("getPresignedMediaUpload error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def getPresignedThumbnailUpload(event):
+    """Return presigned PUT URL for custom thumbnail upload (admin only)."""
+    _, err = _requireAdmin(event)
+    if err:
+        return err
+    if not MEDIA_BUCKET:
+        return jsonResponse({"error": "MEDIA_BUCKET not configured"}, 500)
+    try:
+        import boto3
+        body = json.loads(event.get("body", "{}"))
+        media_id = (body.get("mediaId") or body.get("id") or "").strip()
+        if not media_id:
+            return jsonResponse({"error": "mediaId is required"}, 400)
+        contentType = (body.get("contentType") or "image/jpeg").strip()
+        ext = "jpg"
+        if "jpeg" in contentType or "jpg" in contentType:
+            ext = "jpg"
+        elif "png" in contentType:
+            ext = "png"
+        elif "gif" in contentType:
+            ext = "gif"
+        elif "webp" in contentType:
+            ext = "webp"
+        key = f"media/thumbnails/{media_id}_custom.{ext}"
+        region = os.environ.get("AWS_REGION", "us-east-1")
+        s3 = boto3.client("s3", region_name=region)
+        upload_url = s3.generate_presigned_url(
+            "put_object",
+            Params={"Bucket": MEDIA_BUCKET, "Key": key, "ContentType": contentType},
+            ExpiresIn=300,
+        )
+        return jsonResponse({"uploadUrl": upload_url, "key": key})
+    except Exception as e:
+        logger.exception("getPresignedThumbnailUpload error")
         return jsonResponse({"error": str(e)}, 500)
 
 

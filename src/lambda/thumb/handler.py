@@ -79,6 +79,15 @@ def _process_image(bucket, key, media_id):
             Key=thumb_key,
         )
         dynamodb = boto3.client("dynamodb", region_name=AWS_REGION)
+        current = dynamodb.get_item(
+            TableName=TABLE_NAME,
+            Key={"PK": {"S": media_id}, "SK": {"S": "METADATA"}},
+            ProjectionExpression="thumbnailKey",
+        )
+        current_thumb = (current.get("Item") or {}).get("thumbnailKey", {}).get("S", "")
+        if "_custom" in current_thumb:
+            logger.info("Skipping thumbnail update: custom thumbnail already set for %s", media_id)
+            return
         dynamodb.update_item(
             TableName=TABLE_NAME,
             Key={"PK": {"S": media_id}, "SK": {"S": "METADATA"}},
@@ -255,6 +264,15 @@ def _handle_mediaconvert_event(event):
         )
         s3.delete_object(Bucket=bucket, Key=src_key)
         dynamodb = boto3.client("dynamodb", region_name=AWS_REGION)
+        current = dynamodb.get_item(
+            TableName=TABLE_NAME,
+            Key={"PK": {"S": media_id}, "SK": {"S": "METADATA"}},
+            ProjectionExpression="thumbnailKey",
+        )
+        current_thumb = (current.get("Item") or {}).get("thumbnailKey", {}).get("S", "")
+        if "_custom" in current_thumb:
+            logger.info("Skipping thumbnail update: custom thumbnail already set for %s", media_id)
+            return {"statusCode": 200, "body": "ok"}
         dynamodb.update_item(
             TableName=TABLE_NAME,
             Key={"PK": {"S": media_id}, "SK": {"S": "METADATA"}},
