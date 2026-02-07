@@ -1004,7 +1004,8 @@ def updateMedia(event):
     try:
         import boto3
         from datetime import datetime
-        body = json.loads(event.get("body", "{}"))
+        raw_body = event.get("body", "{}")
+        body = json.loads(raw_body) if isinstance(raw_body, str) else (raw_body or {})
         media_id = (body.get("id") or "").strip()
         if not media_id:
             return jsonResponse({"error": "id is required"}, 400)
@@ -1033,13 +1034,14 @@ def updateMedia(event):
             values[":mediaKey"] = {"S": media_key}
         thumbnail_key = (body.get("thumbnailKey") or "").strip() or None
         if thumbnail_key is not None:
-            set_parts.append("thumbnailKey = :thumbnailKey")
+            set_parts.append("#thumbnailKey = :thumbnailKey")
+            names["#thumbnailKey"] = "thumbnailKey"
             values[":thumbnailKey"] = {"S": thumbnail_key}
         dynamodb.update_item(
             TableName=TABLE_NAME,
             Key={"PK": {"S": media_id}, "SK": {"S": "METADATA"}},
             UpdateExpression="SET " + ", ".join(set_parts),
-            ExpressionAttributeNames=names or None,
+            ExpressionAttributeNames=names if names else None,
             ExpressionAttributeValues=values,
         )
         return jsonResponse({"id": media_id, "title": title, "description": description, "categoryIds": category_ids}, 200)

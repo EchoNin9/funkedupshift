@@ -238,6 +238,28 @@ def test_createMediaCategory_requires_admin():
 
 
 @patch("api.handler.TABLE_NAME", "fus-main")
+@patch("boto3.client")
+def test_updateMedia_thumbnailKey_success(mock_boto_client):
+    """PUT /media with thumbnailKey only updates thumbnail (admin)."""
+    from api.handler import handler
+    mock_dynamo = MagicMock()
+    mock_dynamo.update_item.return_value = {}
+    mock_boto_client.return_value = mock_dynamo
+
+    event = _admin_event("/media", method="PUT", body={
+        "id": "MEDIA#test-123",
+        "thumbnailKey": "media/thumbnails/MEDIA#test-123_custom.jpg",
+    })
+    result = handler(event, None)
+
+    assert result["statusCode"] == 200
+    mock_dynamo.update_item.assert_called_once()
+    call_kw = mock_dynamo.update_item.call_args[1]
+    assert "thumbnailKey" in call_kw["UpdateExpression"] or "#thumbnailKey" in call_kw["UpdateExpression"]
+    assert call_kw["ExpressionAttributeValues"][":thumbnailKey"]["S"] == "media/thumbnails/MEDIA#test-123_custom.jpg"
+
+
+@patch("api.handler.TABLE_NAME", "fus-main")
 def test_media_all_requires_admin():
     """GET /media/all without admin returns 403."""
     from api.handler import handler

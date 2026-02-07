@@ -307,7 +307,16 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ id: id, thumbnailKey: key })
           }).then(function (r) {
-            if (!r.ok) throw new Error('Update failed');
+            if (!r.ok) {
+              return r.text().then(function (t) {
+                var err = 'Update failed';
+                try {
+                  var obj = JSON.parse(t);
+                  if (obj && obj.error) err = obj.error;
+                } catch (e) {}
+                throw new Error(err);
+              });
+            }
             return fetchWithAuth(base + '/media?id=' + encodeURIComponent(id));
           });
         })
