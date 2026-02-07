@@ -45,7 +45,9 @@
     var thumbSrc = (m.thumbnailUrl && m.thumbnailUrl.trim()) ? m.thumbnailUrl : (m.mediaUrl && m.mediaType === 'image' ? m.mediaUrl : '');
     var thumbHtml = thumbSrc
       ? '<a href="media-view.html?id=' + encodeURIComponent(id) + '"><img class="media-thumb" src="' + escapeHtml(thumbSrc) + '" alt="" onerror="this.style.display=\'none\'"></a>'
-      : '<a href="media-view.html?id=' + encodeURIComponent(id) + '"><span class="media-thumb" style="display:inline-block;width:80px;height:60px;background:#ddd;border-radius:0.25rem;line-height:60px;text-align:center;font-size:0.8rem;">' + (m.mediaType === 'video' ? '▶' : '📷') + '</span></a>';
+      : '<a href="media-view.html?id=' + encodeURIComponent(id) + '"><span class="media-thumb" style="display:inline-block;width:80px;height:60px;background:#ddd;border-radius:0.5rem;line-height:60px;text-align:center;font-size:0.8rem;">' + (m.mediaType === 'video' ? '▶' : '📷') + '</span></a>';
+    var mediaTypeLabel = (m.mediaType === 'video' ? 'Video' : 'Image');
+    var mediaTypeLine = '<div class="media-type-line">' + escapeHtml(mediaTypeLabel) + '</div>';
     var desc = m.description ? '<div>' + escapeHtml(m.description) + '</div>' : '';
     var cats = (m.categories && m.categories.length) ? '<div class="media-categories-line"><span class="media-categories">' + m.categories.map(function (c) { return escapeHtml(c.name); }).join(', ') + '</span></div>' : '';
     var editBtn = (id && isAdmin) ? ' <a href="edit-media.html?id=' + encodeURIComponent(id) + '" class="secondary">Edit</a>' : '';
@@ -53,7 +55,7 @@
     if (id && canRate) {
       stars = '<div class="stars" data-id="' + escapeHtml(id) + '"><label>Rate: <select class="star-select"><option value="">--</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option></select><button type="button" class="secondary star-save">Save</button></label></div>';
     }
-    return '<li class="media-item media-row">' + thumbHtml + ' <span class="media-info"><div class="media-title-line"><a href="media-view.html?id=' + encodeURIComponent(id) + '"><strong>' + escapeHtml(title) + avg + '</strong></a>' + editBtn + '</div>' + cats + desc + stars + '</span></li>';
+    return '<li class="media-item media-row">' + thumbHtml + ' <span class="media-info"><div class="media-title-line"><a href="media-view.html?id=' + encodeURIComponent(id) + '"><strong>' + escapeHtml(title) + avg + '</strong></a>' + editBtn + '</div>' + cats + mediaTypeLine + desc + stars + '</span></li>';
   }
 
   function applySort(media, sortBy) {
