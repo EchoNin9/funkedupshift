@@ -40,6 +40,12 @@
     }
     a.secondary { display: inline-block; padding: 0.35rem 0.5rem; background: #666; color: white; border-radius: 0.25rem; text-decoration: none; font-size: 0.9rem; }
     a.secondary:hover { background: #555; }
+    button.danger {
+      background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%);
+    }
+    button.danger:hover {
+      box-shadow: 0 8px 16px rgba(192, 57, 43, 0.4);
+    }
     .edit-form-section {
       padding: 1rem;
       border-radius: 0.75rem;
@@ -91,6 +97,7 @@
     .theme-dark .status.ok { background: #022c22; }
     .theme-dark button { background: linear-gradient(135deg, #ff6b35 0%, #ff9f1c 100%); }
     .theme-dark button.secondary { background: linear-gradient(135deg, #06d6a0 0%, #118ab2 100%); }
+    .theme-dark button.danger { background: linear-gradient(135deg, #b91c1c 0%, #f97373 100%); }
     .theme-dark .theme-toggle { background: rgba(255, 255, 255, 0.9); color: #050608; }
     .theme-dark .edit-form-section {
       background: rgba(30, 41, 59, 0.5);
@@ -147,6 +154,7 @@
         <p id="categoryEmpty" hidden>No categories. <a href="media-categories.html">Create media categories</a>.</p>
       </div>
       <button type="submit">Save</button>
+      <button type="button" id="deleteMediaBtn" class="danger" style="margin-top: 1rem;">Delete media</button>
     </form>
     <div id="saveResult" style="margin-top: 0.5rem;"></div>
   </div>

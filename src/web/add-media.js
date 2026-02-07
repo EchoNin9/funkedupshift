@@ -25,7 +25,7 @@
     });
     dropdown.innerHTML = opts.length ? opts.map(function (c) {
       return '<div class="category-dropdown-option" data-id="' + escapeHtml(c.id) + '" data-name="' + escapeHtml(c.name) + '">' + escapeHtml(c.name) + '</div>';
-    }).join('') : '<div class="category-dropdown-option" style="color:#666;cursor:default;">No matches</div>';
+    }).join('') : '<div class="category-dropdown-option category-dropdown-option--muted">No matches</div>';
     dropdown.hidden = false;
   }
 
