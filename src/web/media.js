@@ -19,6 +19,8 @@
   var hasSearched = false;
 
   var MEDIA_CATEGORIES_CACHE_KEY = 'funkedupshift_media_categories';
+  var MEDIA_TOP7_CACHE_KEY = 'funkedupshift_media_top7';
+  var TOP7_CACHE_TTL_MS = 60 * 60 * 1000;
 
   function showError(msg) {
     loading.hidden = true;
@@ -442,8 +444,92 @@
     }
   }
 
+  function loadTop7OnDefault() {
+    var cached;
+    try {
+      var raw = localStorage.getItem(MEDIA_TOP7_CACHE_KEY);
+      if (raw) cached = JSON.parse(raw);
+    } catch (e) {}
+    if (cached && cached.items && cached.lastFetchTime) {
+      var age = Date.now() - new Date(cached.lastFetchTime).getTime();
+      if (age < TOP7_CACHE_TTL_MS) {
+        hasSearched = true;
+        renderMedia(cached.items);
+        hideLoading();
+        var hintEl = document.getElementById('searchHint');
+        if (hintEl) hintEl.hidden = true;
+        if (!window._mediaGroupByInitialized) {
+          initGroupBy();
+          window._mediaGroupByInitialized = true;
+        } else {
+          renderGroupBySelected();
+          renderGroupByDropdown();
+        }
+        var sortOrder = document.getElementById('sortOrder');
+        if (sortOrder && !sortOrder.hasAttribute('data-bound')) {
+          sortOrder.setAttribute('data-bound', '1');
+          sortOrder.addEventListener('change', function () { currentPage = 1; renderMedia(mediaData); });
+        }
+        return;
+      }
+    }
+    loading.hidden = false;
+    fetch(base + '/media?limit=100')
+      .then(function (r) {
+        if (!r.ok) return r.text().then(function (t) { throw new Error(t || 'Request failed'); });
+        return r.json();
+      })
+      .then(function (data) {
+        var list = data.media;
+        if (!Array.isArray(list)) list = [];
+        var sorted = applySort(list, 'avgDesc');
+        var top7 = sorted.slice(0, 7);
+        try {
+          localStorage.setItem(MEDIA_TOP7_CACHE_KEY, JSON.stringify({
+            items: top7,
+            lastFetchTime: new Date().toISOString()
+          }));
+        } catch (e) {}
+        hasSearched = true;
+        renderMedia(top7);
+        var fromCache = [];
+        try {
+          var raw = localStorage.getItem(MEDIA_CATEGORIES_CACHE_KEY);
+          if (raw) fromCache = JSON.parse(raw);
+        } catch (e) {}
+        allCategoriesFromMedia = mergeCategories(fromCache, buildCategoriesFromMedia(mediaData));
+        if (allCategoriesFromMedia.length > 0) {
+          try {
+            localStorage.setItem(MEDIA_CATEGORIES_CACHE_KEY, JSON.stringify(allCategoriesFromMedia.map(function (c) { return { id: c.id, name: c.name }; })));
+          } catch (e) {}
+        }
+        if (!window._mediaGroupByInitialized) {
+          initGroupBy();
+          window._mediaGroupByInitialized = true;
+        } else {
+          renderGroupBySelected();
+          renderGroupByDropdown();
+        }
+        var hintEl = document.getElementById('searchHint');
+        if (hintEl) hintEl.hidden = true;
+        var sortOrder = document.getElementById('sortOrder');
+        if (sortOrder && !sortOrder.hasAttribute('data-bound')) {
+          sortOrder.setAttribute('data-bound', '1');
+          sortOrder.addEventListener('change', function () { currentPage = 1; renderMedia(mediaData); });
+        }
+      })
+      .catch(function (e) {
+        if (cached && cached.items) {
+          hasSearched = true;
+          renderMedia(cached.items);
+        }
+      })
+      .then(hideLoading);
+  }
+
   loading.hidden = true;
   refreshCategoriesFromCache();
+  loadTop7OnDefault();
 
   document.addEventListener('visibilitychange', function () {
     if (!document.hidden) {
