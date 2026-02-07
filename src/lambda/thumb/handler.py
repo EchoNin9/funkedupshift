@@ -93,8 +93,10 @@ def _process_image(bucket, key, media_id):
         logger.warning("_process_image failed: %s", e)
 
 
-def _process_video(bucket, key, media_id):
-    """Submit MediaConvert frame capture job."""
+def _process_video(bucket, key, media_id, use_first_frame=False):
+    """Submit MediaConvert frame capture job.
+    use_first_frame: if True, capture first frame (for videos under 4 sec).
+    Otherwise capture frame between 3-4 seconds."""
     if not MEDIACONVERT_ROLE_ARN:
         logger.warning("MEDIACONVERT_ROLE_ARN not set")
         return
@@ -109,14 +111,35 @@ def _process_video(bucket, key, media_id):
         output_prefix = f"s3://{bucket}/media/thumbnails/mc_{media_id.replace('#', '_')}"
         thumb_key = f"media/thumbnails/{media_id}.jpg"
 
+        if use_first_frame:
+            input_clipping = {
+                "StartTimecode": "00:00:00:00",
+                "EndTimecode": "00:00:01:00",
+            }
+        else:
+            input_clipping = {
+                "StartTimecode": "00:00:03:00",
+                "EndTimecode": "00:00:04:00",
+            }
+
+        user_metadata = {
+            "mediaId": media_id,
+            "thumbnailKey": thumb_key,
+            "bucket": bucket,
+            "originalKey": key,
+        }
+        if use_first_frame:
+            user_metadata["retryCount"] = "1"
+
         job = mc.create_job(
             Role=MEDIACONVERT_ROLE_ARN,
-            UserMetadata={"mediaId": media_id, "thumbnailKey": thumb_key},
+            UserMetadata=user_metadata,
             Settings={
                 "Inputs": [
                     {
                         "FileInput": input_path,
                         "VideoSelector": {"DefaultSelection": "DEFAULT"},
+                        "InputClippings": [input_clipping],
                     }
                 ],
                 "OutputGroups": [
@@ -139,7 +162,7 @@ def _process_video(bucket, key, media_id):
                                         "FrameCaptureSettings": {
                                             "FramerateNumerator": 30,
                                             "FramerateDenominator": 30,
-                                            "MaxCaptures": 2,
+                                            "MaxCaptures": 1,
                                         },
                                     },
                                 },
@@ -149,23 +172,51 @@ def _process_video(bucket, key, media_id):
                 ],
             },
         )
-        logger.info("MediaConvert job submitted: %s for %s", job["Job"]["Id"], media_id)
+        logger.info(
+            "MediaConvert job submitted: %s for %s (first_frame=%s)",
+            job["Job"]["Id"],
+            media_id,
+            use_first_frame,
+        )
     except Exception as e:
         logger.exception("_process_video failed: %s", e)
 
 
+def _submit_first_frame_fallback(media_id, thumbnail_key, bucket, original_key):
+    """Retry with first frame when 3-4 second capture fails (video too short)."""
+    if not media_id or not thumbnail_key or not bucket or not original_key:
+        logger.warning("Missing metadata for first-frame fallback")
+        return
+    logger.info("Retrying with first frame for %s (video likely under 4 sec)", media_id)
+    _process_video(bucket, original_key, media_id, use_first_frame=True)
+
+
 def _handle_mediaconvert_event(event):
-    """Handle MediaConvert job state change - update DynamoDB when COMPLETE."""
+    """Handle MediaConvert job state change - update DynamoDB when COMPLETE, retry with first frame on ERROR."""
     import boto3
 
     detail = event.get("detail", {})
     status = detail.get("status", "")
+    user_meta = detail.get("userMetadata", {})
+
+    if status == "ERROR":
+        retry_count = int(user_meta.get("retryCount", "0"))
+        if retry_count > 0:
+            logger.warning("MediaConvert job %s failed after first-frame retry", detail.get("jobId"))
+            return {"statusCode": 200, "body": "ok"}
+        media_id = user_meta.get("mediaId", "")
+        thumbnail_key = user_meta.get("thumbnailKey", "")
+        bucket = user_meta.get("bucket", "")
+        original_key = user_meta.get("originalKey", "")
+        _submit_first_frame_fallback(media_id, thumbnail_key, bucket, original_key)
+        return {"statusCode": 200, "body": "ok"}
+
     if status != "COMPLETE":
         logger.info("MediaConvert job %s status: %s", detail.get("jobId"), status)
         return {"statusCode": 200, "body": "ok"}
 
-    media_id = detail.get("userMetadata", {}).get("mediaId", "")
-    thumbnail_key = detail.get("userMetadata", {}).get("thumbnailKey", "")
+    media_id = user_meta.get("mediaId", "")
+    thumbnail_key = user_meta.get("thumbnailKey", "")
     if not media_id or not thumbnail_key:
         logger.warning("Missing mediaId or thumbnailKey in job metadata")
         return {"statusCode": 200, "body": "ok"}
