@@ -288,6 +288,10 @@
       border-top-color: #374151;
       color: #9ca3af;
     }
+    .auth-link-signed-in { color: #fff !important; background: #dc2626 !important; padding: 0.35rem 0.6rem; border-radius: 0.4rem; font-weight: 500; }
+    .auth-link-signed-in:hover { background: #b91c1c !important; color: #fff !important; }
+    .theme-dark .auth-link-signed-in { background: #ef4444 !important; }
+    .theme-dark .auth-link-signed-in:hover { background: #dc2626 !important; }
   </style>
 </head>
 <body>
@@ -341,7 +345,7 @@
       <a href="media.html">Browse Media</a>
       <a href="add-media.html">Add Media</a>
       <a href="media-categories.html">Media Categories</a>
-      <a href="auth.html">Sign in / Sign up</a>
+      <a href="auth.html" class="auth-link">Sign in / Sign up</a>
     </nav>
   </footer>
 
@@ -379,6 +383,7 @@
   <script src="https://cdn.jsdelivr.net/npm/amazon-cognito-identity-js@6.3.0/dist/amazon-cognito-identity.min.js"></script>
   <script src="config.js"></script>
   <script src="auth.js"></script>
+  <script src="auth-button.js"></script>
   <script src="media.js"></script>
 </body>
 </html>

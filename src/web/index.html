@@ -188,6 +188,10 @@
     .theme-dark .nav-links a:nth-child(3) {
       background: #1e293b;
     }
+    .auth-link-signed-in { background: #dc2626 !important; color: #fff !important; }
+    .auth-link-signed-in:hover { background: #b91c1c !important; color: #fff !important; }
+    .theme-dark .auth-link-signed-in { background: #ef4444 !important; }
+    .theme-dark .auth-link-signed-in:hover { background: #dc2626 !important; }
     .theme-dark .theme-toggle {
       background: rgba(255, 255, 255, 0.9);
       color: #050608;
@@ -257,7 +261,7 @@
     <div class="nav-links">
       <a href="websites.html">Browse Websites</a>
       <a href="media.html">Browse Media</a>
-      <a href="auth.html">Sign in / Sign up</a>
+      <a href="auth.html" class="auth-link">Sign in / Sign up</a>
     </div>
   </div>
 
@@ -270,10 +274,14 @@
       <a href="add-media.html">Add Media</a>
       <a href="categories.html">Categories</a>
       <a href="media-categories.html">Media Categories</a>
-      <a href="auth.html">Sign in / Sign up</a>
+      <a href="auth.html" class="auth-link">Sign in / Sign up</a>
     </nav>
   </footer>
 
+  <script src="https://cdn.jsdelivr.net/npm/amazon-cognito-identity-js@6.3.0/dist/amazon-cognito-identity.min.js"></script>
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
+  <script src="auth-button.js"></script>
   <script>
     (function() {
       var body = document.body;
