@@ -83,6 +83,8 @@ def handler(event, context):
 
         if method == "GET" and path == "/health":
             return jsonResponse({"ok": True})
+        if method == "GET" and path == "/internet-dashboard":
+            return getInternetDashboard(event)
         if method == "GET" and path == "/sites":
             return listSites(event)
         if method == "GET" and path == "/sites/all":
@@ -138,6 +140,17 @@ def handler(event, context):
         import traceback
         logger.error("traceback: %s", traceback.format_exc())
         return jsonResponse({"error": str(e), "type": type(e).__name__}, 500)
+
+
+def getInternetDashboard(event):
+    """GET /internet-dashboard: status of 20 popular sites (public, no auth)."""
+    try:
+        from api.internet_dashboard import fetchDashboard
+        sites = fetchDashboard()
+        return jsonResponse({"sites": sites})
+    except Exception as e:
+        logger.exception("getInternetDashboard error: %s", e)
+        return jsonResponse({"error": str(e), "sites": []}, 500)
 
 
 def _resolveCategoriesForSites(dynamodb, sites):
