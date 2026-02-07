@@ -31,6 +31,16 @@
       opacity: 0.95;
       margin-top: 0.25rem;
     }
+    .dashboard-home-btn {
+      padding: 0.35rem 0.6rem;
+      border-radius: 0.4rem;
+      border: 1px solid rgba(13, 148, 136, 0.4);
+      background: rgba(13, 148, 136, 0.15);
+      color: #0d9488;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+    .dashboard-home-btn:hover { background: rgba(13, 148, 136, 0.25); }
     .dashboard-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
@@ -74,6 +84,12 @@
       background: linear-gradient(135deg, #2dd4bf 0%, #0d9488 100%);
       border-color: rgba(45, 212, 191, 0.4);
     }
+    .theme-dark .dashboard-home-btn {
+      background: rgba(45, 212, 191, 0.2);
+      color: #2dd4bf;
+      border-color: rgba(45, 212, 191, 0.4);
+    }
+    .theme-dark .dashboard-home-btn:hover { background: rgba(45, 212, 191, 0.35); }
     .theme-dark .dashboard-tile {
       background: rgba(30, 41, 59, 0.5);
       border-color: rgba(45, 212, 191, 0.3);
@@ -107,6 +123,9 @@
   </button>
 
   <h1>Funkedupshift – Internet Dashboard</h1>
+  <p>
+    <button type="button" class="dashboard-home-btn" onclick="window.location.href='index.html'">Home</button>
+  </p>
   <div class="dashboard-header">
     <div>Live status of popular sites</div>
     <div class="dashboard-subtitle">Refreshes when data is older than 5 minutes</div>
