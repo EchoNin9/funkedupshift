@@ -29,6 +29,9 @@ logger.setLevel(logging.INFO)
 
 TABLE_NAME = os.environ.get("TABLE_NAME", "")
 MEDIA_BUCKET = os.environ.get("MEDIA_BUCKET", "")
+COGNITO_USER_POOL_ID = os.environ.get("COGNITO_USER_POOL_ID", "")
+
+ROLE_DISPLAY_MAP = {"admin": "SuperAdmin", "manager": "Manager", "user": "User"}
 
 
 def getUserInfo(event):
@@ -58,10 +61,12 @@ def getUserInfo(event):
                 if g:
                     groups.append(g)
 
+    groups_display = [ROLE_DISPLAY_MAP.get(g, g) for g in groups]
     return {
         "userId": claims.get("sub", ""),
         "email": claims.get("email", ""),
         "groups": groups,
+        "groupsDisplay": groups_display,
     }
 
 
@@ -131,6 +136,40 @@ def handler(event, context):
             return updateMediaCategory(event)
         if method == "DELETE" and path == "/media-categories":
             return deleteMediaCategory(event)
+        # Admin user/group management routes
+        path_params = event.get("pathParameters") or {}
+        if method == "GET" and path == "/admin/users":
+            return listAdminUsers(event)
+        if method == "GET" and path.startswith("/admin/users/") and path.endswith("/groups"):
+            username = path_params.get("username") or path.split("/admin/users/")[-1].rstrip("/groups").strip("/")
+            if username:
+                return getUserGroups(event, username)
+        if method == "POST" and path.startswith("/admin/users/") and path.endswith("/groups"):
+            username = path_params.get("username") or path.split("/admin/users/")[-1].rstrip("/groups").strip("/")
+            if username:
+                return addUserToGroup(event, username)
+        if method == "DELETE" and "/admin/users/" in path and "/groups/" in path:
+            username = path_params.get("username")
+            group_name = path_params.get("groupName")
+            if not username or not group_name:
+                parts = path.split("/admin/users/")[-1].split("/groups/")
+                if len(parts) == 2:
+                    username = parts[0].strip("/")
+                    group_name = parts[1].strip("/")
+            if username and group_name:
+                return removeUserFromGroup(event, username, group_name)
+        if method == "GET" and path == "/admin/groups":
+            return listAdminGroups(event)
+        if method == "POST" and path == "/admin/groups":
+            return createAdminGroup(event)
+        if method == "PUT" and path.startswith("/admin/groups/"):
+            name = path_params.get("name") or path.split("/admin/groups/")[-1].strip("/")
+            if name:
+                return updateAdminGroup(event, name)
+        if method == "DELETE" and path.startswith("/admin/groups/"):
+            name = path_params.get("name") or path.split("/admin/groups/")[-1].strip("/")
+            if name:
+                return deleteAdminGroup(event, name)
         if method == "OPTIONS":
             # CORS preflight
             return jsonResponse({}, 200)
@@ -670,6 +709,27 @@ def _requireAdmin(event):
     if "admin" not in user.get("groups", []):
         return None, jsonResponse({"error": "Forbidden: admin role required"}, 403)
     return user, None
+
+
+def _requireSuperAdmin(event):
+    """Return (user, None) if SuperAdmin (admin group), else (None, error_response)."""
+    return _requireAdmin(event)
+
+
+def _requireManagerOrAdmin(event):
+    """Return (user, None) if admin or manager, else (None, error_response)."""
+    user = getUserInfo(event)
+    if not user.get("userId"):
+        return None, jsonResponse({"error": "Unauthorized"}, 401)
+    groups = user.get("groups", [])
+    if "admin" not in groups and "manager" not in groups:
+        return None, jsonResponse({"error": "Forbidden: manager or admin role required"}, 403)
+    return user, None
+
+
+def _canModifyAdminGroup(user):
+    """Only SuperAdmin can add/remove users from admin group."""
+    return "admin" in user.get("groups", [])
 
 
 def _dynamoItemToDict(item):
@@ -1425,4 +1485,372 @@ def deleteMediaCategory(event):
         return jsonResponse({"id": cat_id, "deleted": True}, 200)
     except Exception as e:
         logger.exception("deleteMediaCategory error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
+# ------------------------------------------------------------------------------
+# Admin user & group management
+# ------------------------------------------------------------------------------
+
+def listAdminUsers(event):
+    """GET /admin/users - List Cognito users (SuperAdmin or Manager)."""
+    _, err = _requireManagerOrAdmin(event)
+    if err:
+        return err
+    if not COGNITO_USER_POOL_ID:
+        return jsonResponse({"error": "COGNITO_USER_POOL_ID not set"}, 500)
+    try:
+        import boto3
+        cognito = boto3.client("cognito-idp")
+        qs = event.get("queryStringParameters") or {}
+        try:
+            limit = min(int(qs.get("limit", 60)), 60)
+        except (TypeError, ValueError):
+            limit = 60
+        token = qs.get("paginationToken", "")
+
+        kwargs = {
+            "UserPoolId": COGNITO_USER_POOL_ID,
+            "Limit": limit,
+        }
+        if token:
+            kwargs["PaginationToken"] = token
+
+        result = cognito.list_users(**kwargs)
+        users = []
+        for u in result.get("Users", []):
+            attrs = {a["Name"]: a["Value"] for a in u.get("Attributes", [])}
+            email = attrs.get("email", attrs.get("sub", u.get("Username", "")))
+            users.append({
+                "username": u.get("Username"),
+                "email": email,
+                "sub": attrs.get("sub", ""),
+                "status": u.get("UserStatus"),
+                "enabled": u.get("Enabled", True),
+            })
+        out = {"users": users}
+        if result.get("PaginationToken"):
+            out["paginationToken"] = result["PaginationToken"]
+        return jsonResponse(out)
+    except Exception as e:
+        logger.exception("listAdminUsers error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def _getUserCustomGroups(user_id):
+    """Fetch user's custom group memberships from DynamoDB."""
+    if not TABLE_NAME or not user_id:
+        return []
+    try:
+        import boto3
+        dynamodb = boto3.client("dynamodb")
+        pk = f"USER#{user_id}"
+        result = dynamodb.query(
+            TableName=TABLE_NAME,
+            KeyConditionExpression="PK = :pk AND begins_with(SK, :sk)",
+            ExpressionAttributeValues={
+                ":pk": {"S": pk},
+                ":sk": {"S": "MEMBERSHIP#"},
+            },
+        )
+        groups = []
+        for item in result.get("Items", []):
+            group_name = item.get("groupName", {}).get("S", "")
+            if group_name:
+                groups.append(group_name)
+        return groups
+    except Exception:
+        return []
+
+
+def getUserGroups(event, username):
+    """GET /admin/users/{username}/groups - Get user's Cognito + custom groups."""
+    user, err = _requireManagerOrAdmin(event)
+    if err:
+        return err
+    if not COGNITO_USER_POOL_ID:
+        return jsonResponse({"error": "COGNITO_USER_POOL_ID not set"}, 500)
+    try:
+        import boto3
+        cognito = boto3.client("cognito-idp")
+        resp = cognito.admin_list_groups_for_user(
+            UserPoolId=COGNITO_USER_POOL_ID,
+            Username=username,
+        )
+        cognito_groups = [g.get("GroupName", "") for g in resp.get("Groups", []) if g.get("GroupName")]
+        user_resp = cognito.admin_get_user(
+            UserPoolId=COGNITO_USER_POOL_ID,
+            Username=username,
+        )
+        attrs = {a["Name"]: a["Value"] for a in user_resp.get("UserAttributes", [])}
+        sub = attrs.get("sub", "")
+        custom_groups = _getUserCustomGroups(sub) if sub else []
+        return jsonResponse({
+            "username": username,
+            "sub": sub,
+            "cognitoGroups": cognito_groups,
+            "customGroups": custom_groups,
+        })
+    except Exception as e:
+        if "UserNotFoundException" in str(type(e).__name__) or "UserNotFoundException" in str(e):
+            return jsonResponse({"error": "User not found"}, 404)
+        logger.exception("getUserGroups error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def addUserToGroup(event, username):
+    """POST /admin/users/{username}/groups - Add user to group (body: {groupName})."""
+    user, err = _requireManagerOrAdmin(event)
+    if err:
+        return err
+    try:
+        body = json.loads(event.get("body", "{}"))
+        group_name = (body.get("groupName") or "").strip()
+        if not group_name:
+            return jsonResponse({"error": "groupName is required"}, 400)
+
+        cognito_system_groups = {"admin", "manager", "user"}
+        if group_name == "admin" and not _canModifyAdminGroup(user):
+            return jsonResponse({"error": "Forbidden: only SuperAdmin can add users to admin group"}, 403)
+
+        if not COGNITO_USER_POOL_ID:
+            return jsonResponse({"error": "COGNITO_USER_POOL_ID not set"}, 500)
+
+        if group_name in cognito_system_groups:
+            if group_name in ("manager", "user") and "admin" not in user.get("groups", []) and "manager" not in user.get("groups", []):
+                return jsonResponse({"error": "Forbidden"}, 403)
+            import boto3
+            cognito = boto3.client("cognito-idp")
+            cognito.admin_add_user_to_group(
+                UserPoolId=COGNITO_USER_POOL_ID,
+                Username=username,
+                GroupName=group_name,
+            )
+            return jsonResponse({"username": username, "groupName": group_name, "added": True}, 200)
+        else:
+            if "admin" not in user.get("groups", []) and "manager" not in user.get("groups", []):
+                return jsonResponse({"error": "Forbidden"}, 403)
+            if not TABLE_NAME:
+                return jsonResponse({"error": "TABLE_NAME not set"}, 500)
+            import boto3
+            from datetime import datetime
+            cognito = boto3.client("cognito-idp")
+            dynamodb = boto3.client("dynamodb")
+            user_resp = cognito.admin_get_user(
+                UserPoolId=COGNITO_USER_POOL_ID,
+                Username=username,
+            )
+            attrs = {a["Name"]: a["Value"] for a in user_resp.get("UserAttributes", [])}
+            sub = attrs.get("sub", "")
+            if not sub:
+                return jsonResponse({"error": "User sub not found"}, 400)
+            group_check = dynamodb.get_item(
+                TableName=TABLE_NAME,
+                Key={"PK": {"S": f"GROUP#{group_name}"}, "SK": {"S": "METADATA"}},
+            )
+            if "Item" not in group_check:
+                return jsonResponse({"error": f"Custom group '{group_name}' not found"}, 404)
+            now = datetime.utcnow().isoformat() + "Z"
+            dynamodb.put_item(
+                TableName=TABLE_NAME,
+                Item={
+                    "PK": {"S": f"USER#{sub}"},
+                    "SK": {"S": f"MEMBERSHIP#{group_name}"},
+                    "groupName": {"S": group_name},
+                    "userId": {"S": sub},
+                    "addedAt": {"S": now},
+                    "addedBy": {"S": user.get("userId", "")},
+                },
+            )
+            return jsonResponse({"username": username, "groupName": group_name, "added": True}, 200)
+    except Exception as e:
+        if "UserNotFoundException" in str(type(e).__name__) or "UserNotFoundException" in str(e):
+            return jsonResponse({"error": "User not found"}, 404)
+        logger.exception("addUserToGroup error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def removeUserFromGroup(event, username, group_name):
+    """DELETE /admin/users/{username}/groups/{groupName} - Remove user from group."""
+    user, err = _requireManagerOrAdmin(event)
+    if err:
+        return err
+    if not COGNITO_USER_POOL_ID:
+        return jsonResponse({"error": "COGNITO_USER_POOL_ID not set"}, 500)
+    try:
+        cognito_system_groups = {"admin", "manager", "user"}
+        if group_name in cognito_system_groups:
+            if group_name == "admin" and not _canModifyAdminGroup(user):
+                return jsonResponse({"error": "Forbidden: only SuperAdmin can remove users from admin group"}, 403)
+            import boto3
+            cognito = boto3.client("cognito-idp")
+            cognito.admin_remove_user_from_group(
+                UserPoolId=COGNITO_USER_POOL_ID,
+                Username=username,
+                GroupName=group_name,
+            )
+            return jsonResponse({"username": username, "groupName": group_name, "removed": True}, 200)
+        else:
+            if not TABLE_NAME:
+                return jsonResponse({"error": "TABLE_NAME not set"}, 500)
+            import boto3
+            cognito = boto3.client("cognito-idp")
+            user_resp = cognito.admin_get_user(
+                UserPoolId=COGNITO_USER_POOL_ID,
+                Username=username,
+            )
+            attrs = {a["Name"]: a["Value"] for a in user_resp.get("UserAttributes", [])}
+            sub = attrs.get("sub", "")
+            if not sub:
+                return jsonResponse({"error": "User sub not found"}, 400)
+            dynamodb = boto3.client("dynamodb")
+            dynamodb.delete_item(
+                TableName=TABLE_NAME,
+                Key={
+                    "PK": {"S": f"USER#{sub}"},
+                    "SK": {"S": f"MEMBERSHIP#{group_name}"},
+                },
+            )
+            return jsonResponse({"username": username, "groupName": group_name, "removed": True}, 200)
+    except Exception as e:
+        if "UserNotFoundException" in str(type(e).__name__) or "UserNotFoundException" in str(e):
+            return jsonResponse({"error": "User not found"}, 404)
+        logger.exception("removeUserFromGroup error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def listAdminGroups(event):
+    """GET /admin/groups - List custom RBAC groups (DynamoDB)."""
+    _, err = _requireManagerOrAdmin(event)
+    if err:
+        return err
+    if not TABLE_NAME:
+        return jsonResponse({"groups": [], "error": "TABLE_NAME not set"}, 200)
+    try:
+        import boto3
+        dynamodb = boto3.client("dynamodb")
+        result = dynamodb.query(
+            TableName=TABLE_NAME,
+            IndexName="byEntity",
+            KeyConditionExpression="entityType = :et",
+            ExpressionAttributeValues={":et": {"S": "GROUP"}},
+        )
+        groups = []
+        for item in result.get("Items", []):
+            g = _dynamoItemToDict(item)
+            g["name"] = g.get("name") or g.get("PK", "").replace("GROUP#", "")
+            groups.append(g)
+        groups.sort(key=lambda x: (x.get("name") or "").lower())
+        return jsonResponse({"groups": groups})
+    except Exception as e:
+        logger.exception("listAdminGroups error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def createAdminGroup(event):
+    """POST /admin/groups - Create custom RBAC group."""
+    user, err = _requireManagerOrAdmin(event)
+    if err:
+        return err
+    try:
+        import boto3
+        import re
+        from datetime import datetime
+        body = json.loads(event.get("body", "{}"))
+        name = (body.get("name") or "").strip()
+        if not name:
+            return jsonResponse({"error": "name is required"}, 400)
+        if not TABLE_NAME:
+            return jsonResponse({"error": "TABLE_NAME not set"}, 500)
+        if not re.match(r"^[a-zA-Z0-9_-]+$", name):
+            return jsonResponse({"error": "name must be alphanumeric, underscore, or hyphen"}, 400)
+        description = (body.get("description") or "").strip()
+        permissions = body.get("permissions", [])
+        if isinstance(permissions, str):
+            permissions = [p.strip() for p in permissions.split(",") if p.strip()]
+        elif not isinstance(permissions, list):
+            permissions = []
+        now = datetime.utcnow().isoformat() + "Z"
+        pk = f"GROUP#{name}"
+        dynamodb = boto3.client("dynamodb")
+        dynamodb.put_item(
+            TableName=TABLE_NAME,
+            Item={
+                "PK": {"S": pk},
+                "SK": {"S": "METADATA"},
+                "name": {"S": name},
+                "description": {"S": description},
+                "entityType": {"S": "GROUP"},
+                "entitySk": {"S": pk},
+                "permissions": {"L": [{"S": str(p)} for p in permissions]},
+                "createdAt": {"S": now},
+                "updatedAt": {"S": now},
+            },
+        )
+        return jsonResponse({"name": name, "description": description, "permissions": permissions}, 201)
+    except Exception as e:
+        logger.exception("createAdminGroup error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def updateAdminGroup(event, name):
+    """PUT /admin/groups/{name} - Update custom group."""
+    _, err = _requireManagerOrAdmin(event)
+    if err:
+        return err
+    if not TABLE_NAME:
+        return jsonResponse({"error": "TABLE_NAME not set"}, 500)
+    try:
+        import boto3
+        from datetime import datetime
+        body = json.loads(event.get("body", "{}"))
+        description = body.get("description")
+        permissions = body.get("permissions")
+        now = datetime.utcnow().isoformat() + "Z"
+        pk = f"GROUP#{name}"
+        update_expr = ["updatedAt = :updatedAt"]
+        names = {}
+        values = {":updatedAt": {"S": now}}
+        if description is not None:
+            update_expr.append("#desc = :desc")
+            names["#desc"] = "description"
+            values[":desc"] = {"S": str(description)}
+        if permissions is not None:
+            perms = permissions if isinstance(permissions, list) else []
+            if isinstance(permissions, str):
+                perms = [p.strip() for p in permissions.split(",") if p.strip()]
+            update_expr.append("permissions = :perms")
+            values[":perms"] = {"L": [{"S": str(p)} for p in perms]}
+        dynamodb = boto3.client("dynamodb")
+        dynamodb.update_item(
+            TableName=TABLE_NAME,
+            Key={"PK": {"S": pk}, "SK": {"S": "METADATA"}},
+            UpdateExpression="SET " + ", ".join(update_expr),
+            ExpressionAttributeNames=names or None,
+            ExpressionAttributeValues=values,
+        )
+        return jsonResponse({"name": name, "updated": True}, 200)
+    except Exception as e:
+        logger.exception("updateAdminGroup error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def deleteAdminGroup(event, name):
+    """DELETE /admin/groups/{name} - Delete custom group."""
+    _, err = _requireManagerOrAdmin(event)
+    if err:
+        return err
+    if not TABLE_NAME:
+        return jsonResponse({"error": "TABLE_NAME not set"}, 500)
+    try:
+        import boto3
+        dynamodb = boto3.client("dynamodb")
+        pk = f"GROUP#{name}"
+        dynamodb.delete_item(
+            TableName=TABLE_NAME,
+            Key={"PK": {"S": pk}, "SK": {"S": "METADATA"}},
+        )
+        return jsonResponse({"name": name, "deleted": True}, 200)
+    except Exception as e:
+        logger.exception("deleteAdminGroup error")
         return jsonResponse({"error": str(e)}, 500)

@@ -8,9 +8,10 @@ Billing: **PAY_PER_REQUEST**.
 
 | GSI name   | Partition key | Sort key  | Use case                          |
 |-----------|----------------|-----------|-----------------------------------|
-| **byEntity** | entityType (S) | entitySk (S) | List all sites: `entityType=SITE` |
+| **byEntity** | entityType (S) | entitySk (S) | List all sites: `entityType=SITE`; list groups: `entityType=GROUP` |
 | **byTag**    | tag (S)        | siteId (S)   | Sites by tag: `tag=javascript`    |
 | **byStars**  | starRating (N) | siteId (S)   | Ratings by value: `starRating=5`  |
+| **byGroup**  | groupName (S)  | userId (S)   | List users in custom group        |
 
 ## Item types and access patterns
 
@@ -27,7 +28,7 @@ One item per site. Only admins create/update; everyone can read.
 
 ### 2. Site–tag (for query by tag)
 
-One item per tag per site. Write when a site’s tags change.
+One item per tag per site. Write when a site's tags change.
 
 | PK          | SK        | Attributes   |
 |-------------|-----------|--------------|
@@ -54,11 +55,29 @@ One item per user per site. Logged-in users write their own.
 | USER#\<id\> | SITE#\<siteId\>#COMMENT#\<commentId\> | body, createdAt, updatedAt |
 
 - **Comments for a site:** Query `PK=SITE#\<siteId\>`, `SK begins_with COMMENT#` — *or* store under site with SK=COMMENT#\<id\> and use a GSI if needed.  
-  Simpler: store under user; to list “all comments for site X” use a GSI (e.g. **bySite** with PK=siteId, SK=COMMENT#\<id\>) or scan (avoid at scale).  
-  For v1, “comments for site” can be implemented later with a GSI or secondary item type under the site.
+  Simpler: store under user; to list "all comments for site X" use a GSI (e.g. **bySite** with PK=siteId, SK=COMMENT#\<id\>) or scan (avoid at scale).  
+  For v1, "comments for site" can be implemented later with a GSI or secondary item type under the site.
+
+### 5. Custom RBAC group (DynamoDB)
+
+| PK             | SK         | Attributes                                                                 |
+|----------------|------------|----------------------------------------------------------------------------|
+| GROUP#\<name\> | METADATA   | name, description, permissions (list), createdAt, updatedAt, **entityType**=GROUP, **entitySk**=GROUP#\<name\> |
+
+- **List all groups:** Query GSI **byEntity** with `entityType=GROUP`.
+- **Get group:** `GetItem(PK=GROUP#\<name\>, SK=METADATA)`.
+
+### 6. User membership in custom group
+
+| PK                  | SK                       | Attributes                                      |
+|---------------------|--------------------------|-------------------------------------------------|
+| USER#\<cognitoSub\> | MEMBERSHIP#\<groupName\> | groupName, userId (cognito sub), addedAt, addedBy |
+
+- **User's custom groups:** Query `PK=USER#\<sub\>` where `SK begins_with MEMBERSHIP#`.
+- **Group members:** Query GSI **byGroup** with `groupName=\<name\>`.
 
 ## Summary
 
-- **PK/SK:** Generic (USER#..., SITE#..., TAG#...).
-- **GSIs:** byEntity (list sites), byTag (sites by tag), byStars (ratings by 1–5).
+- **PK/SK:** Generic (USER#..., SITE#..., TAG#..., GROUP#...).
+- **GSIs:** byEntity (list sites/groups), byTag (sites by tag), byStars (ratings by 1–5), byGroup (users in custom group).
 - **Roles:** Admins create/update sites; any logged-in user creates/updates their own ratings and comments.
