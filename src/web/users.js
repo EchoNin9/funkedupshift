@@ -80,18 +80,21 @@
   function renderUsers() {
     if (!userTableBody) return;
     if (allUsers.length === 0) {
-      userTableBody.innerHTML = '<tr><td colspan="5">No users found.</td></tr>';
+      userTableBody.innerHTML = '<tr><td colspan="4">No users found.</td></tr>';
       return;
     }
     userTableBody.innerHTML = allUsers.map(function (u) {
       var email = escapeHtml(u.email || u.username || '—');
       var status = escapeHtml(u.status || '—');
-      return '<tr data-username="' + escapeHtml(u.username || '') + '" data-email="' + email + '">' +
+      var username = u.username || '';
+      var href = 'edit-user.html?username=' + encodeURIComponent(username) +
+        '&email=' + encodeURIComponent(u.email || username || '') +
+        '&status=' + encodeURIComponent(u.status || '');
+      return '<tr data-username="' + escapeHtml(username) + '" data-href="' + escapeHtml(href) + '">' +
         '<td>' + email + '</td>' +
         '<td>' + status + '</td>' +
         '<td class="user-groups" data-cognito-groups=""></td>' +
         '<td class="user-groups" data-custom-groups=""></td>' +
-        '<td><button type="button" class="secondary manage-groups-btn">Manage groups</button></td>' +
         '</tr>';
     }).join('');
 
@@ -114,85 +117,12 @@
         });
     });
 
-    userTableBody.querySelectorAll('.manage-groups-btn').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        var row = this.closest('tr');
-        var username = row && row.getAttribute('data-username');
-        if (!username) return;
-        openManageModal(username, row);
+    userTableBody.querySelectorAll('tr[data-href]').forEach(function (row) {
+      row.addEventListener('click', function () {
+        var href = row.getAttribute('data-href');
+        if (href) window.location.href = href;
       });
     });
-  }
-
-  function openManageModal(username, row) {
-    var cognitoGroups = [];
-    var customGroups = [];
-    try {
-      cognitoGroups = JSON.parse(row.dataset.cognitoGroups || '[]');
-      customGroups = JSON.parse(row.dataset.customGroups || '[]');
-    } catch (e) {}
-
-    var sysGroups = ['admin', 'manager', 'user'];
-    var canEditAdmin = isSuperAdmin;
-    var options = [];
-    if (canEditAdmin) options.push('admin');
-    options.push('manager', 'user');
-    options = options.concat(allCustomGroups.filter(function (g) { return sysGroups.indexOf(g) === -1; }));
-
-    var msg = 'User: ' + (row.getAttribute('data-email') || username) + '\n\n';
-    msg += 'Current: ' + cognitoGroups.concat(customGroups).join(', ') + '\n\n';
-    msg += 'Add to group (enter exact name: admin, manager, user, or custom group name):';
-    var toAdd = window.prompt(msg);
-    if (toAdd === null) return;
-    toAdd = (toAdd || '').trim();
-    if (!toAdd) return;
-
-    fetchWithAuth(base + '/admin/users/' + encodeURIComponent(username) + '/groups', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ groupName: toAdd })
-    })
-      .then(function (r) {
-        if (r.ok) {
-          showMessage('Added to ' + toAdd + '.', false);
-          return fetchWithAuth(base + '/admin/users/' + encodeURIComponent(username) + '/groups').then(function (rr) { return rr.json(); });
-        }
-        return r.json().then(function (d) { throw new Error(d.error || 'Failed'); });
-      })
-      .then(function (data) {
-        row.dataset.cognitoGroups = JSON.stringify(data.cognitoGroups || []);
-        row.dataset.customGroups = JSON.stringify(data.customGroups || []);
-        var cognitoCell = row.querySelector('[data-cognito-groups]');
-        var customCell = row.querySelector('[data-custom-groups]');
-        if (cognitoCell) cognitoCell.innerHTML = renderGroupBadges(data.cognitoGroups || [], []);
-        if (customCell) customCell.innerHTML = renderGroupBadges([], data.customGroups || []);
-      })
-      .catch(function (e) {
-        showMessage('Error: ' + (e.message || 'Unknown'), true);
-      });
-  }
-
-  function removeFromGroup(username, groupName, row) {
-    if (!window.confirm('Remove ' + username + ' from ' + groupName + '?')) return;
-    fetchWithAuth(base + '/admin/users/' + encodeURIComponent(username) + '/groups/' + encodeURIComponent(groupName), {
-      method: 'DELETE'
-    })
-      .then(function (r) {
-        if (r.ok) return fetchWithAuth(base + '/admin/users/' + encodeURIComponent(username) + '/groups').then(function (rr) { return rr.json(); });
-        return r.json().then(function (d) { throw new Error(d.error || 'Failed'); });
-      })
-      .then(function (data) {
-        row.dataset.cognitoGroups = JSON.stringify(data.cognitoGroups || []);
-        row.dataset.customGroups = JSON.stringify(data.customGroups || []);
-        var cognitoCell = row.querySelector('[data-cognito-groups]');
-        var customCell = row.querySelector('[data-custom-groups]');
-        if (cognitoCell) cognitoCell.innerHTML = renderGroupBadges(data.cognitoGroups || [], []);
-        if (customCell) customCell.innerHTML = renderGroupBadges([], data.customGroups || []);
-        showMessage('Removed from ' + groupName + '.', false);
-      })
-      .catch(function (e) {
-        showMessage('Error: ' + (e.message || 'Unknown'), true);
-      });
   }
 
   function renderPagination() {
