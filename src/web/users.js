@@ -88,7 +88,8 @@
       var status = escapeHtml(u.status || '—');
       var at = u.lastLoginAt || '';
       var ip = u.lastLoginIp || '';
-      var lastLogin = (at && ip) ? (at + ' from ' + ip) : (at || (ip ? 'from ' + ip : '—'));
+      var iso = at ? (function (s) { try { var d = new Date(s); return isNaN(d.getTime()) ? s : d.toISOString(); } catch (e) { return s; } })(at) : '';
+      var lastLogin = (iso && ip) ? (iso + ' from ' + ip) : (iso || (ip ? 'from ' + ip : '—'));
       var username = u.username || '';
       var href = 'edit-user.html?username=' + encodeURIComponent(username) +
         '&email=' + encodeURIComponent(u.email || username || '') +

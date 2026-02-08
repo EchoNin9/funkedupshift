@@ -111,10 +111,11 @@
           var p = data.profile || {};
           var at = p.lastLoginAt || '';
           var ip = p.lastLoginIp || '';
-          if (at && ip) {
-            lastLoginEl.textContent = at + ' from ' + ip;
-          } else if (at) {
-            lastLoginEl.textContent = at;
+          var iso = at ? (function (s) { try { var d = new Date(s); return isNaN(d.getTime()) ? s : d.toISOString(); } catch (e) { return s; } })(at) : '';
+          if (iso && ip) {
+            lastLoginEl.textContent = iso + ' from ' + ip;
+          } else if (iso) {
+            lastLoginEl.textContent = iso;
           } else if (ip) {
             lastLoginEl.textContent = 'from ' + ip;
           } else {
