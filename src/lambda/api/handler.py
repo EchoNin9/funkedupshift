@@ -690,13 +690,15 @@ def updateProfile(event):
             updates.append("avatarKey = :ak")
             values[":ak"] = {"S": key_str}
 
-        dynamodb.update_item(
-            TableName=TABLE_NAME,
-            Key={"PK": {"S": pk}, "SK": {"S": "PROFILE"}},
-            UpdateExpression="SET " + ", ".join(updates),
-            ExpressionAttributeNames=names if names else None,
-            ExpressionAttributeValues=values,
-        )
+        params = {
+            "TableName": TABLE_NAME,
+            "Key": {"PK": {"S": pk}, "SK": {"S": "PROFILE"}},
+            "UpdateExpression": "SET " + ", ".join(updates),
+            "ExpressionAttributeValues": values,
+        }
+        if names:
+            params["ExpressionAttributeNames"] = names
+        dynamodb.update_item(**params)
         return jsonResponse({"updated": True})
     except Exception as e:
         logger.exception("updateProfile error")
