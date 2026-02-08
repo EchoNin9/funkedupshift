@@ -182,24 +182,26 @@ def _resolveCategoriesForSites(dynamodb, sites):
 
 
 def _addLogoUrls(sites, region=None):
-    """Set logoUrl (presigned GET) for each site that has logoKey. In-place."""
-    if not MEDIA_BUCKET or not sites:
+    """Set logoUrl: use stored logoUrl if present; else presigned GET for logoKey. In-place."""
+    if not sites:
         return
-    try:
-        import boto3
-        region = region or os.environ.get("AWS_REGION", "us-east-1")
-        s3 = boto3.client("s3", region_name=region)
-        for s in sites:
-            key = s.get("logoKey")
-            if key and isinstance(key, str) and key.strip():
+    for s in sites:
+        if s.get("logoUrl") and isinstance(s["logoUrl"], str) and s["logoUrl"].strip():
+            continue
+        key = s.get("logoKey")
+        if key and isinstance(key, str) and key.strip() and MEDIA_BUCKET:
+            try:
+                import boto3
+                region = region or os.environ.get("AWS_REGION", "us-east-1")
+                s3 = boto3.client("s3", region_name=region)
                 url = s3.generate_presigned_url(
                     "get_object",
                     Params={"Bucket": MEDIA_BUCKET, "Key": key},
                     ExpiresIn=3600,
                 )
                 s["logoUrl"] = url
-    except Exception as e:
-        logger.warning("_addLogoUrls failed: %s", e)
+            except Exception as e:
+                logger.warning("_addLogoUrls failed for key %s: %s", key, e)
 
 
 def listSites(event, forceAll=False):
@@ -359,6 +361,7 @@ def createSite(event):
         site_id = f"SITE#{uuid.uuid4()}"
         now = datetime.utcnow().isoformat() + "Z"
         logo_key = (body.get("logoKey") or "").strip() or None
+        logo_url = (body.get("logoUrl") or "").strip() or None
 
         dynamodb = boto3.client("dynamodb")
 
@@ -383,6 +386,8 @@ def createSite(event):
         }
         if logo_key:
             item["logoKey"] = {"S": logo_key}
+        elif logo_url:
+            item["logoUrl"] = {"S": logo_url}
         dynamodb.put_item(TableName=TABLE_NAME, Item=item)
 
         return jsonResponse({"id": site_id, "url": url, "title": title or url}, 201)
@@ -418,12 +423,13 @@ def updateSite(event):
         category_ids = body.get("categoryIds")
         delete_logo = body.get("deleteLogo") is True
         logo_key = (body.get("logoKey") or "").strip() or None
+        logo_url = (body.get("logoUrl") or "").strip() or None
         now = datetime.utcnow().isoformat() + "Z"
 
         dynamodb = boto3.client("dynamodb")
         region = os.environ.get("AWS_REGION", "us-east-1")
         current_logo_key = None
-        if delete_logo or logo_key:
+        if delete_logo or logo_key or logo_url:
             get_resp = dynamodb.get_item(
                 TableName=TABLE_NAME,
                 Key={"PK": {"S": site_id}, "SK": {"S": "METADATA"}},
@@ -432,7 +438,7 @@ def updateSite(event):
             if "Item" in get_resp and "logoKey" in get_resp["Item"]:
                 current_logo_key = get_resp["Item"]["logoKey"].get("S", "").strip() or None
 
-        if MEDIA_BUCKET and current_logo_key and (delete_logo or logo_key):
+        if MEDIA_BUCKET and current_logo_key and (delete_logo or logo_key or logo_url):
             try:
                 s3 = boto3.client("s3", region_name=region)
                 s3.delete_object(Bucket=MEDIA_BUCKET, Key=current_logo_key)
@@ -465,9 +471,15 @@ def updateSite(event):
 
         if delete_logo:
             remove_parts.append("logoKey")
+            remove_parts.append("logoUrl")
         elif logo_key:
             set_parts.append("logoKey = :logoKey")
             values[":logoKey"] = {"S": logo_key}
+            remove_parts.append("logoUrl")
+        elif logo_url:
+            set_parts.append("logoUrl = :logoUrl")
+            values[":logoUrl"] = {"S": logo_url}
+            remove_parts.append("logoKey")
 
         if not set_parts and not remove_parts:
             return jsonResponse({"error": "Nothing to update"}, 400)
