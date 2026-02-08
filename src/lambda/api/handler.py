@@ -102,6 +102,14 @@ def handler(event, context):
             return updateSite(event)
         if method == "GET" and path == "/me":
             return getMe(event)
+        if method == "GET" and path == "/profile":
+            return getProfile(event)
+        if method == "PUT" and path == "/profile":
+            return updateProfile(event)
+        if method == "POST" and path == "/profile/avatar-upload":
+            return getProfileAvatarUpload(event)
+        if method == "DELETE" and path == "/profile/avatar":
+            return deleteProfileAvatar(event)
         if method == "POST" and path == "/stars":
             return setStar(event)
         if method == "GET" and path == "/categories":
@@ -586,6 +594,189 @@ def getMe(event):
     if not user.get("userId"):
         return jsonResponse({"error": "Unauthorized"}, 401)
     return jsonResponse(user)
+
+
+def getProfile(event):
+    """GET /profile - Return current user's full profile (auth required)."""
+    user = getUserInfo(event)
+    if not user.get("userId"):
+        return jsonResponse({"error": "Unauthorized"}, 401)
+    user_id = user.get("userId", "")
+    status = ""
+    try:
+        if COGNITO_USER_POOL_ID and user.get("email"):
+            import boto3
+            cognito = boto3.client("cognito-idp")
+            resp = cognito.admin_get_user(
+                UserPoolId=COGNITO_USER_POOL_ID,
+                Username=user.get("email", ""),
+            )
+            status = resp.get("UserStatus", "")
+    except Exception:
+        pass
+    profile = {}
+    try:
+        if TABLE_NAME and user_id:
+            import boto3
+            dynamodb = boto3.client("dynamodb")
+            resp = dynamodb.get_item(
+                TableName=TABLE_NAME,
+                Key={"PK": {"S": f"USER#{user_id}"}, "SK": {"S": "PROFILE"}},
+            )
+            if "Item" in resp:
+                item = resp["Item"]
+                profile["description"] = item.get("description", {}).get("S", "")
+                avatar_key = item.get("avatarKey", {}).get("S", "")
+                if avatar_key and MEDIA_BUCKET:
+                    region = os.environ.get("AWS_REGION", "us-east-1")
+                    s3 = boto3.client("s3", region_name=region)
+                    profile["avatarUrl"] = s3.generate_presigned_url(
+                        "get_object",
+                        Params={"Bucket": MEDIA_BUCKET, "Key": avatar_key},
+                        ExpiresIn=3600,
+                    )
+                profile["avatarKey"] = avatar_key
+    except Exception as e:
+        logger.exception("getProfile error")
+        return jsonResponse({"error": str(e)}, 500)
+    custom_groups = _getUserCustomGroups(user_id)
+    out = {
+        "userId": user.get("userId"),
+        "email": user.get("email"),
+        "status": status,
+        "groups": user.get("groups", []),
+        "groupsDisplay": user.get("groupsDisplay", []),
+        "cognitoGroups": user.get("groups", []),
+        "customGroups": custom_groups,
+        "profile": profile,
+    }
+    return jsonResponse(out)
+
+
+def updateProfile(event):
+    """PUT /profile - Update current user's profile (description, avatarKey)."""
+    user = getUserInfo(event)
+    if not user.get("userId"):
+        return jsonResponse({"error": "Unauthorized"}, 401)
+    if not TABLE_NAME:
+        return jsonResponse({"error": "TABLE_NAME not set"}, 500)
+    try:
+        import boto3
+        from datetime import datetime
+        body = json.loads(event.get("body", "{}"))
+        description = body.get("description")
+        avatar_key = body.get("avatarKey")
+        user_id = user.get("userId", "")
+        pk = f"USER#{user_id}"
+        now = datetime.utcnow().isoformat() + "Z"
+
+        if description is not None:
+            desc_str = str(description).strip()[:100]
+            if len(str(description).strip()) > 100:
+                return jsonResponse({"error": "description must be at most 100 characters"}, 400)
+        else:
+            desc_str = None
+
+        dynamodb = boto3.client("dynamodb")
+        updates = ["updatedAt = :now"]
+        values = {":now": {"S": now}}
+        names = {}
+        if desc_str is not None:
+            updates.append("#desc = :desc")
+            names["#desc"] = "description"
+            values[":desc"] = {"S": desc_str}
+        if avatar_key is not None:
+            key_str = str(avatar_key).strip() if avatar_key else ""
+            updates.append("avatarKey = :ak")
+            values[":ak"] = {"S": key_str}
+
+        params = {
+            "TableName": TABLE_NAME,
+            "Key": {"PK": {"S": pk}, "SK": {"S": "PROFILE"}},
+            "UpdateExpression": "SET " + ", ".join(updates),
+            "ExpressionAttributeValues": values,
+        }
+        if names:
+            params["ExpressionAttributeNames"] = names
+        dynamodb.update_item(**params)
+        return jsonResponse({"updated": True})
+    except Exception as e:
+        logger.exception("updateProfile error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def getProfileAvatarUpload(event):
+    """POST /profile/avatar-upload - Presigned PUT URL for profile avatar (any logged-in user)."""
+    user = getUserInfo(event)
+    if not user.get("userId"):
+        return jsonResponse({"error": "Unauthorized"}, 401)
+    if not MEDIA_BUCKET:
+        return jsonResponse({"error": "MEDIA_BUCKET not configured"}, 500)
+    try:
+        import boto3
+        import uuid as uuid_mod
+        body = json.loads(event.get("body", "{}"))
+        contentType = (body.get("contentType") or "image/png").strip()
+        if contentType not in ("image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp"):
+            return jsonResponse({"error": "contentType must be image/png, image/jpeg, image/gif, or image/webp"}, 400)
+        ext = "png"
+        if "jpeg" in contentType or "jpg" in contentType:
+            ext = "jpg"
+        elif "gif" in contentType:
+            ext = "gif"
+        elif "webp" in contentType:
+            ext = "webp"
+        user_id_safe = user.get("userId", "").replace(":", "_").replace("/", "_")
+        unique = str(uuid_mod.uuid4())
+        key = f"profile/avatars/{user_id_safe}/{unique}.{ext}"
+        region = os.environ.get("AWS_REGION", "us-east-1")
+        s3 = boto3.client("s3", region_name=region)
+        upload_url = s3.generate_presigned_url(
+            "put_object",
+            Params={"Bucket": MEDIA_BUCKET, "Key": key, "ContentType": contentType},
+            ExpiresIn=300,
+        )
+        return jsonResponse({"uploadUrl": upload_url, "key": key})
+    except Exception as e:
+        logger.exception("getProfileAvatarUpload error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def deleteProfileAvatar(event):
+    """DELETE /profile/avatar - Remove avatar from profile (any logged-in user)."""
+    user = getUserInfo(event)
+    if not user.get("userId"):
+        return jsonResponse({"error": "Unauthorized"}, 401)
+    if not TABLE_NAME or not MEDIA_BUCKET:
+        return jsonResponse({"error": "Not configured"}, 500)
+    try:
+        import boto3
+        from datetime import datetime
+        user_id = user.get("userId", "")
+        pk = f"USER#{user_id}"
+        dynamodb = boto3.client("dynamodb")
+        resp = dynamodb.get_item(
+            TableName=TABLE_NAME,
+            Key={"PK": {"S": pk}, "SK": {"S": "PROFILE"}},
+            ProjectionExpression="avatarKey",
+        )
+        old_key = None
+        if "Item" in resp and resp["Item"].get("avatarKey", {}).get("S"):
+            old_key = resp["Item"]["avatarKey"]["S"]
+        if old_key:
+            s3 = boto3.client("s3")
+            s3.delete_object(Bucket=MEDIA_BUCKET, Key=old_key)
+        now = datetime.utcnow().isoformat() + "Z"
+        dynamodb.update_item(
+            TableName=TABLE_NAME,
+            Key={"PK": {"S": pk}, "SK": {"S": "PROFILE"}},
+            UpdateExpression="SET avatarKey = :empty, updatedAt = :now",
+            ExpressionAttributeValues={":empty": {"S": ""}, ":now": {"S": now}},
+        )
+        return jsonResponse({"deleted": True})
+    except Exception as e:
+        logger.exception("deleteProfileAvatar error")
+        return jsonResponse({"error": str(e)}, 500)
 
 
 def setStar(event):

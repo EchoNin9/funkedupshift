@@ -1,12 +1,12 @@
 /**
  * Initialize auth link/button across the site.
- * - Guest: grey "Sign in / Sign up" linking to auth.html
- * - Logged in: red "Sign out <username>" that signs out and redirects
+ * - Guest: grey "Sign in / Sign up" linking to auth.html; hide .profile-link
+ * - Logged in: red "Sign out <username>"; show .profile-link
  */
 (function () {
   function updateAuthLinks() {
     var links = document.querySelectorAll('.auth-link');
-    if (!links.length) return;
+    var profileLinks = document.querySelectorAll('.profile-link');
     if (!window.auth) {
       links.forEach(function (el) {
         el.href = 'auth.html';
@@ -15,6 +15,7 @@
         el.onclick = null;
         el.removeAttribute('role');
       });
+      profileLinks.forEach(function (el) { el.style.display = 'none'; });
       return;
     }
     window.auth.isAuthenticated(function (isAuth) {
@@ -26,6 +27,7 @@
           el.onclick = null;
           el.removeAttribute('role');
         });
+        profileLinks.forEach(function (el) { el.style.display = 'none'; });
         return;
       }
       window.auth.getCurrentUserEmail(function (email) {
@@ -41,6 +43,13 @@
             window.location.href = 'index.html';
           };
         });
+      });
+      profileLinks.forEach(function (el) {
+        el.href = 'profile.html';
+        el.textContent = 'Profile';
+        el.style.display = '';
+        el.onclick = null;
+        el.removeAttribute('role');
       });
     });
   }
