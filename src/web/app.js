@@ -388,8 +388,14 @@
             alert('Sign in failed: ' + (err.message || err));
             return;
           }
-          // After sign in, go to websites page
-          window.location.href = 'websites.html';
+          // Pre-warm profile avatar cache before redirect
+          if (window.profileBoxPreloadAvatar) {
+            window.profileBoxPreloadAvatar(function () {
+              window.location.href = 'websites.html';
+            });
+          } else {
+            window.location.href = 'websites.html';
+          }
         });
       });
     }

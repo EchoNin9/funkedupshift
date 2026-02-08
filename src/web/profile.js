@@ -213,7 +213,7 @@
             avatarDeleteBtn.hidden = false;
           }
           avatarFileInput.value = '';
-          if (window.profileBoxRefresh) window.profileBoxRefresh();
+          if (window.profileBoxRefresh) window.profileBoxRefresh(true);
         })
         .catch(function (e) {
           avatarError.textContent = 'Error: ' + (e.message || 'Unknown');
@@ -238,7 +238,7 @@
           avatarImg.style.display = 'none';
           avatarPlaceholder.style.display = 'flex';
           avatarDeleteBtn.hidden = true;
-          if (window.profileBoxRefresh) window.profileBoxRefresh();
+          if (window.profileBoxRefresh) window.profileBoxRefresh(true);
         })
         .catch(function (e) {
           avatarError.textContent = 'Error: ' + (e.message || 'Unknown');

@@ -183,7 +183,7 @@
     </form>
     <div>
       <button class="secondary" onclick="document.getElementById('signInForm').hidden=true; document.getElementById('signUpForm').hidden=false;" id="showSignUp">Sign Up</button>
-      <button class="secondary" onclick="window.auth.signOut(); window.location.href='websites.html';" id="signOutBtn" hidden>Sign Out</button>
+      <button class="secondary" onclick="if (window.profileBoxClearCache) window.profileBoxClearCache(); window.auth.signOut(); window.location.href='websites.html';" id="signOutBtn" hidden>Sign Out</button>
     </div>
   </div>
 

@@ -4,6 +4,28 @@
  */
 (function () {
   var DEFAULT_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%236b7280'%3E%3Cpath d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/%3E%3C/svg%3E";
+  var CACHE_KEY = "funkedupshift_profile_avatar";
+
+  function getCachedAvatar() {
+    try {
+      var v = sessionStorage.getItem(CACHE_KEY);
+      return v;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function setCachedAvatar(url) {
+    try {
+      sessionStorage.setItem(CACHE_KEY, url || "");
+    } catch (e) {}
+  }
+
+  function clearCachedAvatar() {
+    try {
+      sessionStorage.removeItem(CACHE_KEY);
+    } catch (e) {}
+  }
 
   function fetchWithAuth(url) {
     return new Promise(function (resolve, reject) {
@@ -68,7 +90,7 @@
     return wrapper;
   }
 
-  function updateProfileBox() {
+  function updateProfileBox(forceReload) {
     var wrapper = ensureWrapper();
     if (!wrapper) return;
 
@@ -78,6 +100,13 @@
     if (!window.auth) return;
     window.auth.isAuthenticated(function (isAuth) {
       if (!isAuth) return;
+
+      var cached = !forceReload ? getCachedAvatar() : null;
+      if (cached !== null) {
+        var box = createProfileBox(cached || undefined);
+        wrapper.insertBefore(box, wrapper.firstChild);
+        return;
+      }
 
       var box = createProfileBox(null);
       wrapper.insertBefore(box, wrapper.firstChild);
@@ -93,6 +122,7 @@
         })
         .then(function (data) {
           var url = data && data.profile && data.profile.avatarUrl;
+          setCachedAvatar(url || "");
           var img = box.querySelector("img");
           if (url) {
             img.src = url;
@@ -114,6 +144,29 @@
     }
   }
 
+  function preloadAvatar(callback) {
+    callback = callback || function () {};
+    var base = (window.API_BASE_URL || "").replace(/\/$/, "");
+    if (!base) {
+      callback();
+      return;
+    }
+    fetchWithAuth(base + "/profile")
+      .then(function (r) {
+        return r.ok ? r.json() : null;
+      })
+      .then(function (data) {
+        var url = data && data.profile && data.profile.avatarUrl;
+        setCachedAvatar(url || "");
+        callback();
+      })
+      .catch(function () {
+        callback();
+      });
+  }
+
   init();
   window.profileBoxRefresh = updateProfileBox;
+  window.profileBoxClearCache = clearCachedAvatar;
+  window.profileBoxPreloadAvatar = preloadAvatar;
 })();
