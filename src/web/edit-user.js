@@ -295,6 +295,21 @@
         document.getElementById('userEmail').textContent = getQueryParam('email') || userGroupsData.username || username;
         document.getElementById('userStatus').textContent = getQueryParam('status') || '—';
 
+        var lastLoginEl = document.getElementById('userLastLogin');
+        if (lastLoginEl) {
+          var at = userGroupsData.lastLoginAt || '';
+          var ip = userGroupsData.lastLoginIp || '';
+          if (at && ip) {
+            lastLoginEl.textContent = at + ' from ' + ip;
+          } else if (at) {
+            lastLoginEl.textContent = at;
+          } else if (ip) {
+            lastLoginEl.textContent = 'from ' + ip;
+          } else {
+            lastLoginEl.textContent = '—';
+          }
+        }
+
         systemRoleOptions = ['manager', 'user'];
         if (isSuperAdmin) systemRoleOptions.unshift('admin');
         selectedSystemRoles = currentUserGroups.cognitoGroups.slice();

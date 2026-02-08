@@ -34,6 +34,66 @@ COGNITO_USER_POOL_ID = os.environ.get("COGNITO_USER_POOL_ID", "")
 ROLE_DISPLAY_MAP = {"admin": "SuperAdmin", "manager": "Manager", "user": "User"}
 
 
+def _getSourceIp(event):
+    """Extract client IP from API Gateway HTTP API v2 event."""
+    ctx = event.get("requestContext", {})
+    http = ctx.get("http", {})
+    ip = http.get("sourceIp") or http.get("sourceip")
+    if ip:
+        return str(ip)
+    identity = ctx.get("identity", {})
+    return str(identity.get("sourceIp", "") or identity.get("sourceip", "")) or ""
+
+
+def _recordLastLogin(event, user_id):
+    """Update USER PROFILE with lastLoginAt and lastLoginIp (non-blocking)."""
+    if not TABLE_NAME or not user_id:
+        return
+    try:
+        import boto3
+        from datetime import datetime
+        ip = _getSourceIp(event)
+        now = datetime.utcnow().isoformat() + "Z"
+        dynamodb = boto3.client("dynamodb")
+        dynamodb.update_item(
+            TableName=TABLE_NAME,
+            Key={"PK": {"S": f"USER#{user_id}"}, "SK": {"S": "PROFILE"}},
+            UpdateExpression="SET lastLoginAt = :t, lastLoginIp = :ip, updatedAt = :now",
+            ExpressionAttributeValues={
+                ":t": {"S": now},
+                ":ip": {"S": ip},
+                ":now": {"S": now},
+            },
+        )
+    except Exception:
+        pass
+
+
+def _getUserLastLogin(user_id):
+    """Fetch lastLoginAt and lastLoginIp from USER PROFILE."""
+    if not TABLE_NAME or not user_id:
+        return {}
+    try:
+        import boto3
+        dynamodb = boto3.client("dynamodb")
+        resp = dynamodb.get_item(
+            TableName=TABLE_NAME,
+            Key={"PK": {"S": f"USER#{user_id}"}, "SK": {"S": "PROFILE"}},
+            ProjectionExpression="lastLoginAt, lastLoginIp",
+        )
+        if "Item" not in resp:
+            return {}
+        item = resp["Item"]
+        out = {}
+        if "lastLoginAt" in item:
+            out["lastLoginAt"] = item["lastLoginAt"].get("S", "")
+        if "lastLoginIp" in item:
+            out["lastLoginIp"] = item["lastLoginIp"].get("S", "")
+        return out
+    except Exception:
+        return {}
+
+
 def getUserInfo(event):
     """Extract user info from Cognito authorizer context."""
     authorizer = event.get("requestContext", {}).get("authorizer", {})
@@ -593,6 +653,7 @@ def getMe(event):
     user = getUserInfo(event)
     if not user.get("userId"):
         return jsonResponse({"error": "Unauthorized"}, 401)
+    _recordLastLogin(event, user.get("userId", ""))
     return jsonResponse(user)
 
 
@@ -602,6 +663,7 @@ def getProfile(event):
     if not user.get("userId"):
         return jsonResponse({"error": "Unauthorized"}, 401)
     user_id = user.get("userId", "")
+    _recordLastLogin(event, user_id)
     status = ""
     try:
         if COGNITO_USER_POOL_ID and user.get("email"):
@@ -626,6 +688,8 @@ def getProfile(event):
             if "Item" in resp:
                 item = resp["Item"]
                 profile["description"] = item.get("description", {}).get("S", "")
+                profile["lastLoginAt"] = item.get("lastLoginAt", {}).get("S", "")
+                profile["lastLoginIp"] = item.get("lastLoginIp", {}).get("S", "")
                 avatar_key = item.get("avatarKey", {}).get("S", "")
                 if avatar_key and MEDIA_BUCKET:
                     region = os.environ.get("AWS_REGION", "us-east-1")
@@ -1711,14 +1775,48 @@ def listAdminUsers(event):
         users = []
         for u in result.get("Users", []):
             attrs = {a["Name"]: a["Value"] for a in u.get("Attributes", [])}
+            sub = attrs.get("sub", "")
             email = attrs.get("email", attrs.get("sub", u.get("Username", "")))
             users.append({
                 "username": u.get("Username"),
                 "email": email,
-                "sub": attrs.get("sub", ""),
+                "sub": sub,
                 "status": u.get("UserStatus"),
                 "enabled": u.get("Enabled", True),
             })
+        if TABLE_NAME and users:
+            subs = [u["sub"] for u in users if u.get("sub")]
+            if subs:
+                try:
+                    dynamodb = boto3.client("dynamodb")
+                    keys = [{"PK": {"S": f"USER#{s}"}, "SK": {"S": "PROFILE"}} for s in subs]
+                    batch = dynamodb.batch_get_item(
+                        RequestItems={
+                            TABLE_NAME: {"Keys": keys, "ProjectionExpression": "PK, lastLoginAt, lastLoginIp"},
+                        },
+                    )
+                    items = batch.get("Responses", {}).get(TABLE_NAME, [])
+                    sub_to_login = {}
+                    for it in items:
+                        pk = it.get("PK", {}).get("S", "")
+                        if pk.startswith("USER#"):
+                            sub = pk[5:]
+                            sub_to_login[sub] = {
+                                "lastLoginAt": it.get("lastLoginAt", {}).get("S", ""),
+                                "lastLoginIp": it.get("lastLoginIp", {}).get("S", ""),
+                            }
+                    for u in users:
+                        login = sub_to_login.get(u.get("sub", ""), {})
+                        u["lastLoginAt"] = login.get("lastLoginAt", "")
+                        u["lastLoginIp"] = login.get("lastLoginIp", "")
+                except Exception:
+                    for u in users:
+                        u["lastLoginAt"] = ""
+                        u["lastLoginIp"] = ""
+        else:
+            for u in users:
+                u["lastLoginAt"] = ""
+                u["lastLoginIp"] = ""
         out = {"users": users}
         if result.get("PaginationToken"):
             out["paginationToken"] = result["PaginationToken"]
@@ -1776,11 +1874,14 @@ def getUserGroups(event, username):
         attrs = {a["Name"]: a["Value"] for a in user_resp.get("UserAttributes", [])}
         sub = attrs.get("sub", "")
         custom_groups = _getUserCustomGroups(sub) if sub else []
+        login = _getUserLastLogin(sub) if sub else {}
         return jsonResponse({
             "username": username,
             "sub": sub,
             "cognitoGroups": cognito_groups,
             "customGroups": custom_groups,
+            "lastLoginAt": login.get("lastLoginAt", ""),
+            "lastLoginIp": login.get("lastLoginIp", ""),
         })
     except Exception as e:
         if "UserNotFoundException" in str(type(e).__name__) or "UserNotFoundException" in str(e):

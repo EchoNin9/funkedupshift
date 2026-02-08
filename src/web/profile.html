@@ -32,6 +32,10 @@
     .user-info-field { margin: 0.5rem 0; }
     .user-info-field label { display: block; margin-bottom: 0.25rem; font-weight: 600; }
     .user-info-field .readonly { color: #6b7280; font-size: 0.95rem; }
+    .user-info-table { width: 100%; border-collapse: collapse; }
+    .user-info-table td { padding: 0.35rem 0; vertical-align: top; }
+    .user-info-table td:first-child { font-weight: 600; width: 8rem; color: #374151; }
+    .user-info-table td:last-child { color: #6b7280; font-size: 0.95rem; }
     .role-bar { display: flex; flex-wrap: wrap; gap: 0.35rem; margin: 0.5rem 0; }
     .role-badge { padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.9rem; }
     .role-admin { background: #fef3c7; color: #92400e; }
@@ -72,6 +76,8 @@
     .theme-dark .status.ok { background: #022c22; }
     .theme-dark .profile-section { background: rgba(30, 41, 59, 0.5); border-color: rgba(71, 85, 105, 0.8); }
     .theme-dark .readonly { color: #94a3b8; }
+    .theme-dark .user-info-table td:first-child { color: #e2e8f0; }
+    .theme-dark .user-info-table td:last-child { color: #94a3b8; }
     .theme-dark .group-chip { background: #065f46; color: #d1fae5; }
     .theme-dark .avatar-placeholder { background: #374151; color: #94a3b8; }
     .theme-dark .avatar-preview { border-color: #475569; }
@@ -95,14 +101,11 @@
   <div id="profileWrap" class="profile-section" hidden>
     <div class="profile-section">
       <h2>User info</h2>
-      <div class="user-info-field">
-        <label>Email</label>
-        <span id="userEmail" class="readonly">—</span>
-      </div>
-      <div class="user-info-field">
-        <label>Status</label>
-        <span id="userStatus" class="readonly">—</span>
-      </div>
+      <table class="user-info-table">
+        <tr><td>Email</td><td id="userEmail" class="readonly">—</td></tr>
+        <tr><td>Status</td><td id="userStatus" class="readonly">—</td></tr>
+        <tr><td>Last login</td><td id="userLastLogin" class="readonly">—</td></tr>
+      </table>
     </div>
     <div class="profile-section">
       <h2>System role</h2>

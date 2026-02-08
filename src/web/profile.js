@@ -106,6 +106,21 @@
         profileData = data;
         document.getElementById('userEmail').textContent = data.email || '—';
         document.getElementById('userStatus').textContent = data.status || '—';
+        var lastLoginEl = document.getElementById('userLastLogin');
+        if (lastLoginEl) {
+          var p = data.profile || {};
+          var at = p.lastLoginAt || '';
+          var ip = p.lastLoginIp || '';
+          if (at && ip) {
+            lastLoginEl.textContent = at + ' from ' + ip;
+          } else if (at) {
+            lastLoginEl.textContent = at;
+          } else if (ip) {
+            lastLoginEl.textContent = 'from ' + ip;
+          } else {
+            lastLoginEl.textContent = '—';
+          }
+        }
         renderRoleBar(data.cognitoGroups || []);
         renderGroupChips(data.customGroups || []);
         document.getElementById('descriptionInput').value = (data.profile && data.profile.description) || '';

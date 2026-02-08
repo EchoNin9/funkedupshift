@@ -80,12 +80,15 @@
   function renderUsers() {
     if (!userTableBody) return;
     if (allUsers.length === 0) {
-      userTableBody.innerHTML = '<tr><td colspan="4">No users found.</td></tr>';
+      userTableBody.innerHTML = '<tr><td colspan="5">No users found.</td></tr>';
       return;
     }
     userTableBody.innerHTML = allUsers.map(function (u) {
       var email = escapeHtml(u.email || u.username || '—');
       var status = escapeHtml(u.status || '—');
+      var at = u.lastLoginAt || '';
+      var ip = u.lastLoginIp || '';
+      var lastLogin = (at && ip) ? (at + ' from ' + ip) : (at || (ip ? 'from ' + ip : '—'));
       var username = u.username || '';
       var href = 'edit-user.html?username=' + encodeURIComponent(username) +
         '&email=' + encodeURIComponent(u.email || username || '') +
@@ -93,6 +96,7 @@
       return '<tr data-username="' + escapeHtml(username) + '" data-href="' + escapeHtml(href) + '">' +
         '<td>' + email + '</td>' +
         '<td>' + status + '</td>' +
+        '<td>' + escapeHtml(lastLogin) + '</td>' +
         '<td class="user-groups" data-cognito-groups=""></td>' +
         '<td class="user-groups" data-custom-groups=""></td>' +
         '</tr>';
