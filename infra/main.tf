@@ -979,6 +979,39 @@ resource "aws_apigatewayv2_route" "me" {
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
+# User profile (any logged-in user)
+resource "aws_apigatewayv2_route" "profileGet" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /profile"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "profilePut" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "PUT /profile"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "profileAvatarUpload" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /profile/avatar-upload"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "profileAvatarDelete" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "DELETE /profile/avatar"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
 # Set star rating
 resource "aws_apigatewayv2_route" "starsPost" {
   api_id             = aws_apigatewayv2_api.main.id

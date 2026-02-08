@@ -277,6 +277,26 @@ def test_createAdminGroup_creates_group(mock_boto_client):
     assert call_item["entityType"]["S"] == "GROUP"
 
 
+def test_getProfile_requires_auth():
+    """GET /profile without auth returns 401."""
+    from api.handler import handler
+    event = {
+        "rawPath": "/profile",
+        "requestContext": {"http": {"method": "GET", "path": "/profile"}},
+    }
+    result = handler(event, None)
+    assert result["statusCode"] == 401
+
+
+def test_putProfile_description_over_100_returns_400():
+    """PUT /profile with description over 100 chars returns 400."""
+    from api.handler import handler
+    event = _admin_event("/profile", method="PUT", body={"description": "x" * 101})
+    with patch("api.handler.TABLE_NAME", "fus-main"):
+        result = handler(event, None)
+    assert result["statusCode"] == 400
+
+
 def test_deleteAdminGroup_requires_manager_or_admin():
     """DELETE /admin/groups/{name} with user role returns 403."""
     from api.handler import handler
