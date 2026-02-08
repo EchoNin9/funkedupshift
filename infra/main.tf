@@ -495,6 +495,14 @@ resource "aws_dynamodb_table" "main" {
     name = "starRating"
     type = "N"
   }
+  attribute {
+    name = "groupName"
+    type = "S"
+  }
+  attribute {
+    name = "userId"
+    type = "S"
+  }
 
   # List all sites: query GSI byEntity where entityType = SITE
   global_secondary_index {
@@ -517,6 +525,14 @@ resource "aws_dynamodb_table" "main" {
     name            = "byStars"
     hash_key        = "starRating"
     range_key       = "siteId"
+    projection_type = "ALL"
+  }
+
+  # Query group members: query GSI byGroup where groupName = <name>
+  global_secondary_index {
+    name            = "byGroup"
+    hash_key        = "groupName"
+    range_key       = "userId"
     projection_type = "ALL"
   }
 }
@@ -682,6 +698,18 @@ resource "aws_iam_role_policy" "lambdaApi" {
         Effect   = "Allow"
         Action   = ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"]
         Resource = "${aws_s3_bucket.media.arn}/*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = [
+          "cognito-idp:AdminListGroupsForUser",
+          "cognito-idp:AdminAddUserToGroup",
+          "cognito-idp:AdminRemoveUserFromGroup",
+          "cognito-idp:ListUsers",
+          "cognito-idp:AdminGetUser",
+          "cognito-idp:ListGroups"
+        ]
+        Resource = [aws_cognito_user_pool.main.arn]
       }
     ]
   })
@@ -698,8 +726,9 @@ resource "aws_lambda_function" "api" {
 
   environment {
     variables = {
-      TABLE_NAME   = aws_dynamodb_table.main.name
-      MEDIA_BUCKET = aws_s3_bucket.media.id
+      TABLE_NAME            = aws_dynamodb_table.main.name
+      MEDIA_BUCKET          = aws_s3_bucket.media.id
+      COGNITO_USER_POOL_ID  = aws_cognito_user_pool.main.id
     }
   }
 }
@@ -1089,6 +1118,71 @@ resource "aws_apigatewayv2_route" "mediaCategoriesPut" {
 resource "aws_apigatewayv2_route" "mediaCategoriesDelete" {
   api_id             = aws_apigatewayv2_api.main.id
   route_key          = "DELETE /media-categories"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+# Admin user & group management (SuperAdmin or Manager)
+resource "aws_apigatewayv2_route" "adminUsersGet" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /admin/users"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "adminUserGroupsGet" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /admin/users/{username}/groups"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "adminUserGroupsPost" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /admin/users/{username}/groups"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "adminUserGroupsDelete" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "DELETE /admin/users/{username}/groups/{groupName}"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "adminGroupsGet" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /admin/groups"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "adminGroupsPost" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /admin/groups"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "adminGroupsPut" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "PUT /admin/groups/{name}"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "adminGroupsDelete" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "DELETE /admin/groups/{name}"
   target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
   authorization_type = "JWT"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id

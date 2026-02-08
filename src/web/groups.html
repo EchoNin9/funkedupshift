@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Funkedupshift – RBAC Groups</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      line-height: 1.5;
+      max-width: 48rem;
+      margin: 0 auto;
+      padding: 1.5rem;
+      color: #1a1a1a;
+      background: #ffffff;
+      transition: background 0.3s ease, color 0.3s ease;
+    }
+    h1 { font-size: 1.5rem; margin-top: 0; }
+    a { color: #0066cc; }
+    .status { margin: 1rem 0; padding: 0.75rem; border-radius: 0.25rem; }
+    .status.ok { background: #e6f4ea; }
+    .status.err { background: #fce8e6; }
+    form { margin: 0.5rem 0; }
+    input, textarea, button { padding: 0.5rem; margin: 0.25rem 0; }
+    input, textarea { width: 100%; max-width: 24rem; display: block; }
+    button {
+      background: linear-gradient(135deg, #ff6b35 0%, #ff8c5a 100%);
+      color: white;
+      border: none;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      font-size: 1rem;
+      padding: 0.35rem 0.6rem;
+    }
+    button.secondary {
+      background: linear-gradient(135deg, #004e89 0%, #0066cc 100%);
+    }
+    button.danger {
+      background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%);
+    }
+    .group-list { list-style: none; padding: 0; margin: 0; }
+    .group-list li { padding: 0.75rem 0; border-bottom: 1px solid #eee; display: flex; align-items: flex-start; gap: 0.5rem; flex-wrap: wrap; }
+    .group-list li:last-child { border-bottom: none; }
+    .group-name { font-weight: 600; }
+    .group-desc { color: #666; font-size: 0.9rem; }
+    .group-perms { font-size: 0.85rem; color: #6b7280; margin-top: 0.25rem; }
+    .theme-toggle { position: fixed; top: 1rem; right: 1rem; z-index: 10000; border: none; border-radius: 999px; padding: 0.4rem 0.9rem; font-size: 0.9rem; cursor: pointer; background: rgba(0,0,0,0.7); color: #fff; }
+    .theme-dark { background: #050608; color: #f5f5f5; }
+    .theme-dark a { color: #93c5fd; }
+    .theme-dark .status.ok { background: #14532d; }
+    .theme-dark .status.err { background: #7f1d1d; }
+    .theme-dark .group-list li { border-color: #374151; }
+    .site-footer { margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid #e5e7eb; font-size: 0.9rem; color: #6b7280; }
+    .site-footer nav { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+    .site-footer a { color: inherit; text-decoration: none; }
+    .site-footer a:hover { text-decoration: underline; }
+    .theme-dark .site-footer { border-top-color: #374151; color: #9ca3af; }
+  </style>
+</head>
+<body>
+  <button class="theme-toggle" id="themeToggle" type="button" aria-label="Toggle light/dark mode">
+    <span id="themeIcon">☾</span>
+    <span id="themeLabel">Dark</span>
+  </button>
+
+  <h1>Funkedupshift – RBAC Groups</h1>
+  <p>
+    <button type="button" class="secondary" onclick="window.location.href='index.html'">Back to Home</button>
+    <a href="users.html" style="margin-left: 0.5rem;">User Management</a>
+  </p>
+
+  <div id="message" class="status err" hidden></div>
+  <div id="formWrap" hidden>
+    <h2>Create group</h2>
+    <form id="createGroupForm">
+      <input type="text" id="groupName" placeholder="Name (alphanumeric, underscore, hyphen)" required>
+      <input type="text" id="groupDescription" placeholder="Description (optional)">
+      <input type="text" id="groupPermissions" placeholder="Permissions (comma-separated, e.g. media:edit, sites:add)">
+      <button type="submit">Create</button>
+    </form>
+  </div>
+
+  <h2>Custom groups</h2>
+  <ul id="groupList" class="group-list"></ul>
+
+  <footer class="site-footer">
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="websites.html">Browse Websites</a>
+      <a href="media.html">Browse Media</a>
+      <a href="users.html">User Management</a>
+      <a href="auth.html" class="auth-link">Sign in</a>
+    </nav>
+  </footer>
+
+  <script>
+    (function() {
+      var body = document.body;
+      var toggle = document.getElementById('themeToggle');
+      var icon = document.getElementById('themeIcon');
+      var label = document.getElementById('themeLabel');
+      if (toggle) {
+        var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var dark = prefersDark;
+        function applyTheme() {
+          if (dark) { body.classList.add('theme-dark'); icon.textContent = '☀'; label.textContent = 'Light'; }
+          else { body.classList.remove('theme-dark'); icon.textContent = '☾'; label.textContent = 'Dark'; }
+        }
+        applyTheme();
+        toggle.addEventListener('click', function() { dark = !dark; applyTheme(); });
+      }
+    })();
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/amazon-cognito-identity-js@6.3.0/dist/amazon-cognito-identity.min.js"></script>
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
+  <script src="auth-button.js"></script>
+  <script src="groups.js"></script>
+</body>
+</html>
