@@ -5,7 +5,9 @@
   var healthEl = document.getElementById('health');
   var sitesWrap = document.getElementById('sitesWrap');
   var sitesContainer = document.getElementById('sitesContainer');
-  var adminLinks = document.getElementById('adminLinks');
+  var navAddSite = document.getElementById('navAddSite');
+  var navCategories = document.getElementById('navCategories');
+  var navLoadAll = document.getElementById('navLoadAll');
   var authSection = document.getElementById('authSection');
   var signInForm = document.getElementById('signInForm');
   var signUpForm = document.getElementById('signUpForm');
@@ -321,7 +323,9 @@
   function initAuth() {
     if (!window.auth) {
       if (authSection) authSection.hidden = true;
-      if (adminLinks) adminLinks.hidden = true;
+      if (navAddSite) navAddSite.style.display = 'none';
+      if (navCategories) navCategories.style.display = 'none';
+      if (navLoadAll) navLoadAll.style.display = 'none';
       return;
     }
 
@@ -334,7 +338,9 @@
       canRate = isAuth; // any authenticated user can rate
       if (!isAuth) {
         isAdmin = false;
-        if (adminLinks) adminLinks.hidden = true;
+        if (navAddSite) navAddSite.style.display = 'none';
+        if (navCategories) navCategories.style.display = 'none';
+        if (navLoadAll) navLoadAll.style.display = 'none';
 
         if (hasUi) {
           if (signInForm) signInForm.hidden = false;
@@ -352,7 +358,9 @@
         .then(function (user) {
           var groups = user.groups || [];
           isAdmin = Array.isArray(groups) && groups.indexOf('admin') !== -1;
-          if (adminLinks) adminLinks.hidden = !isAdmin;
+          if (navAddSite) navAddSite.style.display = isAdmin ? '' : 'none';
+          if (navCategories) navCategories.style.display = isAdmin ? '' : 'none';
+          if (navLoadAll) navLoadAll.style.display = isAdmin ? '' : 'none';
 
           if (hasUi) {
             if (signInForm) signInForm.hidden = true;
@@ -374,7 +382,9 @@
         .catch(function () {
           // On error, treat as non-admin but still authenticated for rating
           isAdmin = false;
-          if (adminLinks) adminLinks.hidden = true;
+          if (navAddSite) navAddSite.style.display = 'none';
+          if (navCategories) navCategories.style.display = 'none';
+          if (navLoadAll) navLoadAll.style.display = 'none';
           if (hasUi) {
             if (signInForm) signInForm.hidden = true;
             if (signUpForm) signUpForm.hidden = true;
@@ -654,7 +664,7 @@
     });
   }
 
-  var loadAllBtn = document.getElementById('loadAllSitesBtn');
+  var loadAllBtn = document.getElementById('navLoadAll');
   if (loadAllBtn) {
     loadAllBtn.addEventListener('click', function () {
       searchTerm = (searchInput && searchInput.value || '').trim();

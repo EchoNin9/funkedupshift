@@ -78,6 +78,19 @@
     a.secondary { display: inline-block; padding: 0.35rem 0.5rem; background: #666; color: white; border-radius: 0.25rem; text-decoration: none; font-size: 0.9rem; }
     a.secondary:hover { background: #555; }
     .user-info { margin: 0.5rem 0; }
+    .nav-toolbar {
+      margin: 0.5rem 0 1rem;
+      padding: 1rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+      background: linear-gradient(135deg, #004e89 0%, #0066cc 100%);
+      border-radius: 0.75rem;
+      border: 1px solid #0f172a;
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.15);
+      color: #f9fafb;
+    }
     .sites-toolbar {
       margin: 0.5rem 0 1rem;
       padding: 1rem 1rem;
@@ -91,17 +104,26 @@
       box-shadow: 0 8px 20px rgba(15, 23, 42, 0.15);
       color: #f9fafb;
     }
-    .sites-toolbar label {
+    .sites-toolbar label,
+    .nav-toolbar label {
       margin-right: 0.5rem;
       font-weight: 600;
     }
     .sites-toolbar select,
-    .sites-toolbar input[type="text"] {
+    .sites-toolbar input[type="text"],
+    .sites-toolbar button,
+    .nav-toolbar button {
       padding: 0.35rem 0.5rem;
       border-radius: 0.4rem;
       border: 1px solid rgba(15, 23, 42, 0.35);
       background: rgba(15, 23, 42, 0.15);
       color: #f9fafb;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+    .sites-toolbar button:hover,
+    .nav-toolbar button:hover {
+      background: rgba(15, 23, 42, 0.25);
     }
     .group-by-multiselect { position: relative; max-width: 24rem; min-width: 12rem; }
     .group-by-multiselect input[type="text"] {
@@ -138,11 +160,30 @@
     .group-by-chip { display: inline-flex; align-items: center; gap: 0.2rem; padding: 0.2rem 0.4rem; background: #e8e8e8; color: #111827; border-radius: 0.2rem; font-size: 0.85rem; }
     .group-by-chip-remove { background: none; border: none; cursor: pointer; padding: 0; color: #666; font-size: 1rem; line-height: 1; }
     .group-by-chip-remove:hover { color: #c00; }
-    .stars .star-save { width: auto; padding: 0.25rem 0.5rem; font-size: 0.85rem; }
+    .stars .star-save {
+      width: auto;
+      padding: 0.35rem 0.5rem;
+      font-size: 0.85rem;
+      border-radius: 0.4rem;
+      border: 1px solid rgba(15, 23, 42, 0.35);
+      background: rgba(0, 78, 137, 0.12);
+      color: #004e89;
+      cursor: pointer;
+    }
+    .stars .star-save:hover { background: rgba(0, 78, 137, 0.2); }
     .sites-group { margin: 1rem 0; }
     .sites-group h3 { font-size: 1rem; margin: 0 0 0.35rem; color: #555; }
     .pagination { margin: 1rem 0; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
-    .pagination button { padding: 0.35rem 0.6rem; }
+    .pagination button, .pagination .page-num[data-page] {
+      padding: 0.35rem 0.5rem;
+      border-radius: 0.4rem;
+      border: 1px solid rgba(15, 23, 42, 0.35);
+      background: rgba(0, 78, 137, 0.12);
+      color: #004e89;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+    .pagination button:hover, .pagination .page-num[data-page]:hover { background: rgba(0, 78, 137, 0.2); }
     .pagination button:disabled { opacity: 0.5; cursor: not-allowed; }
     .pagination .page-nums { display: flex; align-items: center; gap: 0.25rem; flex-wrap: wrap; }
     .pagination .page-num { min-width: 2rem; padding: 0.25rem 0.4rem; text-align: center; }
@@ -152,7 +193,16 @@
     .site-info { flex: 1; min-width: 0; }
     .search-form { margin: 1.5rem 0; display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
     .search-form input[type="text"] { flex: 1; min-width: 14rem; padding: 0.6rem 0.75rem; font-size: 1rem; }
-    .search-form button { padding: 0.6rem 1.25rem; }
+    .search-form button {
+      padding: 0.35rem 0.5rem;
+      border-radius: 0.4rem;
+      border: 1px solid rgba(15, 23, 42, 0.35);
+      background: rgba(0, 78, 137, 0.15);
+      color: #004e89;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+    .search-form button:hover { background: rgba(0, 78, 137, 0.25); }
     .search-hint { color: #666; font-size: 0.9rem; margin: 0 0 1rem; }
 
     .theme-toggle {
@@ -181,10 +231,21 @@
     .theme-dark .status { background: #1e293b; color: #e5e7eb; }
     .theme-dark .status.err { background: #7f1d1d; }
     .theme-dark .status.ok { background: #022c22; color: #ff6b35; }
-    .theme-dark .sites-toolbar {
+    .theme-dark .sites-toolbar,
+    .theme-dark .nav-toolbar {
       background: linear-gradient(135deg, #06d6a0 0%, #118ab2 100%);
       border-color: #0f172a;
       box-shadow: 0 10px 28px rgba(15, 23, 42, 0.8);
+    }
+    .theme-dark .sites-toolbar button,
+    .theme-dark .nav-toolbar button {
+      background: rgba(15, 23, 42, 0.2);
+      color: #f9fafb;
+      border-color: rgba(15, 23, 42, 0.4);
+    }
+    .theme-dark .sites-toolbar button:hover,
+    .theme-dark .nav-toolbar button:hover {
+      background: rgba(15, 23, 42, 0.35);
     }
     .theme-dark .sites-toolbar label,
     .theme-dark .search-hint { color: #cbd5f5; }
@@ -206,6 +267,24 @@
       box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
     }
     .theme-dark .site-categories { color: #94a3b8; }
+    .theme-dark .stars .star-save {
+      background: rgba(6, 214, 160, 0.2);
+      color: #06d6a0;
+      border-color: rgba(6, 214, 160, 0.4);
+    }
+    .theme-dark .stars .star-save:hover { background: rgba(6, 214, 160, 0.35); }
+    .theme-dark .search-form button {
+      background: rgba(6, 214, 160, 0.2);
+      color: #06d6a0;
+      border-color: rgba(6, 214, 160, 0.4);
+    }
+    .theme-dark .search-form button:hover { background: rgba(6, 214, 160, 0.35); }
+    .theme-dark .pagination button, .theme-dark .pagination .page-num[data-page] {
+      background: rgba(6, 214, 160, 0.2);
+      color: #06d6a0;
+      border-color: rgba(6, 214, 160, 0.4);
+    }
+    .theme-dark .pagination button:hover, .theme-dark .pagination .page-num[data-page]:hover { background: rgba(6, 214, 160, 0.35); }
     .theme-dark button {
       background: linear-gradient(135deg, #ff6b35 0%, #ff9f1c 100%);
     }
@@ -252,9 +331,12 @@
   </button>
 
   <h1>Funkedupshift – Websites</h1>
-  <p>
-    <button type="button" class="secondary" onclick="window.location.href='index.html'">Home</button>
-  </p>
+  <div class="nav-toolbar">
+    <button type="button" onclick="window.location.href='index.html'">Home</button>
+    <button type="button" id="navAddSite" onclick="window.location.href='add-site.html'" style="display:none;">Add site</button>
+    <button type="button" id="navCategories" onclick="window.location.href='categories.html'" style="display:none;">Categories</button>
+    <button type="button" id="navLoadAll" title="Load all sites (debug)" style="display:none;">Load all</button>
+  </div>
 
   <div id="loading" hidden></div>
   <div id="error" class="status err" hidden></div>
@@ -265,11 +347,6 @@
       <button type="submit" id="searchBtn">Search</button>
     </form>
     <p id="searchHint" class="search-hint">Enter a search term to find sites. Leave empty and search to browse all.</p>
-    <p id="adminLinks" hidden>
-      <button type="button" class="secondary" onclick="window.location.href='add-site.html'">Add site</button>
-      <button type="button" class="secondary" onclick="window.location.href='categories.html'">Categories</button>
-      <button type="button" id="loadAllSitesBtn" class="secondary" title="Load all sites (debug)">Load all</button>
-    </p>
     <div class="sites-toolbar">
       <div>
         <label for="sortOrder">Sort:</label>
