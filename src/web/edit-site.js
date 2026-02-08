@@ -161,6 +161,7 @@
         }
 
         document.getElementById('siteId').value = site.PK || siteId;
+        document.getElementById('siteUrl').value = site.url || '';
         document.getElementById('siteTitle').value = site.title || '';
         document.getElementById('siteDescription').value = site.description || '';
 
@@ -269,6 +270,7 @@
     editSiteForm.addEventListener('submit', function (e) {
       e.preventDefault();
       var id = document.getElementById('siteId').value.trim();
+      var url = document.getElementById('siteUrl').value.trim();
       var title = document.getElementById('siteTitle').value.trim();
       var description = document.getElementById('siteDescription').value.trim();
       var categoryIds = selectedIds.slice();
@@ -295,7 +297,7 @@
           });
       }
 
-      var payload = { id: id, title: title, description: description, categoryIds: categoryIds };
+      var payload = { id: id, url: url, title: title, description: description, categoryIds: categoryIds };
       if (removeLogoRequested) {
         payload.deleteLogo = true;
         doUpdate(payload).catch(function (e) {

@@ -412,6 +412,7 @@ def updateSite(event):
         if not site_id:
             return jsonResponse({"error": "id is required"}, 400)
 
+        url = body.get("url")
         title = body.get("title")
         description = body.get("description")
         category_ids = body.get("categoryIds")
@@ -443,6 +444,12 @@ def updateSite(event):
         names = {}
         values = {":updatedAt": {"S": now}}
 
+        if url is not None:
+            url_val = (url if isinstance(url, str) else "").strip()
+            if url_val:
+                set_parts.append("#url = :url")
+                names["#url"] = "url"
+                values[":url"] = {"S": url_val}
         if title is not None:
             set_parts.append("#title = :title")
             names["#title"] = "title"
@@ -479,7 +486,7 @@ def updateSite(event):
             ExpressionAttributeValues=values,
         )
 
-        return jsonResponse({"id": site_id, "title": title, "description": description, "categoryIds": category_ids}, 200)
+        return jsonResponse({"id": site_id, "url": url, "title": title, "description": description, "categoryIds": category_ids}, 200)
     except Exception as e:
         logger.exception("updateSite error")
         return jsonResponse({"error": str(e)}, 500)
