@@ -78,6 +78,9 @@
     .theme-dark .readonly { color: #94a3b8; }
     .theme-dark .user-info-table td:first-child { color: #e2e8f0; }
     .theme-dark .user-info-table td:last-child { color: #94a3b8; }
+    .timezone-row { margin: 0.5rem 0; font-size: 0.9rem; }
+    .timezone-row select { margin-left: 0.35rem; padding: 0.25rem 0.5rem; }
+    .theme-dark .timezone-row { color: #e2e8f0; }
     .theme-dark .group-chip { background: #065f46; color: #d1fae5; }
     .theme-dark .avatar-placeholder { background: #374151; color: #94a3b8; }
     .theme-dark .avatar-preview { border-color: #475569; }
@@ -96,6 +99,7 @@
 
   <h1>Funkedupshift – My Profile</h1>
   <p><a href="index.html" class="secondary">← Back to Home</a></p>
+  <p class="timezone-row">Last login timezone: <select id="timezoneSelect"></select></p>
 
   <div id="message" class="status err" hidden></div>
   <div id="profileWrap" class="profile-section" hidden>
@@ -173,6 +177,7 @@
   <script src="auth.js"></script>
   <script src="auth-button.js"></script>
   <script src="profile-box.js"></script>
+  <script src="timezone-utils.js"></script>
   <script src="profile.js"></script>
 </body>
 </html>

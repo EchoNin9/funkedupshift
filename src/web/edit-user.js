@@ -295,20 +295,18 @@
         document.getElementById('userEmail').textContent = getQueryParam('email') || userGroupsData.username || username;
         document.getElementById('userStatus').textContent = getQueryParam('status') || '—';
 
-        var lastLoginEl = document.getElementById('userLastLogin');
-        if (lastLoginEl) {
+        function refreshLastLogin() {
+          var lastLoginEl = document.getElementById('userLastLogin');
+          if (!lastLoginEl) return;
           var at = userGroupsData.lastLoginAt || '';
           var ip = userGroupsData.lastLoginIp || '';
-          var iso = at ? (function (s) { try { var d = new Date(s); return isNaN(d.getTime()) ? s : d.toISOString(); } catch (e) { return s; } })(at) : '';
-          if (iso && ip) {
-            lastLoginEl.textContent = iso + ' from ' + ip;
-          } else if (iso) {
-            lastLoginEl.textContent = iso;
-          } else if (ip) {
-            lastLoginEl.textContent = 'from ' + ip;
-          } else {
-            lastLoginEl.textContent = '—';
-          }
+          var tz = window.lastLoginTz ? window.lastLoginTz.getOffset() : -8;
+          var result = window.lastLoginTz ? window.lastLoginTz.format(at, tz, ip) : { text: (at ? at + (ip ? ' from ' + ip : '') : (ip ? 'from ' + ip : '—')), hasTime: !!at };
+          lastLoginEl.textContent = result.text || (ip ? 'from ' + ip : '—');
+        }
+        refreshLastLogin();
+        if (window.lastLoginTz) {
+          window.lastLoginTz.initSelect('timezoneSelect', refreshLastLogin);
         }
 
         systemRoleOptions = ['manager', 'user'];
