@@ -295,6 +295,20 @@
         document.getElementById('userEmail').textContent = getQueryParam('email') || userGroupsData.username || username;
         document.getElementById('userStatus').textContent = getQueryParam('status') || '—';
 
+        function refreshLastLogin() {
+          var lastLoginEl = document.getElementById('userLastLogin');
+          if (!lastLoginEl) return;
+          var at = userGroupsData.lastLoginAt || '';
+          var ip = userGroupsData.lastLoginIp || '';
+          var tz = window.lastLoginTz ? window.lastLoginTz.getOffset() : -8;
+          var result = window.lastLoginTz ? window.lastLoginTz.format(at, tz, ip) : { text: (at ? at + (ip ? ' from ' + ip : '') : (ip ? 'from ' + ip : '—')), hasTime: !!at };
+          lastLoginEl.textContent = result.text || (ip ? 'from ' + ip : '—');
+        }
+        refreshLastLogin();
+        if (window.lastLoginTz) {
+          window.lastLoginTz.initSelect('timezoneSelect', refreshLastLogin);
+        }
+
         systemRoleOptions = ['manager', 'user'];
         if (isSuperAdmin) systemRoleOptions.unshift('admin');
         selectedSystemRoles = currentUserGroups.cognitoGroups.slice();

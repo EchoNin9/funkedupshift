@@ -106,6 +106,20 @@
         profileData = data;
         document.getElementById('userEmail').textContent = data.email || '—';
         document.getElementById('userStatus').textContent = data.status || '—';
+        function refreshLastLogin() {
+          var lastLoginEl = document.getElementById('userLastLogin');
+          if (!lastLoginEl || !profileData) return;
+          var p = profileData.profile || {};
+          var at = p.lastLoginAt || '';
+          var ip = p.lastLoginIp || '';
+          var tz = window.lastLoginTz ? window.lastLoginTz.getOffset() : -8;
+          var result = window.lastLoginTz ? window.lastLoginTz.format(at, tz, ip) : { text: (at ? at + (ip ? ' from ' + ip : '') : (ip ? 'from ' + ip : '—')), hasTime: !!at };
+          lastLoginEl.textContent = result.text || (ip ? 'from ' + ip : '—');
+        }
+        refreshLastLogin();
+        if (window.lastLoginTz) {
+          window.lastLoginTz.initSelect('timezoneSelect', refreshLastLogin);
+        }
         renderRoleBar(data.cognitoGroups || []);
         renderGroupChips(data.customGroups || []);
         document.getElementById('descriptionInput').value = (data.profile && data.profile.description) || '';

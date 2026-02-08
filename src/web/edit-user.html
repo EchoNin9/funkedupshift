@@ -50,6 +50,10 @@
     .user-info-field { margin: 0.5rem 0; }
     .user-info-field label { display: block; margin-bottom: 0.25rem; font-weight: 600; }
     .user-info-field .readonly { color: #6b7280; font-size: 0.95rem; }
+    .user-info-table { width: 100%; border-collapse: collapse; }
+    .user-info-table td { padding: 0.35rem 0; vertical-align: top; }
+    .user-info-table td:first-child { font-weight: 600; width: 8rem; color: #374151; }
+    .user-info-table td:last-child { color: #6b7280; font-size: 0.95rem; }
     .group-multiselect { position: relative; margin: 0.5rem 0; max-width: 30rem; }
     .group-multiselect label { display: block; margin-bottom: 0.25rem; font-weight: 600; }
     .group-multiselect input[type="text"] { width: 100%; padding: 0.5rem; }
@@ -77,6 +81,11 @@
     .theme-dark .group-dropdown-option { color: #f5f5f5; }
     .theme-dark .group-dropdown-option:hover { background: #334155; }
     .theme-dark .readonly { color: #94a3b8; }
+    .theme-dark .user-info-table td:first-child { color: #e2e8f0; }
+    .theme-dark .user-info-table td:last-child { color: #94a3b8; }
+    .timezone-row { margin: 0.5rem 0; font-size: 0.9rem; }
+    .timezone-row select { margin-left: 0.35rem; padding: 0.25rem 0.5rem; }
+    .theme-dark .timezone-row { color: #e2e8f0; }
     .site-footer { margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid #e5e7eb; font-size: 0.9rem; color: #6b7280; }
     .site-footer nav { display: flex; flex-wrap: wrap; gap: 0.75rem; }
     .site-footer a { color: inherit; text-decoration: none; }
@@ -91,6 +100,7 @@
 
   <h1>Funkedupshift – Edit User</h1>
   <p><a href="users.html" class="secondary">← Back to users</a></p>
+  <p class="timezone-row">Last login timezone: <select id="timezoneSelect"></select></p>
 
   <div id="message" class="status err" hidden></div>
   <div id="formWrap" class="edit-form-section" hidden>
@@ -98,14 +108,11 @@
       <input type="hidden" id="username" name="username">
       <div class="edit-form-section">
         <h2>User info</h2>
-        <div class="user-info-field">
-          <label>Email</label>
-          <span id="userEmail" class="readonly">—</span>
-        </div>
-        <div class="user-info-field">
-          <label>Status</label>
-          <span id="userStatus" class="readonly">—</span>
-        </div>
+        <table class="user-info-table">
+          <tr><td>Email</td><td id="userEmail" class="readonly">—</td></tr>
+          <tr><td>Status</td><td id="userStatus" class="readonly">—</td></tr>
+          <tr><td>Last login</td><td id="userLastLogin" class="readonly">—</td></tr>
+        </table>
       </div>
       <div id="systemRolesWrap" class="group-multiselect">
         <label>System roles</label>
@@ -161,6 +168,7 @@
   <script src="auth.js"></script>
   <script src="auth-button.js"></script>
   <script src="profile-box.js"></script>
+  <script src="timezone-utils.js"></script>
   <script src="edit-user.js"></script>
 </body>
 </html>

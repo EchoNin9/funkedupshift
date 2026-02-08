@@ -76,11 +76,11 @@ One item per user per site. Logged-in users write their own.
 - **User's custom groups:** Query `PK=USER#\<sub\>` where `SK begins_with MEMBERSHIP#`.
 - **Group members:** Query GSI **byGroup** with `groupName=\<name\>`.
 
-### 7. User profile (avatar, description)
+### 7. User profile (avatar, description, last login)
 
-| PK                  | SK       | Attributes                          |
-|---------------------|----------|-------------------------------------|
-| USER#\<cognitoSub\> | PROFILE  | avatarKey (S3 key), description, updatedAt |
+| PK                  | SK       | Attributes                                            |
+|---------------------|----------|-------------------------------------------------------|
+| USER#\<cognitoSub\> | PROFILE  | avatarKey (S3 key), description, updatedAt, lastLoginAt, lastLoginIp |
 
 - **Get profile:** `GetItem(PK=USER#\<sub\>, SK=PROFILE)`.
 - Avatar stored in s3-media at `profile/avatars/{userId}/{uuid}.{ext}`.

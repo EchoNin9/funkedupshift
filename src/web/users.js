@@ -80,12 +80,17 @@
   function renderUsers() {
     if (!userTableBody) return;
     if (allUsers.length === 0) {
-      userTableBody.innerHTML = '<tr><td colspan="4">No users found.</td></tr>';
+      userTableBody.innerHTML = '<tr><td colspan="5">No users found.</td></tr>';
       return;
     }
+    var tz = window.lastLoginTz ? window.lastLoginTz.getOffset() : -8;
     userTableBody.innerHTML = allUsers.map(function (u) {
       var email = escapeHtml(u.email || u.username || '—');
       var status = escapeHtml(u.status || '—');
+      var at = u.lastLoginAt || '';
+      var ip = u.lastLoginIp || '';
+      var result = window.lastLoginTz ? window.lastLoginTz.format(at, tz, ip) : { text: (at ? at + (ip ? ' from ' + ip : '') : (ip ? 'from ' + ip : '—')), hasTime: !!at };
+      var lastLogin = result.text || (ip ? 'from ' + ip : '—');
       var username = u.username || '';
       var href = 'edit-user.html?username=' + encodeURIComponent(username) +
         '&email=' + encodeURIComponent(u.email || username || '') +
@@ -93,6 +98,7 @@
       return '<tr data-username="' + escapeHtml(username) + '" data-href="' + escapeHtml(href) + '">' +
         '<td>' + email + '</td>' +
         '<td>' + status + '</td>' +
+        '<td>' + escapeHtml(lastLogin) + '</td>' +
         '<td class="user-groups" data-cognito-groups=""></td>' +
         '<td class="user-groups" data-custom-groups=""></td>' +
         '</tr>';
@@ -125,6 +131,21 @@
     });
   }
 
+  function refreshLastLoginCells() {
+    if (!userTableBody || !window.lastLoginTz) return;
+    var tz = window.lastLoginTz.getOffset();
+    var rows = userTableBody.querySelectorAll('tr');
+    rows.forEach(function (row, i) {
+      var u = allUsers[i];
+      if (!u) return;
+      var td = row.cells[2];
+      if (td) {
+        var result = window.lastLoginTz.format(u.lastLoginAt || '', tz, u.lastLoginIp || '');
+        td.textContent = result.text || (u.lastLoginIp ? 'from ' + u.lastLoginIp : '—');
+      }
+    });
+  }
+
   function renderPagination() {
     if (!paginationToken) {
       paginationEl.hidden = true;
@@ -133,6 +154,10 @@
     paginationEl.hidden = false;
     paginationEl.innerHTML = '<button type="button" class="secondary" id="loadMore">Load more</button>';
     document.getElementById('loadMore').onclick = function () { loadUsers(paginationToken); };
+  }
+
+  if (window.lastLoginTz) {
+    window.lastLoginTz.initSelect('timezoneSelect', refreshLastLoginCells);
   }
 
   if (!base) {
