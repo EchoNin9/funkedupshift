@@ -7,7 +7,9 @@
   var allCategories = [];
   var selectedIds = [];
   var currentLogoKey = null;
+  var currentLogoUrl = null;
   var removeLogoRequested = false;
+  var logoUrlToSave = null;
   var DEFAULT_LOGO_PATH = 'img/default-site-logo.png';
   var MIN_LOGO_SIZE = 100;
   var MAX_LOGO_BYTES = 5 * 1024 * 1024;
@@ -166,7 +168,9 @@
         document.getElementById('siteDescription').value = site.description || '';
 
         currentLogoKey = (site.logoKey && site.logoKey.trim()) ? site.logoKey : null;
+        currentLogoUrl = (site.logoUrl && site.logoUrl.trim()) ? site.logoUrl : null;
         removeLogoRequested = false;
+        logoUrlToSave = null;
         var currentWrap = document.getElementById('currentLogoWrap');
         var currentImg = document.getElementById('currentLogoImg');
         if (currentWrap && currentImg) {
@@ -175,10 +179,12 @@
           } else {
             currentImg.src = DEFAULT_LOGO_PATH;
           }
-          currentWrap.hidden = !currentLogoKey;
+          currentWrap.hidden = !currentLogoKey && !(site.logoUrl && site.logoUrl.trim());
         }
         var logoInput = document.getElementById('siteLogo');
         if (logoInput) logoInput.value = '';
+        var logoUrlInput = document.getElementById('siteLogoUrl');
+        if (logoUrlInput) logoUrlInput.value = '';
         var previewEl = document.getElementById('logoPreview');
         if (previewEl) { previewEl.innerHTML = ''; previewEl.hidden = true; }
         var errEl = document.getElementById('logoError');
@@ -249,12 +255,16 @@
     img.src = URL.createObjectURL(file);
   }
 
+  var logoUrlInput = document.getElementById('siteLogoUrl');
+
   if (removeLogoBtn) {
     removeLogoBtn.addEventListener('click', function () {
       removeLogoRequested = true;
+      logoUrlToSave = null;
       var w = document.getElementById('currentLogoWrap');
       if (w) w.hidden = true;
       if (logoFileInput) logoFileInput.value = '';
+      if (logoUrlInput) logoUrlInput.value = '';
       var previewEl = document.getElementById('logoPreview');
       if (previewEl) { previewEl.innerHTML = ''; previewEl.hidden = true; }
     });
@@ -262,7 +272,67 @@
   if (logoFileInput) {
     logoFileInput.addEventListener('change', function () {
       removeLogoRequested = false;
+      logoUrlToSave = null;
+      if (logoUrlInput) logoUrlInput.value = '';
       validateLogoFile(logoFileInput.files[0], function () {});
+    });
+  }
+
+  function validateLogoUrl(url, callback) {
+    var errEl = document.getElementById('logoError');
+    var previewEl = document.getElementById('logoPreview');
+    if (!url || !url.trim()) {
+      if (errEl) { errEl.textContent = ''; errEl.hidden = true; }
+      if (previewEl) { previewEl.innerHTML = ''; previewEl.hidden = true; }
+      callback(null);
+      return;
+    }
+    var img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = function () {
+      if (img.naturalWidth < MIN_LOGO_SIZE || img.naturalHeight < MIN_LOGO_SIZE) {
+        if (errEl) { errEl.textContent = 'Logo must be at least 100×100 pixels.'; errEl.hidden = false; }
+        callback(new Error('Logo must be at least 100×100 pixels'));
+        return;
+      }
+      if (errEl) { errEl.textContent = ''; errEl.hidden = true; }
+      if (previewEl) {
+        previewEl.innerHTML = '<img src="' + escapeHtml(url) + '" alt="New logo">';
+        previewEl.hidden = false;
+      }
+      callback(null);
+    };
+    img.onerror = function () {
+      if (errEl) { errEl.textContent = 'Could not load image. Check URL and CORS.'; errEl.hidden = false; }
+      callback(new Error('Could not load image'));
+    };
+    img.src = url;
+  }
+
+  if (logoUrlInput) {
+    var urlDebounce;
+    logoUrlInput.addEventListener('input', function () {
+      removeLogoRequested = false;
+      if (logoFileInput) logoFileInput.value = '';
+      var url = (logoUrlInput.value || '').trim();
+      clearTimeout(urlDebounce);
+      if (!url) {
+        logoUrlToSave = null;
+        var errEl = document.getElementById('logoError');
+        var previewEl = document.getElementById('logoPreview');
+        if (errEl) { errEl.textContent = ''; errEl.hidden = true; }
+        if (previewEl) { previewEl.innerHTML = ''; previewEl.hidden = true; }
+        return;
+      }
+      urlDebounce = setTimeout(function () {
+        validateLogoUrl(url, function (err) {
+          logoUrlToSave = err ? null : url;
+        });
+      }, 300);
+    });
+    logoUrlInput.addEventListener('blur', function () {
+      var url = (logoUrlInput.value || '').trim();
+      if (url) validateLogoUrl(url, function (err) { logoUrlToSave = err ? null : url; });
     });
   }
 
@@ -337,6 +407,12 @@
               saveResult.textContent = 'Error: ' + e.message;
               saveResult.className = 'status err';
             });
+        });
+      } else if (logoUrlToSave) {
+        payload.logoUrl = logoUrlToSave;
+        doUpdate(payload).catch(function (e) {
+          saveResult.textContent = 'Error: ' + e.message;
+          saveResult.className = 'status err';
         });
       } else {
         doUpdate(payload).catch(function (e) {
