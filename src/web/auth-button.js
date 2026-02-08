@@ -39,6 +39,7 @@
           el.setAttribute('role', 'button');
           el.onclick = function (e) {
             e.preventDefault();
+            if (window.profileBoxClearCache) window.profileBoxClearCache();
             window.auth.signOut();
             window.location.href = 'index.html';
           };
