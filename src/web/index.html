@@ -273,6 +273,7 @@
       <a href="media.html">Browse Media</a>
       <a href="internet-dashboard.html">Internet Dashboard</a>
       <a href="squash.html" id="navSquashLink" style="display:none;">Squash</a>
+      <a href="squash-admin.html" id="navSquashAdminLink" style="display:none;">Squash Admin</a>
       <a href="auth.html" class="auth-link">Sign in / Sign up</a>
     </div>
   </div>
@@ -290,6 +291,7 @@
       <a href="users.html">User Management</a>
       <a href="groups.html">Groups</a>
       <a href="squash.html" id="footerSquashLink" style="display:none;">Squash</a>
+      <a href="squash-admin.html" id="footerSquashAdminLink" style="display:none;">Squash Admin</a>
       <a href="profile.html" class="profile-link" style="display:none;">Profile</a>
       <a href="auth.html" class="auth-link">Sign in / Sign up</a>
     </nav>
@@ -378,16 +380,22 @@
       function updateSquashLinks() {
         var navLink = document.getElementById('navSquashLink');
         var footerLink = document.getElementById('footerSquashLink');
+        var navAdminLink = document.getElementById('navSquashAdminLink');
+        var footerAdminLink = document.getElementById('footerSquashAdminLink');
         if (!navLink && !footerLink) return;
         if (!window.auth) {
           if (navLink) navLink.style.display = 'none';
           if (footerLink) footerLink.style.display = 'none';
+          if (navAdminLink) navAdminLink.style.display = 'none';
+          if (footerAdminLink) footerAdminLink.style.display = 'none';
           return;
         }
         window.auth.isAuthenticated(function(isAuth) {
           if (!isAuth) {
             if (navLink) navLink.style.display = 'none';
             if (footerLink) footerLink.style.display = 'none';
+            if (navAdminLink) navAdminLink.style.display = 'none';
+            if (footerAdminLink) footerAdminLink.style.display = 'none';
             return;
           }
           var base = (window.API_BASE_URL || '').replace(/\/$/, '');
@@ -402,6 +410,7 @@
                 var groups = user.groups || [];
                 var customGroups = user.customGroups || [];
                 var canAccess = customGroups.indexOf('Squash') !== -1 || groups.indexOf('admin') !== -1;
+                var canModify = groups.indexOf('admin') !== -1 || (groups.indexOf('manager') !== -1 && customGroups.indexOf('Squash') !== -1);
                 if (canAccess) {
                   if (navLink) navLink.style.display = '';
                   if (footerLink) footerLink.style.display = '';
@@ -409,10 +418,19 @@
                   if (navLink) navLink.style.display = 'none';
                   if (footerLink) footerLink.style.display = 'none';
                 }
+                if (canModify) {
+                  if (navAdminLink) navAdminLink.style.display = '';
+                  if (footerAdminLink) footerAdminLink.style.display = '';
+                } else {
+                  if (navAdminLink) navAdminLink.style.display = 'none';
+                  if (footerAdminLink) footerAdminLink.style.display = 'none';
+                }
               })
               .catch(function() {
                 if (navLink) navLink.style.display = 'none';
                 if (footerLink) footerLink.style.display = 'none';
+                if (navAdminLink) navAdminLink.style.display = 'none';
+                if (footerAdminLink) footerAdminLink.style.display = 'none';
               });
           });
         });
