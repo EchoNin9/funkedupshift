@@ -406,11 +406,18 @@
             fetch(base + '/me', { headers: headers })
               .then(function(r) { return r.ok ? r.json() : null; })
               .then(function(user) {
-                if (!user) return;
+                if (!user) {
+                  if (navLink) navLink.style.display = 'none';
+                  if (footerLink) footerLink.style.display = 'none';
+                  if (navAdminLink) navAdminLink.style.display = 'none';
+                  if (footerAdminLink) footerAdminLink.style.display = 'none';
+                  return;
+                }
                 var groups = user.groups || [];
                 var customGroups = user.customGroups || [];
-                var canAccess = customGroups.indexOf('Squash') !== -1 || groups.indexOf('admin') !== -1;
-                var canModify = groups.indexOf('admin') !== -1 || (groups.indexOf('manager') !== -1 && customGroups.indexOf('Squash') !== -1);
+                var squashInCustomGroups = customGroups.some(function(g) { return (g || '').trim() === 'Squash'; });
+                var canAccess = squashInCustomGroups || groups.indexOf('admin') !== -1;
+                var canModify = groups.indexOf('admin') !== -1 || (groups.indexOf('manager') !== -1 && squashInCustomGroups);
                 if (canAccess) {
                   if (navLink) navLink.style.display = '';
                   if (footerLink) footerLink.style.display = '';
@@ -435,11 +442,18 @@
           });
         });
       }
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', updateSquashLinks);
-      } else {
-        updateSquashLinks();
+      function initSquashLinks() {
+        if (!window.auth) {
+          setTimeout(initSquashLinks, 100);
+          return;
+        }
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', updateSquashLinks);
+        } else {
+          updateSquashLinks();
+        }
       }
+      initSquashLinks();
 
       window.addEventListener('resize', function() {
         if (window.innerWidth <= 768) {
