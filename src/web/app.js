@@ -391,10 +391,10 @@
           // Pre-warm profile avatar cache before redirect
           if (window.profileBoxPreloadAvatar) {
             window.profileBoxPreloadAvatar(function () {
-              window.location.href = 'websites.html';
+              window.location.href = 'index.html';
             });
           } else {
-            window.location.href = 'websites.html';
+            window.location.href = 'index.html';
           }
         });
       });
