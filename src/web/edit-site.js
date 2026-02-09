@@ -460,11 +460,23 @@
             });
         });
       } else if (logoUrlToSave) {
-        payload.logoUrl = logoUrlToSave;
-        doUpdate(payload).catch(function (e) {
-          saveResult.textContent = 'Error: ' + e.message;
-          saveResult.className = 'status err';
-        });
+        fetchWithAuth(base + '/sites/logo-from-url', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ siteId: id, imageUrl: logoUrlToSave })
+        })
+          .then(function (r) {
+            if (r.ok) return r.json();
+            return r.text().then(function (t) { throw new Error(t || 'Import failed'); });
+          })
+          .then(function (data) {
+            payload.logoKey = data.key;
+            return doUpdate(payload);
+          })
+          .catch(function (e) {
+            saveResult.textContent = 'Error: ' + e.message;
+            saveResult.className = 'status err';
+          });
       } else {
         doUpdate(payload).catch(function (e) {
           saveResult.textContent = 'Error: ' + e.message;
