@@ -7,6 +7,7 @@
   var allCategories = [];
   var selectedIds = [];
   var categoryDropdownJustSelected = false;
+  var descriptionAiGenerated = false;
 
   function escapeHtml(s) {
     if (s == null) return '';
@@ -219,6 +220,52 @@
     });
   }
 
+  var generateAiDescBtn = document.getElementById('generateAiDescBtn');
+  var aiDescLabel = document.getElementById('aiDescLabel');
+  var siteDescriptionEl = document.getElementById('siteDescription');
+  if (generateAiDescBtn && aiDescLabel && siteDescriptionEl) {
+    generateAiDescBtn.addEventListener('click', function () {
+      var url = document.getElementById('siteUrl').value.trim();
+      if (!url) {
+        createSiteResult.textContent = 'Enter URL first to generate AI description.';
+        createSiteResult.className = 'status err';
+        createSiteResult.hidden = false;
+        return;
+      }
+      generateAiDescBtn.disabled = true;
+      generateAiDescBtn.textContent = 'Generating...';
+      fetchWithAuth(base + '/sites/generate-description', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: url })
+      })
+        .then(function (r) {
+          if (r.ok) return r.json();
+          return r.text().then(function (t) { throw new Error(t || 'Failed'); });
+        })
+        .then(function (data) {
+          siteDescriptionEl.value = data.description || '';
+          descriptionAiGenerated = true;
+          aiDescLabel.hidden = false;
+          createSiteResult.textContent = '';
+          createSiteResult.hidden = true;
+        })
+        .catch(function (e) {
+          createSiteResult.textContent = 'Error: ' + e.message;
+          createSiteResult.className = 'status err';
+          createSiteResult.hidden = false;
+        })
+        .finally(function () {
+          generateAiDescBtn.disabled = false;
+          generateAiDescBtn.textContent = 'Generate AI description';
+        });
+    });
+    siteDescriptionEl.addEventListener('input', function () {
+      descriptionAiGenerated = false;
+      aiDescLabel.hidden = true;
+    });
+  }
+
   if (createSiteForm) {
     createSiteForm.addEventListener('submit', function (e) {
       e.preventDefault();
@@ -239,6 +286,7 @@
       function doCreateSite(logoKey) {
         var categoryIds = selectedIds.slice();
         var payload = { url: url, title: title, description: description, categoryIds: categoryIds };
+        if (descriptionAiGenerated) payload.descriptionAiGenerated = true;
         if (logoKey) payload.logoKey = logoKey;
         return fetchWithAuth(base + '/sites', {
           method: 'POST',
@@ -255,6 +303,8 @@
             document.getElementById('siteUrl').value = '';
             document.getElementById('siteTitle').value = '';
             document.getElementById('siteDescription').value = '';
+            descriptionAiGenerated = false;
+            if (aiDescLabel) aiDescLabel.hidden = true;
             if (logoFileInput) logoFileInput.value = '';
             selectedIds = [];
             renderSelected();

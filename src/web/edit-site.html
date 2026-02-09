@@ -84,6 +84,10 @@
     .category-chip { display: inline-flex; align-items: center; gap: 0.2rem; padding: 0.2rem 0.4rem; background: #e8e8e8; color: #111827; border-radius: 0.2rem; font-size: 0.85rem; }
     .category-chip-remove { background: none; border: none; cursor: pointer; padding: 0; color: #666; font-size: 1rem; line-height: 1; }
     .category-chip-remove:hover { color: #c00; }
+    .description-field { margin: 0.5rem 0; }
+    .description-field textarea { display: block; margin-bottom: 0.35rem; }
+    .description-field .ai-desc-label { font-size: 0.75rem; color: #6b7280; margin-left: 0.5rem; }
+    .theme-dark .description-field .ai-desc-label { color: #9ca3af; }
     .logo-field { margin: 0.5rem 0; }
     .logo-field label { display: block; margin-bottom: 0.25rem; font-weight: 600; }
     .logo-current { margin: 0.5rem 0; }
@@ -205,7 +209,11 @@
       <input type="hidden" id="siteId" name="siteId">
       <input type="url" id="siteUrl" placeholder="URL (e.g. https://example.com)" required>
       <input type="text" id="siteTitle" placeholder="Title" required>
-      <textarea id="siteDescription" placeholder="Description (optional)" rows="4"></textarea>
+      <div class="description-field">
+        <textarea id="siteDescription" placeholder="Description (optional)" rows="4"></textarea>
+        <button type="button" id="generateAiDescBtn" class="secondary">Generate AI description</button>
+        <span id="aiDescLabel" class="ai-desc-label" hidden>AI generated summary</span>
+      </div>
       <div class="logo-field">
         <label>Logo (min 100×100 px, max 5 MB)</label>
         <div id="currentLogoWrap" class="logo-current" hidden>

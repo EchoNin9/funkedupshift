@@ -158,6 +158,9 @@ def handler(event, context):
             return createSite(event)
         if method == "POST" and path == "/sites/logo-upload":
             return getPresignedLogoUpload(event)
+        if method == "POST" and path == "/sites/generate-description":
+            from api.generate_description import generateDescription
+            return generateDescription(event)
         if method == "PUT" and path == "/sites":
             return updateSite(event)
         if method == "GET" and path == "/me":
@@ -342,6 +345,8 @@ def listSites(event, forceAll=False):
                     site[key] = int(num_str) if "." not in num_str else float(num_str)
                 elif "L" in val:
                     site[key] = [v.get("S", "") for v in val["L"]]
+                elif "BOOL" in val:
+                    site[key] = val["BOOL"]
             total_sum = site.get("totalStarsSum")
             total_count = site.get("totalStarsCount")
             if isinstance(total_sum, (int, float)) and isinstance(total_count, (int, float)) and total_count > 0:
@@ -397,6 +402,8 @@ def listSites(event, forceAll=False):
                     site[key] = int(num_str) if "." not in num_str else float(num_str)
                 elif "L" in val:
                     site[key] = [v.get("S", "") for v in val["L"]]
+                elif "BOOL" in val:
+                    site[key] = val["BOOL"]
 
             total_sum = site.get("totalStarsSum")
             total_count = site.get("totalStarsCount")
@@ -491,6 +498,8 @@ def createSite(event):
             "totalStarsSum": {"N": "0"},
             "totalStarsCount": {"N": "0"},
         }
+        if body.get("descriptionAiGenerated") is True:
+            item["descriptionAiGenerated"] = {"BOOL": True}
         if logo_key:
             item["logoKey"] = {"S": logo_key}
         elif logo_url:
@@ -527,6 +536,7 @@ def updateSite(event):
         url = body.get("url")
         title = body.get("title")
         description = body.get("description")
+        description_ai_generated = body.get("descriptionAiGenerated")
         category_ids = body.get("categoryIds")
         delete_logo = body.get("deleteLogo") is True
         logo_key = (body.get("logoKey") or "").strip() or None
@@ -571,6 +581,11 @@ def updateSite(event):
             set_parts.append("#description = :description")
             names["#description"] = "description"
             values[":description"] = {"S": description}
+        if description_ai_generated is True:
+            set_parts.append("descriptionAiGenerated = :descAi")
+            values[":descAi"] = {"BOOL": True}
+        elif description_ai_generated is False:
+            remove_parts.append("descriptionAiGenerated")
         if category_ids is not None:
             set_parts.append("categoryIds = :categoryIds")
             values[":categoryIds"] = {"L": [{"S": str(c)} for c in category_ids]}
