@@ -503,6 +503,14 @@ resource "aws_dynamodb_table" "main" {
     name = "userId"
     type = "S"
   }
+  attribute {
+    name = "squashDate"
+    type = "S"
+  }
+  attribute {
+    name = "matchId"
+    type = "S"
+  }
 
   # List all sites: query GSI byEntity where entityType = SITE
   global_secondary_index {
@@ -533,6 +541,14 @@ resource "aws_dynamodb_table" "main" {
     name            = "byGroup"
     hash_key        = "groupName"
     range_key       = "userId"
+    projection_type = "ALL"
+  }
+
+  # Query squash matches by date: query GSI bySquashDate where squashDate = YYYY-MM-DD
+  global_secondary_index {
+    name            = "bySquashDate"
+    hash_key        = "squashDate"
+    range_key       = "matchId"
     projection_type = "ALL"
   }
 }
@@ -1165,6 +1181,71 @@ resource "aws_apigatewayv2_route" "mediaCategoriesPut" {
 resource "aws_apigatewayv2_route" "mediaCategoriesDelete" {
   api_id             = aws_apigatewayv2_api.main.id
   route_key          = "DELETE /media-categories"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+# Squash doubles section
+resource "aws_apigatewayv2_route" "squashPlayersGet" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /squash/players"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "squashPlayersPost" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /squash/players"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "squashPlayersPut" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "PUT /squash/players"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "squashPlayersDelete" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "DELETE /squash/players"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "squashMatchesGet" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /squash/matches"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "squashMatchesPost" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /squash/matches"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "squashMatchesPut" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "PUT /squash/matches"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "squashMatchesDelete" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "DELETE /squash/matches"
   target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
   authorization_type = "JWT"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id

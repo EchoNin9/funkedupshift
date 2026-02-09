@@ -207,6 +207,23 @@ def handler(event, context):
             return updateMediaCategory(event)
         if method == "DELETE" and path == "/media-categories":
             return deleteMediaCategory(event)
+        # Squash section routes
+        if method == "GET" and path == "/squash/players":
+            return listSquashPlayers(event)
+        if method == "POST" and path == "/squash/players":
+            return createSquashPlayer(event)
+        if method == "PUT" and path == "/squash/players":
+            return updateSquashPlayer(event)
+        if method == "DELETE" and path == "/squash/players":
+            return deleteSquashPlayer(event)
+        if method == "GET" and path == "/squash/matches":
+            return listSquashMatches(event)
+        if method == "POST" and path == "/squash/matches":
+            return createSquashMatch(event)
+        if method == "PUT" and path == "/squash/matches":
+            return updateSquashMatch(event)
+        if method == "DELETE" and path == "/squash/matches":
+            return deleteSquashMatch(event)
         # Admin user/group management routes
         path_params = event.get("pathParameters") or {}
         if method == "GET" and path == "/admin/users":
@@ -1759,6 +1776,506 @@ def deleteMediaCategory(event):
 
 
 # ------------------------------------------------------------------------------
+# Squash doubles section
+# ------------------------------------------------------------------------------
+
+def _requireSquashAccess(event):
+    """Return (user, None) if user can view Squash, else (None, error_response)."""
+    user = getUserInfo(event)
+    if not user.get("userId"):
+        return None, jsonResponse({"error": "Unauthorized"}, 401)
+    if not _canAccessSquash(user):
+        return None, jsonResponse({"error": "Forbidden: Squash access required"}, 403)
+    return user, None
+
+
+def _requireSquashModify(event):
+    """Return (user, None) if user can modify Squash, else (None, error_response)."""
+    user = getUserInfo(event)
+    if not user.get("userId"):
+        return None, jsonResponse({"error": "Unauthorized"}, 401)
+    if not _canModifySquash(user):
+        return None, jsonResponse({"error": "Forbidden: Squash modify permission required"}, 403)
+    return user, None
+
+
+def listSquashPlayers(event):
+    """GET /squash/players - List squash players (Squash access required)."""
+    _, err = _requireSquashAccess(event)
+    if err:
+        return err
+    if not TABLE_NAME:
+        return jsonResponse({"players": [], "error": "TABLE_NAME not set"}, 200)
+    try:
+        import boto3
+        dynamodb = boto3.client("dynamodb")
+        result = dynamodb.query(
+            TableName=TABLE_NAME,
+            IndexName="byEntity",
+            KeyConditionExpression="entityType = :et",
+            ExpressionAttributeValues={":et": {"S": "SQUASH_PLAYER"}},
+        )
+        items = result.get("Items", [])
+        players = []
+        for item in items:
+            p = _dynamoItemToDict(item)
+            p["id"] = p.get("PK", "")
+            players.append(p)
+        players.sort(key=lambda p: (p.get("name") or "").lower())
+        return jsonResponse({"players": players})
+    except Exception as e:
+        logger.exception("listSquashPlayers error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def createSquashPlayer(event):
+    """POST /squash/players - Create squash player (Squash modify required)."""
+    _, err = _requireSquashModify(event)
+    if err:
+        return err
+    if not TABLE_NAME:
+        return jsonResponse({"error": "TABLE_NAME not set"}, 500)
+    try:
+        import boto3
+        import uuid
+        from datetime import datetime
+        body = json.loads(event.get("body", "{}"))
+        name = (body.get("name") or "").strip()
+        if not name:
+            return jsonResponse({"error": "name is required"}, 400)
+        player_id = str(uuid.uuid4())
+        pk = f"SQUASH#PLAYER#{player_id}"
+        now = datetime.utcnow().isoformat() + "Z"
+        email = (body.get("email") or "").strip() or None
+        user_id = (body.get("userId") or "").strip() or None
+        dynamodb = boto3.client("dynamodb")
+        item = {
+            "PK": {"S": pk},
+            "SK": {"S": "METADATA"},
+            "name": {"S": name},
+            "entityType": {"S": "SQUASH_PLAYER"},
+            "entitySk": {"S": pk},
+            "createdAt": {"S": now},
+            "updatedAt": {"S": now},
+        }
+        if email:
+            item["email"] = {"S": email}
+        if user_id:
+            item["userId"] = {"S": user_id}
+        dynamodb.put_item(TableName=TABLE_NAME, Item=item)
+        return jsonResponse({"id": pk, "name": name, "email": email, "userId": user_id}, 201)
+    except Exception as e:
+        logger.exception("createSquashPlayer error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def updateSquashPlayer(event):
+    """PUT /squash/players - Update squash player (Squash modify required)."""
+    _, err = _requireSquashModify(event)
+    if err:
+        return err
+    if not TABLE_NAME:
+        return jsonResponse({"error": "TABLE_NAME not set"}, 500)
+    try:
+        import boto3
+        from datetime import datetime
+        body = json.loads(event.get("body", "{}"))
+        raw_id = (body.get("id") or "").strip()
+        pk = raw_id if raw_id.startswith("SQUASH#PLAYER#") else f"SQUASH#PLAYER#{raw_id}"
+        if not pk or pk == "SQUASH#PLAYER#":
+            return jsonResponse({"error": "id is required"}, 400)
+        name = body.get("name")
+        email = body.get("email")
+        user_id = body.get("userId")
+        now = datetime.utcnow().isoformat() + "Z"
+        dynamodb = boto3.client("dynamodb")
+        updates = ["updatedAt = :now"]
+        values = {":now": {"S": now}}
+        if name is not None:
+            updates.append("name = :name")
+            values[":name"] = {"S": str(name).strip()}
+        if email is not None:
+            if str(email).strip():
+                updates.append("email = :email")
+                values[":email"] = {"S": str(email).strip()}
+            else:
+                updates.append("remove email")
+        if user_id is not None:
+            if str(user_id).strip():
+                updates.append("userId = :uid")
+                values[":uid"] = {"S": str(user_id).strip()}
+            else:
+                updates.append("remove userId")
+        if len(updates) <= 1:
+            return jsonResponse({"error": "no fields to update"}, 400)
+        update_expr = "SET " + ", ".join(u for u in updates if not u.startswith("remove"))
+        remove_parts = [u.replace("remove ", "") for u in updates if u.startswith("remove")]
+        if remove_parts:
+            update_expr += " REMOVE " + ", ".join(remove_parts)
+        dynamodb.update_item(
+            TableName=TABLE_NAME,
+            Key={"PK": {"S": pk}, "SK": {"S": "METADATA"}},
+            UpdateExpression=update_expr,
+            ExpressionAttributeValues=values,
+        )
+        return jsonResponse({"id": pk, "updated": True}, 200)
+    except Exception as e:
+        logger.exception("updateSquashPlayer error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def deleteSquashPlayer(event):
+    """DELETE /squash/players?id=xxx - Delete squash player (Squash modify required)."""
+    _, err = _requireSquashModify(event)
+    if err:
+        return err
+    if not TABLE_NAME:
+        return jsonResponse({"error": "TABLE_NAME not set"}, 500)
+    try:
+        import boto3
+        qs = event.get("queryStringParameters") or {}
+        raw_id = (qs.get("id") or "").strip()
+        pk = raw_id if raw_id.startswith("SQUASH#PLAYER#") else f"SQUASH#PLAYER#{raw_id}"
+        if not pk or pk == "SQUASH#PLAYER#":
+            return jsonResponse({"error": "id is required"}, 400)
+        dynamodb = boto3.client("dynamodb")
+        dynamodb.delete_item(
+            TableName=TABLE_NAME,
+            Key={"PK": {"S": pk}, "SK": {"S": "METADATA"}},
+        )
+        result = dynamodb.query(
+            TableName=TABLE_NAME,
+            KeyConditionExpression="PK = :pk AND begins_with(SK, :sk)",
+            ExpressionAttributeValues={":pk": {"S": pk}, ":sk": {"S": "MATCH#"}},
+        )
+        for item in result.get("Items", []):
+            match_sk = item.get("SK", {}).get("S", "")
+            dynamodb.delete_item(
+                TableName=TABLE_NAME,
+                Key={"PK": {"S": pk}, "SK": {"S": match_sk}},
+            )
+        return jsonResponse({"id": pk, "deleted": True}, 200)
+    except Exception as e:
+        logger.exception("deleteSquashPlayer error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def listSquashMatches(event):
+    """GET /squash/matches - List squash matches (Squash access required). Query: date, dateFrom, dateTo, playerIds."""
+    _, err = _requireSquashAccess(event)
+    if err:
+        return err
+    if not TABLE_NAME:
+        return jsonResponse({"matches": [], "error": "TABLE_NAME not set"}, 200)
+    try:
+        import boto3
+        dynamodb = boto3.client("dynamodb")
+        qs = event.get("queryStringParameters") or {}
+        date_val = (qs.get("date") or "").strip()
+        date_from = (qs.get("dateFrom") or "").strip()
+        date_to = (qs.get("dateTo") or "").strip()
+        player_ids_param = (qs.get("playerIds") or "").strip()
+        filter_player_ids = [x.strip() for x in player_ids_param.split(",") if x.strip()]
+
+        match_ids = set()
+
+        if date_val:
+            result = dynamodb.query(
+                TableName=TABLE_NAME,
+                IndexName="bySquashDate",
+                KeyConditionExpression="squashDate = :d",
+                ExpressionAttributeValues={":d": {"S": date_val}},
+            )
+            for item in result.get("Items", []):
+                pk = item.get("PK", {}).get("S", "")
+                if pk:
+                    match_ids.add(pk)
+        elif date_from and date_to:
+            result = dynamodb.query(
+                TableName=TABLE_NAME,
+                IndexName="bySquashDate",
+                KeyConditionExpression="squashDate BETWEEN :d1 AND :d2",
+                ExpressionAttributeValues={":d1": {"S": date_from}, ":d2": {"S": date_to}},
+            )
+            for item in result.get("Items", []):
+                pk = item.get("PK", {}).get("S", "")
+                if pk:
+                    match_ids.add(pk)
+        else:
+            result = dynamodb.query(
+                TableName=TABLE_NAME,
+                IndexName="byEntity",
+                KeyConditionExpression="entityType = :et",
+                ExpressionAttributeValues={":et": {"S": "SQUASH_MATCH"}},
+            )
+            for item in result.get("Items", []):
+                pk = item.get("PK", {}).get("S", "")
+                if pk:
+                    match_ids.add(pk)
+            while result.get("LastEvaluatedKey"):
+                result = dynamodb.query(
+                    TableName=TABLE_NAME,
+                    IndexName="byEntity",
+                    KeyConditionExpression="entityType = :et",
+                    ExpressionAttributeValues={":et": {"S": "SQUASH_MATCH"}},
+                    ExclusiveStartKey=result["LastEvaluatedKey"],
+                )
+                for item in result.get("Items", []):
+                    pk = item.get("PK", {}).get("S", "")
+                    if pk:
+                        match_ids.add(pk)
+
+        if filter_player_ids:
+            player_match_ids = set()
+            for pid in filter_player_ids:
+                pk = pid if pid.startswith("SQUASH#PLAYER#") else f"SQUASH#PLAYER#{pid}"
+                result = dynamodb.query(
+                    TableName=TABLE_NAME,
+                    KeyConditionExpression="PK = :pk AND begins_with(SK, :sk)",
+                    ExpressionAttributeValues={":pk": {"S": pk}, ":sk": {"S": "MATCH#"}},
+                )
+                for item in result.get("Items", []):
+                    mid = item.get("matchId", {}).get("S")
+                    if not mid:
+                        sk = item.get("SK", {}).get("S", "")
+                        mid = sk.replace("MATCH#", "") if "MATCH#" in sk else ""
+                    if mid:
+                        full = mid if "SQUASH#" in mid else f"SQUASH#MATCH#{mid}"
+                        player_match_ids.add(full)
+            if player_match_ids:
+                match_ids = match_ids & player_match_ids if match_ids else player_match_ids
+
+        matches = []
+        for mid in match_ids:
+            full_pk = mid if mid.startswith("SQUASH#MATCH#") else f"SQUASH#MATCH#{mid}"
+            resp = dynamodb.get_item(
+                TableName=TABLE_NAME,
+                Key={"PK": {"S": full_pk}, "SK": {"S": "METADATA"}},
+            )
+            if "Item" in resp:
+                m = _dynamoItemToDict(resp["Item"])
+                m["id"] = full_pk.replace("SQUASH#MATCH#", "")
+                matches.append(m)
+        matches.sort(key=lambda m: (m.get("date", ""), m.get("id", "")))
+        return jsonResponse({"matches": matches})
+    except Exception as e:
+        logger.exception("listSquashMatches error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def _validateSquashMatchBody(body):
+    """Validate match body; return (None, error_msg) or (validated_dict, None)."""
+    date_val = (body.get("date") or "").strip()
+    if not date_val or len(date_val) != 10:
+        return None, "date is required (YYYY-MM-DD)"
+    try:
+        from datetime import datetime
+        datetime.strptime(date_val, "%Y-%m-%d")
+    except ValueError:
+        return None, "date must be YYYY-MM-DD"
+    p1 = (body.get("teamAPlayer1Id") or "").strip()
+    p2 = (body.get("teamAPlayer2Id") or "").strip()
+    p3 = (body.get("teamBPlayer1Id") or "").strip()
+    p4 = (body.get("teamBPlayer2Id") or "").strip()
+    for x in [p1, p2, p3, p4]:
+        if not x:
+            return None, "teamAPlayer1Id, teamAPlayer2Id, teamBPlayer1Id, teamBPlayer2Id are required"
+    ids = set()
+    for raw in [p1, p2, p3, p4]:
+        n = raw if raw.startswith("SQUASH#PLAYER#") else f"SQUASH#PLAYER#{raw}"
+        ids.add(n)
+    if len(ids) != 4:
+        return None, "each player can only be on one team"
+    win = (body.get("winningTeam") or "").strip().upper()
+    if win not in ("A", "B"):
+        return None, "winningTeam must be A or B"
+    g_a = body.get("teamAGames")
+    g_b = body.get("teamBGames")
+    if g_a is None or g_b is None:
+        return None, "teamAGames and teamBGames are required"
+    try:
+        g_a = int(g_a)
+        g_b = int(g_b)
+    except (TypeError, ValueError):
+        return None, "teamAGames and teamBGames must be integers"
+    if win == "A":
+        if g_a != 3 or g_b not in (0, 1, 2):
+            return None, "when team A wins: teamAGames=3, teamBGames in {0,1,2}"
+    else:
+        if g_b != 3 or g_a not in (0, 1, 2):
+            return None, "when team B wins: teamBGames=3, teamAGames in {0,1,2}"
+    return {
+        "date": date_val,
+        "teamAPlayer1Id": p1 if p1.startswith("SQUASH#") else f"SQUASH#PLAYER#{p1}",
+        "teamAPlayer2Id": p2 if p2.startswith("SQUASH#") else f"SQUASH#PLAYER#{p2}",
+        "teamBPlayer1Id": p3 if p3.startswith("SQUASH#") else f"SQUASH#PLAYER#{p3}",
+        "teamBPlayer2Id": p4 if p4.startswith("SQUASH#") else f"SQUASH#PLAYER#{p4}",
+        "winningTeam": win,
+        "teamAGames": g_a,
+        "teamBGames": g_b,
+    }, None
+
+
+def createSquashMatch(event):
+    """POST /squash/matches - Create squash match (Squash modify required)."""
+    _, err = _requireSquashModify(event)
+    if err:
+        return err
+    if not TABLE_NAME:
+        return jsonResponse({"error": "TABLE_NAME not set"}, 500)
+    try:
+        import boto3
+        import uuid
+        from datetime import datetime
+        body = json.loads(event.get("body", "{}"))
+        validated, err_msg = _validateSquashMatchBody(body)
+        if err_msg:
+            return jsonResponse({"error": err_msg}, 400)
+        match_id = str(uuid.uuid4())
+        pk = f"SQUASH#MATCH#{match_id}"
+        now = datetime.utcnow().isoformat() + "Z"
+        dynamodb = boto3.client("dynamodb")
+        item = {
+            "PK": {"S": pk},
+            "SK": {"S": "METADATA"},
+            "date": {"S": validated["date"]},
+            "squashDate": {"S": validated["date"]},
+            "matchId": {"S": pk},
+            "teamAPlayer1Id": {"S": validated["teamAPlayer1Id"]},
+            "teamAPlayer2Id": {"S": validated["teamAPlayer2Id"]},
+            "teamBPlayer1Id": {"S": validated["teamBPlayer1Id"]},
+            "teamBPlayer2Id": {"S": validated["teamBPlayer2Id"]},
+            "winningTeam": {"S": validated["winningTeam"]},
+            "teamAGames": {"N": str(validated["teamAGames"])},
+            "teamBGames": {"N": str(validated["teamBGames"])},
+            "entityType": {"S": "SQUASH_MATCH"},
+            "entitySk": {"S": pk},
+            "createdAt": {"S": now},
+            "updatedAt": {"S": now},
+        }
+        dynamodb.put_item(TableName=TABLE_NAME, Item=item)
+        for player_pk in [validated["teamAPlayer1Id"], validated["teamAPlayer2Id"], validated["teamBPlayer1Id"], validated["teamBPlayer2Id"]]:
+            dynamodb.put_item(
+                TableName=TABLE_NAME,
+                Item={
+                    "PK": {"S": player_pk},
+                    "SK": {"S": f"MATCH#{pk}"},
+                    "matchId": {"S": pk},
+                    "squashDate": {"S": validated["date"]},
+                },
+            )
+        return jsonResponse({"id": pk, "date": validated["date"]}, 201)
+    except Exception as e:
+        logger.exception("createSquashMatch error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def updateSquashMatch(event):
+    """PUT /squash/matches - Update squash match (Squash modify required)."""
+    _, err = _requireSquashModify(event)
+    if err:
+        return err
+    if not TABLE_NAME:
+        return jsonResponse({"error": "TABLE_NAME not set"}, 500)
+    try:
+        import boto3
+        from datetime import datetime
+        body = json.loads(event.get("body", "{}"))
+        raw_id = (body.get("id") or "").strip()
+        pk = raw_id if raw_id.startswith("SQUASH#MATCH#") else f"SQUASH#MATCH#{raw_id}"
+        if not pk or pk == "SQUASH#MATCH#":
+            return jsonResponse({"error": "id is required"}, 400)
+        validated, err_msg = _validateSquashMatchBody(body)
+        if err_msg:
+            return jsonResponse({"error": err_msg}, 400)
+        now = datetime.utcnow().isoformat() + "Z"
+        dynamodb = boto3.client("dynamodb")
+        resp = dynamodb.get_item(
+            TableName=TABLE_NAME,
+            Key={"PK": {"S": pk}, "SK": {"S": "METADATA"}},
+        )
+        if "Item" not in resp:
+            return jsonResponse({"error": "Match not found"}, 404)
+        old = _dynamoItemToDict(resp["Item"])
+        old_players = [old.get("teamAPlayer1Id"), old.get("teamAPlayer2Id"), old.get("teamBPlayer1Id"), old.get("teamBPlayer2Id")]
+        for op in old_players:
+            if op:
+                dynamodb.delete_item(
+                    TableName=TABLE_NAME,
+                    Key={"PK": {"S": op}, "SK": {"S": f"MATCH#{pk}"}},
+                )
+        dynamodb.update_item(
+            TableName=TABLE_NAME,
+            Key={"PK": {"S": pk}, "SK": {"S": "METADATA"}},
+            UpdateExpression="SET date = :d, squashDate = :d, teamAPlayer1Id = :p1, teamAPlayer2Id = :p2, teamBPlayer1Id = :p3, teamBPlayer2Id = :p4, winningTeam = :w, teamAGames = :ga, teamBGames = :gb, updatedAt = :now",
+            ExpressionAttributeValues={
+                ":d": {"S": validated["date"]},
+                ":p1": {"S": validated["teamAPlayer1Id"]},
+                ":p2": {"S": validated["teamAPlayer2Id"]},
+                ":p3": {"S": validated["teamBPlayer1Id"]},
+                ":p4": {"S": validated["teamBPlayer2Id"]},
+                ":w": {"S": validated["winningTeam"]},
+                ":ga": {"N": str(validated["teamAGames"])},
+                ":gb": {"N": str(validated["teamBGames"])},
+                ":now": {"S": now},
+            },
+        )
+        for player_pk in [validated["teamAPlayer1Id"], validated["teamAPlayer2Id"], validated["teamBPlayer1Id"], validated["teamBPlayer2Id"]]:
+            dynamodb.put_item(
+                TableName=TABLE_NAME,
+                Item={
+                    "PK": {"S": player_pk},
+                    "SK": {"S": f"MATCH#{pk}"},
+                    "matchId": {"S": pk},
+                    "squashDate": {"S": validated["date"]},
+                },
+            )
+        return jsonResponse({"id": pk, "updated": True}, 200)
+    except Exception as e:
+        logger.exception("updateSquashMatch error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def deleteSquashMatch(event):
+    """DELETE /squash/matches?id=xxx - Delete squash match (Squash modify required)."""
+    _, err = _requireSquashModify(event)
+    if err:
+        return err
+    if not TABLE_NAME:
+        return jsonResponse({"error": "TABLE_NAME not set"}, 500)
+    try:
+        import boto3
+        qs = event.get("queryStringParameters") or {}
+        raw_id = (qs.get("id") or "").strip()
+        pk = raw_id if raw_id.startswith("SQUASH#MATCH#") else f"SQUASH#MATCH#{raw_id}"
+        if not pk or pk == "SQUASH#MATCH#":
+            return jsonResponse({"error": "id is required"}, 400)
+        dynamodb = boto3.client("dynamodb")
+        resp = dynamodb.get_item(
+            TableName=TABLE_NAME,
+            Key={"PK": {"S": pk}, "SK": {"S": "METADATA"}},
+        )
+        if "Item" not in resp:
+            return jsonResponse({"error": "Match not found"}, 404)
+        old = _dynamoItemToDict(resp["Item"])
+        old_players = [old.get("teamAPlayer1Id"), old.get("teamAPlayer2Id"), old.get("teamBPlayer1Id"), old.get("teamBPlayer2Id")]
+        dynamodb.delete_item(
+            TableName=TABLE_NAME,
+            Key={"PK": {"S": pk}, "SK": {"S": "METADATA"}},
+        )
+        for op in old_players:
+            if op:
+                dynamodb.delete_item(
+                    TableName=TABLE_NAME,
+                    Key={"PK": {"S": op}, "SK": {"S": f"MATCH#{pk}"}},
+                )
+        return jsonResponse({"id": pk, "deleted": True}, 200)
+    except Exception as e:
+        logger.exception("deleteSquashMatch error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
+# ------------------------------------------------------------------------------
 # Admin user & group management
 # ------------------------------------------------------------------------------
 
@@ -1865,6 +2382,28 @@ def _getUserCustomGroups(user_id):
         return groups
     except Exception:
         return []
+
+
+def _canAccessSquash(user):
+    """User can view Squash section: in Squash custom group OR SuperAdmin."""
+    if not user.get("userId"):
+        return False
+    if "admin" in user.get("groups", []):
+        return True
+    custom = _getUserCustomGroups(user["userId"])
+    return "Squash" in custom
+
+
+def _canModifySquash(user):
+    """User can add/edit/delete: SuperAdmin OR (Manager AND in Squash group)."""
+    if not user.get("userId"):
+        return False
+    if "admin" in user.get("groups", []):
+        return True
+    if "manager" not in user.get("groups", []):
+        return False
+    custom = _getUserCustomGroups(user["userId"])
+    return "Squash" in custom
 
 
 def getUserGroups(event, username):
