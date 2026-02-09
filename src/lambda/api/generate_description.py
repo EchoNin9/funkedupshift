@@ -1,6 +1,6 @@
 """
 Generate AI description for a website. Fetches HTML, extracts text,
-tries about pages first, summarizes via AWS Bedrock Claude Haiku.
+tries about pages first, summarizes via AWS Bedrock Amazon Nova Micro.
 """
 import json
 import logging
@@ -16,7 +16,7 @@ logger.setLevel(logging.INFO)
 
 MAX_CONTENT_CHARS = 6000
 FETCH_TIMEOUT_SEC = 10
-BEDROCK_MODEL_ID = "anthropic.claude-3-haiku-20240307-v1:0"
+BEDROCK_MODEL_ID = "amazon.nova-micro-v1:0"
 
 
 class TextExtractor(HTMLParser):
@@ -132,7 +132,7 @@ def try_about_pages(base_url):
 
 
 def summarize_with_bedrock(text, url):
-    """Call Bedrock Claude Haiku to summarize. Returns (summary, error_msg)."""
+    """Call Bedrock Amazon Nova Micro (Converse API) to summarize. Returns (summary, error_msg)."""
     if not text or len(text.strip()) < 30:
         return "", "Insufficient content to summarize"
 
@@ -150,23 +150,24 @@ Write only the summary, no preamble."""
         region = __import__("os").environ.get("AWS_REGION", "us-east-1")
         client = boto3.client("bedrock-runtime", region_name=region)
 
-        body = json.dumps({
-            "anthropic_version": "bedrock-2023-05-31",
-            "max_tokens": 256,
-            "temperature": 0.3,
-            "messages": [
-                {"role": "user", "content": [{"type": "text", "text": prompt}]}
-            ],
-        })
-
-        response = client.invoke_model(
+        response = client.converse(
             modelId=BEDROCK_MODEL_ID,
-            contentType="application/json",
-            body=body,
+            messages=[
+                {"role": "user", "content": [{"text": prompt}]}
+            ],
+            inferenceConfig={
+                "maxTokens": 256,
+                "temperature": 0.3,
+            },
         )
-        raw = response["body"].read()
-        data = json.loads(raw)
-        summary = data.get("content", [{}])[0].get("text", "").strip()
+        output = response.get("output", {})
+        message = output.get("message", {})
+        content = message.get("content", [])
+        summary = ""
+        for block in content:
+            if block.get("text"):
+                summary = block["text"].strip()
+                break
         if not summary:
             return "", "Empty response from model"
         return summary, None

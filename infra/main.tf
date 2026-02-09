@@ -714,7 +714,7 @@ resource "aws_iam_role_policy" "lambdaApi" {
       {
         Effect   = "Allow"
         Action   = ["bedrock:InvokeModel"]
-        Resource = "arn:aws:bedrock:${var.awsRegion}::foundation-model/anthropic.claude-3-haiku-*"
+        Resource = "arn:aws:bedrock:${var.awsRegion}::foundation-model/amazon.nova-micro-*"
       }
     ]
   })

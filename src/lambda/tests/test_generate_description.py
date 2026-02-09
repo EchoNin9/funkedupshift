@@ -135,3 +135,26 @@ def test_extract_text_caps_length():
     long_html = "<html><body><p>" + "x" * (MAX_CONTENT_CHARS + 1000) + "</p></body></html>"
     text = extract_text(long_html)
     assert len(text) <= MAX_CONTENT_CHARS
+
+
+def test_summarize_with_bedrock_converse_response():
+    """summarize_with_bedrock parses Converse API output correctly."""
+    from api.generate_description import summarize_with_bedrock
+
+    mock_response = {
+        "output": {
+            "message": {
+                "content": [{"text": "A great website for developers and builders."}]
+            }
+        }
+    }
+
+    with patch("boto3.client") as mock_client_factory:
+        mock_client = MagicMock()
+        mock_client.converse.return_value = mock_response
+        mock_client_factory.return_value = mock_client
+
+        summary, err = summarize_with_bedrock("x" * 100, "https://example.com")
+    assert err is None
+    assert summary == "A great website for developers and builders."
+    mock_client.converse.assert_called_once()
