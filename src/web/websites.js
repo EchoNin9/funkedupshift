@@ -55,7 +55,7 @@
     var logoSrc = (s.logoUrl && s.logoUrl.trim()) ? s.logoUrl : DEFAULT_LOGO_PATH;
     var logoImg = '<img class="site-logo" src="' + escapeHtml(logoSrc) + '" alt="" onerror="this.src=\'' + escapeHtml(DEFAULT_LOGO_PATH) + '\'">';
     var url = s.url ? '<a href="' + escapeHtml(s.url) + '" target="_blank" rel="noopener">' + escapeHtml(s.url) + '</a>' : '';
-    var desc = s.description ? '<div>' + escapeHtml(s.description) + '</div>' : '';
+    var desc = s.description ? '<div>' + escapeHtml(s.description) + (s.descriptionAiGenerated ? ' <span class="ai-desc-badge">AI generated summary</span>' : '') + '</div>' : '';
     var cats = (s.categories && s.categories.length) ? '<div class="site-categories-line"><span class="site-categories">' + s.categories.map(function (c) { return escapeHtml(c.name); }).join(', ') + '</span></div>' : '';
     var editBtn = (id && isAdmin) ? ' <a href="edit-site.html?id=' + encodeURIComponent(id) + '" class="secondary">Edit</a>' : '';
     var stars = '';

@@ -710,6 +710,11 @@ resource "aws_iam_role_policy" "lambdaApi" {
           "cognito-idp:ListGroups"
         ]
         Resource = [aws_cognito_user_pool.main.arn]
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["bedrock:InvokeModel"]
+        Resource = "arn:aws:bedrock:${var.awsRegion}::foundation-model/anthropic.claude-3-haiku-*"
       }
     ]
   })
@@ -722,7 +727,7 @@ resource "aws_lambda_function" "api" {
   handler          = "api.handler.handler"
   source_code_hash = data.archive_file.api.output_base64sha256
   runtime          = "python3.12"
-  timeout          = 30
+  timeout          = 25
 
   environment {
     variables = {
@@ -965,6 +970,15 @@ resource "aws_apigatewayv2_route" "sitesPut" {
 resource "aws_apigatewayv2_route" "sitesLogoUpload" {
   api_id             = aws_apigatewayv2_api.main.id
   route_key          = "POST /sites/logo-upload"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+# Generate AI description (admin only)
+resource "aws_apigatewayv2_route" "sitesGenerateDescription" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /sites/generate-description"
   target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
   authorization_type = "JWT"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id

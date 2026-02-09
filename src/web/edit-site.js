@@ -10,6 +10,7 @@
   var currentLogoUrl = null;
   var removeLogoRequested = false;
   var logoUrlToSave = null;
+  var descriptionAiGenerated = false;
   var DEFAULT_LOGO_PATH = 'img/default-site-logo.png';
   var MIN_LOGO_SIZE = 100;
   var MAX_LOGO_BYTES = 5 * 1024 * 1024;
@@ -166,6 +167,9 @@
         document.getElementById('siteUrl').value = site.url || '';
         document.getElementById('siteTitle').value = site.title || '';
         document.getElementById('siteDescription').value = site.description || '';
+        descriptionAiGenerated = !!site.descriptionAiGenerated;
+        var aiDescLabelEl = document.getElementById('aiDescLabel');
+        if (aiDescLabelEl) aiDescLabelEl.hidden = !descriptionAiGenerated;
 
         currentLogoKey = (site.logoKey && site.logoKey.trim()) ? site.logoKey : null;
         currentLogoUrl = (site.logoUrl && site.logoUrl.trim()) ? site.logoUrl : null;
@@ -336,6 +340,52 @@
     });
   }
 
+  var generateAiDescBtn = document.getElementById('generateAiDescBtn');
+  var aiDescLabel = document.getElementById('aiDescLabel');
+  var siteDescriptionEl = document.getElementById('siteDescription');
+  if (generateAiDescBtn && aiDescLabel && siteDescriptionEl) {
+    generateAiDescBtn.addEventListener('click', function () {
+      var url = document.getElementById('siteUrl').value.trim();
+      if (!url) {
+        saveResult.textContent = 'Enter URL first to generate AI description.';
+        saveResult.className = 'status err';
+        saveResult.hidden = false;
+        return;
+      }
+      generateAiDescBtn.disabled = true;
+      generateAiDescBtn.textContent = 'Generating...';
+      fetchWithAuth(base + '/sites/generate-description', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: url })
+      })
+        .then(function (r) {
+          if (r.ok) return r.json();
+          return r.text().then(function (t) { throw new Error(t || 'Failed'); });
+        })
+        .then(function (data) {
+          siteDescriptionEl.value = data.description || '';
+          descriptionAiGenerated = true;
+          aiDescLabel.hidden = false;
+          saveResult.textContent = '';
+          saveResult.hidden = true;
+        })
+        .catch(function (e) {
+          saveResult.textContent = 'Error: ' + e.message;
+          saveResult.className = 'status err';
+          saveResult.hidden = false;
+        })
+        .finally(function () {
+          generateAiDescBtn.disabled = false;
+          generateAiDescBtn.textContent = 'Generate AI description';
+        });
+    });
+    siteDescriptionEl.addEventListener('input', function () {
+      descriptionAiGenerated = false;
+      aiDescLabel.hidden = true;
+    });
+  }
+
   if (editSiteForm) {
     editSiteForm.addEventListener('submit', function (e) {
       e.preventDefault();
@@ -368,6 +418,7 @@
       }
 
       var payload = { id: id, url: url, title: title, description: description, categoryIds: categoryIds };
+      payload.descriptionAiGenerated = descriptionAiGenerated;
       if (removeLogoRequested) {
         payload.deleteLogo = true;
         doUpdate(payload).catch(function (e) {
