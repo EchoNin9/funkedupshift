@@ -12,6 +12,7 @@ Billing: **PAY_PER_REQUEST**.
 | **byTag**    | tag (S)        | siteId (S)   | Sites by tag: `tag=javascript`    |
 | **byStars**  | starRating (N) | siteId (S)   | Ratings by value: `starRating=5`  |
 | **byGroup**  | groupName (S)  | userId (S)   | List users in custom group        |
+| **bySquashDate** | squashDate (S) | matchId (S) | Squash matches by date (YYYY-MM-DD) |
 
 ## Item types and access patterns
 
@@ -85,8 +86,36 @@ One item per user per site. Logged-in users write their own.
 - **Get profile:** `GetItem(PK=USER#\<sub\>, SK=PROFILE)`.
 - Avatar stored in s3-media at `profile/avatars/{userId}/{uuid}.{ext}`.
 
+### 8. Squash player
+
+| PK                  | SK       | Attributes                                                                 |
+|---------------------|----------|-----------------------------------------------------------------------------|
+| SQUASH#PLAYER#\<uuid\> | METADATA | name, email (optional), userId (optional Cognito sub for linking), entityType=SQUASH_PLAYER, entitySk=SQUASH#PLAYER#\<id\>, createdAt, updatedAt |
+
+- **List players:** Query GSI **byEntity** with `entityType=SQUASH_PLAYER`.
+- **Get player:** `GetItem(PK=SQUASH#PLAYER#\<id\>, SK=METADATA)`.
+
+### 9. Squash match
+
+| PK                 | SK       | Attributes                                                                                                                                 |
+|--------------------|----------|---------------------------------------------------------------------------------------------------------------------------------------------|
+| SQUASH#MATCH#\<uuid\> | METADATA | date (YYYY-MM-DD), squashDate, matchId, teamAPlayer1Id, teamAPlayer2Id, teamBPlayer1Id, teamBPlayer2Id, winningTeam (A\|B), teamAGames (0-3), teamBGames (0-3), entityType=SQUASH_MATCH, entitySk, createdAt, updatedAt |
+
+- **Constraint:** Winning team always has 3 games; losing team has 0, 1, or 2. No player in both teams.
+- **List by date:** Query GSI **bySquashDate** with `squashDate=YYYY-MM-DD`.
+- **List by date range:** Query GSI **bySquashDate** with `squashDate BETWEEN dateFrom AND dateTo`.
+
+### 10. Squash match participation (for player search)
+
+| PK                  | SK            | Attributes   |
+|---------------------|---------------|--------------|
+| SQUASH#PLAYER#\<playerId\> | MATCH#\<matchId\> | matchId, squashDate |
+
+- **Matches for a player:** Query `PK=SQUASH#PLAYER#\<playerId\>` where `SK begins_with MATCH#`.
+
 ## Summary
 
-- **PK/SK:** Generic (USER#..., SITE#..., TAG#..., GROUP#...).
-- **GSIs:** byEntity (list sites/groups), byTag (sites by tag), byStars (ratings by 1–5), byGroup (users in custom group).
+- **PK/SK:** Generic (USER#..., SITE#..., TAG#..., GROUP#..., SQUASH#PLAYER#..., SQUASH#MATCH#...).
+- **GSIs:** byEntity (list sites/groups/squash players/matches), byTag (sites by tag), byStars (ratings by 1–5), byGroup (users in custom group), bySquashDate (squash matches by date).
 - **Roles:** Admins create/update sites; any logged-in user creates/updates their own ratings and comments.
+- **Squash section:** Visible only to users in the Squash custom group or SuperAdmin. SuperAdmin and managers (when in Squash group) can add/edit/delete players and matches.

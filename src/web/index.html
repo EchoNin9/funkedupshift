@@ -272,6 +272,7 @@
       <a href="websites.html">Browse Websites</a>
       <a href="media.html">Browse Media</a>
       <a href="internet-dashboard.html">Internet Dashboard</a>
+      <a href="squash.html" id="navSquashLink" style="display:none;">Squash</a>
       <a href="auth.html" class="auth-link">Sign in / Sign up</a>
     </div>
   </div>
@@ -288,6 +289,7 @@
       <a href="media-categories.html">Media Categories</a>
       <a href="users.html">User Management</a>
       <a href="groups.html">Groups</a>
+      <a href="squash.html" id="footerSquashLink" style="display:none;">Squash</a>
       <a href="profile.html" class="profile-link" style="display:none;">Profile</a>
       <a href="auth.html" class="auth-link">Sign in / Sign up</a>
     </nav>
@@ -372,6 +374,54 @@
         dark = !dark;
         applyTheme();
       });
+
+      function updateSquashLinks() {
+        var navLink = document.getElementById('navSquashLink');
+        var footerLink = document.getElementById('footerSquashLink');
+        if (!navLink && !footerLink) return;
+        if (!window.auth) {
+          if (navLink) navLink.style.display = 'none';
+          if (footerLink) footerLink.style.display = 'none';
+          return;
+        }
+        window.auth.isAuthenticated(function(isAuth) {
+          if (!isAuth) {
+            if (navLink) navLink.style.display = 'none';
+            if (footerLink) footerLink.style.display = 'none';
+            return;
+          }
+          var base = (window.API_BASE_URL || '').replace(/\/$/, '');
+          if (!base) return;
+          window.auth.getAccessToken(function(token) {
+            var headers = {};
+            if (token) headers['Authorization'] = 'Bearer ' + token;
+            fetch(base + '/me', { headers: headers })
+              .then(function(r) { return r.ok ? r.json() : null; })
+              .then(function(user) {
+                if (!user) return;
+                var groups = user.groups || [];
+                var customGroups = user.customGroups || [];
+                var canAccess = customGroups.indexOf('Squash') !== -1 || groups.indexOf('admin') !== -1;
+                if (canAccess) {
+                  if (navLink) navLink.style.display = '';
+                  if (footerLink) footerLink.style.display = '';
+                } else {
+                  if (navLink) navLink.style.display = 'none';
+                  if (footerLink) footerLink.style.display = 'none';
+                }
+              })
+              .catch(function() {
+                if (navLink) navLink.style.display = 'none';
+                if (footerLink) footerLink.style.display = 'none';
+              });
+          });
+        });
+      }
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', updateSquashLinks);
+      } else {
+        updateSquashLinks();
+      }
 
       window.addEventListener('resize', function() {
         if (window.innerWidth <= 768) {
