@@ -406,6 +406,9 @@
             fetch(base + '/me', { headers: headers })
               .then(function(r) { return r.ok ? r.json() : null; })
               .then(function(user) {
+                // #region agent log
+                fetch('http://127.0.0.1:7243/ingest/51517f45-4cb4-45b6-9d26-950ab96994fd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:408',message:'updateSquashLinks user received',data:{hasUser:!!user,groups:user?user.groups:[],customGroups:user?user.customGroups:undefined,customGroupsType:user?typeof user.customGroups:'undefined'},timestamp:Date.now(),runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+                // #endregion
                 if (!user) {
                   if (navLink) navLink.style.display = 'none';
                   if (footerLink) footerLink.style.display = 'none';
@@ -415,9 +418,15 @@
                 }
                 var groups = user.groups || [];
                 var customGroups = user.customGroups || [];
+                // #region agent log
+                fetch('http://127.0.0.1:7243/ingest/51517f45-4cb4-45b6-9d26-950ab96994fd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:417',message:'updateSquashLinks before check',data:{groups:groups,customGroups:customGroups,customGroupsLength:customGroups.length},timestamp:Date.now(),runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+                // #endregion
                 var squashInCustomGroups = customGroups.some(function(g) { return (g || '').trim() === 'Squash'; });
                 var canAccess = squashInCustomGroups || groups.indexOf('admin') !== -1;
                 var canModify = groups.indexOf('admin') !== -1 || (groups.indexOf('manager') !== -1 && squashInCustomGroups);
+                // #region agent log
+                fetch('http://127.0.0.1:7243/ingest/51517f45-4cb4-45b6-9d26-950ab96994fd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:419',message:'updateSquashLinks access check',data:{squashInCustomGroups:squashInCustomGroups,canAccess:canAccess,canModify:canModify,isAdmin:groups.indexOf('admin')!==-1},timestamp:Date.now(),runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+                // #endregion
                 if (canAccess) {
                   if (navLink) navLink.style.display = '';
                   if (footerLink) footerLink.style.display = '';
