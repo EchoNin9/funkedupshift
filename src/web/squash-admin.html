@@ -49,9 +49,9 @@
       box-shadow: 0 8px 16px rgba(192, 57, 43, 0.4);
       transform: translateY(-2px);
     }
-    .player-list, .match-list { list-style: none; padding: 0; margin: 0; }
-    .player-list li, .match-list li { padding: 0.5rem 0; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
-    .player-list li:last-child, .match-list li:last-child { border-bottom: none; }
+    .match-list { list-style: none; padding: 0; margin: 0; }
+    .match-list li { padding: 0.5rem 0; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+    .match-list li:last-child { border-bottom: none; }
     .player-name, .match-date { font-weight: 600; }
     .match-score { font-style: italic; }
     .search-toolbar { display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end; margin: 1rem 0; }
@@ -133,23 +133,9 @@
 
   <div id="message" class="status err" hidden></div>
   <div id="squashAdminWrap" hidden>
-    <p class="squash-nav"><a href="squash.html">Squash</a> – Search and view matches</p>
-
-    <h2>Players</h2>
-    <form id="playerForm">
-      <input type="hidden" id="playerId">
-      <label for="playerName">Name</label>
-      <input type="text" id="playerName" required placeholder="Player name">
-      <label for="playerEmail">Email (optional)</label>
-      <input type="email" id="playerEmail" placeholder="player@example.com">
-      <label for="playerUserId">Link to user (optional)</label>
-      <select id="playerUserId">
-        <option value="">— None —</option>
-      </select>
-      <button type="submit" id="playerSubmitBtn">Add player</button>
-      <button type="button" class="secondary" id="playerCancelBtn">Cancel</button>
-    </form>
-    <ul id="playerList" class="player-list"></ul>
+    <p class="squash-nav">
+      <a href="squash.html">Squash</a> – <a href="squash-players.html">Squash Players</a>
+    </p>
 
     <h2>Add match</h2>
     <form id="matchForm">
@@ -243,6 +229,7 @@
       <a href="groups.html">Groups</a>
       <a href="squash.html">Squash</a>
       <a href="squash-admin.html">Squash Admin</a>
+      <a href="squash-players.html">Squash Players</a>
       <a href="profile.html" class="profile-link" style="display:none;">Profile</a>
       <a href="auth.html" class="auth-link">Sign in / Sign up</a>
     </nav>

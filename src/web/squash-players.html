@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Funkedupshift – Media Categories</title>
+  <title>Funkedupshift – Squash Players</title>
   <style>
     * { box-sizing: border-box; }
     body {
       font-family: system-ui, -apple-system, sans-serif;
       line-height: 1.5;
-      max-width: 40rem;
+      max-width: 52rem;
       margin: 0 auto;
       padding: 1.5rem;
       color: #1a1a1a;
@@ -17,13 +17,16 @@
       transition: background 0.3s ease, color 0.3s ease;
     }
     h1 { font-size: 1.5rem; margin-top: 0; }
+    h2 { font-size: 1.2rem; margin-top: 1.5rem; }
     a { color: #0066cc; }
     .status { margin: 1rem 0; padding: 0.75rem; border-radius: 0.25rem; }
     .status.ok { background: #e6f4ea; }
     .status.err { background: #fce8e6; }
     form { margin: 0.5rem 0; }
-    input, textarea, button { padding: 0.5rem; margin: 0.25rem 0; }
-    input, textarea { width: 100%; max-width: 24rem; display: block; }
+    input, select, button { padding: 0.5rem; margin: 0.25rem 0; }
+    input, select { width: 100%; max-width: 24rem; display: block; }
+    select { max-width: 20rem; }
+    label { display: block; margin-top: 0.5rem; font-weight: 600; }
     button {
       background: linear-gradient(135deg, #ff6b35 0%, #ff8c5a 100%);
       color: white;
@@ -46,17 +49,11 @@
       box-shadow: 0 8px 16px rgba(192, 57, 43, 0.4);
       transform: translateY(-2px);
     }
-    .category-list { list-style: none; padding: 0; margin: 0; }
-    .category-list li { padding: 0.5rem 0; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
-    .category-list li:last-child { border-bottom: none; }
-    .category-name { font-weight: 600; }
-    .category-desc { color: #666; font-size: 0.9rem; }
-    .pagination { margin: 1rem 0; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
-    .pagination button { padding: 0.35rem 0.6rem; }
-    .pagination button:disabled { opacity: 0.5; cursor: not-allowed; }
-    .pagination .page-nums { display: flex; align-items: center; gap: 0.25rem; flex-wrap: wrap; }
-    .pagination .page-num { min-width: 2rem; padding: 0.25rem 0.4rem; text-align: center; }
-    .pagination .page-num.current { font-weight: 600; cursor: default; }
+    .player-list { list-style: none; padding: 0; margin: 0; }
+    .player-list li { padding: 0.5rem 0; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+    .player-list li:last-child { border-bottom: none; }
+    .player-name { font-weight: 600; }
+    .squash-nav { margin: 1rem 0; }
     .theme-toggle {
       position: fixed;
       top: 1rem;
@@ -107,36 +104,37 @@
     <span id="themeLabel">Dark</span>
   </button>
 
-  <h1>Funkedupshift – Media Categories</h1>
+  <h1>Funkedupshift – Squash Players</h1>
   <p>
-    <button type="button" class="secondary" onclick="window.location.href='media.html'">Back to media</button>
+    <button type="button" class="secondary" onclick="window.location.href='index.html'">Back to home</button>
   </p>
 
   <div id="message" class="status err" hidden></div>
-  <div id="formWrap" hidden>
-    <h2>Add category</h2>
-    <form id="createCategoryForm">
-      <input type="text" id="categoryName" placeholder="Name" required>
-      <input type="text" id="categoryDescription" placeholder="Description (optional)">
-      <button type="submit">Add</button>
-    </form>
-    <div id="createResult" style="margin-top: 0.5rem;"></div>
-  </div>
+  <div id="squashPlayersWrap" hidden>
+    <p class="squash-nav">
+      <a href="squash.html">Squash</a> – <a href="squash-admin.html">Squash Admin</a>
+    </p>
 
-  <h2>Media Categories</h2>
-  <ul id="categoryList" class="category-list"></ul>
-  <div id="categoryPagination" class="pagination" hidden></div>
+    <h2>Players</h2>
+    <form id="playerForm">
+      <input type="hidden" id="playerId">
+      <label for="playerName">Name</label>
+      <input type="text" id="playerName" required placeholder="Player name">
+      <label for="playerEmail">Email (optional)</label>
+      <input type="email" id="playerEmail" placeholder="player@example.com">
+      <label for="playerUserId">Link to user (optional)</label>
+      <select id="playerUserId">
+        <option value="">— None —</option>
+      </select>
+      <button type="submit" id="playerSubmitBtn">Add player</button>
+      <button type="button" class="secondary" id="playerCancelBtn">Cancel</button>
+    </form>
+    <ul id="playerList" class="player-list"></ul>
+  </div>
 
   <footer class="site-footer">
     <nav>
       <a href="index.html">Home</a>
-      <a href="websites.html">Browse Websites</a>
-      <a href="media.html">Browse Media</a>
-      <a href="internet-dashboard.html">Internet Dashboard</a>
-      <a href="add-media.html">Add Media</a>
-      <a href="media-categories.html">Media Categories</a>
-      <a href="users.html">User Management</a>
-      <a href="groups.html">Groups</a>
       <a href="squash.html">Squash</a>
       <a href="squash-admin.html">Squash Admin</a>
       <a href="squash-players.html">Squash Players</a>
@@ -169,6 +167,6 @@
   <script src="auth.js"></script>
   <script src="auth-button.js"></script>
   <script src="profile-box.js"></script>
-  <script src="media-categories.js"></script>
+  <script src="squash-players.js"></script>
 </body>
 </html>
