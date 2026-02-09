@@ -220,7 +220,8 @@
       .then(function (user) {
         var groups = user.groups || [];
         var customGroups = user.customGroups || [];
-        var canAccess = customGroups.indexOf('Squash') !== -1 || groups.indexOf('admin') !== -1;
+        var squashInCustomGroups = customGroups.some(function(g) { return (g || '').trim() === 'Squash'; });
+        var canAccess = squashInCustomGroups || groups.indexOf('admin') !== -1;
         if (!canAccess) {
           showMessage('You do not have access to the Squash section. Join the Squash group or contact an admin.', true);
           return;
