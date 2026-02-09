@@ -8,17 +8,29 @@
 
   function getCachedAvatar() {
     try {
-      var v = sessionStorage.getItem(CACHE_KEY);
-      return v;
+      return sessionStorage.getItem(CACHE_KEY);
     } catch (e) {
       return null;
     }
   }
 
-  function setCachedAvatar(url) {
+  function setCachedAvatar(dataUrlOrEmpty) {
     try {
-      sessionStorage.setItem(CACHE_KEY, url || "");
+      sessionStorage.setItem(CACHE_KEY, dataUrlOrEmpty || "");
     } catch (e) {}
+  }
+
+  function urlToDataUrl(url) {
+    return fetch(url, { mode: "cors" })
+      .then(function (r) { return r.ok ? r.blob() : Promise.reject(new Error("fetch failed")); })
+      .then(function (blob) {
+        return new Promise(function (resolve, reject) {
+          var r = new FileReader();
+          r.onload = function () { resolve(r.result); };
+          r.onerror = reject;
+          r.readAsDataURL(blob);
+        });
+      });
   }
 
   function clearCachedAvatar() {
@@ -104,6 +116,13 @@
       var cached = !forceReload ? getCachedAvatar() : null;
       if (cached !== null) {
         var box = createProfileBox(cached || undefined);
+        var img = box.querySelector("img");
+        if (img && cached) {
+          img.addEventListener("error", function () {
+            clearCachedAvatar();
+            img.src = DEFAULT_AVATAR;
+          });
+        }
         wrapper.insertBefore(box, wrapper.firstChild);
         return;
       }
@@ -122,13 +141,20 @@
         })
         .then(function (data) {
           var url = data && data.profile && data.profile.avatarUrl;
-          setCachedAvatar(url || "");
-          var img = box.querySelector("img");
-          if (url) {
-            img.src = url;
-          } else {
-            img.src = DEFAULT_AVATAR;
+          if (!url) {
+            setCachedAvatar("");
+            box.querySelector("img").src = DEFAULT_AVATAR;
+            return;
           }
+          urlToDataUrl(url)
+            .then(function (dataUrl) {
+              setCachedAvatar(dataUrl);
+              box.querySelector("img").src = dataUrl;
+            })
+            .catch(function () {
+              setCachedAvatar("");
+              box.querySelector("img").src = DEFAULT_AVATAR;
+            });
         })
         .catch(function () {
           box.querySelector("img").src = DEFAULT_AVATAR;
@@ -157,8 +183,20 @@
       })
       .then(function (data) {
         var url = data && data.profile && data.profile.avatarUrl;
-        setCachedAvatar(url || "");
-        callback();
+        if (!url) {
+          setCachedAvatar("");
+          callback();
+          return;
+        }
+        urlToDataUrl(url)
+          .then(function (dataUrl) {
+            setCachedAvatar(dataUrl);
+            callback();
+          })
+          .catch(function () {
+            setCachedAvatar("");
+            callback();
+          });
       })
       .catch(function () {
         callback();
