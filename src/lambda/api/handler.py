@@ -158,6 +158,8 @@ def handler(event, context):
             return createSite(event)
         if method == "POST" and path == "/sites/logo-upload":
             return getPresignedLogoUpload(event)
+        if method == "POST" and path == "/sites/logo-from-url":
+            return importLogoFromUrl(event)
         if method == "POST" and path == "/sites/generate-description":
             from api.generate_description import generateDescription
             return generateDescription(event)
@@ -677,6 +679,80 @@ def getPresignedLogoUpload(event):
         return jsonResponse({"uploadUrl": upload_url, "key": key})
     except Exception as e:
         logger.exception("getPresignedLogoUpload error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def importLogoFromUrl(event):
+    """Download image from URL, validate dimensions (min 100x100), upload to S3 (admin only)."""
+    user = getUserInfo(event)
+    if not user.get("userId"):
+        return jsonResponse({"error": "Unauthorized"}, 401)
+    if "admin" not in user.get("groups", []):
+        return jsonResponse({"error": "Forbidden: admin role required"}, 403)
+    if not MEDIA_BUCKET:
+        return jsonResponse({"error": "MEDIA_BUCKET not configured"}, 500)
+    try:
+        import io
+        import uuid as uuid_mod
+        import urllib.request
+        import urllib.error
+        body = json.loads(event.get("body", "{}"))
+        site_id = (body.get("siteId") or body.get("id") or "").strip()
+        image_url = (body.get("imageUrl") or "").strip()
+        if not site_id:
+            return jsonResponse({"error": "siteId is required"}, 400)
+        if not image_url:
+            return jsonResponse({"error": "imageUrl is required"}, 400)
+        MAX_LOGO_BYTES = 5 * 1024 * 1024
+        MIN_LOGO_SIZE = 100
+        FETCH_TIMEOUT_SEC = 10
+        req = urllib.request.Request(image_url, headers={"User-Agent": "FunkedupshiftLogoImport/1.0"})
+        try:
+            with urllib.request.urlopen(req, timeout=FETCH_TIMEOUT_SEC) as resp:
+                content_length = resp.headers.get("Content-Length")
+                if content_length and int(content_length) > MAX_LOGO_BYTES:
+                    return jsonResponse({"error": "Image too large (max 5 MB)"}, 400)
+                data = resp.read(MAX_LOGO_BYTES + 1)
+                if len(data) > MAX_LOGO_BYTES:
+                    return jsonResponse({"error": "Image too large (max 5 MB)"}, 400)
+                content_type = (resp.headers.get("Content-Type") or "").split(";")[0].strip().lower()
+        except urllib.error.HTTPError as e:
+            logger.warning("logo-from-url HTTP error: %s", e)
+            return jsonResponse({"error": "Could not download image"}, 400)
+        except urllib.error.URLError as e:
+            logger.warning("logo-from-url URL error: %s", e)
+            return jsonResponse({"error": "Could not download image"}, 400)
+        allowed_types = ("image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp")
+        if content_type not in allowed_types:
+            return jsonResponse({"error": "Unsupported image type (use PNG, JPEG, GIF, or WebP)"}, 400)
+        try:
+            from PIL import Image
+            img = Image.open(io.BytesIO(data))
+            img.load()
+            w, h = img.size
+            if w < MIN_LOGO_SIZE or h < MIN_LOGO_SIZE:
+                return jsonResponse({"error": "Logo must be at least 100×100 pixels."}, 400)
+        except Exception as e:
+            logger.warning("logo-from-url PIL/open error: %s", e)
+            return jsonResponse({"error": "Invalid or unsupported image"}, 400)
+        ext = "png"
+        if "jpeg" in content_type or "jpg" in content_type:
+            ext = "jpg"
+        elif "gif" in content_type:
+            ext = "gif"
+        elif "webp" in content_type:
+            ext = "webp"
+        unique = str(uuid_mod.uuid4())
+        key = f"logos/{site_id}/{unique}.{ext}"
+        region = os.environ.get("AWS_REGION", "us-east-1")
+        import boto3
+        s3 = boto3.client("s3", region_name=region)
+        s3.put_object(Bucket=MEDIA_BUCKET, Key=key, Body=data, ContentType=content_type)
+        return jsonResponse({"key": key})
+    except json.JSONDecodeError as e:
+        return jsonResponse({"error": "Invalid JSON body"}, 400)
+    except Exception as e:
+        logger.exception("importLogoFromUrl error")
         return jsonResponse({"error": str(e)}, 500)
 
 

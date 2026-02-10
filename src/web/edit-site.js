@@ -292,7 +292,6 @@
       return;
     }
     var img = new Image();
-    img.crossOrigin = 'anonymous';
     img.onload = function () {
       if (img.naturalWidth < MIN_LOGO_SIZE || img.naturalHeight < MIN_LOGO_SIZE) {
         if (errEl) { errEl.textContent = 'Logo must be at least 100×100 pixels.'; errEl.hidden = false; }
@@ -307,8 +306,11 @@
       callback(null);
     };
     img.onerror = function () {
-      if (errEl) { errEl.textContent = 'Could not load image. Check URL and CORS.'; errEl.hidden = false; }
-      callback(new Error('Could not load image'));
+      if (errEl) {
+        errEl.textContent = 'Preview unavailable for this URL (some sites block it). You can still save — we\'ll import the image when you save.';
+        errEl.hidden = false;
+      }
+      callback(null);
     };
     img.src = url;
   }
@@ -419,6 +421,7 @@
 
       var payload = { id: id, url: url, title: title, description: description, categoryIds: categoryIds };
       payload.descriptionAiGenerated = descriptionAiGenerated;
+      var pastedUrlTrimmed = (logoUrlInput && logoUrlInput.value) ? logoUrlInput.value.trim() : '';
       if (removeLogoRequested) {
         payload.deleteLogo = true;
         doUpdate(payload).catch(function (e) {
@@ -459,12 +462,25 @@
               saveResult.className = 'status err';
             });
         });
-      } else if (logoUrlToSave) {
-        payload.logoUrl = logoUrlToSave;
-        doUpdate(payload).catch(function (e) {
-          saveResult.textContent = 'Error: ' + e.message;
-          saveResult.className = 'status err';
-        });
+      } else if (logoUrlToSave || pastedUrlTrimmed) {
+        var urlToImport = logoUrlToSave || pastedUrlTrimmed;
+        fetchWithAuth(base + '/sites/logo-from-url', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ siteId: id, imageUrl: urlToImport })
+        })
+          .then(function (r) {
+            if (r.ok) return r.json();
+            return r.text().then(function (t) { throw new Error(t || 'Import failed'); });
+          })
+          .then(function (data) {
+            payload.logoKey = data.key;
+            return doUpdate(payload);
+          })
+          .catch(function (e) {
+            saveResult.textContent = 'Error: ' + e.message;
+            saveResult.className = 'status err';
+          });
       } else {
         doUpdate(payload).catch(function (e) {
           saveResult.textContent = 'Error: ' + e.message;

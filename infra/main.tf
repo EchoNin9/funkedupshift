@@ -672,6 +672,24 @@ data "archive_file" "api" {
   excludes    = ["**/__pycache__/**", "**/*.pyc"]
 }
 
+# Pillow layer for logo-from-url dimension check (min 100x100)
+resource "null_resource" "pillow_layer" {
+  triggers = {
+    requirements = file("${path.module}/layer_requirements.txt")
+  }
+  provisioner "local-exec" {
+    command = "mkdir -p build/layer/python/lib/python3.12/site-packages && python3 -m pip install -r ${path.module}/layer_requirements.txt -t build/layer/python/lib/python3.12/site-packages --quiet && cd build/layer && zip -r ../pillow_layer.zip python"
+    working_dir = path.module
+  }
+}
+
+resource "aws_lambda_layer_version" "pillow" {
+  filename            = "${path.module}/build/pillow_layer.zip"
+  layer_name          = "fus-pillow-layer"
+  compatible_runtimes = ["python3.12"]
+  depends_on          = [null_resource.pillow_layer]
+}
+
 resource "aws_iam_role" "lambdaApi" {
   name = "fus-api-lambda-role"
 
@@ -744,6 +762,7 @@ resource "aws_lambda_function" "api" {
   source_code_hash = data.archive_file.api.output_base64sha256
   runtime          = "python3.12"
   timeout          = 25
+  layers           = [aws_lambda_layer_version.pillow.arn]
 
   environment {
     variables = {
@@ -986,6 +1005,15 @@ resource "aws_apigatewayv2_route" "sitesPut" {
 resource "aws_apigatewayv2_route" "sitesLogoUpload" {
   api_id             = aws_apigatewayv2_api.main.id
   route_key          = "POST /sites/logo-upload"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+# Logo import from URL (download + store in S3, admin only)
+resource "aws_apigatewayv2_route" "sitesLogoFromUrl" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /sites/logo-from-url"
   target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
   authorization_type = "JWT"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
