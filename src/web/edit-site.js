@@ -285,9 +285,6 @@
   function validateLogoUrl(url, callback) {
     var errEl = document.getElementById('logoError');
     var previewEl = document.getElementById('logoPreview');
-    // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/51517f45-4cb4-45b6-9d26-950ab96994fd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'edit-site.js:validateLogoUrl',message:'validateLogoUrl entry',data:{urlLength:(url||'').length,urlEndsWithSpace:(url||'').slice(-1)===' '},timestamp:Date.now(),hypothesisId:'H1,H3'})}).catch(function(){});
-    // #endregion
     if (!url || !url.trim()) {
       if (errEl) { errEl.textContent = ''; errEl.hidden = true; }
       if (previewEl) { previewEl.innerHTML = ''; previewEl.hidden = true; }
@@ -295,11 +292,7 @@
       return;
     }
     var img = new Image();
-    img.crossOrigin = 'anonymous';
     img.onload = function () {
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/51517f45-4cb4-45b6-9d26-950ab96994fd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'edit-site.js:validateLogoUrl.onload',message:'preview loaded',data:{w:img.naturalWidth,h:img.naturalHeight},timestamp:Date.now(),hypothesisId:'H1'})}).catch(function(){});
-      // #endregion
       if (img.naturalWidth < MIN_LOGO_SIZE || img.naturalHeight < MIN_LOGO_SIZE) {
         if (errEl) { errEl.textContent = 'Logo must be at least 100×100 pixels.'; errEl.hidden = false; }
         callback(new Error('Logo must be at least 100×100 pixels'));
@@ -313,11 +306,11 @@
       callback(null);
     };
     img.onerror = function () {
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/51517f45-4cb4-45b6-9d26-950ab96994fd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'edit-site.js:validateLogoUrl.onerror',message:'preview failed CORS or load',data:{},timestamp:Date.now(),hypothesisId:'H1,H4,H5'})}).catch(function(){});
-      // #endregion
-      if (errEl) { errEl.textContent = 'Could not load image. Check URL and CORS.'; errEl.hidden = false; }
-      callback(new Error('Could not load image'));
+      if (errEl) {
+        errEl.textContent = 'Preview unavailable for this URL (some sites block it). You can still save — we\'ll import the image when you save.';
+        errEl.hidden = false;
+      }
+      callback(null);
     };
     img.src = url;
   }
@@ -340,9 +333,6 @@
       urlDebounce = setTimeout(function () {
         validateLogoUrl(url, function (err) {
           logoUrlToSave = err ? null : url;
-          // #region agent log
-          fetch('http://127.0.0.1:7243/ingest/51517f45-4cb4-45b6-9d26-950ab96994fd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'edit-site.js:input.afterValidate',message:'after validateLogoUrl',data:{hasError:!!err,logoUrlToSaveSet:!!logoUrlToSave},timestamp:Date.now(),hypothesisId:'H5'})}).catch(function(){});
-          // #endregion
         });
       }, 300);
     });
@@ -432,9 +422,6 @@
       var payload = { id: id, url: url, title: title, description: description, categoryIds: categoryIds };
       payload.descriptionAiGenerated = descriptionAiGenerated;
       var pastedUrlTrimmed = (logoUrlInput && logoUrlInput.value) ? logoUrlInput.value.trim() : '';
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/51517f45-4cb4-45b6-9d26-950ab96994fd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'edit-site.js:submit',message:'submit branch',data:{hasFile:!!file,logoUrlToSaveSet:!!logoUrlToSave,pastedUrlLength:pastedUrlTrimmed.length},timestamp:Date.now(),hypothesisId:'H2,H5'})}).catch(function(){});
-      // #endregion
       if (removeLogoRequested) {
         payload.deleteLogo = true;
         doUpdate(payload).catch(function (e) {
