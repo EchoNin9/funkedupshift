@@ -82,6 +82,7 @@ jobs:
           window.saveCategoriesToCache = function (cats) { try { if (!cats || !Array.isArray(cats)) return; var list = cats.map(function (c) { return { id: c.PK || c.id || "", name: c.name || c.PK || c.id || "" }; }); localStorage.setItem(window.CATEGORIES_CACHE_KEY, JSON.stringify(list)); } catch (e) {} };
           CONFIGEOF
           sed -i "s|API_URL_PLACEHOLDER|$API_URL|g; s|POOL_ID_PLACEHOLDER|$POOL_ID|g; s|CLIENT_ID_PLACEHOLDER|$CLIENT_ID|g" src/web/spa/dist/config.js
+          sed -i "s|API_URL_PLACEHOLDER|$API_URL|g; s|POOL_ID_PLACEHOLDER|$POOL_ID|g; s|CLIENT_ID_PLACEHOLDER|$CLIENT_ID|g" src/web/spa/dist/index.html
           BUCKET=$(terraform -chdir=infra output -raw websiteStagingBucket)
           # Prefer the React SPA build; fall back to legacy layouts if needed
           if [ -d "src/web/spa/dist" ]; then

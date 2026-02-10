@@ -29,13 +29,15 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       try {
         const resp = await fetch(`${apiBase}/branding/logo`);
         if (!resp.ok) return;
+        const contentType = resp.headers.get("Content-Type") || "";
+        if (!contentType.includes("application/json")) return;
         const data = await resp.json();
         if (cancelled) return;
         if (data && data.url) {
           setLogo({ url: String(data.url), alt: String(data.alt || "Funkedupshift") });
         }
       } catch {
-        // Ignore; logo is optional.
+        // Ignore; logo is optional (avoids Unexpected token '<' when response is HTML).
       }
     })();
 
