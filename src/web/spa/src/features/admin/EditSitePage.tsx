@@ -32,6 +32,7 @@ const EditSitePage: React.FC = () => {
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [deleteLogo, setDeleteLogo] = useState(false);
   const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoImageUrl, setLogoImageUrl] = useState("");
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [logoError, setLogoError] = useState<string | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -102,6 +103,7 @@ const EditSitePage: React.FC = () => {
   const onLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     setLogoFile(file ?? null);
+    setLogoImageUrl("");
     setLogoError(null);
     setDeleteLogo(false);
     if (logoPreview) {
@@ -182,6 +184,18 @@ const EditSitePage: React.FC = () => {
         });
         if (!putResp.ok) throw new Error("Logo upload failed");
         logoKey = key;
+      } else if (logoImageUrl.trim()) {
+        const importResp = await fetch(`${apiBase}/sites/logo-from-url`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ siteId, imageUrl: logoImageUrl.trim() })
+        });
+        if (!importResp.ok) {
+          const errBody = await importResp.json().catch(() => ({}));
+          throw new Error((errBody as { error?: string }).error || await importResp.text());
+        }
+        const importData = (await importResp.json()) as { key?: string };
+        if (importData.key) logoKey = importData.key;
       }
       const payload: Record<string, unknown> = {
         id: siteId,
@@ -205,6 +219,7 @@ const EditSitePage: React.FC = () => {
       if (logoPreview) URL.revokeObjectURL(logoPreview);
       setLogoFile(null);
       setLogoPreview(null);
+      setLogoImageUrl("");
       setTimeout(() => navigate(`/websites/${encodeURIComponent(siteId)}`), 1200);
     } catch (e: any) {
       setError(e?.message ?? "Failed to update site.");
@@ -313,6 +328,17 @@ const EditSitePage: React.FC = () => {
             accept="image/png,image/jpeg,image/gif,image/webp"
             onChange={onLogoChange}
             className="block w-full text-xs text-slate-300 file:mr-3 file:rounded-md file:border-0 file:bg-slate-800 file:px-3 file:py-1.5 file:text-slate-100"
+          />
+          <p className="mt-2 text-xs text-slate-500">Or paste image URL (image will be copied to S3 on save):</p>
+          <input
+            type="url"
+            value={logoImageUrl}
+            onChange={(e) => {
+              setLogoImageUrl(e.target.value);
+              if (e.target.value.trim()) setLogoFile(null);
+            }}
+            placeholder="https://example.com/logo.png"
+            className="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-500 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange"
           />
           {logoPreview && (
             <div className="mt-2">
