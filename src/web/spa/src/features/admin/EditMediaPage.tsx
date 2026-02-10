@@ -21,6 +21,8 @@ const EditMediaPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [mediaUrl, setMediaUrl] = useState<string | null>(null);
+  const [mediaType, setMediaType] = useState<"image" | "video" | string>("image");
   const [categories, setCategories] = useState<MediaCategory[]>([]);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [categorySearch, setCategorySearch] = useState("");
@@ -68,6 +70,8 @@ const EditMediaPage: React.FC = () => {
       const rec = item as Record<string, unknown>;
       setTitle((rec.title as string) ?? "");
       setDescription((rec.description as string) ?? "");
+      setMediaUrl((rec.mediaUrl as string) || null);
+      setMediaType((rec.mediaType as string) || "image");
       setSelectedCategoryIds(Array.isArray(rec.categoryIds) ? (rec.categoryIds as string[]) : []);
       const catResp = await fetch(`${apiBase}/media-categories`, { headers: { Authorization: `Bearer ${token}` } });
       if (catResp.ok && !cancelled) {
@@ -177,6 +181,28 @@ const EditMediaPage: React.FC = () => {
         <h1 className="text-2xl font-semibold tracking-tight text-slate-50">Edit Media</h1>
         <p className="text-sm text-slate-400">Update title, description, and categories. The file itself cannot be changed here.</p>
       </header>
+
+      {mediaUrl && (
+        <section className="rounded-xl border border-slate-800 bg-slate-950/60 overflow-hidden max-w-2xl">
+          <p className="px-4 py-2 text-xs font-medium text-slate-400 border-b border-slate-800">Current media</p>
+          <div className="p-4 flex justify-center items-center bg-slate-900/40 min-h-[160px]">
+            {mediaType === "video" ? (
+              <video
+                src={mediaUrl}
+                controls
+                className="max-w-full max-h-[50vh] rounded-lg border border-slate-700"
+                playsInline
+              />
+            ) : (
+              <img
+                src={mediaUrl}
+                alt={title || "Media"}
+                className="max-w-full max-h-[50vh] w-auto h-auto object-contain rounded-lg border border-slate-700"
+              />
+            )}
+          </div>
+        </section>
+      )}
 
       <form className="space-y-4 max-w-xl" onSubmit={handleSubmit}>
         <div>
