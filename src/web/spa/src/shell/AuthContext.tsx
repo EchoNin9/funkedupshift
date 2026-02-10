@@ -39,6 +39,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     async function bootstrap() {
       const apiBase = getApiBaseUrl();
+
+      // #region agent log
+      fetch("http://127.0.0.1:7243/ingest/51517f45-4cb4-45b6-9d26-950ab96994fd", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: `log_${Date.now()}_auth_bootstrap_api_base`,
+          timestamp: Date.now(),
+          runId: "initial",
+          hypothesisId: "H2",
+          location: "AuthContext.tsx:bootstrap",
+          message: "Auth bootstrap: API base and window flags",
+          data: {
+            apiBase,
+            hasWindowApiBaseUrl: typeof (window as any).API_BASE_URL !== "undefined",
+            hasAuthObject: typeof (window as any).auth !== "undefined"
+          }
+        })
+      }).catch(() => {});
+      // #endregion agent log
+
       if (!apiBase) {
         setIsLoading(false);
         return;
@@ -69,6 +90,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           (window as any).auth.getAccessToken((t: string | null) => resolve(t));
         });
 
+        // #region agent log
+        fetch("http://127.0.0.1:7243/ingest/51517f45-4cb4-45b6-9d26-950ab96994fd", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: `log_${Date.now()}_auth_token_status`,
+            timestamp: Date.now(),
+            runId: "initial",
+            hypothesisId: "H1",
+            location: "AuthContext.tsx:bootstrap",
+            message: "Auth bootstrap: token and isAuthenticated result",
+            data: {
+              hasToken: !!token
+            }
+          })
+        }).catch(() => {});
+        // #endregion agent log
+
         if (!token) {
           if (!cancelled) {
             setUser(null);
@@ -88,6 +127,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return;
         }
         const data = await resp.json();
+
+        // #region agent log
+        fetch("http://127.0.0.1:7243/ingest/51517f45-4cb4-45b6-9d26-950ab96994fd", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: `log_${Date.now()}_auth_me_response`,
+            timestamp: Date.now(),
+            runId: "initial",
+            hypothesisId: "H3",
+            location: "AuthContext.tsx:bootstrap",
+            message: "Auth bootstrap: /me response summary",
+            data: {
+              hasUserId: !!data?.userId,
+              hasEmail: !!data?.email,
+              groupsLength: Array.isArray(data?.groups) ? data.groups.length : 0
+            }
+          })
+        }).catch(() => {});
+        // #endregion agent log
+
         if (cancelled) return;
 
         const groups: string[] = Array.isArray(data.groups) ? data.groups.map(String) : [];
