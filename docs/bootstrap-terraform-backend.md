@@ -1,32 +1,48 @@
 # Bootstrap Terraform state backend
 
-Run these AWS CLI v2 commands once to create the state bucket and DynamoDB lock table. Uses profile `echo9` and region `us-east-1`. Adjust bucket/table names if your `infra/variables.tf` defaults differ.
+This project uses an **S3 bucket** for Terraform state and a **DynamoDB table** for state locking. You only need to create these once per AWS account.
+
+The examples below show how the original project bootstrapped its backend using:
+
+- Bucket: `fus-aws-s3-terraform-state`
+- Lock table: `fus-terraform-state-lock`
+- AWS profile: `echo9`
+
+You can either:
+
+- Reuse these names, or
+- Substitute your own, such as:
+  - `<your-terraform-state-bucket>`
+  - `<your-terraform-lock-table>`
+  - `<your-aws-profile>`
+
+Make sure the backend configuration in `infra/versions.tf` and the defaults in `infra/variables.tf` match your choices.
 
 ## 1. Create S3 state bucket
 
 ```bash
 aws s3api create-bucket \
-  --bucket fus-aws-s3-terraform-state \
-  --region us-east-1 \
-  --profile echo9
+  --bucket <your-terraform-state-bucket> \
+  --region <your-aws-region> \
+  --profile <your-aws-profile>
 ```
 
 Enable versioning (recommended for state):
 
 ```bash
 aws s3api put-bucket-versioning \
-  --bucket fus-aws-s3-terraform-state \
+  --bucket <your-terraform-state-bucket> \
   --versioning-configuration Status=Enabled \
-  --profile echo9
+  --profile <your-aws-profile>
 ```
 
 Optional – server-side encryption:
 
 ```bash
 aws s3api put-bucket-encryption \
-  --bucket fus-aws-s3-terraform-state \
+  --bucket <your-terraform-state-bucket> \
   --server-side-encryption-configuration '{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"}}]}' \
-  --profile echo9
+  --profile <your-aws-profile>
 ```
 
 ## 2. Create DynamoDB lock table
@@ -35,12 +51,12 @@ Terraform uses DynamoDB for state locking (not a second bucket). The table must 
 
 ```bash
 aws dynamodb create-table \
-  --table-name fus-terraform-state-lock \
+  --table-name <your-terraform-lock-table> \
   --attribute-definitions AttributeName=LockID,AttributeType=S \
   --key-schema AttributeName=LockID,KeyType=HASH \
   --billing-mode PAY_PER_REQUEST \
-  --region us-east-1 \
-  --profile echo9
+  --region <your-aws-region> \
+  --profile <your-aws-profile>
 ```
 
 After both exist, uncomment and set the backend in `infra/versions.tf`, then run `terraform init` (reinitialize) in `infra/`.
@@ -53,9 +69,9 @@ If `terraform apply` fails because the GitHub OIDC provider already exists in th
 
 ```bash
 cd infra
-ACCOUNT_ID=$(aws sts get-caller-identity --profile echo9 --query Account --output text)
+ACCOUNT_ID=$(aws sts get-caller-identity --profile <your-aws-profile> --query Account --output text)
 terraform import \
-  -var="githubOrgRepo=EchoNin9/funkedupshift" \
+  -var="githubOrgRepo=<your-github-org>/<your-github-repo>" \
   aws_iam_openid_connect_provider.github \
   "arn:aws:iam::${ACCOUNT_ID}:oidc-provider/token.actions.githubusercontent.com"
 ```

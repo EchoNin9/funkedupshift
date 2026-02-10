@@ -1,8 +1,37 @@
 # Custom Domains (Route 53 + CloudFront)
 
+This project can serve your site behind CloudFront using **your own domains** (e.g. `example.com`, `stage.example.com`) with HTTPS.
+
+The examples below are taken from the original project configuration and use:
+
+- Root domains: `funkedupshift.com`, `funkedupshift.ca`
+- Staging subdomain: `stage`
+
+You should substitute your own values such as:
+
+- `<your-root-domain>` (e.g. `example.com`)
+- `<your-secondary-root-domain>` (optional, e.g. `example.ca`)
+- `<your-staging-subdomain>` (e.g. `stage`)
+
 ## Overview
 
-The site is served via CloudFront with custom domains and SSL:
+The site is served via CloudFront with custom domains and SSL.
+
+### Generic mapping (your setup)
+
+| Environment | Example domains                                             |
+|-------------|------------------------------------------------------------|
+| **Production** | `<your-root-domain>`, `www.<your-root-domain>`             |
+| **Staging**    | `<your-staging-subdomain>.<your-root-domain>`             |
+| (Optional)     | `<your-secondary-root-domain>`, `www.<your-secondary-root-domain>` |
+
+Terraform variables in `infra/variables.tf` control these:
+
+- `domainCom` – `<your-root-domain>`
+- `domainCa` – `<your-secondary-root-domain>` (optional)
+- `stagingSubdomain` – `<your-staging-subdomain>`
+
+### Original funkedupshift example
 
 | Environment | Domains |
 |-------------|---------|
@@ -12,7 +41,7 @@ The site is served via CloudFront with custom domains and SSL:
 ## After First Terraform Apply
 
 1. **Delegate DNS to Route 53**  
-   Terraform creates hosted zones for `funkedupshift.com` and `funkedupshift.ca`. At your domain registrar, update the nameservers to the Route 53 values:
+   Terraform creates hosted zones for your domains (e.g. `<your-root-domain>` and `<your-secondary-root-domain>`). At your domain registrar, update the nameservers to the Route 53 values:
 
    ```bash
    terraform -chdir=infra output route53NameserversCom
@@ -29,16 +58,15 @@ The site is served via CloudFront with custom domains and SSL:
 
 ## Cognito (if using Hosted UI)
 
-If you use Cognito Hosted UI for sign-in, add your custom domains to the app client callback URLs in the AWS Console (or via Terraform):
+If you use Cognito Hosted UI for sign-in, add your **own** domains to the app client callback URLs in the AWS Console (or via Terraform). For example:
 
-- `https://funkedupshift.com/auth.html`
-- `https://www.funkedupshift.com/auth.html`
-- `https://funkedupshift.ca/auth.html`
-- `https://www.funkedupshift.ca/auth.html`
-- `https://stage.funkedupshift.com/auth.html`
-- `https://stage.funkedupshift.ca/auth.html`
+- `https://<your-root-domain>/auth.html`
+- `https://www.<your-root-domain>/auth.html`
+- `https://<your-secondary-root-domain>/auth.html` (optional)
+- `https://www.<your-secondary-root-domain>/auth.html` (optional)
+- `https://<your-staging-subdomain>.<your-root-domain>/auth.html`
 
-(Adjust paths if your auth page differs.)
+Adjust paths if your auth page differs.
 
 ## Cache Invalidation
 
