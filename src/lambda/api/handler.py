@@ -474,12 +474,10 @@ def listSites(event, forceAll=False):
 
 
 def createSite(event):
-    """Create a new site (admin only)."""
-    user = getUserInfo(event)
-    if not user.get("userId"):
-        return jsonResponse({"error": "Unauthorized"}, 401)
-    if "admin" not in user.get("groups", []):
-        return jsonResponse({"error": "Forbidden: admin role required"}, 403)
+    """Create a new site (manager or admin)."""
+    _, err = _requireManagerOrAdmin(event)
+    if err:
+        return err
 
     if not TABLE_NAME:
         return jsonResponse({"error": "TABLE_NAME not set"}, 500)
@@ -546,12 +544,10 @@ def createSite(event):
 
 
 def updateSite(event):
-    """Update an existing site (admin only)."""
-    user = getUserInfo(event)
-    if not user.get("userId"):
-        return jsonResponse({"error": "Unauthorized"}, 401)
-    if "admin" not in user.get("groups", []):
-        return jsonResponse({"error": "Forbidden: admin role required"}, 403)
+    """Update an existing site (manager or admin)."""
+    _, err = _requireManagerOrAdmin(event)
+    if err:
+        return err
 
     if not TABLE_NAME:
         return jsonResponse({"error": "TABLE_NAME not set"}, 500)
@@ -677,12 +673,10 @@ def updateSite(event):
 
 
 def getPresignedLogoUpload(event):
-    """Return presigned PUT URL for uploading a site logo (admin only)."""
-    user = getUserInfo(event)
-    if not user.get("userId"):
-        return jsonResponse({"error": "Unauthorized"}, 401)
-    if "admin" not in user.get("groups", []):
-        return jsonResponse({"error": "Forbidden: admin role required"}, 403)
+    """Return presigned PUT URL for uploading a site logo (manager or admin)."""
+    _, err = _requireManagerOrAdmin(event)
+    if err:
+        return err
     if not MEDIA_BUCKET:
         return jsonResponse({"error": "MEDIA_BUCKET not configured"}, 500)
     try:
@@ -714,12 +708,10 @@ def getPresignedLogoUpload(event):
 
 
 def importLogoFromUrl(event):
-    """Download image from URL, validate dimensions (min 100x100), upload to S3 (admin only)."""
-    user = getUserInfo(event)
-    if not user.get("userId"):
-        return jsonResponse({"error": "Unauthorized"}, 401)
-    if "admin" not in user.get("groups", []):
-        return jsonResponse({"error": "Forbidden: admin role required"}, 403)
+    """Download image from URL, validate dimensions (min 100x100), upload to S3 (manager or admin)."""
+    _, err = _requireManagerOrAdmin(event)
+    if err:
+        return err
     if not MEDIA_BUCKET:
         return jsonResponse({"error": "MEDIA_BUCKET not configured"}, 500)
     try:
@@ -1304,8 +1296,8 @@ def _dynamoItemToDict(item):
 
 
 def listCategories(event):
-    """List all categories (admin only)."""
-    _, err = _requireAdmin(event)
+    """List all categories (manager or admin)."""
+    _, err = _requireManagerOrAdmin(event)
     if err:
         return err
     if not TABLE_NAME:
@@ -1329,8 +1321,8 @@ def listCategories(event):
 
 
 def createCategory(event):
-    """Create a category (admin only)."""
-    _, err = _requireAdmin(event)
+    """Create a category (manager or admin)."""
+    _, err = _requireManagerOrAdmin(event)
     if err:
         return err
     if not TABLE_NAME:
@@ -1366,8 +1358,8 @@ def createCategory(event):
 
 
 def updateCategory(event):
-    """Update a category (admin only)."""
-    _, err = _requireAdmin(event)
+    """Update a category (manager or admin)."""
+    _, err = _requireManagerOrAdmin(event)
     if err:
         return err
     if not TABLE_NAME:
@@ -1408,8 +1400,8 @@ def updateCategory(event):
 
 
 def deleteCategory(event):
-    """Delete a category (admin only)."""
-    _, err = _requireAdmin(event)
+    """Delete a category (manager or admin)."""
+    _, err = _requireManagerOrAdmin(event)
     if err:
         return err
     if not TABLE_NAME:
@@ -1596,8 +1588,8 @@ def listMedia(event, forceAll=False):
 
 
 def createMedia(event):
-    """Create media item (admin only)."""
-    _, err = _requireAdmin(event)
+    """Create media item (manager or admin)."""
+    _, err = _requireManagerOrAdmin(event)
     if err:
         return err
     if not TABLE_NAME:
@@ -1644,8 +1636,8 @@ def createMedia(event):
 
 
 def updateMedia(event):
-    """Update media item (admin only)."""
-    _, err = _requireAdmin(event)
+    """Update media item (manager or admin)."""
+    _, err = _requireManagerOrAdmin(event)
     if err:
         return err
     if not TABLE_NAME:
@@ -1700,8 +1692,8 @@ def updateMedia(event):
 
 
 def deleteMedia(event):
-    """Delete media item (admin only)."""
-    _, err = _requireAdmin(event)
+    """Delete media item (manager or admin)."""
+    _, err = _requireManagerOrAdmin(event)
     if err:
         return err
     if not TABLE_NAME:
@@ -1746,8 +1738,8 @@ def deleteMedia(event):
 
 
 def getPresignedMediaUpload(event):
-    """Return presigned PUT URL for media upload (admin only)."""
-    _, err = _requireAdmin(event)
+    """Return presigned PUT URL for media upload (manager or admin)."""
+    _, err = _requireManagerOrAdmin(event)
     if err:
         return err
     if not MEDIA_BUCKET:
@@ -1791,8 +1783,8 @@ def getPresignedMediaUpload(event):
 
 
 def getPresignedThumbnailUpload(event):
-    """Return presigned PUT URL for custom thumbnail upload (admin only)."""
-    _, err = _requireAdmin(event)
+    """Return presigned PUT URL for custom thumbnail upload (manager or admin)."""
+    _, err = _requireManagerOrAdmin(event)
     if err:
         return err
     if not MEDIA_BUCKET:
@@ -1910,8 +1902,8 @@ def setMediaStar(event):
 
 
 def listMediaCategories(event):
-    """List media categories (admin only)."""
-    _, err = _requireAdmin(event)
+    """List media categories (manager or admin)."""
+    _, err = _requireManagerOrAdmin(event)
     if err:
         return err
     if not TABLE_NAME:
@@ -1935,8 +1927,8 @@ def listMediaCategories(event):
 
 
 def createMediaCategory(event):
-    """Create media category (admin only)."""
-    _, err = _requireAdmin(event)
+    """Create media category (manager or admin)."""
+    _, err = _requireManagerOrAdmin(event)
     if err:
         return err
     if not TABLE_NAME:
@@ -1972,8 +1964,8 @@ def createMediaCategory(event):
 
 
 def updateMediaCategory(event):
-    """Update media category (admin only)."""
-    _, err = _requireAdmin(event)
+    """Update media category (manager or admin)."""
+    _, err = _requireManagerOrAdmin(event)
     if err:
         return err
     if not TABLE_NAME:
@@ -2014,8 +2006,8 @@ def updateMediaCategory(event):
 
 
 def deleteMediaCategory(event):
-    """Delete media category (admin only)."""
-    _, err = _requireAdmin(event)
+    """Delete media category (manager or admin)."""
+    _, err = _requireManagerOrAdmin(event)
     if err:
         return err
     if not TABLE_NAME:
