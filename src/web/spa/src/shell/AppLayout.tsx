@@ -9,6 +9,7 @@ import WebsitesPage from "../features/websites/WebsitesPage";
 import MediaPage from "../features/media/MediaPage";
 import DashboardPage from "../features/dashboard/DashboardPage";
 import BrandingPage from "../features/admin/BrandingPage";
+import AuthPage from "../features/auth/AuthPage";
 
 interface NavItem {
   label: string;
@@ -239,7 +240,7 @@ const AppLayout: React.FC = () => {
               <Route path="/squash-admin" element={<div>Squash admin (coming soon)</div>} />
               <Route path="/admin/branding" element={<BrandingPage />} />
               <Route path="/admin/*" element={<div>Admin area (coming soon)</div>} />
-              <Route path="/auth" element={<div>Auth flows (coming soon)</div>} />
+              <Route path="/auth" element={<AuthPage />} />
               <Route path="*" element={<div>Not found</div>} />
             </Routes>
           </div>
