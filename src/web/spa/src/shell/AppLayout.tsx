@@ -6,6 +6,7 @@ import { useAuth, hasRole } from "./AuthContext";
 import { useBranding } from "./BrandingContext";
 import HomePage from "../features/home/HomePage";
 import WebsitesPage from "../features/websites/WebsitesPage";
+import SiteDetailPage from "../features/websites/SiteDetailPage";
 import MediaPage from "../features/media/MediaPage";
 import DashboardPage from "../features/dashboard/DashboardPage";
 import BrandingPage from "../features/admin/BrandingPage";
@@ -233,6 +234,7 @@ const AppLayout: React.FC = () => {
             <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/websites" element={<WebsitesPage />} />
+              <Route path="/websites/:id" element={<SiteDetailPage />} />
               <Route path="/media" element={<MediaPage />} />
               <Route path="/internet-dashboard" element={<DashboardPage />} />
               {/* Placeholders for not-yet-migrated modules */}

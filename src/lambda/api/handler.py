@@ -179,6 +179,8 @@ def handler(event, context):
             return getProfileAvatarUpload(event)
         if method == "DELETE" and path == "/profile/avatar":
             return deleteProfileAvatar(event)
+        if method == "GET" and path == "/stars":
+            return getStar(event)
         if method == "POST" and path == "/stars":
             return setStar(event)
         if method == "GET" and path == "/categories":
@@ -506,6 +508,12 @@ def createSite(event):
         category_ids = [str(c) for c in (body.get("categoryIds") or []) if c]
         category_ids_list = [{"S": cid} for cid in category_ids]
 
+        scraped_content = body.get("scrapedContent")
+        if scraped_content is not None:
+            scraped_content = scraped_content if isinstance(scraped_content, str) else str(scraped_content)
+            if len(scraped_content) > 102400:  # ~100KB
+                return jsonResponse({"error": "scrapedContent exceeds 100KB limit"}, 400)
+
         item = {
             "PK": {"S": site_id},
             "SK": {"S": "METADATA"},
@@ -523,6 +531,8 @@ def createSite(event):
         }
         if body.get("descriptionAiGenerated") is True:
             item["descriptionAiGenerated"] = {"BOOL": True}
+        if scraped_content is not None and scraped_content:
+            item["scrapedContent"] = {"S": scraped_content}
         if logo_key:
             item["logoKey"] = {"S": logo_key}
         elif logo_url:
@@ -612,6 +622,23 @@ def updateSite(event):
         if category_ids is not None:
             set_parts.append("categoryIds = :categoryIds")
             values[":categoryIds"] = {"L": [{"S": str(c)} for c in category_ids]}
+        scraped_content = body.get("scrapedContent")
+        if scraped_content is not None:
+            scraped_content = scraped_content if isinstance(scraped_content, str) else str(scraped_content)
+            if len(scraped_content) > 102400:
+                return jsonResponse({"error": "scrapedContent exceeds 100KB limit"}, 400)
+            if scraped_content:
+                set_parts.append("scrapedContent = :scrapedContent")
+                values[":scrapedContent"] = {"S": scraped_content}
+            else:
+                remove_parts.append("scrapedContent")
+        tags = body.get("tags")
+        if tags is not None:
+            if tags:
+                set_parts.append("tags = :tags")
+                values[":tags"] = {"L": [{"S": str(t)} for t in tags]}
+            else:
+                remove_parts.append("tags")
         set_parts.append("updatedAt = :updatedAt")
 
         if delete_logo:
@@ -1087,6 +1114,34 @@ def postBrandingLogoUpload(event):
         return jsonResponse({"uploadUrl": upload_url, "key": logo_key, "alt": alt})
     except Exception as e:
         logger.exception("postBrandingLogoUpload error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def getStar(event):
+    """GET /stars?siteId=SITE#id - Return current user's star rating for a site (auth required)."""
+    user = getUserInfo(event)
+    user_id = user.get("userId")
+    if not user_id:
+        return jsonResponse({"error": "Unauthorized"}, 401)
+    if not TABLE_NAME:
+        return jsonResponse({"error": "TABLE_NAME not set"}, 500)
+    qs = event.get("queryStringParameters") or {}
+    site_id = (qs.get("siteId") or "").strip()
+    if not site_id:
+        return jsonResponse({"error": "siteId is required"}, 400)
+    try:
+        import boto3
+        dynamodb = boto3.client("dynamodb")
+        resp = dynamodb.get_item(
+            TableName=TABLE_NAME,
+            Key={"PK": {"S": site_id}, "SK": {"S": f"STAR#{user_id}"}},
+        )
+        if "Item" not in resp or "rating" not in resp["Item"]:
+            return jsonResponse({"error": "No rating found"}, 404)
+        rating = int(resp["Item"]["rating"]["N"])
+        return jsonResponse({"siteId": site_id, "rating": rating}, 200)
+    except Exception as e:
+        logger.exception("getStar error")
         return jsonResponse({"error": str(e)}, 500)
 
 

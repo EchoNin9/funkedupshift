@@ -393,3 +393,196 @@ def test_logo_from_url_200_returns_key(mock_urlopen, mock_pil_open, mock_boto_cl
     assert call_kw["Key"] == body["key"]
     assert call_kw["Body"] == image_bytes
     assert call_kw["ContentType"] == "image/png"
+
+
+# ------------------------------------------------------------------------------
+# createSite / updateSite scrapedContent and tags
+# ------------------------------------------------------------------------------
+
+@patch("api.handler.TABLE_NAME", "fus-main")
+@patch("boto3.client")
+def test_createSite_stores_scrapedContent(mock_boto_client):
+    """POST /sites with scrapedContent stores it on the item."""
+    from api.handler import handler
+    mock_dynamo = MagicMock()
+    mock_boto_client.return_value = mock_dynamo
+
+    event = _admin_event("/sites", method="POST", body={
+        "url": "https://example.com",
+        "title": "Example",
+        "scrapedContent": "Some scraped readme text",
+    })
+    result = handler(event, None)
+
+    assert result["statusCode"] == 201
+    mock_dynamo.put_item.assert_called_once()
+    item = mock_dynamo.put_item.call_args.kwargs["Item"]
+    assert "scrapedContent" in item
+    assert item["scrapedContent"] == {"S": "Some scraped readme text"}
+
+
+@patch("api.handler.TABLE_NAME", "fus-main")
+@patch("boto3.client")
+def test_createSite_rejects_scrapedContent_over_100kb(mock_boto_client):
+    """POST /sites with scrapedContent over 100KB returns 400."""
+    from api.handler import handler
+    mock_boto_client.return_value = MagicMock()
+    event = _admin_event("/sites", method="POST", body={
+        "url": "https://example.com",
+        "scrapedContent": "x" * 102401,
+    })
+    result = handler(event, None)
+    assert result["statusCode"] == 400
+    body = json.loads(result["body"])
+    assert "100KB" in body.get("error", "")
+
+
+@patch("api.handler.TABLE_NAME", "fus-main")
+@patch("boto3.client")
+def test_updateSite_sets_scrapedContent(mock_boto_client):
+    """PUT /sites with scrapedContent SETs it."""
+    from api.handler import handler
+    mock_dynamo = MagicMock()
+    mock_dynamo.get_item.return_value = {"Item": {}}
+    mock_boto_client.return_value = mock_dynamo
+
+    event = _admin_event("/sites", method="PUT", body={
+        "id": "SITE#abc",
+        "scrapedContent": "Updated scraped content",
+    })
+    result = handler(event, None)
+
+    assert result["statusCode"] == 200
+    mock_dynamo.update_item.assert_called_once()
+    expr = mock_dynamo.update_item.call_args.kwargs["UpdateExpression"]
+    assert "scrapedContent" in expr
+    vals = mock_dynamo.update_item.call_args.kwargs["ExpressionAttributeValues"]
+    assert ":scrapedContent" in vals
+    assert vals[":scrapedContent"] == {"S": "Updated scraped content"}
+
+
+@patch("api.handler.TABLE_NAME", "fus-main")
+@patch("boto3.client")
+def test_updateSite_removes_scrapedContent_when_empty(mock_boto_client):
+    """PUT /sites with scrapedContent empty string REMOVEs it."""
+    from api.handler import handler
+    mock_dynamo = MagicMock()
+    mock_dynamo.get_item.return_value = {"Item": {}}
+    mock_boto_client.return_value = mock_dynamo
+
+    event = _admin_event("/sites", method="PUT", body={
+        "id": "SITE#abc",
+        "scrapedContent": "",
+    })
+    result = handler(event, None)
+
+    assert result["statusCode"] == 200
+    update_expr = mock_dynamo.update_item.call_args.kwargs["UpdateExpression"]
+    assert "REMOVE" in update_expr
+    assert "scrapedContent" in update_expr
+
+
+@patch("api.handler.TABLE_NAME", "fus-main")
+@patch("boto3.client")
+def test_updateSite_sets_tags(mock_boto_client):
+    """PUT /sites with tags SETs the tags list."""
+    from api.handler import handler
+    mock_dynamo = MagicMock()
+    mock_dynamo.get_item.return_value = {"Item": {}}
+    mock_boto_client.return_value = mock_dynamo
+
+    event = _admin_event("/sites", method="PUT", body={
+        "id": "SITE#abc",
+        "tags": ["javascript", "react"],
+    })
+    result = handler(event, None)
+
+    assert result["statusCode"] == 200
+    vals = mock_dynamo.update_item.call_args.kwargs["ExpressionAttributeValues"]
+    assert ":tags" in vals
+    assert vals[":tags"] == {"L": [{"S": "javascript"}, {"S": "react"}]}
+
+
+# ------------------------------------------------------------------------------
+# GET /stars
+# ------------------------------------------------------------------------------
+
+def _user_event(path, method="GET", query=None):
+    """Event with user JWT (for GET /stars)."""
+    ev = {
+        "rawPath": path,
+        "requestContext": {
+            "http": {"method": method, "path": path},
+            "authorizer": {
+                "jwt": {
+                    "claims": {
+                        "sub": "user-456",
+                        "email": "user@example.com",
+                        "cognito:groups": "user",
+                    }
+                }
+            },
+        },
+    }
+    if query is not None:
+        ev["queryStringParameters"] = query
+    return ev
+
+
+def test_getStar_requires_auth():
+    """GET /stars without auth returns 401."""
+    from api.handler import handler
+    event = {
+        "rawPath": "/stars",
+        "requestContext": {"http": {"method": "GET", "path": "/stars"}},
+        "queryStringParameters": {"siteId": "SITE#xyz"},
+    }
+    result = handler(event, None)
+    assert result["statusCode"] == 401
+
+
+@patch("api.handler.TABLE_NAME", "fus-main")
+def test_getStar_requires_siteId():
+    """GET /stars without siteId returns 400."""
+    from api.handler import handler
+    event = _user_event("/stars", query={})
+    result = handler(event, None)
+    assert result["statusCode"] == 400
+    event["queryStringParameters"] = {"siteId": ""}
+    result = handler(event, None)
+    assert result["statusCode"] == 400
+
+
+@patch("api.handler.TABLE_NAME", "fus-main")
+@patch("boto3.client")
+def test_getStar_returns_404_when_no_rating(mock_boto_client):
+    """GET /stars when user has not rated returns 404."""
+    from api.handler import handler
+    mock_dynamo = MagicMock()
+    mock_dynamo.get_item.return_value = {}
+    mock_boto_client.return_value = mock_dynamo
+
+    event = _user_event("/stars", query={"siteId": "SITE#xyz"})
+    result = handler(event, None)
+
+    assert result["statusCode"] == 404
+
+
+@patch("api.handler.TABLE_NAME", "fus-main")
+@patch("boto3.client")
+def test_getStar_returns_rating_when_present(mock_boto_client):
+    """GET /stars returns current user rating when present."""
+    from api.handler import handler
+    mock_dynamo = MagicMock()
+    mock_dynamo.get_item.return_value = {
+        "Item": {"PK": {"S": "SITE#xyz"}, "SK": {"S": "STAR#user-456"}, "rating": {"N": "4"}},
+    }
+    mock_boto_client.return_value = mock_dynamo
+
+    event = _user_event("/stars", query={"siteId": "SITE#xyz"})
+    result = handler(event, None)
+
+    assert result["statusCode"] == 200
+    body = json.loads(result["body"])
+    assert body["siteId"] == "SITE#xyz"
+    assert body["rating"] == 4

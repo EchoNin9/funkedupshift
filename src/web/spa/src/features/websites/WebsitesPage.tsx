@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "../../shell/AuthContext";
 
 interface SiteCategory {
@@ -203,7 +204,11 @@ const WebsitesPage: React.FC = () => {
                 </div>
                 <div className="min-w-0 flex-1 space-y-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="truncate text-sm font-semibold text-slate-50">{title}</h2>
+                    <h2 className="truncate text-sm font-semibold text-slate-50">
+                      <Link to={`/websites/${encodeURIComponent(site.PK)}`} className="hover:text-brand-orange">
+                        {title}
+                      </Link>
+                    </h2>
                     {typeof site.averageRating === "number" && (
                       <span className="inline-flex items-center rounded-full bg-slate-900 px-2 py-0.5 text-[11px] text-amber-300">
                         {site.averageRating.toFixed(1)}★
