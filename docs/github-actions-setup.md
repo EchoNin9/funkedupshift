@@ -1,6 +1,12 @@
 # GitHub Actions deployment setup
 
-After Terraform has created the IAM roles, configure the repository so workflows can assume those roles via OIDC (no long-lived AWS keys).
+GitHub Actions is used to:
+
+- Run tests for the Lambda code.
+- Run Terraform in `infra/` for staging and production.
+- Deploy the frontend to the appropriate S3 website bucket.
+
+After Terraform has created the IAM roles, configure your repository so workflows can assume those roles via OIDC (no long-lived AWS keys).
 
 ## 1. Get role ARNs from Terraform
 
@@ -35,8 +41,8 @@ The new website-deploy policies for the GitHub Actions roles are in Terraform. A
 
 ```bash
 cd infra
-terraform plan -var="githubOrgRepo=YOUR_ORG/YOUR_REPO"
-terraform apply -var="githubOrgRepo=YOUR_ORG/YOUR_REPO"
+terraform plan  -var="githubOrgRepo=<your-github-org>/<your-github-repo>"
+terraform apply -var="githubOrgRepo=<your-github-org>/<your-github-repo>"
 ```
 
 ## 4. Branches and workflows

@@ -1,8 +1,13 @@
 # DynamoDB single-table design
 
-Table name: `fus-main` (or value of `var.dynamoTableName`).  
-Partition key: **PK** (String). Sort key: **SK** (String).  
-Billing: **PAY_PER_REQUEST**.
+This app uses a **single DynamoDB table** to store sites, users, ratings, comments, and custom groups.
+
+- Table name (Terraform variable): `var.dynamoTableName`, which defaults to `fus-main` in this repo.  
+- Partition key: **PK** (String).  
+- Sort key: **SK** (String).  
+- Billing: **PAY_PER_REQUEST**.
+
+You can keep `fus-main` or choose your own table name such as `<your-dynamodb-table-name>` when customizing `infra/variables.tf`. The patterns below remain the same regardless of the actual table name.
 
 ## GSIs
 
