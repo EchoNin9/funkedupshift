@@ -95,10 +95,30 @@
         var teamB = [playerName(m.teamBPlayer1Id), playerName(m.teamBPlayer2Id)].filter(Boolean).join(' & ');
         var ga = m.teamAGames != null ? m.teamAGames : 0;
         var gb = m.teamBGames != null ? m.teamBGames : 0;
-        var score = m.winningTeam === 'A' ? ga + '-' + gb : gb + '-' + ga;
+
+        // Ensure winning team is always shown on the left in search results
+        var leftTeam = teamA;
+        var rightTeam = teamB;
+        var leftGames = ga;
+        var rightGames = gb;
+
+        if (m.winningTeam === 'B') {
+          leftTeam = teamB;
+          rightTeam = teamA;
+          leftGames = gb;
+          rightGames = ga;
+        } else if (m.winningTeam === 'A') {
+          leftTeam = teamA;
+          rightTeam = teamB;
+          leftGames = ga;
+          rightGames = gb;
+        }
+
+        var score = leftGames + '-' + rightGames;
+
         return '<li>' +
           '<span class="match-date">' + escapeHtml(m.date || '') + '</span> ' +
-          escapeHtml(teamA) + ' vs ' + escapeHtml(teamB) + ' ' +
+          escapeHtml(leftTeam) + ' vs ' + escapeHtml(rightTeam) + ' ' +
           '<span class="match-score">' + score + '</span>' +
           '</li>';
       }).join('');
