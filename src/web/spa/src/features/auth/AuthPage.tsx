@@ -35,27 +35,6 @@ const AuthPage: React.FC = () => {
     }
 
     const w = window as any;
-
-    // #region agent log
-    fetch("http://127.0.0.1:7243/ingest/51517f45-4cb4-45b6-9d26-950ab96994fd", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        id: `log_${Date.now()}_auth_check`,
-        timestamp: Date.now(),
-        runId: "initial",
-        hypothesisId: "H1",
-        location: "AuthPage.tsx:handleSubmit",
-        message: "Checking window.auth configuration",
-        data: {
-          hasAuth: !!w.auth,
-          hasCognitoIdentityLib: !!w.AmazonCognitoIdentity,
-          hasPoolId: !!w.COGNITO_USER_POOL_ID,
-          hasClientId: !!w.COGNITO_CLIENT_ID
-        }
-      })
-    }).catch(() => {});
-    // #endregion agent log
     if (!w.auth) {
       setError("Auth is not configured. Check Cognito frontend setup.");
       return;
