@@ -965,6 +965,22 @@ resource "aws_apigatewayv2_route" "health" {
   target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
 }
 
+# Branding: public logo metadata (no auth)
+resource "aws_apigatewayv2_route" "brandingLogoGet" {
+  api_id    = aws_apigatewayv2_api.main.id
+  route_key = "GET /branding/logo"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+}
+
+# Branding: admin-only logo upload
+resource "aws_apigatewayv2_route" "brandingLogoPost" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /branding/logo"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
 resource "aws_apigatewayv2_route" "internetDashboard" {
   api_id    = aws_apigatewayv2_api.main.id
   route_key = "GET /internet-dashboard"

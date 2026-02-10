@@ -2,7 +2,7 @@
 
 ## 1. Project Context & Architecture
 - **Description:** A serverless web app to maintain a shared database of websites with metadata: stars (1–5), tags, notes, photos/videos, and scraped content (e.g. GitHub README, about page). All sites and metadata are viewable by everyone; only admins add sites; logged-in users add their own metadata/comments.
-- **Frontend:** JavaScript (Framework-agnostic but modern; hosted on S3 Website). A light framework is acceptable for presentation; site functionality takes precedence over appearance.
+- **Frontend:** React SPA (Vite + React + TailwindCSS) hosted as static assets on S3 Website buckets. New UI work belongs in `src/web/spa` and should use the shared layout shell so that navigation, footer, and theming stay consistent.
 - **Auth:** AWS Cognito (User Pools for identity & API security).
 - **API:** AWS API Gateway (HTTP API mode).
 - **Backend:** Python AWS Lambda (Business logic).
@@ -58,6 +58,11 @@ Adhere to this structure for all new files. Do not create files outside these fo
 - **JavaScript (Frontend):**
   - **Philosophy:** "Simple but modern." Use standard Fetch API.
   - **Performance:** Prioritize speed. No heavy component libraries unless critical.
+  - **SPA location:** The canonical web UI is the React SPA in `src/web/spa`. All new screens, modules, and admin tools should be added as React routes under the shared `AppLayout` shell (header + sidebar + footer).
+  - **Layout shell:** Do not create standalone HTML pages for new functionality. Instead, add routes and components that plug into `AppLayout` so navigation (including hamburger/sidebars) and the role-aware footer stay uniform.
+  - **Roles & visibility:** Use the centralized auth/role helpers from the SPA (`AuthProvider`, `hasRole`) to gate links and admin-only functions (superadmin, manager, user, guest). Avoid duplicating role checks inline.
+  - **Branding assets:** Do not hardcode logo URLs. Load the global logo (and future branding images/videos) via the branding API (`/branding/logo` and related endpoints) and the SPA branding context; store actual files in `s3-media` via presigned URLs.
+  - **SPA performance:** Keep dependencies light (headless UI libraries only when helpful). Avoid heavy component suites unless critical.
 
 ## 6. Critical Patterns & Optimizations
 - **Media Uploads (Simplicity Rule):**

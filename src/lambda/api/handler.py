@@ -148,6 +148,10 @@ def handler(event, context):
 
         if method == "GET" and path == "/health":
             return jsonResponse({"ok": True})
+        if method == "GET" and path == "/branding/logo":
+            return getBrandingLogo(event)
+        if method == "POST" and path == "/branding/logo":
+            return postBrandingLogoUpload(event)
         if method == "GET" and path == "/internet-dashboard":
             return getInternetDashboard(event)
         if method == "GET" and path == "/sites":
@@ -977,6 +981,112 @@ def deleteProfileAvatar(event):
         return jsonResponse({"deleted": True})
     except Exception as e:
         logger.exception("deleteProfileAvatar error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def getBrandingLogo(event):
+    """GET /branding/logo - Public metadata and URL for current global logo."""
+    if not TABLE_NAME or not MEDIA_BUCKET:
+        # Fail-soft: return empty payload so frontend can fall back to default.
+        return jsonResponse({})
+    try:
+        import boto3
+
+        region = os.environ.get("AWS_REGION", "us-east-1")
+        dynamodb = boto3.client("dynamodb", region_name=region)
+        pk = "BRANDING"
+        sk = "LOGO#DEFAULT"
+        resp = dynamodb.get_item(
+            TableName=TABLE_NAME,
+            Key={"PK": {"S": pk}, "SK": {"S": sk}},
+        )
+        if "Item" not in resp:
+            return jsonResponse({})
+        item = resp["Item"]
+        logo_key = item.get("logoKey", {}).get("S")
+        if not logo_key:
+            return jsonResponse({})
+        alt = item.get("alt", {}).get("S", "Funkedupshift")
+        updated_at = item.get("updatedAt", {}).get("S", "")
+
+        s3 = boto3.client("s3", region_name=region)
+        url = s3.generate_presigned_url(
+            "get_object",
+            Params={"Bucket": MEDIA_BUCKET, "Key": logo_key},
+            ExpiresIn=3600,
+        )
+        return jsonResponse({"url": url, "alt": alt, "updatedAt": updated_at})
+    except Exception as e:
+        logger.exception("getBrandingLogo error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def postBrandingLogoUpload(event):
+    """POST /branding/logo - Admin-only: presigned PUT URL + persist logo metadata."""
+    user = getUserInfo(event)
+    if not user.get("userId"):
+        return jsonResponse({"error": "Unauthorized"}, 401)
+    if "admin" not in user.get("groups", []):
+        return jsonResponse({"error": "Forbidden: admin role required"}, 403)
+    if not TABLE_NAME or not MEDIA_BUCKET:
+        return jsonResponse({"error": "Not configured"}, 500)
+    try:
+        import boto3
+        import json as json_mod
+        import uuid as uuid_mod
+        from datetime import datetime
+
+        body = json_mod.loads(event.get("body", "{}"))
+        content_type = (body.get("contentType") or "image/png").strip()
+        alt = (body.get("alt") or "Funkedupshift").strip() or "Funkedupshift"
+
+        allowed = {"image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp"}
+        if content_type not in allowed:
+            return jsonResponse(
+                {
+                    "error": "contentType must be image/png, image/jpeg, image/gif, or image/webp"
+                },
+                400,
+            )
+
+        ext = "png"
+        if "jpeg" in content_type or "jpg" in content_type:
+            ext = "jpg"
+        elif "gif" in content_type:
+            ext = "gif"
+        elif "webp" in content_type:
+            ext = "webp"
+
+        region = os.environ.get("AWS_REGION", "us-east-1")
+        unique = str(uuid_mod.uuid4())
+        logo_key = f"branding/logo/{unique}.{ext}"
+
+        s3 = boto3.client("s3", region_name=region)
+        upload_url = s3.generate_presigned_url(
+            "put_object",
+            Params={"Bucket": MEDIA_BUCKET, "Key": logo_key, "ContentType": content_type},
+            ExpiresIn=300,
+        )
+
+        dynamodb = boto3.client("dynamodb", region_name=region)
+        now = datetime.utcnow().isoformat() + "Z"
+        dynamodb.put_item(
+            TableName=TABLE_NAME,
+            Item={
+                "PK": {"S": "BRANDING"},
+                "SK": {"S": "LOGO#DEFAULT"},
+                "logoKey": {"S": logo_key},
+                "alt": {"S": alt},
+                "updatedAt": {"S": now},
+                "uploadedBy": {"S": user.get("userId", "")},
+                "entityType": {"S": "BRANDING"},
+                "entitySk": {"S": "LOGO#DEFAULT"},
+            },
+        )
+
+        return jsonResponse({"uploadUrl": upload_url, "key": logo_key, "alt": alt})
+    except Exception as e:
+        logger.exception("postBrandingLogoUpload error")
         return jsonResponse({"error": str(e)}, 500)
 
 

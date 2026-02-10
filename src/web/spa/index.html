@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Funkedupshift</title>
+    <!-- Inline config so auth works even if /config.js 404s (CloudFront SPA fallback). Deploy replaces placeholders. -->
+    <script>
+    window.API_BASE_URL="API_URL_PLACEHOLDER";
+    window.COGNITO_USER_POOL_ID="POOL_ID_PLACEHOLDER";
+    window.COGNITO_CLIENT_ID="CLIENT_ID_PLACEHOLDER";
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/amazon-cognito-identity-js@6.3.0/dist/amazon-cognito-identity.min.js"></script>
+    <script src="/config.js"></script>
+    <script src="/auth.js"></script>
+  </head>
+  <body class="bg-slate-950 text-slate-50">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+

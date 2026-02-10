@@ -56,12 +56,24 @@ jobs:
         working-directory: infra
         run: terraform apply -var="githubOrgRepo=${{ github.repository }}" -auto-approve -no-color
 
+      - name: Set up Node for SPA build
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Build React SPA frontend
+        working-directory: src/web/spa
+        run: |
+          npm ci
+          npm run build
+
       - name: Deploy frontend to S3
         run: |
           API_URL=$(terraform -chdir=infra output -raw apiInvokeUrl)
           POOL_ID=$(terraform -chdir=infra output -raw cognitoUserPoolId)
           CLIENT_ID=$(terraform -chdir=infra output -raw cognitoClientId)
-          cat > src/web/config.js <<'CONFIGEOF'
+          # Write runtime config for SPA (served as /config.js from bucket root)
+          cat > src/web/spa/dist/config.js <<'CONFIGEOF'
           window.API_BASE_URL = "API_URL_PLACEHOLDER";
           window.COGNITO_USER_POOL_ID = "POOL_ID_PLACEHOLDER";
           window.COGNITO_CLIENT_ID = "CLIENT_ID_PLACEHOLDER";
@@ -69,9 +81,15 @@ jobs:
           window.getCategoriesFromCache = function () { try { var r = localStorage.getItem(window.CATEGORIES_CACHE_KEY); return r ? JSON.parse(r) : []; } catch (e) { return []; } };
           window.saveCategoriesToCache = function (cats) { try { if (!cats || !Array.isArray(cats)) return; var list = cats.map(function (c) { return { id: c.PK || c.id || "", name: c.name || c.PK || c.id || "" }; }); localStorage.setItem(window.CATEGORIES_CACHE_KEY, JSON.stringify(list)); } catch (e) {} };
           CONFIGEOF
-          sed -i "s|API_URL_PLACEHOLDER|$API_URL|g; s|POOL_ID_PLACEHOLDER|$POOL_ID|g; s|CLIENT_ID_PLACEHOLDER|$CLIENT_ID|g" src/web/config.js
+          sed -i "s|API_URL_PLACEHOLDER|$API_URL|g; s|POOL_ID_PLACEHOLDER|$POOL_ID|g; s|CLIENT_ID_PLACEHOLDER|$CLIENT_ID|g" src/web/spa/dist/config.js
+          sed -i "s|API_URL_PLACEHOLDER|$API_URL|g; s|POOL_ID_PLACEHOLDER|$POOL_ID|g; s|CLIENT_ID_PLACEHOLDER|$CLIENT_ID|g" src/web/spa/dist/index.html
+          # Ensure Cognito auth bootstrap script is deployed alongside SPA
+          cp src/web/auth.js src/web/spa/dist/auth.js
           BUCKET=$(terraform -chdir=infra output -raw websiteStagingBucket)
-          if [ -d "src/web/dist" ]; then
+          # Prefer the React SPA build; fall back to legacy layouts if needed
+          if [ -d "src/web/spa/dist" ]; then
+            aws s3 sync src/web/spa/dist s3://$BUCKET/ --delete
+          elif [ -d "src/web/dist" ]; then
             aws s3 sync src/web/dist s3://$BUCKET/ --delete
           elif [ -d "src/web/build" ]; then
             aws s3 sync src/web/build s3://$BUCKET/ --delete
