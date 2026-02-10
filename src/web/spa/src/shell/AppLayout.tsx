@@ -8,6 +8,7 @@ import HomePage from "../features/home/HomePage";
 import WebsitesPage from "../features/websites/WebsitesPage";
 import SiteDetailPage from "../features/websites/SiteDetailPage";
 import MediaPage from "../features/media/MediaPage";
+import MediaDetailPage from "../features/media/MediaDetailPage";
 import DashboardPage from "../features/dashboard/DashboardPage";
 import BrandingPage from "../features/admin/BrandingPage";
 import AddSitePage from "../features/admin/AddSitePage";
@@ -242,6 +243,7 @@ const AppLayout: React.FC = () => {
               <Route path="/websites" element={<WebsitesPage />} />
               <Route path="/websites/:id" element={<SiteDetailPage />} />
               <Route path="/media" element={<MediaPage />} />
+              <Route path="/media/:id" element={<MediaDetailPage />} />
               <Route path="/internet-dashboard" element={<DashboardPage />} />
               {/* Placeholders for not-yet-migrated modules */}
               <Route path="/squash" element={<div>Squash module (coming soon)</div>} />

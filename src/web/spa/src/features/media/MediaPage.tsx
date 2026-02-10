@@ -187,12 +187,16 @@ const MediaPage: React.FC = () => {
             const thumb = m.thumbnailUrl || (m.mediaType === "image" ? m.mediaUrl : undefined);
             const title = m.title || m.PK || "Untitled";
             const mediaTypeLabel = m.mediaType === "video" ? "Video" : "Image";
+            const detailLink = `/media/${encodeURIComponent(m.PK)}`;
             return (
               <li
                 key={m.PK}
                 className="flex gap-3 rounded-xl border border-slate-800 bg-slate-950/60 p-3"
               >
-                <div className="h-16 w-24 flex-shrink-0 overflow-hidden rounded-lg border border-slate-700 bg-slate-900 flex items-center justify-center text-xl">
+                <Link
+                  to={detailLink}
+                  className="h-16 w-24 flex-shrink-0 overflow-hidden rounded-lg border border-slate-700 bg-slate-900 flex items-center justify-center text-xl hover:border-slate-600"
+                >
                   {thumb ? (
                     <img
                       src={thumb}
@@ -205,10 +209,14 @@ const MediaPage: React.FC = () => {
                   ) : (
                     <span>{m.mediaType === "video" ? "▶" : "📷"}</span>
                   )}
-                </div>
+                </Link>
                 <div className="min-w-0 flex-1 space-y-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="truncate text-sm font-semibold text-slate-50">{title}</h2>
+                    <h2 className="truncate text-sm font-semibold text-slate-50">
+                      <Link to={detailLink} className="hover:text-brand-orange">
+                        {title}
+                      </Link>
+                    </h2>
                     {typeof m.averageRating === "number" && (
                       <span className="inline-flex items-center rounded-full bg-slate-900 px-2 py-0.5 text-[11px] text-amber-300">
                         {m.averageRating.toFixed(1)}★
