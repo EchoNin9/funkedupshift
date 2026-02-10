@@ -83,6 +83,8 @@ jobs:
           CONFIGEOF
           sed -i "s|API_URL_PLACEHOLDER|$API_URL|g; s|POOL_ID_PLACEHOLDER|$POOL_ID|g; s|CLIENT_ID_PLACEHOLDER|$CLIENT_ID|g" src/web/spa/dist/config.js
           sed -i "s|API_URL_PLACEHOLDER|$API_URL|g; s|POOL_ID_PLACEHOLDER|$POOL_ID|g; s|CLIENT_ID_PLACEHOLDER|$CLIENT_ID|g" src/web/spa/dist/index.html
+          # Ensure Cognito auth bootstrap script is deployed alongside SPA
+          cp src/web/auth.js src/web/spa/dist/auth.js
           BUCKET=$(terraform -chdir=infra output -raw websiteStagingBucket)
           # Prefer the React SPA build; fall back to legacy layouts if needed
           if [ -d "src/web/spa/dist" ]; then
