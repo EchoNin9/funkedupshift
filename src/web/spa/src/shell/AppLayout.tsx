@@ -11,7 +11,9 @@ import MediaPage from "../features/media/MediaPage";
 import DashboardPage from "../features/dashboard/DashboardPage";
 import BrandingPage from "../features/admin/BrandingPage";
 import AddSitePage from "../features/admin/AddSitePage";
+import EditSitePage from "../features/admin/EditSitePage";
 import AddMediaPage from "../features/admin/AddMediaPage";
+import EditMediaPage from "../features/admin/EditMediaPage";
 import CategoriesPage from "../features/admin/CategoriesPage";
 import MediaCategoriesPage from "../features/admin/MediaCategoriesPage";
 import AuthPage from "../features/auth/AuthPage";
@@ -246,7 +248,9 @@ const AppLayout: React.FC = () => {
               <Route path="/squash-admin" element={<div>Squash admin (coming soon)</div>} />
               <Route path="/admin/branding" element={<BrandingPage />} />
               <Route path="/admin/sites/add" element={<AddSitePage />} />
+              <Route path="/admin/sites/edit/:id" element={<EditSitePage />} />
               <Route path="/admin/media/add" element={<AddMediaPage />} />
+              <Route path="/admin/media/edit/:id" element={<EditMediaPage />} />
               <Route path="/admin/categories" element={<CategoriesPage />} />
               <Route path="/admin/media-categories" element={<MediaCategoriesPage />} />
               <Route path="/admin/*" element={<div>Admin area</div>} />

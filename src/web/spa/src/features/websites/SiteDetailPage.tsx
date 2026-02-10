@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeftIcon } from "@heroicons/react/24/outline";
-import { useAuth } from "../../shell/AuthContext";
+import { ArrowLeftIcon, PencilSquareIcon } from "@heroicons/react/24/outline";
+import { useAuth, hasRole } from "../../shell/AuthContext";
 
 interface SiteCategory {
   id: string;
@@ -31,6 +31,7 @@ function getApiBaseUrl(): string | null {
 const SiteDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
+  const canEdit = hasRole(user ?? null, "manager");
   const [site, setSite] = useState<Site | null>(null);
   const [userRating, setUserRating] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -155,13 +156,24 @@ const SiteDetailPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <Link
-        to="/websites"
-        className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-slate-200"
-      >
-        <ArrowLeftIcon className="h-4 w-4" />
-        Back to Websites
-      </Link>
+      <div className="flex flex-wrap items-center gap-3">
+        <Link
+          to="/websites"
+          className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-slate-200"
+        >
+          <ArrowLeftIcon className="h-4 w-4" />
+          Back to Websites
+        </Link>
+        {canEdit && site && (
+          <Link
+            to={`/admin/sites/edit/${encodeURIComponent(site.PK)}`}
+            className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-slate-200"
+          >
+            <PencilSquareIcon className="h-4 w-4" />
+            Edit site
+          </Link>
+        )}
+      </div>
 
       <article className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 sm:p-6">
         <header className="flex flex-wrap gap-4">

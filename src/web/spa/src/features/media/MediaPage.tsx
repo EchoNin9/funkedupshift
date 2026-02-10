@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useAuth } from "../../shell/AuthContext";
+import { Link } from "react-router-dom";
+import { PencilSquareIcon } from "@heroicons/react/24/outline";
+import { useAuth, hasRole } from "../../shell/AuthContext";
 
 interface MediaCategory {
   id: string;
@@ -37,6 +39,7 @@ const MediaPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   const canRate = !!user;
+  const canEdit = hasRole(user ?? null, "manager");
 
   useEffect(() => {
     const apiBase = getApiBaseUrl();
@@ -228,6 +231,17 @@ const MediaPage: React.FC = () => {
                           {c.name}
                         </span>
                       ))}
+                    </div>
+                  )}
+                  {canEdit && (
+                    <div className="pt-1">
+                      <Link
+                        to={`/admin/media/edit/${encodeURIComponent(m.PK)}`}
+                        className="inline-flex items-center gap-1 text-[11px] text-slate-400 hover:text-slate-200"
+                      >
+                        <PencilSquareIcon className="h-3.5 w-3.5" />
+                        Edit
+                      </Link>
                     </div>
                   )}
                   {canRate && (
