@@ -475,11 +475,12 @@
               saveResult.className = 'status err';
             });
         });
-      } else if (logoUrlToSave) {
+      } else if (logoUrlToSave || pastedUrlTrimmed) {
+        var urlToImport = logoUrlToSave || pastedUrlTrimmed;
         fetchWithAuth(base + '/sites/logo-from-url', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ siteId: id, imageUrl: logoUrlToSave })
+          body: JSON.stringify({ siteId: id, imageUrl: urlToImport })
         })
           .then(function (r) {
             if (r.ok) return r.json();
