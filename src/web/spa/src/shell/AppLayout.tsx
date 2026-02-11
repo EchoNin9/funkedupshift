@@ -83,7 +83,7 @@ const AppLayout: React.FC = () => {
                 <img
                   src={logo.url}
                   alt={logo.alt}
-                  className="h-8 w-8 rounded-md border border-slate-700 object-cover"
+                  className="h-8 w-auto rounded-md border border-slate-700 object-contain"
                 />
               ) : (
                 <div className="h-8 w-8 rounded-md border border-slate-700 bg-gradient-to-br from-brand-orange to-brand-navy" />

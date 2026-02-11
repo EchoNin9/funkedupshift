@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useAuth, hasRole } from "../../shell/AuthContext";
+import { useBranding } from "../../shell/BrandingContext";
 
 function getApiBaseUrl(): string | null {
   if (typeof window === "undefined") return null;
@@ -17,6 +18,7 @@ const allowedTypes = [
 
 const BrandingPage: React.FC = () => {
   const { user } = useAuth();
+  const { logo } = useBranding();
   const [file, setFile] = useState<File | null>(null);
   const [alt, setAlt] = useState("Funkedupshift");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -137,6 +139,18 @@ const BrandingPage: React.FC = () => {
       <form className="space-y-4 max-w-md" onSubmit={onSubmit}>
         <div className="space-y-1 text-sm">
           <label className="block text-slate-200">Logo image</label>
+          {logo && !previewUrl && (
+            <div className="space-y-1 mb-3">
+              <p className="text-slate-200">Current logo</p>
+              <div className="inline-flex items-center rounded-lg border border-slate-800 bg-slate-950 p-2">
+                <img
+                  src={logo.url}
+                  alt={logo.alt}
+                  className="h-12 w-auto rounded-md object-contain"
+                />
+              </div>
+            </div>
+          )}
           <input
             type="file"
             accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
@@ -162,7 +176,7 @@ const BrandingPage: React.FC = () => {
           <div className="space-y-1 text-sm">
             <p className="text-slate-200">Preview</p>
             <div className="inline-flex items-center rounded-lg border border-slate-800 bg-slate-950 p-2">
-              <img src={previewUrl} alt="Preview" className="h-12 w-12 rounded-md object-cover" />
+              <img src={previewUrl} alt="Preview" className="h-12 w-auto rounded-md object-contain" />
               <span className="ml-3 text-xs text-slate-400 truncate max-w-[12rem]">{file?.name}</span>
             </div>
           </div>
