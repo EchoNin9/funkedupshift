@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth, canAccessSquash, canModifySquash } from "../../shell/AuthContext";
+import DateInput from "./DateInput";
 
 function getApiBaseUrl(): string | null {
   if (typeof window === "undefined") return null;
@@ -240,42 +241,27 @@ const SquashPage: React.FC = () => {
       <section>
         <h2 className="text-base font-semibold text-slate-200 mb-3">Search matches</h2>
         <div className="flex flex-wrap gap-4 items-end">
-          <div>
-            <label htmlFor="searchDate" className="block text-xs font-semibold text-slate-400 mb-1">
-              Date (exact)
-            </label>
-            <input
-              type="date"
-              id="searchDate"
-              value={searchDate}
-              onChange={(e) => setSearchDate(e.target.value)}
-              className="block w-full max-w-[12rem] rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200 focus:border-brand-orange focus:outline-none"
-            />
-          </div>
-          <div>
-            <label htmlFor="searchDateFrom" className="block text-xs font-semibold text-slate-400 mb-1">
-              Date from
-            </label>
-            <input
-              type="date"
-              id="searchDateFrom"
-              value={searchDateFrom}
-              onChange={(e) => setSearchDateFrom(e.target.value)}
-              className="block w-full max-w-[12rem] rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200 focus:border-brand-orange focus:outline-none"
-            />
-          </div>
-          <div>
-            <label htmlFor="searchDateTo" className="block text-xs font-semibold text-slate-400 mb-1">
-              Date to
-            </label>
-            <input
-              type="date"
-              id="searchDateTo"
-              value={searchDateTo}
-              onChange={(e) => setSearchDateTo(e.target.value)}
-              className="block w-full max-w-[12rem] rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200 focus:border-brand-orange focus:outline-none"
-            />
-          </div>
+          <DateInput
+            id="searchDate"
+            value={searchDate}
+            onChange={setSearchDate}
+            label="Date (exact)"
+            className="max-w-[12rem]"
+          />
+          <DateInput
+            id="searchDateFrom"
+            value={searchDateFrom}
+            onChange={setSearchDateFrom}
+            label="Date from"
+            className="max-w-[12rem]"
+          />
+          <DateInput
+            id="searchDateTo"
+            value={searchDateTo}
+            onChange={setSearchDateTo}
+            label="Date to"
+            className="max-w-[12rem]"
+          />
           <div className="relative max-w-[14rem] min-w-[12rem]" ref={playerDropdownRef}>
             <label className="block text-xs font-semibold text-slate-400 mb-1">Filter by players</label>
             <input
