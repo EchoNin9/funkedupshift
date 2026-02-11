@@ -2893,15 +2893,17 @@ def removeUserFromGroup(event, username, group_name):
     user, err = _requireManagerOrAdmin(event)
     if err:
         return err
+    # Permission checks first (no Cognito needed) so we return 403 before 500 when pool not configured
+    cognito_system_groups = {"admin", "manager", "user"}
+    if group_name in cognito_system_groups:
+        if group_name == "admin" and not _canModifyAdminGroup(user):
+            return jsonResponse({"error": "Forbidden: only SuperAdmin can remove users from admin group"}, 403)
+        if group_name == "manager" and not _canModifyAdminGroup(user):
+            return jsonResponse({"error": "Forbidden: only SuperAdmin can remove users from manager group"}, 403)
     if not COGNITO_USER_POOL_ID:
         return jsonResponse({"error": "COGNITO_USER_POOL_ID not set"}, 500)
     try:
-        cognito_system_groups = {"admin", "manager", "user"}
         if group_name in cognito_system_groups:
-            if group_name == "admin" and not _canModifyAdminGroup(user):
-                return jsonResponse({"error": "Forbidden: only SuperAdmin can remove users from admin group"}, 403)
-            if group_name == "manager" and not _canModifyAdminGroup(user):
-                return jsonResponse({"error": "Forbidden: only SuperAdmin can remove users from manager group"}, 403)
             import boto3
             cognito = boto3.client("cognito-idp")
             cognito.admin_remove_user_from_group(
