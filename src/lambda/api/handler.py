@@ -2768,13 +2768,15 @@ def addUserToGroup(event, username):
         cognito_system_groups = {"admin", "manager", "user"}
         if group_name == "admin" and not _canModifyAdminGroup(user):
             return jsonResponse({"error": "Forbidden: only SuperAdmin can add users to admin group"}, 403)
+        if group_name == "manager" and not _canModifyAdminGroup(user):
+            return jsonResponse({"error": "Forbidden: only SuperAdmin can add users to manager group"}, 403)
+        if group_name == "user" and "admin" not in user.get("groups", []) and "manager" not in user.get("groups", []):
+            return jsonResponse({"error": "Forbidden"}, 403)
 
         if not COGNITO_USER_POOL_ID:
             return jsonResponse({"error": "COGNITO_USER_POOL_ID not set"}, 500)
 
         if group_name in cognito_system_groups:
-            if group_name in ("manager", "user") and "admin" not in user.get("groups", []) and "manager" not in user.get("groups", []):
-                return jsonResponse({"error": "Forbidden"}, 403)
             import boto3
             cognito = boto3.client("cognito-idp")
             cognito.admin_add_user_to_group(
@@ -2838,6 +2840,8 @@ def removeUserFromGroup(event, username, group_name):
         if group_name in cognito_system_groups:
             if group_name == "admin" and not _canModifyAdminGroup(user):
                 return jsonResponse({"error": "Forbidden: only SuperAdmin can remove users from admin group"}, 403)
+            if group_name == "manager" and not _canModifyAdminGroup(user):
+                return jsonResponse({"error": "Forbidden: only SuperAdmin can remove users from manager group"}, 403)
             import boto3
             cognito = boto3.client("cognito-idp")
             cognito.admin_remove_user_from_group(
