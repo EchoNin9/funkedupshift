@@ -13,6 +13,7 @@ interface AuthContextValue {
   user: AuthUser | null;
   isLoading: boolean;
   signOut: () => void;
+  refreshAuth: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -34,84 +35,76 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function bootstrap() {
+  const bootstrap = React.useCallback(async () => {
       const apiBase = getApiBaseUrl();
       if (!apiBase) {
         setIsLoading(false);
         return;
       }
 
-      try {
-        const w = window as any;
-        if (!w.auth || typeof w.auth.getAccessToken !== "function") {
-          setIsLoading(false);
-          return;
-        }
-
-        await new Promise<void>((resolve) => {
-          w.auth.isAuthenticated((ok: boolean) => {
-            if (!ok) {
-              if (!cancelled) {
-                setUser(null);
-                setIsLoading(false);
-              }
-              resolve();
-              return;
-            }
-            resolve();
-          });
-        });
-
-        const token = await new Promise<string | null>((resolve) => {
-          (window as any).auth.getAccessToken((t: string | null) => resolve(t));
-        });
-        if (!token) {
-          if (!cancelled) {
-            setUser(null);
-            setIsLoading(false);
-          }
-          return;
-        }
-
-        const resp = await fetch(`${apiBase}/me`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        if (!resp.ok) {
-          if (!cancelled) {
-            setUser(null);
-            setIsLoading(false);
-          }
-          return;
-        }
-        const data = await resp.json();
-        if (cancelled) return;
-
-        const groups: string[] = Array.isArray(data.groups) ? data.groups.map(String) : [];
-        const role = mapGroupsToRole(groups);
-
-        setUser({
-          userId: String(data.userId || ""),
-          email: String(data.email || ""),
-          groups,
-          role
-        });
+    try {
+      const w = window as any;
+      if (!w.auth || typeof w.auth.getAccessToken !== "function") {
         setIsLoading(false);
-      } catch {
-        if (!cancelled) {
-          setUser(null);
-          setIsLoading(false);
-        }
+        return;
       }
-    }
 
-    bootstrap();
-    return () => {
-      cancelled = true;
-    };
+      await new Promise<void>((resolve) => {
+        w.auth.isAuthenticated((ok: boolean) => {
+          if (!ok) {
+            setUser(null);
+            setIsLoading(false);
+            resolve();
+            return;
+          }
+          resolve();
+        });
+      });
+
+      const token = await new Promise<string | null>((resolve) => {
+        (window as any).auth.getAccessToken((t: string | null) => resolve(t));
+      });
+      if (!token) {
+        setUser(null);
+        setIsLoading(false);
+        return;
+      }
+
+      const resp = await fetch(`${apiBase}/me`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!resp.ok) {
+        setUser(null);
+        setIsLoading(false);
+        return;
+      }
+      const data = await resp.json();
+
+      const groups: string[] = Array.isArray(data.groups) ? data.groups.map(String) : [];
+      const role = mapGroupsToRole(groups);
+
+      setUser({
+        userId: String(data.userId || ""),
+        email: String(data.email || ""),
+        groups,
+        role
+      });
+    } catch {
+      setUser(null);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    bootstrap();
+  }, [bootstrap]);
+
+  const refreshAuth = React.useCallback(async () => {
+    const apiBase = getApiBaseUrl();
+    if (!apiBase) return;
+    await bootstrap();
+  }, [bootstrap]);
 
   const signOut = () => {
     const w = window as any;
@@ -122,7 +115,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, signOut }}>
+    <AuthContext.Provider value={{ user, isLoading, signOut, refreshAuth }}>
       {children}
     </AuthContext.Provider>
   );
