@@ -1,9 +1,12 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 
-interface DashboardData {
-  ok?: boolean;
-  sitesCount?: number;
-  mediaCount?: number;
+const CACHE_KEY = "funkedupshift_internet_dashboard";
+const CACHE_TTL_MS = 5 * 60 * 1000;
+
+interface DashboardSite {
+  domain: string;
+  status: string;
+  responseTimeMs?: number;
 }
 
 function getApiBaseUrl(): string | null {
@@ -12,64 +15,140 @@ function getApiBaseUrl(): string | null {
   return raw ? raw.replace(/\/$/, "") : null;
 }
 
+function getCachedSites(): DashboardSite[] | null {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed?.sites || !parsed?.lastFetchTime) return null;
+    const age = Date.now() - new Date(parsed.lastFetchTime).getTime();
+    if (age >= CACHE_TTL_MS) return null;
+    return parsed.sites;
+  } catch {
+    return null;
+  }
+}
+
+function setCachedSites(sites: DashboardSite[]): void {
+  try {
+    localStorage.setItem(
+      CACHE_KEY,
+      JSON.stringify({ sites, lastFetchTime: new Date().toISOString() })
+    );
+  } catch {
+    /* ignore */
+  }
+}
+
 const DashboardPage: React.FC = () => {
-  const [data, setData] = useState<DashboardData | null>(null);
+  const [sites, setSites] = useState<DashboardSite[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const load = useCallback(async () => {
     const apiBase = getApiBaseUrl();
-    if (!apiBase) {
-      setError("API URL not set.");
+    const cached = getCachedSites();
+
+    if (cached && cached.length > 0) {
+      setSites(cached);
+      setIsLoading(false);
+      setError(null);
       return;
     }
-    let cancelled = false;
-    (async () => {
-      try {
-        const resp = await fetch(`${apiBase}/internet-dashboard`);
-        if (!resp.ok) {
-          const txt = await resp.text();
-          throw new Error(`HTTP ${resp.status}: ${txt}`);
-        }
-        const body = (await resp.json()) as DashboardData;
-        if (!cancelled) setData(body);
-      } catch (e: any) {
-        if (!cancelled) setError(e?.message ?? "Failed to load dashboard.");
+
+    if (!apiBase) {
+      setError("API URL not set.");
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const resp = await fetch(`${apiBase}/internet-dashboard`);
+      if (!resp.ok) {
+        const txt = await resp.text();
+        throw new Error(txt || `HTTP ${resp.status}`);
       }
-    })();
-    return () => {
-      cancelled = true;
-    };
+      const data = (await resp.json()) as { sites?: DashboardSite[] };
+      const list = Array.isArray(data.sites) ? data.sites : [];
+      if (list.length > 0) {
+        setCachedSites(list);
+        setSites(list);
+      } else {
+        setError(cached?.length ? undefined : "No data returned.");
+        if (cached?.length) setSites(cached);
+      }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Failed to load dashboard.";
+      if (cached && cached.length > 0) {
+        setSites(cached);
+        setError(null);
+      } else {
+        setError(msg);
+        setSites([]);
+      }
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold tracking-tight text-slate-50">Internet dashboard</h1>
-      {error && (
+      <h1 className="text-2xl font-semibold tracking-tight text-slate-50">
+        Internet dashboard
+      </h1>
+      <div className="rounded-xl border border-teal-800/60 bg-gradient-to-br from-teal-900/40 to-teal-950/60 p-4 shadow-lg">
+        <p className="text-sm font-medium text-teal-100">
+          Live status of popular sites
+        </p>
+        <p className="mt-1 text-xs text-teal-200/80">
+          Refreshes when data is older than 5 minutes
+        </p>
+      </div>
+
+      {isLoading && (
+        <p className="text-sm text-slate-400">Loading…</p>
+      )}
+
+      {error && !sites.length && (
         <div className="rounded-md border border-red-500/60 bg-red-500/10 px-3 py-2 text-xs text-red-200">
           {error}
         </div>
       )}
-      <div className="grid gap-3 sm:grid-cols-3">
-        <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500 mb-1">API</p>
-          <p className="text-sm text-slate-200">{data?.ok ? "Healthy" : "Unknown"}</p>
-        </div>
-        <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500 mb-1">Sites</p>
-          <p className="text-sm text-slate-200">
-            {typeof data?.sitesCount === "number" ? data?.sitesCount : "—"}
-          </p>
-        </div>
-        <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500 mb-1">Media</p>
-          <p className="text-sm text-slate-200">
-            {typeof data?.mediaCount === "number" ? data?.mediaCount : "—"}
-          </p>
-        </div>
+
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-3">
+        {sites.map((s) => {
+          const status = (s.status || "down").toLowerCase();
+          const statusClass =
+            status === "up"
+              ? "border-emerald-500/50 bg-emerald-500/15 text-emerald-200"
+              : status === "degraded"
+              ? "border-amber-500/50 bg-amber-500/15 text-amber-200"
+              : "border-red-500/50 bg-red-500/15 text-red-200";
+          const rtStr =
+            s.responseTimeMs != null ? `${s.responseTimeMs} ms` : null;
+          return (
+            <div
+              key={s.domain}
+              className={`rounded-lg border p-3 text-center text-sm ${statusClass}`}
+            >
+              <div className="font-semibold break-all">{s.domain}</div>
+              <div className="mt-1 text-xs capitalize opacity-90">{status}</div>
+              {rtStr && (
+                <div className="mt-0.5 text-[11px] opacity-75">{rtStr}</div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
 };
 
 export default DashboardPage;
-
