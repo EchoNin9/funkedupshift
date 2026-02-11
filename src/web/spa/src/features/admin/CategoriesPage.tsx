@@ -24,6 +24,11 @@ const CategoriesPage: React.FC = () => {
   const [newDescription, setNewDescription] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [updateError, setUpdateError] = useState<string | null>(null);
 
   const canAccess = hasRole(user ?? null, "manager");
 
@@ -63,6 +68,53 @@ const CategoriesPage: React.FC = () => {
   useEffect(() => {
     if (canAccess) load();
   }, [canAccess]);
+
+  const startEdit = (c: Category) => {
+    setEditingId(c.id);
+    setEditName(c.name);
+    setEditDescription(c.description ?? "");
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditName("");
+    setEditDescription("");
+    setUpdateError(null);
+  };
+
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingId) return;
+    const apiBase = getApiBaseUrl();
+    if (!apiBase) return;
+    const w = window as any;
+    if (!w.auth?.getAccessToken) return;
+    setIsUpdating(true);
+    setUpdateError(null);
+    try {
+      const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
+      const resp = await fetch(`${apiBase}/categories`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          id: editingId,
+          name: editName.trim(),
+          description: editDescription.trim() || undefined
+        })
+      });
+      if (!resp.ok) throw new Error(await resp.text());
+      setCategories((prev) =>
+        prev.map((cat) =>
+          cat.id === editingId ? { ...cat, name: editName.trim(), description: editDescription.trim() || undefined } : cat
+        )
+      );
+      cancelEdit();
+    } catch (e: any) {
+      setUpdateError(e?.message ?? "Failed to update category.");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -168,10 +220,56 @@ const CategoriesPage: React.FC = () => {
             {categories.map((c) => (
               <li
                 key={c.id}
-                className="flex items-center justify-between rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm text-slate-200"
+                className="rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm"
               >
-                <span className="font-medium">{c.name}</span>
-                {c.description && <span className="text-slate-500 truncate max-w-xs ml-2">{c.description}</span>}
+                {editingId === c.id ? (
+                  <form onSubmit={handleUpdate} className="space-y-2">
+                    <input
+                      type="text"
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      placeholder="Name"
+                      required
+                      className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-500 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange"
+                      autoFocus
+                    />
+                    <input
+                      type="text"
+                      value={editDescription}
+                      onChange={(e) => setEditDescription(e.target.value)}
+                      placeholder="Description (optional)"
+                      className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-500 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange"
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        type="submit"
+                        disabled={isUpdating || !editName.trim()}
+                        className="rounded-md bg-brand-orange px-3 py-1.5 text-xs font-medium text-slate-950 hover:bg-orange-500 disabled:opacity-50"
+                      >
+                        {isUpdating ? "Saving…" : "Save"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={cancelEdit}
+                        className="rounded-md border border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-300 hover:bg-slate-800"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                    {updateError && (
+                      <p className="text-xs text-red-400">{updateError}</p>
+                    )}
+                  </form>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => startEdit(c)}
+                    className="block w-full text-left hover:bg-slate-800/50 rounded px-1 -mx-1 py-1 -my-1 transition-colors"
+                  >
+                    <span className="font-medium text-slate-200">{c.name}</span>
+                    {c.description && <span className="text-slate-500 truncate max-w-xs ml-2">{c.description}</span>}
+                  </button>
+                )}
               </li>
             ))}
           </ul>
