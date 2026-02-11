@@ -44,6 +44,7 @@ const WebsitesPage: React.FC = () => {
 
   const canRate = !!user;
   const categoryDropdownRef = useRef<HTMLDivElement>(null);
+  const [allCategoriesCache, setAllCategoriesCache] = useState<SiteCategory[]>([]);
 
   const availableCategories = useMemo(() => {
     const byId = new Map<string | undefined, SiteCategory>();
@@ -55,13 +56,26 @@ const WebsitesPage: React.FC = () => {
     return Array.from(byId.values()).sort((a, b) => (a.name || "").localeCompare(b.name || ""));
   }, [sites]);
 
+  useEffect(() => {
+    if (selectedCategoryIds.length === 0 && availableCategories.length > 0) {
+      setAllCategoriesCache(availableCategories);
+    }
+  }, [selectedCategoryIds.length, availableCategories]);
+
+  const categoriesForDropdown = useMemo(() => {
+    if (categoryMode === "or" && allCategoriesCache.length > 0) {
+      return allCategoriesCache;
+    }
+    return availableCategories;
+  }, [categoryMode, allCategoriesCache, availableCategories]);
+
   const filteredCategoryOptions = useMemo(() => {
-    return availableCategories.filter(
+    return categoriesForDropdown.filter(
       (c) =>
         !selectedCategoryIds.includes(c.id) &&
         (!categorySearch.trim() || (c.name || "").toLowerCase().includes(categorySearch.toLowerCase()))
     );
-  }, [availableCategories, selectedCategoryIds, categorySearch]);
+  }, [categoriesForDropdown, selectedCategoryIds, categorySearch]);
 
   useEffect(() => {
     const apiBase = getApiBaseUrl();
@@ -229,14 +243,14 @@ const WebsitesPage: React.FC = () => {
                   ))
                 ) : (
                   <p className="px-3 py-2 text-xs text-slate-500">
-                    {availableCategories.length === 0 ? "Search sites first to load categories." : "No matches or all selected."}
+                    {categoriesForDropdown.length === 0 ? "Search sites first to load categories." : "No matches or all selected."}
                   </p>
                 )}
               </div>
             )}
             <div className="mt-2 flex flex-wrap gap-1">
               {selectedCategoryIds.map((cid) => {
-                const c = availableCategories.find((x) => x.id === cid);
+                const c = categoriesForDropdown.find((x) => x.id === cid) ?? availableCategories.find((x) => x.id === cid);
                 return (
                   <span
                     key={cid}
