@@ -2,7 +2,7 @@ import React from "react";
 import { Link, NavLink, Route, Routes, useNavigate } from "react-router-dom";
 import { Bars3Icon, ChevronDownIcon, ChevronRightIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { Dialog } from "@headlessui/react";
-import { useAuth, hasRole } from "./AuthContext";
+import { useAuth, hasRole, canAccessSquash, canModifySquash } from "./AuthContext";
 import { useBranding } from "./BrandingContext";
 import HomePage from "../features/home/HomePage";
 import WebsitesPage from "../features/websites/WebsitesPage";
@@ -22,6 +22,8 @@ import EditUserPage from "../features/admin/EditUserPage";
 import GroupsPage from "../features/admin/GroupsPage";
 import AuthPage from "../features/auth/AuthPage";
 import ProfilePage from "../features/profile/ProfilePage";
+import SquashPage from "../features/squash/SquashPage";
+import SquashAdminPage from "../features/squash/SquashAdminPage";
 
 interface NavItem {
   label: string;
@@ -104,7 +106,9 @@ const AppLayout: React.FC = () => {
 
   const visibleNavItems = navItems.filter((item) => hasRole(user ?? null, item.minRole));
   const discoverItems = visibleNavItems.filter((i) => i.section === "discover");
-  const squashItems = visibleNavItems.filter((i) => i.section === "squash");
+  const squashItems = navItems
+    .filter((i) => i.section === "squash")
+    .filter((i) => (i.to === "/squash" ? canAccessSquash(user) : canModifySquash(user)));
   const adminItems = visibleNavItems.filter((i) => i.section === "admin");
   const adminStandaloneItems = adminItems.filter((i) => !i.adminGroup);
   const adminGroupItems = (group: string) => adminItems.filter((i) => i.adminGroup === group);
@@ -368,9 +372,8 @@ const AppLayout: React.FC = () => {
               <Route path="/media" element={<MediaPage />} />
               <Route path="/media/:id" element={<MediaDetailPage />} />
               <Route path="/internet-dashboard" element={<DashboardPage />} />
-              {/* Placeholders for not-yet-migrated modules */}
-              <Route path="/squash" element={<div>Squash module (coming soon)</div>} />
-              <Route path="/squash-admin" element={<div>Squash admin (coming soon)</div>} />
+              <Route path="/squash" element={<SquashPage />} />
+              <Route path="/squash-admin" element={<SquashAdminPage />} />
               <Route path="/admin/branding" element={<BrandingPage />} />
               <Route path="/admin/sites/add" element={<AddSitePage />} />
               <Route path="/admin/sites/edit/:id" element={<EditSitePage />} />
@@ -414,6 +417,16 @@ const AppLayout: React.FC = () => {
             {hasRole(user ?? null, "superadmin") && (
               <Link to="/admin/branding" className="hover:text-slate-300">
                 Branding
+              </Link>
+            )}
+            {canAccessSquash(user) && (
+              <Link to="/squash" className="hover:text-slate-300">
+                Squash
+              </Link>
+            )}
+            {canModifySquash(user) && (
+              <Link to="/squash-admin" className="hover:text-slate-300">
+                Squash Admin
               </Link>
             )}
           </nav>

@@ -7,6 +7,7 @@ export interface AuthUser {
   email: string;
   groups: string[];
   role: UserRole;
+  customGroups?: string[];
 }
 
 interface AuthContextValue {
@@ -82,12 +83,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       const groups: string[] = Array.isArray(data.groups) ? data.groups.map(String) : [];
       const role = mapGroupsToRole(groups);
+      const customGroups: string[] = Array.isArray(data.customGroups) ? data.customGroups.map(String) : [];
 
       setUser({
         userId: String(data.userId || ""),
         email: String(data.email || ""),
         groups,
-        role
+        role,
+        customGroups
       });
     } catch {
       setUser(null);
@@ -132,5 +135,18 @@ export function hasRole(user: AuthUser | null, role: UserRole): boolean {
   if (!user) return false;
   const order: UserRole[] = ["guest", "user", "manager", "superadmin"];
   return order.indexOf(user.role) >= order.indexOf(role);
+}
+
+export function canAccessSquash(user: AuthUser | null): boolean {
+  if (!user?.userId) return false;
+  if (user.role === "superadmin") return true;
+  return (user.customGroups ?? []).includes("Squash");
+}
+
+export function canModifySquash(user: AuthUser | null): boolean {
+  if (!user?.userId) return false;
+  if (user.role === "superadmin") return true;
+  if (user.role !== "manager") return false;
+  return (user.customGroups ?? []).includes("Squash");
 }
 
