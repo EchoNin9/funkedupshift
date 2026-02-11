@@ -398,6 +398,7 @@ def listSites(event, forceAll=False):
         limit_param = max(1, min(limit_param, 10000))
         category_ids_param = (qs.get("categoryIds") or "").strip()
         filter_category_ids = [x.strip() for x in category_ids_param.split(",") if x.strip()]
+        category_mode = (qs.get("categoryMode") or "").strip().lower() or "and"
 
         page_limit = None if use_no_limit else limit_param
         items = []
@@ -444,7 +445,10 @@ def listSites(event, forceAll=False):
 
         _resolveCategoriesForSites(dynamodb, sites)
         if filter_category_ids:
-            sites = [s for s in sites if any(cid in (s.get("categoryIds") or []) for cid in filter_category_ids)]
+            if category_mode == "or":
+                sites = [s for s in sites if any(cid in (s.get("categoryIds") or []) for cid in filter_category_ids)]
+            else:
+                sites = [s for s in sites if all(cid in (s.get("categoryIds") or []) for cid in filter_category_ids)]
         search_q = (qs.get("q") or qs.get("search") or "").strip()
         if search_q:
             q_lower = search_q.lower()
@@ -1543,6 +1547,7 @@ def listMedia(event, forceAll=False):
         limit_param = max(1, min(limit_param, 10000))
         category_ids_param = (qs.get("categoryIds") or "").strip()
         filter_category_ids = [x.strip() for x in category_ids_param.split(",") if x.strip()]
+        category_mode = (qs.get("categoryMode") or "").strip().lower() or "and"
 
         page_limit = None if use_no_limit else limit_param
         items = []
@@ -1564,10 +1569,16 @@ def listMedia(event, forceAll=False):
         media_list = [_dynamoItemToMedia(i) for i in items]
         _resolveCategoriesForMedia(dynamodb, media_list)
         if filter_category_ids:
-            media_list = [
-                m for m in media_list
-                if any(cid in (m.get("categoryIds") or []) for cid in filter_category_ids)
-            ]
+            if category_mode == "or":
+                media_list = [
+                    m for m in media_list
+                    if any(cid in (m.get("categoryIds") or []) for cid in filter_category_ids)
+                ]
+            else:
+                media_list = [
+                    m for m in media_list
+                    if all(cid in (m.get("categoryIds") or []) for cid in filter_category_ids)
+                ]
         search_q = (qs.get("q") or qs.get("search") or "").strip()
         if search_q:
             q_lower = search_q.lower()

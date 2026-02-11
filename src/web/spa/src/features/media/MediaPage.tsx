@@ -34,6 +34,7 @@ const MediaPage: React.FC = () => {
   const [items, setItems] = useState<MediaItem[]>([]);
   const [search, setSearch] = useState("");
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
+  const [categoryMode, setCategoryMode] = useState<"and" | "or">("and");
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const [categorySearch, setCategorySearch] = useState("");
   const [sort, setSort] = useState<SortKey>("avgDesc");
@@ -77,7 +78,10 @@ const MediaPage: React.FC = () => {
         const params = new URLSearchParams();
         params.set("limit", "100");
         if (search.trim()) params.set("q", search.trim());
-        if (selectedCategoryIds.length > 0) params.set("categoryIds", selectedCategoryIds.join(","));
+        if (selectedCategoryIds.length > 0) {
+          params.set("categoryIds", selectedCategoryIds.join(","));
+          params.set("categoryMode", categoryMode);
+        }
         const resp = await fetch(`${apiBase}/media?${params.toString()}`);
         if (!resp.ok) {
           const txt = await resp.text();
@@ -97,7 +101,7 @@ const MediaPage: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [search, selectedCategoryIds]);
+  }, [search, selectedCategoryIds, categoryMode]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -252,6 +256,31 @@ const MediaPage: React.FC = () => {
                 );
               })}
             </div>
+            {selectedCategoryIds.length > 0 && (
+              <div className="mt-2 flex items-center gap-2">
+                <span className="text-xs text-slate-500">Match:</span>
+                <div className="inline-flex rounded-md border border-slate-700 bg-slate-950 p-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setCategoryMode("and")}
+                    className={`rounded px-2 py-0.5 text-xs font-medium ${
+                      categoryMode === "and" ? "bg-brand-orange text-slate-950" : "text-slate-400 hover:text-slate-200"
+                    }`}
+                  >
+                    AND
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCategoryMode("or")}
+                    className={`rounded px-2 py-0.5 text-xs font-medium ${
+                      categoryMode === "or" ? "bg-brand-orange text-slate-950" : "text-slate-400 hover:text-slate-200"
+                    }`}
+                  >
+                    OR
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="flex flex-wrap gap-3 items-center text-xs text-slate-400">
