@@ -1,7 +1,11 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { useAuth, canAccessSquash } from "../../shell/AuthContext";
 
 const HomePage: React.FC = () => {
+  const { user } = useAuth();
+  const showSquash = canAccessSquash(user);
+
   return (
     <div className="space-y-8">
       <section className="relative overflow-hidden rounded-2xl border border-slate-800 bg-gradient-to-br from-brand-orange/20 via-brand-navy/10 to-brand-teal/20 px-6 py-10">
@@ -19,7 +23,7 @@ const HomePage: React.FC = () => {
           <div className="flex flex-wrap gap-3 pt-2">
             <Link
               to="/websites"
-              className="inline-flex items-center rounded-full bg-slate-950/90 px-4 py-2 text-sm font-semibold text-slate-50 shadow-lg shadow-slate-950/40 hover:bg-slate-900"
+              className="inline-flex items-center rounded-full border border-slate-500/60 px-4 py-2 text-sm font-semibold text-slate-100 hover:border-slate-300/80"
             >
               Browse websites
             </Link>
@@ -29,6 +33,20 @@ const HomePage: React.FC = () => {
             >
               Explore media
             </Link>
+            <Link
+              to="/internet-dashboard"
+              className="inline-flex items-center rounded-full border border-slate-500/60 px-4 py-2 text-sm font-semibold text-slate-100 hover:border-slate-300/80"
+            >
+              Internet Dashboard
+            </Link>
+            {showSquash && (
+              <Link
+                to="/squash"
+                className="inline-flex items-center rounded-full border border-slate-500/60 px-4 py-2 text-sm font-semibold text-slate-100 hover:border-slate-300/80"
+              >
+                Squash
+              </Link>
+            )}
           </div>
         </div>
         <div className="pointer-events-none absolute inset-y-0 right-0 w-1/2 opacity-60">
