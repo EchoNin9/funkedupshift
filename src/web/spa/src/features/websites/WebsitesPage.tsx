@@ -44,30 +44,42 @@ const WebsitesPage: React.FC = () => {
 
   const canRate = !!user;
   const categoryDropdownRef = useRef<HTMLDivElement>(null);
-  const [allCategoriesCache, setAllCategoriesCache] = useState<SiteCategory[]>([]);
-
-  const availableCategories = useMemo(() => {
-    const byId = new Map<string | undefined, SiteCategory>();
-    sites.forEach((s) => {
-      (s.categories || []).forEach((c) => {
-        if (c.id && !byId.has(c.id)) byId.set(c.id, c);
-      });
-    });
-    return Array.from(byId.values()).sort((a, b) => (a.name || "").localeCompare(b.name || ""));
-  }, [sites]);
+  const [allCategories, setAllCategories] = useState<SiteCategory[]>([]);
 
   useEffect(() => {
-    if (selectedCategoryIds.length === 0 && availableCategories.length > 0) {
-      setAllCategoriesCache(availableCategories);
-    }
-  }, [selectedCategoryIds.length, availableCategories]);
+    const apiBase = getApiBaseUrl();
+    if (!apiBase) return;
+    let cancelled = false;
+    fetch(`${apiBase}/categories`)
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("Failed to load categories"))))
+      .then((data: { categories?: { PK?: string; id?: string; name?: string }[] }) => {
+        if (cancelled) return;
+        const list = (data.categories ?? []).map((c) => ({
+          id: c.PK || c.id || "",
+          name: c.name || c.PK || ""
+        }));
+        list.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+        setAllCategories(list);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   const categoriesForDropdown = useMemo(() => {
-    if (categoryMode === "or" && allCategoriesCache.length > 0) {
-      return allCategoriesCache;
-    }
-    return availableCategories;
-  }, [categoryMode, allCategoriesCache, availableCategories]);
+    if (categoryMode === "or" && allCategories.length > 0) return allCategories;
+    const fromSites = new Map<string, SiteCategory>();
+    sites.forEach((s) =>
+      (s.categories || []).forEach((c) => {
+        if (c.id && !fromSites.has(c.id)) fromSites.set(c.id, c);
+      })
+    );
+    const combined = [...allCategories];
+    fromSites.forEach((c) => {
+      if (!combined.some((x) => x.id === c.id)) combined.push(c);
+    });
+    combined.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    return combined;
+  }, [allCategories, categoryMode, sites]);
 
   const filteredCategoryOptions = useMemo(() => {
     return categoriesForDropdown.filter(
@@ -252,14 +264,14 @@ const WebsitesPage: React.FC = () => {
                   ))
                 ) : (
                   <p className="px-3 py-2 text-xs text-slate-500">
-                    {categoriesForDropdown.length === 0 ? "Search sites first to load categories." : "No matches or all selected."}
+                    {categoriesForDropdown.length === 0 ? "No categories yet." : "No matches or all selected."}
                   </p>
                 )}
               </div>
             )}
             <div className="mt-2 flex flex-wrap gap-1">
               {selectedCategoryIds.map((cid) => {
-                const c = categoriesForDropdown.find((x) => x.id === cid) ?? availableCategories.find((x) => x.id === cid);
+                const c = categoriesForDropdown.find((x) => x.id === cid);
                 return (
                   <span
                     key={cid}

@@ -106,35 +106,23 @@ def test_createSite_requires_admin():
     assert result["statusCode"] == 403
 
 
-def test_listCategories_requires_auth():
+@patch("api.handler.TABLE_NAME", "fus-main")
+@patch("boto3.client")
+def test_listCategories_public_returns_categories(mock_boto_client):
+    """GET /categories is public (no auth) for browse/filter."""
     from api.handler import handler
+    mock_dynamo = MagicMock()
+    mock_dynamo.query.return_value = {"Items": []}
+    mock_boto_client.return_value = mock_dynamo
+
     event = {
         "rawPath": "/categories",
         "requestContext": {"http": {"method": "GET", "path": "/categories"}},
     }
     result = handler(event, None)
-    assert result["statusCode"] == 401
-
-
-def test_listCategories_requires_admin():
-    from api.handler import handler
-    event = {
-        "rawPath": "/categories",
-        "requestContext": {
-            "http": {"method": "GET", "path": "/categories"},
-            "authorizer": {
-                "jwt": {
-                    "claims": {
-                        "sub": "user-123",
-                        "email": "user@example.com",
-                        "cognito:groups": "user",
-                    }
-                }
-            },
-        },
-    }
-    result = handler(event, None)
-    assert result["statusCode"] == 403
+    assert result["statusCode"] == 200
+    body = json.loads(result["body"])
+    assert "categories" in body
 
 
 # ------------------------------------------------------------------------------

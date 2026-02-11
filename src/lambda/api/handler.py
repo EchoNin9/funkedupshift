@@ -1360,10 +1360,7 @@ def _dynamoItemToDict(item):
 
 
 def listCategories(event):
-    """List all categories (manager or admin)."""
-    _, err = _requireManagerOrAdmin(event)
-    if err:
-        return err
+    """List all categories (public read for browse/filter)."""
     if not TABLE_NAME:
         return jsonResponse({"categories": [], "error": "TABLE_NAME not set"}, 200)
     try:
@@ -1973,10 +1970,7 @@ def setMediaStar(event):
 
 
 def listMediaCategories(event):
-    """List media categories (manager or admin)."""
-    _, err = _requireManagerOrAdmin(event)
-    if err:
-        return err
+    """List media categories (public read for browse/filter)."""
     if not TABLE_NAME:
         return jsonResponse({"categories": [], "error": "TABLE_NAME not set"}, 200)
     try:

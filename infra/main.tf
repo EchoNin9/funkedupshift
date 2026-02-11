@@ -1106,13 +1106,11 @@ resource "aws_apigatewayv2_route" "starsPost" {
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
-# Categories (admin only)
+# Categories (GET public for browse; POST/PUT/DELETE require auth)
 resource "aws_apigatewayv2_route" "categoriesGet" {
-  api_id             = aws_apigatewayv2_api.main.id
-  route_key          = "GET /categories"
-  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
-  authorization_type = "JWT"
-  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+  api_id    = aws_apigatewayv2_api.main.id
+  route_key = "GET /categories"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
 }
 
 resource "aws_apigatewayv2_route" "categoriesPost" {
@@ -1209,12 +1207,11 @@ resource "aws_apigatewayv2_route" "mediaStars" {
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
+# GET public for browse; POST/PUT/DELETE require auth
 resource "aws_apigatewayv2_route" "mediaCategoriesGet" {
-  api_id             = aws_apigatewayv2_api.main.id
-  route_key          = "GET /media-categories"
-  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
-  authorization_type = "JWT"
-  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+  api_id    = aws_apigatewayv2_api.main.id
+  route_key = "GET /media-categories"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
 }
 
 resource "aws_apigatewayv2_route" "mediaCategoriesPost" {

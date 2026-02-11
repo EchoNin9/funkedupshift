@@ -209,24 +209,23 @@ def test_setMediaStar_requires_mediaId():
     assert "mediaId" in result["body"]
 
 
-def test_listMediaCategories_requires_auth():
-    """GET /media-categories without auth returns 401."""
+@patch("api.handler.TABLE_NAME", "fus-main")
+@patch("boto3.client")
+def test_listMediaCategories_public_returns_categories(mock_boto_client):
+    """GET /media-categories is public (no auth) for browse/filter."""
     from api.handler import handler
+    mock_dynamo = MagicMock()
+    mock_dynamo.query.return_value = {"Items": []}
+    mock_boto_client.return_value = mock_dynamo
+
     event = {
         "rawPath": "/media-categories",
         "requestContext": {"http": {"method": "GET", "path": "/media-categories"}},
     }
     result = handler(event, None)
-    assert result["statusCode"] == 401
-
-
-def test_listMediaCategories_requires_admin():
-    """GET /media-categories with non-admin returns 403."""
-    from api.handler import handler
-    event = _auth_event("/media-categories", method="GET")
-    event["body"] = None
-    result = handler(event, None)
-    assert result["statusCode"] == 403
+    assert result["statusCode"] == 200
+    body = json.loads(result["body"])
+    assert "categories" in body
 
 
 def test_createMediaCategory_requires_admin():
