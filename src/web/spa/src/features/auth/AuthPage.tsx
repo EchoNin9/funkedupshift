@@ -5,7 +5,7 @@ import { useAuth } from "../../shell/AuthContext";
 type AuthMode = "signin" | "signup";
 
 const AuthPage: React.FC = () => {
-  const { user } = useAuth();
+  const { user, refreshAuth } = useAuth();
   const navigate = useNavigate();
 
   const [mode, setMode] = useState<AuthMode>("signin");
@@ -50,6 +50,7 @@ const AuthPage: React.FC = () => {
           });
         });
         setMessage("Signed in successfully. Redirecting…");
+        await refreshAuth();
       } else {
         await new Promise<void>((resolve, reject) => {
           w.auth.signUp(trimmedEmail, trimmedPassword, (err: any) => {
