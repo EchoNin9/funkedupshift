@@ -203,8 +203,9 @@ def generateDescription(event):
     user = getUserInfo(event)
     if not user.get("userId"):
         return jsonResponse({"error": "Unauthorized"}, 401)
-    if "admin" not in user.get("groups", []):
-        return jsonResponse({"error": "Forbidden: admin role required"}, 403)
+    groups = user.get("groups", [])
+    if "admin" not in groups and "manager" not in groups:
+        return jsonResponse({"error": "Forbidden: manager or admin role required"}, 403)
 
     try:
         body = json.loads(event.get("body", "{}"))

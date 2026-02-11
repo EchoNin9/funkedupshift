@@ -6,9 +6,17 @@ import { useAuth, hasRole } from "./AuthContext";
 import { useBranding } from "./BrandingContext";
 import HomePage from "../features/home/HomePage";
 import WebsitesPage from "../features/websites/WebsitesPage";
+import SiteDetailPage from "../features/websites/SiteDetailPage";
 import MediaPage from "../features/media/MediaPage";
+import MediaDetailPage from "../features/media/MediaDetailPage";
 import DashboardPage from "../features/dashboard/DashboardPage";
 import BrandingPage from "../features/admin/BrandingPage";
+import AddSitePage from "../features/admin/AddSitePage";
+import EditSitePage from "../features/admin/EditSitePage";
+import AddMediaPage from "../features/admin/AddMediaPage";
+import EditMediaPage from "../features/admin/EditMediaPage";
+import CategoriesPage from "../features/admin/CategoriesPage";
+import MediaCategoriesPage from "../features/admin/MediaCategoriesPage";
 import AuthPage from "../features/auth/AuthPage";
 
 interface NavItem {
@@ -24,10 +32,10 @@ const navItems: NavItem[] = [
   { label: "Internet Dashboard", to: "/internet-dashboard", section: "discover", minRole: "guest" },
   { label: "Squash", to: "/squash", section: "squash", minRole: "user" },
   { label: "Squash Admin", to: "/squash-admin", section: "squash", minRole: "manager" },
-  { label: "Add Site", to: "/admin/sites/add", section: "admin", minRole: "superadmin" },
-  { label: "Add Media", to: "/admin/media/add", section: "admin", minRole: "superadmin" },
-  { label: "Categories", to: "/admin/categories", section: "admin", minRole: "superadmin" },
-  { label: "Media Categories", to: "/admin/media-categories", section: "admin", minRole: "superadmin" },
+  { label: "Add Site", to: "/admin/sites/add", section: "admin", minRole: "manager" },
+  { label: "Add Media", to: "/admin/media/add", section: "admin", minRole: "manager" },
+  { label: "Categories", to: "/admin/categories", section: "admin", minRole: "manager" },
+  { label: "Media Categories", to: "/admin/media-categories", section: "admin", minRole: "manager" },
   { label: "Users", to: "/admin/users", section: "admin", minRole: "superadmin" },
   { label: "Groups", to: "/admin/groups", section: "admin", minRole: "superadmin" },
   { label: "Branding", to: "/admin/branding", section: "admin", minRole: "superadmin" }
@@ -233,13 +241,21 @@ const AppLayout: React.FC = () => {
             <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/websites" element={<WebsitesPage />} />
+              <Route path="/websites/:id" element={<SiteDetailPage />} />
               <Route path="/media" element={<MediaPage />} />
+              <Route path="/media/:id" element={<MediaDetailPage />} />
               <Route path="/internet-dashboard" element={<DashboardPage />} />
               {/* Placeholders for not-yet-migrated modules */}
               <Route path="/squash" element={<div>Squash module (coming soon)</div>} />
               <Route path="/squash-admin" element={<div>Squash admin (coming soon)</div>} />
               <Route path="/admin/branding" element={<BrandingPage />} />
-              <Route path="/admin/*" element={<div>Admin area (coming soon)</div>} />
+              <Route path="/admin/sites/add" element={<AddSitePage />} />
+              <Route path="/admin/sites/edit/:id" element={<EditSitePage />} />
+              <Route path="/admin/media/add" element={<AddMediaPage />} />
+              <Route path="/admin/media/edit/:id" element={<EditMediaPage />} />
+              <Route path="/admin/categories" element={<CategoriesPage />} />
+              <Route path="/admin/media-categories" element={<MediaCategoriesPage />} />
+              <Route path="/admin/*" element={<div>Admin area</div>} />
               <Route path="/auth" element={<AuthPage />} />
               <Route path="*" element={<div>Not found</div>} />
             </Routes>

@@ -179,6 +179,8 @@ def handler(event, context):
             return getProfileAvatarUpload(event)
         if method == "DELETE" and path == "/profile/avatar":
             return deleteProfileAvatar(event)
+        if method == "GET" and path == "/stars":
+            return getStar(event)
         if method == "POST" and path == "/stars":
             return setStar(event)
         if method == "GET" and path == "/categories":
@@ -472,12 +474,10 @@ def listSites(event, forceAll=False):
 
 
 def createSite(event):
-    """Create a new site (admin only)."""
-    user = getUserInfo(event)
-    if not user.get("userId"):
-        return jsonResponse({"error": "Unauthorized"}, 401)
-    if "admin" not in user.get("groups", []):
-        return jsonResponse({"error": "Forbidden: admin role required"}, 403)
+    """Create a new site (manager or admin)."""
+    _, err = _requireManagerOrAdmin(event)
+    if err:
+        return err
 
     if not TABLE_NAME:
         return jsonResponse({"error": "TABLE_NAME not set"}, 500)
@@ -506,6 +506,12 @@ def createSite(event):
         category_ids = [str(c) for c in (body.get("categoryIds") or []) if c]
         category_ids_list = [{"S": cid} for cid in category_ids]
 
+        scraped_content = body.get("scrapedContent")
+        if scraped_content is not None:
+            scraped_content = scraped_content if isinstance(scraped_content, str) else str(scraped_content)
+            if len(scraped_content) > 102400:  # ~100KB
+                return jsonResponse({"error": "scrapedContent exceeds 100KB limit"}, 400)
+
         item = {
             "PK": {"S": site_id},
             "SK": {"S": "METADATA"},
@@ -523,6 +529,8 @@ def createSite(event):
         }
         if body.get("descriptionAiGenerated") is True:
             item["descriptionAiGenerated"] = {"BOOL": True}
+        if scraped_content is not None and scraped_content:
+            item["scrapedContent"] = {"S": scraped_content}
         if logo_key:
             item["logoKey"] = {"S": logo_key}
         elif logo_url:
@@ -536,12 +544,10 @@ def createSite(event):
 
 
 def updateSite(event):
-    """Update an existing site (admin only)."""
-    user = getUserInfo(event)
-    if not user.get("userId"):
-        return jsonResponse({"error": "Unauthorized"}, 401)
-    if "admin" not in user.get("groups", []):
-        return jsonResponse({"error": "Forbidden: admin role required"}, 403)
+    """Update an existing site (manager or admin)."""
+    _, err = _requireManagerOrAdmin(event)
+    if err:
+        return err
 
     if not TABLE_NAME:
         return jsonResponse({"error": "TABLE_NAME not set"}, 500)
@@ -612,6 +618,23 @@ def updateSite(event):
         if category_ids is not None:
             set_parts.append("categoryIds = :categoryIds")
             values[":categoryIds"] = {"L": [{"S": str(c)} for c in category_ids]}
+        scraped_content = body.get("scrapedContent")
+        if scraped_content is not None:
+            scraped_content = scraped_content if isinstance(scraped_content, str) else str(scraped_content)
+            if len(scraped_content) > 102400:
+                return jsonResponse({"error": "scrapedContent exceeds 100KB limit"}, 400)
+            if scraped_content:
+                set_parts.append("scrapedContent = :scrapedContent")
+                values[":scrapedContent"] = {"S": scraped_content}
+            else:
+                remove_parts.append("scrapedContent")
+        tags = body.get("tags")
+        if tags is not None:
+            if tags:
+                set_parts.append("tags = :tags")
+                values[":tags"] = {"L": [{"S": str(t)} for t in tags]}
+            else:
+                remove_parts.append("tags")
         set_parts.append("updatedAt = :updatedAt")
 
         if delete_logo:
@@ -650,12 +673,10 @@ def updateSite(event):
 
 
 def getPresignedLogoUpload(event):
-    """Return presigned PUT URL for uploading a site logo (admin only)."""
-    user = getUserInfo(event)
-    if not user.get("userId"):
-        return jsonResponse({"error": "Unauthorized"}, 401)
-    if "admin" not in user.get("groups", []):
-        return jsonResponse({"error": "Forbidden: admin role required"}, 403)
+    """Return presigned PUT URL for uploading a site logo (manager or admin)."""
+    _, err = _requireManagerOrAdmin(event)
+    if err:
+        return err
     if not MEDIA_BUCKET:
         return jsonResponse({"error": "MEDIA_BUCKET not configured"}, 500)
     try:
@@ -687,12 +708,10 @@ def getPresignedLogoUpload(event):
 
 
 def importLogoFromUrl(event):
-    """Download image from URL, validate dimensions (min 100x100), upload to S3 (admin only)."""
-    user = getUserInfo(event)
-    if not user.get("userId"):
-        return jsonResponse({"error": "Unauthorized"}, 401)
-    if "admin" not in user.get("groups", []):
-        return jsonResponse({"error": "Forbidden: admin role required"}, 403)
+    """Download image from URL, validate dimensions (min 100x100), upload to S3 (manager or admin)."""
+    _, err = _requireManagerOrAdmin(event)
+    if err:
+        return err
     if not MEDIA_BUCKET:
         return jsonResponse({"error": "MEDIA_BUCKET not configured"}, 500)
     try:
@@ -1090,6 +1109,34 @@ def postBrandingLogoUpload(event):
         return jsonResponse({"error": str(e)}, 500)
 
 
+def getStar(event):
+    """GET /stars?siteId=SITE#id - Return current user's star rating for a site (auth required)."""
+    user = getUserInfo(event)
+    user_id = user.get("userId")
+    if not user_id:
+        return jsonResponse({"error": "Unauthorized"}, 401)
+    if not TABLE_NAME:
+        return jsonResponse({"error": "TABLE_NAME not set"}, 500)
+    qs = event.get("queryStringParameters") or {}
+    site_id = (qs.get("siteId") or "").strip()
+    if not site_id:
+        return jsonResponse({"error": "siteId is required"}, 400)
+    try:
+        import boto3
+        dynamodb = boto3.client("dynamodb")
+        resp = dynamodb.get_item(
+            TableName=TABLE_NAME,
+            Key={"PK": {"S": site_id}, "SK": {"S": f"STAR#{user_id}"}},
+        )
+        if "Item" not in resp or "rating" not in resp["Item"]:
+            return jsonResponse({"error": "No rating found"}, 404)
+        rating = int(resp["Item"]["rating"]["N"])
+        return jsonResponse({"siteId": site_id, "rating": rating}, 200)
+    except Exception as e:
+        logger.exception("getStar error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
 def setStar(event):
     """Set a 1-5 star rating for a site for the current user."""
     user = getUserInfo(event)
@@ -1249,8 +1296,8 @@ def _dynamoItemToDict(item):
 
 
 def listCategories(event):
-    """List all categories (admin only)."""
-    _, err = _requireAdmin(event)
+    """List all categories (manager or admin)."""
+    _, err = _requireManagerOrAdmin(event)
     if err:
         return err
     if not TABLE_NAME:
@@ -1274,8 +1321,8 @@ def listCategories(event):
 
 
 def createCategory(event):
-    """Create a category (admin only)."""
-    _, err = _requireAdmin(event)
+    """Create a category (manager or admin)."""
+    _, err = _requireManagerOrAdmin(event)
     if err:
         return err
     if not TABLE_NAME:
@@ -1311,8 +1358,8 @@ def createCategory(event):
 
 
 def updateCategory(event):
-    """Update a category (admin only)."""
-    _, err = _requireAdmin(event)
+    """Update a category (manager or admin)."""
+    _, err = _requireManagerOrAdmin(event)
     if err:
         return err
     if not TABLE_NAME:
@@ -1353,8 +1400,8 @@ def updateCategory(event):
 
 
 def deleteCategory(event):
-    """Delete a category (admin only)."""
-    _, err = _requireAdmin(event)
+    """Delete a category (manager or admin)."""
+    _, err = _requireManagerOrAdmin(event)
     if err:
         return err
     if not TABLE_NAME:
@@ -1541,8 +1588,8 @@ def listMedia(event, forceAll=False):
 
 
 def createMedia(event):
-    """Create media item (admin only)."""
-    _, err = _requireAdmin(event)
+    """Create media item (manager or admin)."""
+    _, err = _requireManagerOrAdmin(event)
     if err:
         return err
     if not TABLE_NAME:
@@ -1589,8 +1636,8 @@ def createMedia(event):
 
 
 def updateMedia(event):
-    """Update media item (admin only)."""
-    _, err = _requireAdmin(event)
+    """Update media item (manager or admin)."""
+    _, err = _requireManagerOrAdmin(event)
     if err:
         return err
     if not TABLE_NAME:
@@ -1645,8 +1692,8 @@ def updateMedia(event):
 
 
 def deleteMedia(event):
-    """Delete media item (admin only)."""
-    _, err = _requireAdmin(event)
+    """Delete media item (manager or admin)."""
+    _, err = _requireManagerOrAdmin(event)
     if err:
         return err
     if not TABLE_NAME:
@@ -1691,8 +1738,8 @@ def deleteMedia(event):
 
 
 def getPresignedMediaUpload(event):
-    """Return presigned PUT URL for media upload (admin only)."""
-    _, err = _requireAdmin(event)
+    """Return presigned PUT URL for media upload (manager or admin)."""
+    _, err = _requireManagerOrAdmin(event)
     if err:
         return err
     if not MEDIA_BUCKET:
@@ -1736,8 +1783,8 @@ def getPresignedMediaUpload(event):
 
 
 def getPresignedThumbnailUpload(event):
-    """Return presigned PUT URL for custom thumbnail upload (admin only)."""
-    _, err = _requireAdmin(event)
+    """Return presigned PUT URL for custom thumbnail upload (manager or admin)."""
+    _, err = _requireManagerOrAdmin(event)
     if err:
         return err
     if not MEDIA_BUCKET:
@@ -1855,8 +1902,8 @@ def setMediaStar(event):
 
 
 def listMediaCategories(event):
-    """List media categories (admin only)."""
-    _, err = _requireAdmin(event)
+    """List media categories (manager or admin)."""
+    _, err = _requireManagerOrAdmin(event)
     if err:
         return err
     if not TABLE_NAME:
@@ -1880,8 +1927,8 @@ def listMediaCategories(event):
 
 
 def createMediaCategory(event):
-    """Create media category (admin only)."""
-    _, err = _requireAdmin(event)
+    """Create media category (manager or admin)."""
+    _, err = _requireManagerOrAdmin(event)
     if err:
         return err
     if not TABLE_NAME:
@@ -1917,8 +1964,8 @@ def createMediaCategory(event):
 
 
 def updateMediaCategory(event):
-    """Update media category (admin only)."""
-    _, err = _requireAdmin(event)
+    """Update media category (manager or admin)."""
+    _, err = _requireManagerOrAdmin(event)
     if err:
         return err
     if not TABLE_NAME:
@@ -1959,8 +2006,8 @@ def updateMediaCategory(event):
 
 
 def deleteMediaCategory(event):
-    """Delete media category (admin only)."""
-    _, err = _requireAdmin(event)
+    """Delete media category (manager or admin)."""
+    _, err = _requireManagerOrAdmin(event)
     if err:
         return err
     if not TABLE_NAME:
