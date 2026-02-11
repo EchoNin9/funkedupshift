@@ -216,7 +216,7 @@ const WebsitesPage: React.FC = () => {
                       onClick={() => {
                         setSelectedCategoryIds((prev) => (prev.includes(c.id) ? prev : [...prev, c.id]));
                         setCategorySearch("");
-                        setCategoryDropdownOpen(false);
+                        // Keep dropdown open for multi-select (same as add site page)
                       }}
                       className="block w-full px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-800"
                     >

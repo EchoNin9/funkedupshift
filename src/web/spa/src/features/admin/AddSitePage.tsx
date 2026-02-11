@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 import { useAuth, hasRole } from "../../shell/AuthContext";
@@ -37,6 +37,7 @@ const AddSitePage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   const canAccess = hasRole(user ?? null, "manager");
+  const categoryDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!canAccess) return;
@@ -84,11 +85,23 @@ const AddSitePage: React.FC = () => {
   const addCategory = (id: string) => {
     if (!selectedCategoryIds.includes(id)) setSelectedCategoryIds([...selectedCategoryIds, id]);
     setCategorySearch("");
-    setCategoryDropdownOpen(false);
+    // Keep dropdown open for multi-select
   };
   const removeCategory = (id: string) => {
     setSelectedCategoryIds(selectedCategoryIds.filter((x) => x !== id));
   };
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(e.target as Node)) {
+        setCategoryDropdownOpen(false);
+      }
+    }
+    if (categoryDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [categoryDropdownOpen]);
 
   const filteredCategories = categories.filter(
     (c) =>
@@ -288,7 +301,7 @@ const AddSitePage: React.FC = () => {
           )}
           {logoError && <p className="mt-1 text-xs text-red-400">{logoError}</p>}
         </div>
-        <div className="relative">
+        <div ref={categoryDropdownRef} className="relative">
           <label className="block text-sm font-medium text-slate-200 mb-1">Categories (optional)</label>
           <input
             type="text"
@@ -300,10 +313,7 @@ const AddSitePage: React.FC = () => {
           />
           {categoryDropdownOpen && (
             <>
-              <div
-                className="absolute left-0 right-0 top-full z-10 mt-1 max-h-48 overflow-auto rounded-md border border-slate-700 bg-slate-900 shadow-lg"
-                onBlur={() => setCategoryDropdownOpen(false)}
-              >
+              <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-48 overflow-auto rounded-md border border-slate-700 bg-slate-900 shadow-lg">
                 {filteredCategories.length ? (
                   filteredCategories.map((c) => (
                     <button
