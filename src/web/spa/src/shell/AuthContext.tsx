@@ -135,6 +135,7 @@ export function useAuth(): AuthContextValue {
 }
 
 export function hasRole(user: AuthUser | null, role: UserRole): boolean {
+  if (role === "guest") return true;
   if (!user) return false;
   const order: UserRole[] = ["guest", "user", "manager", "superadmin"];
   return order.indexOf(user.role) >= order.indexOf(role);
