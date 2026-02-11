@@ -28,6 +28,7 @@ const EditMediaPage: React.FC = () => {
   const [categorySearch, setCategorySearch] = useState("");
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -135,6 +136,30 @@ const EditMediaPage: React.FC = () => {
       setError(e?.message ?? "Failed to update media.");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!mediaId) return;
+    if (!window.confirm("Delete this media item? This cannot be undone.")) return;
+    const apiBase = getApiBaseUrl();
+    if (!apiBase) return;
+    const w = window as any;
+    if (!w.auth?.getAccessToken) return;
+    setIsDeleting(true);
+    setError(null);
+    try {
+      const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
+      const resp = await fetch(`${apiBase}/media?id=${encodeURIComponent(mediaId)}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!resp.ok) throw new Error(await resp.text());
+      navigate("/media");
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to delete media.");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -268,13 +293,23 @@ const EditMediaPage: React.FC = () => {
             })}
           </div>
         </div>
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="inline-flex items-center justify-center rounded-md bg-brand-orange px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-orange-500 disabled:opacity-50"
-        >
-          {isSubmitting ? "Saving…" : "Save changes"}
-        </button>
+        <div className="flex flex-wrap gap-3">
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="inline-flex items-center justify-center rounded-md bg-brand-orange px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-orange-500 disabled:opacity-50"
+          >
+            {isSubmitting ? "Saving…" : "Save changes"}
+          </button>
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={isDeleting || isSubmitting}
+            className="rounded-md border border-red-500/60 px-4 py-2 text-sm font-medium text-red-400 hover:bg-red-500/20 disabled:opacity-50"
+          >
+            {isDeleting ? "Deleting…" : "Delete entry"}
+          </button>
+        </div>
         {message && (
           <div className="rounded-md border border-emerald-500/60 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">
             {message}

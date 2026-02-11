@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 import { useAuth, hasRole } from "../../shell/AuthContext";
@@ -38,6 +38,7 @@ const AddMediaPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   const canAccess = hasRole(user ?? null, "manager");
+  const categoryDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!canAccess) return;
@@ -70,11 +71,23 @@ const AddMediaPage: React.FC = () => {
   const addCategory = (id: string) => {
     if (!selectedCategoryIds.includes(id)) setSelectedCategoryIds([...selectedCategoryIds, id]);
     setCategorySearch("");
-    setCategoryDropdownOpen(false);
+    // Keep dropdown open for multi-select
   };
   const removeCategory = (id: string) => {
     setSelectedCategoryIds(selectedCategoryIds.filter((x) => x !== id));
   };
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(e.target as Node)) {
+        setCategoryDropdownOpen(false);
+      }
+    }
+    if (categoryDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [categoryDropdownOpen]);
 
   const filteredCategories = categories.filter(
     (c) =>
@@ -212,7 +225,7 @@ const AddMediaPage: React.FC = () => {
             </div>
           )}
         </div>
-        <div className="relative">
+        <div ref={categoryDropdownRef} className="relative">
           <label className="block text-sm font-medium text-slate-200 mb-1">Media categories (optional)</label>
           <input
             type="text"

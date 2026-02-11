@@ -169,6 +169,8 @@ def handler(event, context):
             return generateDescription(event)
         if method == "PUT" and path == "/sites":
             return updateSite(event)
+        if method == "DELETE" and path == "/sites":
+            return deleteSite(event)
         if method == "GET" and path == "/me":
             return getMe(event)
         if method == "GET" and path == "/profile":
@@ -398,6 +400,7 @@ def listSites(event, forceAll=False):
         limit_param = max(1, min(limit_param, 10000))
         category_ids_param = (qs.get("categoryIds") or "").strip()
         filter_category_ids = [x.strip() for x in category_ids_param.split(",") if x.strip()]
+        category_mode = (qs.get("categoryMode") or "").strip().lower() or "and"
 
         page_limit = None if use_no_limit else limit_param
         items = []
@@ -444,7 +447,10 @@ def listSites(event, forceAll=False):
 
         _resolveCategoriesForSites(dynamodb, sites)
         if filter_category_ids:
-            sites = [s for s in sites if any(cid in (s.get("categoryIds") or []) for cid in filter_category_ids)]
+            if category_mode == "or":
+                sites = [s for s in sites if any(cid in (s.get("categoryIds") or []) for cid in filter_category_ids)]
+            else:
+                sites = [s for s in sites if all(cid in (s.get("categoryIds") or []) for cid in filter_category_ids)]
         search_q = (qs.get("q") or qs.get("search") or "").strip()
         if search_q:
             q_lower = search_q.lower()
@@ -669,6 +675,64 @@ def updateSite(event):
         return jsonResponse({"id": site_id, "url": url, "title": title, "description": description, "categoryIds": category_ids}, 200)
     except Exception as e:
         logger.exception("updateSite error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def deleteSite(event):
+    """Delete a site (manager or admin)."""
+    _, err = _requireManagerOrAdmin(event)
+    if err:
+        return err
+    if not TABLE_NAME:
+        return jsonResponse({"error": "TABLE_NAME not set"}, 500)
+    try:
+        import boto3
+        body = event.get("body")
+        if body and isinstance(body, str):
+            try:
+                body = json.loads(body)
+            except Exception:
+                body = {}
+        else:
+            body = {}
+        qs = event.get("queryStringParameters") or {}
+        site_id = (body.get("id") or qs.get("id") or "").strip()
+        if not site_id:
+            return jsonResponse({"error": "id is required"}, 400)
+        dynamodb = boto3.client("dynamodb")
+        region = os.environ.get("AWS_REGION", "us-east-1")
+        # Get logo key to delete from S3
+        get_resp = dynamodb.get_item(
+            TableName=TABLE_NAME,
+            Key={"PK": {"S": site_id}, "SK": {"S": "METADATA"}},
+            ProjectionExpression="logoKey",
+        )
+        if "Item" in get_resp and MEDIA_BUCKET:
+            logo_key = get_resp["Item"].get("logoKey", {}).get("S", "").strip()
+            if logo_key:
+                try:
+                    s3 = boto3.client("s3", region_name=region)
+                    s3.delete_object(Bucket=MEDIA_BUCKET, Key=logo_key)
+                except Exception as e:
+                    logger.warning("S3 delete logo failed for %s: %s", logo_key, e)
+        # Delete all items with this PK (METADATA + TAG#...)
+        result = dynamodb.query(
+            TableName=TABLE_NAME,
+            KeyConditionExpression="PK = :pk",
+            ExpressionAttributeValues={":pk": {"S": site_id}},
+            ProjectionExpression="PK, SK",
+        )
+        for item in result.get("Items", []):
+            pk = item.get("PK", {}).get("S", "")
+            sk = item.get("SK", {}).get("S", "")
+            if pk and sk:
+                dynamodb.delete_item(
+                    TableName=TABLE_NAME,
+                    Key={"PK": {"S": pk}, "SK": {"S": sk}},
+                )
+        return jsonResponse({"id": site_id, "deleted": True}, 200)
+    except Exception as e:
+        logger.exception("deleteSite error")
         return jsonResponse({"error": str(e)}, 500)
 
 
@@ -1296,10 +1360,7 @@ def _dynamoItemToDict(item):
 
 
 def listCategories(event):
-    """List all categories (manager or admin)."""
-    _, err = _requireManagerOrAdmin(event)
-    if err:
-        return err
+    """List all categories (public read for browse/filter)."""
     if not TABLE_NAME:
         return jsonResponse({"categories": [], "error": "TABLE_NAME not set"}, 200)
     try:
@@ -1543,6 +1604,7 @@ def listMedia(event, forceAll=False):
         limit_param = max(1, min(limit_param, 10000))
         category_ids_param = (qs.get("categoryIds") or "").strip()
         filter_category_ids = [x.strip() for x in category_ids_param.split(",") if x.strip()]
+        category_mode = (qs.get("categoryMode") or "").strip().lower() or "and"
 
         page_limit = None if use_no_limit else limit_param
         items = []
@@ -1564,10 +1626,16 @@ def listMedia(event, forceAll=False):
         media_list = [_dynamoItemToMedia(i) for i in items]
         _resolveCategoriesForMedia(dynamodb, media_list)
         if filter_category_ids:
-            media_list = [
-                m for m in media_list
-                if any(cid in (m.get("categoryIds") or []) for cid in filter_category_ids)
-            ]
+            if category_mode == "or":
+                media_list = [
+                    m for m in media_list
+                    if any(cid in (m.get("categoryIds") or []) for cid in filter_category_ids)
+                ]
+            else:
+                media_list = [
+                    m for m in media_list
+                    if all(cid in (m.get("categoryIds") or []) for cid in filter_category_ids)
+                ]
         search_q = (qs.get("q") or qs.get("search") or "").strip()
         if search_q:
             q_lower = search_q.lower()
@@ -1902,10 +1970,7 @@ def setMediaStar(event):
 
 
 def listMediaCategories(event):
-    """List media categories (manager or admin)."""
-    _, err = _requireManagerOrAdmin(event)
-    if err:
-        return err
+    """List media categories (public read for browse/filter)."""
     if not TABLE_NAME:
         return jsonResponse({"categories": [], "error": "TABLE_NAME not set"}, 200)
     try:
@@ -2757,13 +2822,15 @@ def addUserToGroup(event, username):
         cognito_system_groups = {"admin", "manager", "user"}
         if group_name == "admin" and not _canModifyAdminGroup(user):
             return jsonResponse({"error": "Forbidden: only SuperAdmin can add users to admin group"}, 403)
+        if group_name == "manager" and not _canModifyAdminGroup(user):
+            return jsonResponse({"error": "Forbidden: only SuperAdmin can add users to manager group"}, 403)
+        if group_name == "user" and "admin" not in user.get("groups", []) and "manager" not in user.get("groups", []):
+            return jsonResponse({"error": "Forbidden"}, 403)
 
         if not COGNITO_USER_POOL_ID:
             return jsonResponse({"error": "COGNITO_USER_POOL_ID not set"}, 500)
 
         if group_name in cognito_system_groups:
-            if group_name in ("manager", "user") and "admin" not in user.get("groups", []) and "manager" not in user.get("groups", []):
-                return jsonResponse({"error": "Forbidden"}, 403)
             import boto3
             cognito = boto3.client("cognito-idp")
             cognito.admin_add_user_to_group(
@@ -2820,13 +2887,17 @@ def removeUserFromGroup(event, username, group_name):
     user, err = _requireManagerOrAdmin(event)
     if err:
         return err
+    # Permission checks first (no Cognito needed) so we return 403 before 500 when pool not configured
+    cognito_system_groups = {"admin", "manager", "user"}
+    if group_name in cognito_system_groups:
+        if group_name == "admin" and not _canModifyAdminGroup(user):
+            return jsonResponse({"error": "Forbidden: only SuperAdmin can remove users from admin group"}, 403)
+        if group_name == "manager" and not _canModifyAdminGroup(user):
+            return jsonResponse({"error": "Forbidden: only SuperAdmin can remove users from manager group"}, 403)
     if not COGNITO_USER_POOL_ID:
         return jsonResponse({"error": "COGNITO_USER_POOL_ID not set"}, 500)
     try:
-        cognito_system_groups = {"admin", "manager", "user"}
         if group_name in cognito_system_groups:
-            if group_name == "admin" and not _canModifyAdminGroup(user):
-                return jsonResponse({"error": "Forbidden: only SuperAdmin can remove users from admin group"}, 403)
             import boto3
             cognito = boto3.client("cognito-idp")
             cognito.admin_remove_user_from_group(

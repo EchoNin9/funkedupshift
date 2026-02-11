@@ -40,6 +40,8 @@ const EditSitePage: React.FC = () => {
   const [categorySearch, setCategorySearch] = useState("");
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -149,6 +151,42 @@ const EditSitePage: React.FC = () => {
       (!categorySearch.trim() || (c.name || "").toLowerCase().includes(categorySearch.toLowerCase()))
   );
 
+  const handleGenerateDescription = async () => {
+    const u = url.trim();
+    if (!u) {
+      setError("Enter URL first.");
+      return;
+    }
+    const apiBase = getApiBaseUrl();
+    if (!apiBase) {
+      setError("API URL not set.");
+      return;
+    }
+    const w = window as any;
+    if (!w.auth?.getAccessToken) {
+      setError("Sign in required.");
+      return;
+    }
+    setIsGeneratingDesc(true);
+    setError(null);
+    try {
+      const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
+      const resp = await fetch(`${apiBase}/sites/generate-description`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ url: u })
+      });
+      if (!resp.ok) throw new Error(await resp.text());
+      const data = (await resp.json()) as { description?: string };
+      setDescription(data.description ?? "");
+      setDescriptionAiGenerated(true);
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to generate description.");
+    } finally {
+      setIsGeneratingDesc(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!siteId) return;
@@ -228,6 +266,31 @@ const EditSitePage: React.FC = () => {
     }
   };
 
+  const handleDelete = async () => {
+    if (!siteId) return;
+    if (!window.confirm("Delete this site? This cannot be undone.")) return;
+    const apiBase = getApiBaseUrl();
+    if (!apiBase) return;
+    const w = window as any;
+    if (!w.auth?.getAccessToken) return;
+    setIsDeleting(true);
+    setError(null);
+    try {
+      const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
+      const resp = await fetch(`${apiBase}/sites`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ id: siteId })
+      });
+      if (!resp.ok) throw new Error(await resp.text());
+      navigate("/websites");
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to delete site.");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   if (!canAccess) {
     return (
       <div className="space-y-4">
@@ -299,11 +362,26 @@ const EditSitePage: React.FC = () => {
           <label className="block text-sm font-medium text-slate-200 mb-1">Description</label>
           <textarea
             value={description}
-            onChange={(e) => setDescription(e.target.value)}
+            onChange={(e) => {
+              setDescription(e.target.value);
+              setDescriptionAiGenerated(false);
+            }}
+            placeholder="Short description"
             rows={4}
-            className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange"
+            className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-500 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange"
           />
-          <label className="mt-1 inline-flex items-center gap-2 text-xs text-slate-500">
+          <button
+            type="button"
+            onClick={handleGenerateDescription}
+            disabled={isGeneratingDesc || !url.trim()}
+            className="mt-2 rounded-md border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-slate-700 disabled:opacity-50"
+          >
+            {isGeneratingDesc ? "Generating…" : "Generate AI description"}
+          </button>
+          {descriptionAiGenerated && (
+            <span className="ml-2 text-xs uppercase tracking-wide text-slate-500">AI summary</span>
+          )}
+          <label className="mt-2 block inline-flex items-center gap-2 text-xs text-slate-500">
             <input
               type="checkbox"
               checked={descriptionAiGenerated}
@@ -431,13 +509,23 @@ const EditSitePage: React.FC = () => {
             className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm font-mono text-slate-50 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange"
           />
         </div>
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="inline-flex items-center justify-center rounded-md bg-brand-orange px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-orange-500 disabled:opacity-50"
-        >
-          {isSubmitting ? "Saving…" : "Save changes"}
-        </button>
+        <div className="flex flex-wrap gap-3">
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="inline-flex items-center justify-center rounded-md bg-brand-orange px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-orange-500 disabled:opacity-50"
+          >
+            {isSubmitting ? "Saving…" : "Save changes"}
+          </button>
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={isDeleting || isSubmitting}
+            className="rounded-md border border-red-500/60 px-4 py-2 text-sm font-medium text-red-400 hover:bg-red-500/20 disabled:opacity-50"
+          >
+            {isDeleting ? "Deleting…" : "Delete entry"}
+          </button>
+        </div>
         {message && (
           <div className="rounded-md border border-emerald-500/60 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">
             {message}

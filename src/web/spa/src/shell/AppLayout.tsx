@@ -17,7 +17,11 @@ import AddMediaPage from "../features/admin/AddMediaPage";
 import EditMediaPage from "../features/admin/EditMediaPage";
 import CategoriesPage from "../features/admin/CategoriesPage";
 import MediaCategoriesPage from "../features/admin/MediaCategoriesPage";
+import UsersPage from "../features/admin/UsersPage";
+import EditUserPage from "../features/admin/EditUserPage";
+import GroupsPage from "../features/admin/GroupsPage";
 import AuthPage from "../features/auth/AuthPage";
+import ProfilePage from "../features/profile/ProfilePage";
 
 interface NavItem {
   label: string;
@@ -30,14 +34,15 @@ const navItems: NavItem[] = [
   { label: "Websites", to: "/websites", section: "discover", minRole: "guest" },
   { label: "Media", to: "/media", section: "discover", minRole: "guest" },
   { label: "Internet Dashboard", to: "/internet-dashboard", section: "discover", minRole: "guest" },
+  { label: "Profile", to: "/profile", section: "discover", minRole: "user" },
   { label: "Squash", to: "/squash", section: "squash", minRole: "user" },
   { label: "Squash Admin", to: "/squash-admin", section: "squash", minRole: "manager" },
   { label: "Add Site", to: "/admin/sites/add", section: "admin", minRole: "manager" },
   { label: "Add Media", to: "/admin/media/add", section: "admin", minRole: "manager" },
   { label: "Categories", to: "/admin/categories", section: "admin", minRole: "manager" },
   { label: "Media Categories", to: "/admin/media-categories", section: "admin", minRole: "manager" },
-  { label: "Users", to: "/admin/users", section: "admin", minRole: "superadmin" },
-  { label: "Groups", to: "/admin/groups", section: "admin", minRole: "superadmin" },
+  { label: "Users", to: "/admin/users", section: "admin", minRole: "manager" },
+  { label: "Groups", to: "/admin/groups", section: "admin", minRole: "manager" },
   { label: "Branding", to: "/admin/branding", section: "admin", minRole: "superadmin" }
 ];
 
@@ -255,7 +260,11 @@ const AppLayout: React.FC = () => {
               <Route path="/admin/media/edit/:id" element={<EditMediaPage />} />
               <Route path="/admin/categories" element={<CategoriesPage />} />
               <Route path="/admin/media-categories" element={<MediaCategoriesPage />} />
+              <Route path="/admin/users" element={<UsersPage />} />
+              <Route path="/admin/users/edit" element={<EditUserPage />} />
+              <Route path="/admin/groups" element={<GroupsPage />} />
               <Route path="/admin/*" element={<div>Admin area</div>} />
+              <Route path="/profile" element={<ProfilePage />} />
               <Route path="/auth" element={<AuthPage />} />
               <Route path="*" element={<div>Not found</div>} />
             </Routes>
@@ -279,6 +288,11 @@ const AppLayout: React.FC = () => {
             <Link to="/internet-dashboard" className="hover:text-slate-300">
               Internet dashboard
             </Link>
+            {user && (
+              <Link to="/profile" className="hover:text-slate-300">
+                Profile
+              </Link>
+            )}
             {hasRole(user ?? null, "superadmin") && (
               <Link to="/admin/branding" className="hover:text-slate-300">
                 Branding

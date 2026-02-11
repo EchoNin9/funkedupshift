@@ -188,6 +188,18 @@ def test_addUserToGroup_admin_requires_superadmin():
     assert "SuperAdmin" in body.get("error", "") or "admin" in body.get("error", "").lower()
 
 
+def test_addUserToGroup_manager_requires_superadmin():
+    """POST add to manager group as manager returns 403."""
+    from api.handler import handler
+    event = _manager_event("/admin/users/test@example.com/groups", method="POST", body={"groupName": "manager"})
+    event["rawPath"] = "/admin/users/test@example.com/groups"
+    event["pathParameters"] = {"username": "test@example.com"}
+    result = handler(event, None)
+    assert result["statusCode"] == 403
+    body = json.loads(result["body"])
+    assert "SuperAdmin" in body.get("error", "") or "manager" in body.get("error", "").lower()
+
+
 def test_addUserToGroup_requires_groupName():
     """POST /admin/users/{username}/groups without groupName returns 400."""
     from api.handler import handler
@@ -306,3 +318,15 @@ def test_deleteAdminGroup_requires_manager_or_admin():
     event["pathParameters"] = {"name": "test-group"}
     result = handler(event, None)
     assert result["statusCode"] == 403
+
+
+def test_removeUserFromGroup_manager_requires_superadmin():
+    """DELETE remove from manager group as manager returns 403."""
+    from api.handler import handler
+    event = _manager_event("/admin/users/test@example.com/groups/manager", method="DELETE")
+    event["rawPath"] = "/admin/users/test@example.com/groups/manager"
+    event["pathParameters"] = {"username": "test@example.com", "groupName": "manager"}
+    result = handler(event, None)
+    assert result["statusCode"] == 403
+    body = json.loads(result["body"])
+    assert "SuperAdmin" in body.get("error", "") or "manager" in body.get("error", "").lower()

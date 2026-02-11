@@ -34,6 +34,7 @@ const MediaPage: React.FC = () => {
   const [items, setItems] = useState<MediaItem[]>([]);
   const [search, setSearch] = useState("");
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
+  const [categoryMode, setCategoryMode] = useState<"and" | "or">("and");
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const [categorySearch, setCategorySearch] = useState("");
   const [sort, setSort] = useState<SortKey>("avgDesc");
@@ -44,26 +45,61 @@ const MediaPage: React.FC = () => {
   const canRate = !!user;
   const canEdit = hasRole(user ?? null, "manager");
   const categoryDropdownRef = useRef<HTMLDivElement>(null);
+  const [allCategories, setAllCategories] = useState<MediaCategory[]>([]);
 
-  const availableCategories = useMemo(() => {
-    const byId = new Map<string | undefined, MediaCategory>();
-    items.forEach((m) => {
+  useEffect(() => {
+    const apiBase = getApiBaseUrl();
+    if (!apiBase) return;
+    let cancelled = false;
+    fetch(`${apiBase}/media-categories`)
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("Failed to load categories"))))
+      .then((data: { categories?: { PK?: string; id?: string; name?: string }[] }) => {
+        if (cancelled) return;
+        const list = (data.categories ?? []).map((c) => ({
+          id: c.PK || c.id || "",
+          name: c.name || c.PK || ""
+        }));
+        list.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+        setAllCategories(list);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
+  const categoriesForDropdown = useMemo(() => {
+    if (categoryMode === "or" && allCategories.length > 0) return allCategories;
+    const fromItems = new Map<string, MediaCategory>();
+    items.forEach((m) =>
       (m.categories || []).forEach((c) => {
-        if (c.id && !byId.has(c.id)) byId.set(c.id, c);
-      });
+        if (c.id && !fromItems.has(c.id)) fromItems.set(c.id, c);
+      })
+    );
+    const combined = [...allCategories];
+    fromItems.forEach((c) => {
+      if (!combined.some((x) => x.id === c.id)) combined.push(c);
     });
-    return Array.from(byId.values()).sort((a, b) => (a.name || "").localeCompare(b.name || ""));
-  }, [items]);
+    combined.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    return combined;
+  }, [allCategories, categoryMode, items]);
 
   const filteredCategoryOptions = useMemo(() => {
-    return availableCategories.filter(
+    return categoriesForDropdown.filter(
       (c) =>
         !selectedCategoryIds.includes(c.id) &&
         (!categorySearch.trim() || (c.name || "").toLowerCase().includes(categorySearch.toLowerCase()))
     );
-  }, [availableCategories, selectedCategoryIds, categorySearch]);
+  }, [categoriesForDropdown, selectedCategoryIds, categorySearch]);
+
+  const hasActiveSearch = search.trim().length > 0 || selectedCategoryIds.length > 0;
 
   useEffect(() => {
+    if (!hasActiveSearch) {
+      setItems([]);
+      setPage(1);
+      setIsLoading(false);
+      setError(null);
+      return;
+    }
     const apiBase = getApiBaseUrl();
     if (!apiBase) {
       setError("API URL not set. Deploy via CI or set window.API_BASE_URL in config.js.");
@@ -77,7 +113,10 @@ const MediaPage: React.FC = () => {
         const params = new URLSearchParams();
         params.set("limit", "100");
         if (search.trim()) params.set("q", search.trim());
-        if (selectedCategoryIds.length > 0) params.set("categoryIds", selectedCategoryIds.join(","));
+        if (selectedCategoryIds.length > 0) {
+          params.set("categoryIds", selectedCategoryIds.join(","));
+          params.set("categoryMode", categoryMode);
+        }
         const resp = await fetch(`${apiBase}/media?${params.toString()}`);
         if (!resp.ok) {
           const txt = await resp.text();
@@ -97,7 +136,7 @@ const MediaPage: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [search, selectedCategoryIds]);
+  }, [hasActiveSearch, search, selectedCategoryIds, categoryMode]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -217,7 +256,7 @@ const MediaPage: React.FC = () => {
                       onClick={() => {
                         setSelectedCategoryIds((prev) => (prev.includes(c.id) ? prev : [...prev, c.id]));
                         setCategorySearch("");
-                        setCategoryDropdownOpen(false);
+                        // Keep dropdown open for multi-select (same as add media page)
                       }}
                       className="block w-full px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-800"
                     >
@@ -226,14 +265,14 @@ const MediaPage: React.FC = () => {
                   ))
                 ) : (
                   <p className="px-3 py-2 text-xs text-slate-500">
-                    {availableCategories.length === 0 ? "Search media first to load categories." : "No matches or all selected."}
+                    {categoriesForDropdown.length === 0 ? "No categories yet." : "No matches or all selected."}
                   </p>
                 )}
               </div>
             )}
             <div className="mt-2 flex flex-wrap gap-1">
               {selectedCategoryIds.map((cid) => {
-                const c = availableCategories.find((x) => x.id === cid);
+                const c = categoriesForDropdown.find((x) => x.id === cid);
                 return (
                   <span
                     key={cid}
@@ -252,6 +291,31 @@ const MediaPage: React.FC = () => {
                 );
               })}
             </div>
+            {selectedCategoryIds.length > 0 && (
+              <div className="mt-2 flex items-center gap-2">
+                <span className="text-xs text-slate-500">Match:</span>
+                <div className="inline-flex rounded-md border border-slate-700 bg-slate-950 p-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setCategoryMode("and")}
+                    className={`rounded px-2 py-0.5 text-xs font-medium ${
+                      categoryMode === "and" ? "bg-brand-orange text-slate-950" : "text-slate-400 hover:text-slate-200"
+                    }`}
+                  >
+                    AND
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCategoryMode("or")}
+                    className={`rounded px-2 py-0.5 text-xs font-medium ${
+                      categoryMode === "or" ? "bg-brand-orange text-slate-950" : "text-slate-400 hover:text-slate-200"
+                    }`}
+                  >
+                    OR
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="flex flex-wrap gap-3 items-center text-xs text-slate-400">
@@ -270,7 +334,7 @@ const MediaPage: React.FC = () => {
               <option value="alphaDesc">Title Z–A</option>
             </select>
             <span className="text-slate-500">
-              {sortedItems.length === 0 ? "No media found." : `${sortedItems.length} items`}
+              {!hasActiveSearch ? "" : sortedItems.length === 0 ? "No media found." : `${sortedItems.length} items`}
             </span>
           </div>
         </div>
@@ -282,7 +346,13 @@ const MediaPage: React.FC = () => {
         </div>
       )}
 
-      {isLoading ? (
+      {!hasActiveSearch ? (
+        <div className="flex items-center justify-center min-h-[280px]">
+          <p className="text-2xl sm:text-3xl font-light text-slate-500/80 tracking-wide animate-pulse">
+            Enter search term or select categories
+          </p>
+        </div>
+      ) : isLoading ? (
         <div className="text-sm text-slate-400">Loading media…</div>
       ) : (
         <ul className="space-y-3">
@@ -386,7 +456,7 @@ const MediaPage: React.FC = () => {
         </ul>
       )}
 
-      {totalPages > 1 && (
+      {hasActiveSearch && totalPages > 1 && (
         <div className="mt-2 flex flex-wrap items-center justify-center gap-2 text-xs">
           <button
             type="button"

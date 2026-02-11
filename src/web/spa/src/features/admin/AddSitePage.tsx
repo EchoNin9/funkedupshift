@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 import { useAuth, hasRole } from "../../shell/AuthContext";
@@ -27,6 +27,7 @@ const AddSitePage: React.FC = () => {
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [logoError, setLogoError] = useState<string | null>(null);
+  const [logoImageUrl, setLogoImageUrl] = useState("");
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [categorySearch, setCategorySearch] = useState("");
@@ -37,6 +38,7 @@ const AddSitePage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   const canAccess = hasRole(user ?? null, "manager");
+  const categoryDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!canAccess) return;
@@ -58,6 +60,7 @@ const AddSitePage: React.FC = () => {
   const onLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     setLogoFile(file ?? null);
+    if (file) setLogoImageUrl("");
     setLogoError(null);
     if (logoPreview) {
       URL.revokeObjectURL(logoPreview);
@@ -84,11 +87,23 @@ const AddSitePage: React.FC = () => {
   const addCategory = (id: string) => {
     if (!selectedCategoryIds.includes(id)) setSelectedCategoryIds([...selectedCategoryIds, id]);
     setCategorySearch("");
-    setCategoryDropdownOpen(false);
+    // Keep dropdown open for multi-select
   };
   const removeCategory = (id: string) => {
     setSelectedCategoryIds(selectedCategoryIds.filter((x) => x !== id));
   };
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(e.target as Node)) {
+        setCategoryDropdownOpen(false);
+      }
+    }
+    if (categoryDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [categoryDropdownOpen]);
 
   const filteredCategories = categories.filter(
     (c) =>
@@ -156,7 +171,19 @@ const AddSitePage: React.FC = () => {
     try {
       const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
       let logoKey: string | null = null;
-      if (logoFile) {
+      if (logoImageUrl.trim()) {
+        const importResp = await fetch(`${apiBase}/sites/logo-from-url`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ siteId: "new", imageUrl: logoImageUrl.trim() })
+        });
+        if (!importResp.ok) {
+          const errBody = await importResp.json().catch(() => ({}));
+          throw new Error((errBody as { error?: string }).error || await importResp.text());
+        }
+        const importData = (await importResp.json()) as { key?: string };
+        if (importData.key) logoKey = importData.key;
+      } else if (logoFile) {
         const uploadResp = await fetch(`${apiBase}/sites/logo-upload`, {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -281,6 +308,17 @@ const AddSitePage: React.FC = () => {
             onChange={onLogoChange}
             className="block w-full text-xs text-slate-300 file:mr-3 file:rounded-md file:border-0 file:bg-slate-800 file:px-3 file:py-1.5 file:text-slate-100"
           />
+          <p className="mt-2 text-xs text-slate-500">Or paste image URL (image will be copied to S3 on save):</p>
+          <input
+            type="url"
+            value={logoImageUrl}
+            onChange={(e) => {
+              setLogoImageUrl(e.target.value);
+              if (e.target.value.trim()) setLogoFile(null);
+            }}
+            placeholder="https://example.com/logo.png"
+            className="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-500 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange"
+          />
           {logoPreview && (
             <div className="mt-2">
               <img src={logoPreview} alt="Preview" className="h-16 w-16 rounded-lg border border-slate-700 object-cover" />
@@ -288,7 +326,7 @@ const AddSitePage: React.FC = () => {
           )}
           {logoError && <p className="mt-1 text-xs text-red-400">{logoError}</p>}
         </div>
-        <div className="relative">
+        <div ref={categoryDropdownRef} className="relative">
           <label className="block text-sm font-medium text-slate-200 mb-1">Categories (optional)</label>
           <input
             type="text"
@@ -300,10 +338,7 @@ const AddSitePage: React.FC = () => {
           />
           {categoryDropdownOpen && (
             <>
-              <div
-                className="absolute left-0 right-0 top-full z-10 mt-1 max-h-48 overflow-auto rounded-md border border-slate-700 bg-slate-900 shadow-lg"
-                onBlur={() => setCategoryDropdownOpen(false)}
-              >
+              <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-48 overflow-auto rounded-md border border-slate-700 bg-slate-900 shadow-lg">
                 {filteredCategories.length ? (
                   filteredCategories.map((c) => (
                     <button
