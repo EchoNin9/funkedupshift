@@ -1328,6 +1328,14 @@ resource "aws_apigatewayv2_route" "adminUserGroupsPost" {
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
+resource "aws_apigatewayv2_route" "adminUserDelete" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "DELETE /admin/users/{username}"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
 resource "aws_apigatewayv2_route" "adminUserGroupsDelete" {
   api_id             = aws_apigatewayv2_api.main.id
   route_key          = "DELETE /admin/users/{username}/groups/{groupName}"

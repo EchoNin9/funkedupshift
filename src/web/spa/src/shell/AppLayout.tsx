@@ -54,20 +54,44 @@ const adminGroupLabels: Record<string, string> = {
 };
 
 const adminGroupOrder = ["membership", "websites", "media"] as const;
+const WINDOWSHADE_STORAGE_KEY = "funkedupshift_adminGroupOpen";
+const DEFAULT_COLLAPSED = { membership: false, websites: false, media: false };
+
+function loadWindowshadeState(): Record<string, boolean> {
+  try {
+    const raw = sessionStorage.getItem(WINDOWSHADE_STORAGE_KEY);
+    if (!raw) return { ...DEFAULT_COLLAPSED };
+    const parsed = JSON.parse(raw);
+    if (typeof parsed !== "object" || parsed === null) return { ...DEFAULT_COLLAPSED };
+    return { ...DEFAULT_COLLAPSED, ...parsed };
+  } catch {
+    return { ...DEFAULT_COLLAPSED };
+  }
+}
+
+function saveWindowshadeState(state: Record<string, boolean>) {
+  try {
+    sessionStorage.setItem(WINDOWSHADE_STORAGE_KEY, JSON.stringify(state));
+  } catch {
+    /* ignore */
+  }
+}
 
 const AppLayout: React.FC = () => {
   const { user, isLoading, signOut } = useAuth();
   const { logo } = useBranding();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = React.useState(false);
-  const [adminGroupOpen, setAdminGroupOpen] = React.useState<Record<string, boolean>>({
-    membership: true,
-    websites: true,
-    media: true
-  });
+  const [adminGroupOpen, setAdminGroupOpen] = React.useState<Record<string, boolean>>(
+    loadWindowshadeState
+  );
 
   const toggleAdminGroup = (key: string) => {
-    setAdminGroupOpen((prev) => ({ ...prev, [key]: !prev[key] }));
+    setAdminGroupOpen((prev) => {
+      const next = { ...prev, [key]: !prev[key] };
+      saveWindowshadeState(next);
+      return next;
+    });
   };
 
   const handleSignOut = () => {
@@ -186,7 +210,7 @@ const AppLayout: React.FC = () => {
                   {adminGroupOrder.map((groupKey) => {
                     const items = adminGroupItems(groupKey);
                     if (items.length === 0) return null;
-                    const isOpen = adminGroupOpen[groupKey] ?? true;
+                    const isOpen = adminGroupOpen[groupKey] ?? false;
                     const label = adminGroupLabels[groupKey];
                     return (
                       <div key={groupKey}>
@@ -284,7 +308,7 @@ const AppLayout: React.FC = () => {
                     {adminGroupOrder.map((groupKey) => {
                       const items = adminGroupItems(groupKey);
                       if (items.length === 0) return null;
-                      const isOpen = adminGroupOpen[groupKey] ?? true;
+                      const isOpen = adminGroupOpen[groupKey] ?? false;
                       const label = adminGroupLabels[groupKey];
                       return (
                         <div key={groupKey}>
