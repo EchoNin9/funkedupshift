@@ -169,6 +169,8 @@ def handler(event, context):
             return generateDescription(event)
         if method == "PUT" and path == "/sites":
             return updateSite(event)
+        if method == "DELETE" and path == "/sites":
+            return deleteSite(event)
         if method == "GET" and path == "/me":
             return getMe(event)
         if method == "GET" and path == "/profile":
@@ -673,6 +675,64 @@ def updateSite(event):
         return jsonResponse({"id": site_id, "url": url, "title": title, "description": description, "categoryIds": category_ids}, 200)
     except Exception as e:
         logger.exception("updateSite error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def deleteSite(event):
+    """Delete a site (manager or admin)."""
+    _, err = _requireManagerOrAdmin(event)
+    if err:
+        return err
+    if not TABLE_NAME:
+        return jsonResponse({"error": "TABLE_NAME not set"}, 500)
+    try:
+        import boto3
+        body = event.get("body")
+        if body and isinstance(body, str):
+            try:
+                body = json.loads(body)
+            except Exception:
+                body = {}
+        else:
+            body = {}
+        qs = event.get("queryStringParameters") or {}
+        site_id = (body.get("id") or qs.get("id") or "").strip()
+        if not site_id:
+            return jsonResponse({"error": "id is required"}, 400)
+        dynamodb = boto3.client("dynamodb")
+        region = os.environ.get("AWS_REGION", "us-east-1")
+        # Get logo key to delete from S3
+        get_resp = dynamodb.get_item(
+            TableName=TABLE_NAME,
+            Key={"PK": {"S": site_id}, "SK": {"S": "METADATA"}},
+            ProjectionExpression="logoKey",
+        )
+        if "Item" in get_resp and MEDIA_BUCKET:
+            logo_key = get_resp["Item"].get("logoKey", {}).get("S", "").strip()
+            if logo_key:
+                try:
+                    s3 = boto3.client("s3", region_name=region)
+                    s3.delete_object(Bucket=MEDIA_BUCKET, Key=logo_key)
+                except Exception as e:
+                    logger.warning("S3 delete logo failed for %s: %s", logo_key, e)
+        # Delete all items with this PK (METADATA + TAG#...)
+        result = dynamodb.query(
+            TableName=TABLE_NAME,
+            KeyConditionExpression="PK = :pk",
+            ExpressionAttributeValues={":pk": {"S": site_id}},
+            ProjectionExpression="PK, SK",
+        )
+        for item in result.get("Items", []):
+            pk = item.get("PK", {}).get("S", "")
+            sk = item.get("SK", {}).get("S", "")
+            if pk and sk:
+                dynamodb.delete_item(
+                    TableName=TABLE_NAME,
+                    Key={"PK": {"S": pk}, "SK": {"S": sk}},
+                )
+        return jsonResponse({"id": site_id, "deleted": True}, 200)
+    except Exception as e:
+        logger.exception("deleteSite error")
         return jsonResponse({"error": str(e)}, 500)
 
 
