@@ -77,7 +77,16 @@ const WebsitesPage: React.FC = () => {
     );
   }, [categoriesForDropdown, selectedCategoryIds, categorySearch]);
 
+  const hasActiveSearch = search.trim().length > 0 || selectedCategoryIds.length > 0;
+
   useEffect(() => {
+    if (!hasActiveSearch) {
+      setSites([]);
+      setPage(1);
+      setIsLoading(false);
+      setError(null);
+      return;
+    }
     const apiBase = getApiBaseUrl();
     if (!apiBase) {
       setError("API URL not set. Deploy via CI or set window.API_BASE_URL in config.js.");
@@ -114,7 +123,7 @@ const WebsitesPage: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [search, selectedCategoryIds, categoryMode]);
+  }, [hasActiveSearch, search, selectedCategoryIds, categoryMode]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -312,7 +321,7 @@ const WebsitesPage: React.FC = () => {
               <option value="alphaDesc">Title Z–A</option>
             </select>
             <span className="text-slate-500">
-              {sortedSites.length === 0 ? "No sites found." : `${sortedSites.length} sites`}
+              {!hasActiveSearch ? "" : sortedSites.length === 0 ? "No sites found." : `${sortedSites.length} sites`}
             </span>
           </div>
         </div>
@@ -324,7 +333,13 @@ const WebsitesPage: React.FC = () => {
         </div>
       )}
 
-      {isLoading ? (
+      {!hasActiveSearch ? (
+        <div className="flex items-center justify-center min-h-[280px]">
+          <p className="text-2xl sm:text-3xl font-light text-slate-500/80 tracking-wide animate-pulse">
+            Enter search term or select categories
+          </p>
+        </div>
+      ) : isLoading ? (
         <div className="text-sm text-slate-400">Loading sites…</div>
       ) : (
         <ul className="space-y-2">
@@ -424,7 +439,7 @@ const WebsitesPage: React.FC = () => {
         </ul>
       )}
 
-      {totalPages > 1 && (
+      {hasActiveSearch && totalPages > 1 && (
         <div className="mt-2 flex flex-wrap items-center justify-center gap-2 text-xs">
           <button
             type="button"

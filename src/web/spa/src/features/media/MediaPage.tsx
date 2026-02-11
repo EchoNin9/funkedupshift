@@ -78,7 +78,16 @@ const MediaPage: React.FC = () => {
     );
   }, [categoriesForDropdown, selectedCategoryIds, categorySearch]);
 
+  const hasActiveSearch = search.trim().length > 0 || selectedCategoryIds.length > 0;
+
   useEffect(() => {
+    if (!hasActiveSearch) {
+      setItems([]);
+      setPage(1);
+      setIsLoading(false);
+      setError(null);
+      return;
+    }
     const apiBase = getApiBaseUrl();
     if (!apiBase) {
       setError("API URL not set. Deploy via CI or set window.API_BASE_URL in config.js.");
@@ -115,7 +124,7 @@ const MediaPage: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [search, selectedCategoryIds, categoryMode]);
+  }, [hasActiveSearch, search, selectedCategoryIds, categoryMode]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -313,7 +322,7 @@ const MediaPage: React.FC = () => {
               <option value="alphaDesc">Title Z–A</option>
             </select>
             <span className="text-slate-500">
-              {sortedItems.length === 0 ? "No media found." : `${sortedItems.length} items`}
+              {!hasActiveSearch ? "" : sortedItems.length === 0 ? "No media found." : `${sortedItems.length} items`}
             </span>
           </div>
         </div>
@@ -325,7 +334,13 @@ const MediaPage: React.FC = () => {
         </div>
       )}
 
-      {isLoading ? (
+      {!hasActiveSearch ? (
+        <div className="flex items-center justify-center min-h-[280px]">
+          <p className="text-2xl sm:text-3xl font-light text-slate-500/80 tracking-wide animate-pulse">
+            Enter search term or select categories
+          </p>
+        </div>
+      ) : isLoading ? (
         <div className="text-sm text-slate-400">Loading media…</div>
       ) : (
         <ul className="space-y-3">
@@ -429,7 +444,7 @@ const MediaPage: React.FC = () => {
         </ul>
       )}
 
-      {totalPages > 1 && (
+      {hasActiveSearch && totalPages > 1 && (
         <div className="mt-2 flex flex-wrap items-center justify-center gap-2 text-xs">
           <button
             type="button"
