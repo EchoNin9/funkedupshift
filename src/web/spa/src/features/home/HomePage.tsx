@@ -19,7 +19,7 @@ const HomePage: React.FC = () => {
           <div className="flex flex-wrap gap-3 pt-2">
             <Link
               to="/websites"
-              className="inline-flex items-center rounded-full bg-slate-950/90 px-4 py-2 text-sm font-semibold text-slate-50 shadow-lg shadow-slate-950/40 hover:bg-slate-900"
+              className="inline-flex items-center rounded-full border border-slate-500/60 px-4 py-2 text-sm font-semibold text-slate-100 hover:border-slate-300/80"
             >
               Browse websites
             </Link>
