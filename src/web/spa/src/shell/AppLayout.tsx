@@ -11,15 +11,12 @@ import MediaPage from "../features/media/MediaPage";
 import MediaDetailPage from "../features/media/MediaDetailPage";
 import DashboardPage from "../features/dashboard/DashboardPage";
 import BrandingPage from "../features/admin/BrandingPage";
-import AddSitePage from "../features/admin/AddSitePage";
+import MembershipPage from "../features/admin/MembershipPage";
+import WebsitesAdminPage from "../features/admin/WebsitesAdminPage";
+import MediaAdminPage from "../features/admin/MediaAdminPage";
 import EditSitePage from "../features/admin/EditSitePage";
-import AddMediaPage from "../features/admin/AddMediaPage";
 import EditMediaPage from "../features/admin/EditMediaPage";
-import CategoriesPage from "../features/admin/CategoriesPage";
-import MediaCategoriesPage from "../features/admin/MediaCategoriesPage";
-import UsersPage from "../features/admin/UsersPage";
 import EditUserPage from "../features/admin/EditUserPage";
-import GroupsPage from "../features/admin/GroupsPage";
 import AuthPage from "../features/auth/AuthPage";
 import ProfilePage from "../features/profile/ProfilePage";
 import SquashPage from "../features/squash/SquashPage";
@@ -40,12 +37,9 @@ const navItems: NavItem[] = [
   { label: "Profile", to: "/profile", section: "discover", minRole: "user" },
   { label: "Squash", to: "/squash", section: "squash", minRole: "user" },
   { label: "Squash Admin", to: "/squash-admin", section: "squash", minRole: "manager" },
-  { label: "Add Site", to: "/admin/sites/add", section: "admin", minRole: "manager", adminGroup: "websites" },
-  { label: "Categories", to: "/admin/categories", section: "admin", minRole: "manager", adminGroup: "websites" },
-  { label: "Add Media", to: "/admin/media/add", section: "admin", minRole: "manager", adminGroup: "media" },
-  { label: "Media Categories", to: "/admin/media-categories", section: "admin", minRole: "manager", adminGroup: "media" },
-  { label: "Users", to: "/admin/users", section: "admin", minRole: "manager", adminGroup: "membership" },
-  { label: "Groups", to: "/admin/groups", section: "admin", minRole: "manager", adminGroup: "membership" },
+  { label: "Membership", to: "/admin/membership", section: "admin", minRole: "manager", adminGroup: "membership" },
+  { label: "Websites", to: "/admin/websites", section: "admin", minRole: "manager", adminGroup: "websites" },
+  { label: "Media", to: "/admin/media", section: "admin", minRole: "manager", adminGroup: "media" },
   { label: "Branding", to: "/admin/branding", section: "admin", minRole: "superadmin" }
 ];
 
@@ -375,15 +369,12 @@ const AppLayout: React.FC = () => {
               <Route path="/squash" element={<SquashPage />} />
               <Route path="/squash-admin" element={<SquashAdminPage />} />
               <Route path="/admin/branding" element={<BrandingPage />} />
-              <Route path="/admin/sites/add" element={<AddSitePage />} />
-              <Route path="/admin/sites/edit/:id" element={<EditSitePage />} />
-              <Route path="/admin/media/add" element={<AddMediaPage />} />
-              <Route path="/admin/media/edit/:id" element={<EditMediaPage />} />
-              <Route path="/admin/categories" element={<CategoriesPage />} />
-              <Route path="/admin/media-categories" element={<MediaCategoriesPage />} />
-              <Route path="/admin/users" element={<UsersPage />} />
+              <Route path="/admin/membership" element={<MembershipPage />} />
               <Route path="/admin/users/edit" element={<EditUserPage />} />
-              <Route path="/admin/groups" element={<GroupsPage />} />
+              <Route path="/admin/websites" element={<WebsitesAdminPage />} />
+              <Route path="/admin/sites/edit/:id" element={<EditSitePage />} />
+              <Route path="/admin/media" element={<MediaAdminPage />} />
+              <Route path="/admin/media/edit/:id" element={<EditMediaPage />} />
               <Route path="/admin/*" element={<div>Admin area</div>} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/auth" element={<AuthPage />} />
