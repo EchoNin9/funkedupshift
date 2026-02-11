@@ -62,10 +62,9 @@ const AuthPage: React.FC = () => {
         setMode("signin");
       }
 
-      // Give AuthContext a moment to see the new session, then return to previous context.
-      setTimeout(() => {
-        navigate(-1);
-      }, 800);
+      if (mode === "signin") {
+        setTimeout(() => navigate("/"), 800);
+      }
     } catch (err: any) {
       const msg = err?.message || "Authentication failed. Please try again.";
       setError(msg);

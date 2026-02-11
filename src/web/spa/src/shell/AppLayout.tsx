@@ -1,5 +1,5 @@
 import React from "react";
-import { Link, NavLink, Route, Routes } from "react-router-dom";
+import { Link, NavLink, Route, Routes, useNavigate } from "react-router-dom";
 import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
 import { Dialog } from "@headlessui/react";
 import { useAuth, hasRole } from "./AuthContext";
@@ -49,7 +49,14 @@ const navItems: NavItem[] = [
 const AppLayout: React.FC = () => {
   const { user, isLoading, signOut } = useAuth();
   const { logo } = useBranding();
+  const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = React.useState(false);
+
+  const handleSignOut = () => {
+    signOut();
+    setMobileOpen(false);
+    navigate("/");
+  };
 
   const role = user?.role ?? "guest";
 
@@ -104,7 +111,7 @@ const AppLayout: React.FC = () => {
                 </span>
                 <button
                   type="button"
-                  onClick={signOut}
+                  onClick={handleSignOut}
                   className="rounded-full border border-slate-700 px-3 py-1 text-xs font-medium text-slate-200 hover:bg-slate-800"
                 >
                   Sign out
