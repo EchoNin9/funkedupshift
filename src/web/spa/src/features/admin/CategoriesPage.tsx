@@ -29,6 +29,7 @@ const CategoriesPage: React.FC = () => {
   const [editDescription, setEditDescription] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const canAccess = hasRole(user ?? null, "manager");
 
@@ -113,6 +114,29 @@ const CategoriesPage: React.FC = () => {
       setUpdateError(e?.message ?? "Failed to update category.");
     } finally {
       setIsUpdating(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm("Delete this category? Sites using it will lose this category.")) return;
+    const apiBase = getApiBaseUrl();
+    if (!apiBase) return;
+    const w = window as any;
+    if (!w.auth?.getAccessToken) return;
+    setDeletingId(id);
+    try {
+      const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
+      const resp = await fetch(`${apiBase}/categories?id=${encodeURIComponent(id)}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!resp.ok) throw new Error(await resp.text());
+      setCategories((prev) => prev.filter((cat) => cat.id !== id));
+      if (editingId === id) cancelEdit();
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to delete category.");
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -240,7 +264,7 @@ const CategoriesPage: React.FC = () => {
                       placeholder="Description (optional)"
                       className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-500 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange"
                     />
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
                       <button
                         type="submit"
                         disabled={isUpdating || !editName.trim()}
@@ -255,20 +279,39 @@ const CategoriesPage: React.FC = () => {
                       >
                         Cancel
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(c.id)}
+                        disabled={deletingId === c.id}
+                        className="rounded-md border border-red-500/60 px-3 py-1.5 text-xs font-medium text-red-400 hover:bg-red-500/20 disabled:opacity-50"
+                      >
+                        {deletingId === c.id ? "Deleting…" : "Delete"}
+                      </button>
                     </div>
                     {updateError && (
                       <p className="text-xs text-red-400">{updateError}</p>
                     )}
                   </form>
                 ) : (
-                  <button
-                    type="button"
-                    onClick={() => startEdit(c)}
-                    className="block w-full text-left hover:bg-slate-800/50 rounded px-1 -mx-1 py-1 -my-1 transition-colors"
-                  >
-                    <span className="font-medium text-slate-200">{c.name}</span>
-                    {c.description && <span className="text-slate-500 truncate max-w-xs ml-2">{c.description}</span>}
-                  </button>
+                  <div className="flex items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={() => startEdit(c)}
+                      className="flex-1 min-w-0 text-left hover:bg-slate-800/50 rounded px-1 -mx-1 py-1 -my-1 transition-colors"
+                    >
+                      <span className="font-medium text-slate-200">{c.name}</span>
+                      {c.description && <span className="text-slate-500 truncate max-w-xs ml-2">{c.description}</span>}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(c.id)}
+                      disabled={deletingId === c.id}
+                      className="rounded px-2 py-1 text-xs font-medium text-red-400 hover:bg-red-500/20 disabled:opacity-50 shrink-0"
+                      aria-label="Delete category"
+                    >
+                      {deletingId === c.id ? "…" : "Delete"}
+                    </button>
+                  </div>
                 )}
               </li>
             ))}
