@@ -77,6 +77,7 @@ const EditUserPage: React.FC = () => {
   const [customDropdownOpen, setCustomDropdownOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [deleteInProgress, setDeleteInProgress] = useState(false);
   const [tzOffset, setTzOffset] = useState(-8);
 
   const canAccess = hasRole(user ?? null, "manager");
@@ -237,6 +238,32 @@ const EditUserPage: React.FC = () => {
     const v = parseInt(e.target.value, 10);
     setTzOffset(v);
     sessionStorage.setItem("funkedupshift_lastlogin_tz", String(v));
+  };
+
+  const handleDelete = async () => {
+    const displayEmail = emailParam || userData?.email || username;
+    if (!window.confirm(`Delete user "${displayEmail}"? This cannot be undone.`)) return;
+    const apiBase = getApiBaseUrl();
+    if (!apiBase) return;
+    const w = window as any;
+    if (!w.auth?.getAccessToken) return;
+    setDeleteInProgress(true);
+    try {
+      const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
+      const resp = await fetch(`${apiBase}/admin/users/${encodeURIComponent(username)}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!resp.ok) {
+        const d = await resp.json().catch(() => ({}));
+        throw new Error((d as { error?: string }).error || "Failed to delete user");
+      }
+      navigate("/admin/users");
+    } catch (e: any) {
+      setSaveError(e?.message ?? "Failed to delete user");
+    } finally {
+      setDeleteInProgress(false);
+    }
   };
 
   if (!canAccess) {
@@ -443,7 +470,7 @@ const EditUserPage: React.FC = () => {
           )}
         </div>
 
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3 items-center">
           <button
             type="submit"
             disabled={isSubmitting}
@@ -457,6 +484,16 @@ const EditUserPage: React.FC = () => {
           >
             Cancel
           </Link>
+          {isSuperAdmin && (
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={deleteInProgress || isSubmitting}
+              className="rounded-md border border-red-500/60 bg-red-500/10 px-4 py-2 text-sm font-medium text-red-200 hover:bg-red-500/20 disabled:opacity-50"
+            >
+              {deleteInProgress ? "Deleting…" : "Delete user"}
+            </button>
+          )}
         </div>
         {saveError && (
           <p className="text-sm text-red-400">{saveError}</p>

@@ -330,3 +330,40 @@ def test_removeUserFromGroup_manager_requires_superadmin():
     assert result["statusCode"] == 403
     body = json.loads(result["body"])
     assert "SuperAdmin" in body.get("error", "") or "manager" in body.get("error", "").lower()
+
+
+def test_deleteAdminUser_requires_superadmin():
+    """DELETE /admin/users/{username} as manager returns 403."""
+    from api.handler import handler
+    event = _manager_event("/admin/users/test@example.com", method="DELETE")
+    event["rawPath"] = "/admin/users/test@example.com"
+    event["pathParameters"] = {"username": "test@example.com"}
+    result = handler(event, None)
+    assert result["statusCode"] == 403
+
+
+@patch("api.handler.TABLE_NAME", "fus-main")
+@patch("api.handler.COGNITO_USER_POOL_ID", "us-east-1_abc123")
+@patch("boto3.client")
+def test_deleteAdminUser_superadmin_deletes_user(mock_boto_client):
+    """DELETE /admin/users/{username} as SuperAdmin deletes user."""
+    from api.handler import handler
+    mock_cognito = MagicMock()
+    mock_cognito.admin_get_user.return_value = {
+        "UserAttributes": [
+            {"Name": "sub", "Value": "sub-123"},
+            {"Name": "email", "Value": "test@example.com"},
+        ],
+    }
+    mock_dynamo = MagicMock()
+    mock_dynamo.query.return_value = {"Items": []}
+    mock_boto_client.side_effect = lambda svc: mock_cognito if svc == "cognito-idp" else mock_dynamo
+    event = _admin_event("/admin/users/test@example.com", method="DELETE")
+    event["rawPath"] = "/admin/users/test@example.com"
+    event["pathParameters"] = {"username": "test@example.com"}
+    result = handler(event, None)
+    assert result["statusCode"] == 200
+    mock_cognito.admin_delete_user.assert_called_once_with(
+        UserPoolId="us-east-1_abc123",
+        Username="test@example.com",
+    )

@@ -1,6 +1,6 @@
 import React from "react";
-import { Link, NavLink, Route, Routes } from "react-router-dom";
-import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
+import { Link, NavLink, Route, Routes, useNavigate } from "react-router-dom";
+import { Bars3Icon, ChevronDownIcon, ChevronRightIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { Dialog } from "@headlessui/react";
 import { useAuth, hasRole } from "./AuthContext";
 import { useBranding } from "./BrandingContext";
@@ -28,6 +28,7 @@ interface NavItem {
   to: string;
   section: "discover" | "squash" | "admin";
   minRole: "guest" | "user" | "manager" | "superadmin";
+  adminGroup?: "membership" | "websites" | "media";
 }
 
 const navItems: NavItem[] = [
@@ -37,19 +38,67 @@ const navItems: NavItem[] = [
   { label: "Profile", to: "/profile", section: "discover", minRole: "user" },
   { label: "Squash", to: "/squash", section: "squash", minRole: "user" },
   { label: "Squash Admin", to: "/squash-admin", section: "squash", minRole: "manager" },
-  { label: "Add Site", to: "/admin/sites/add", section: "admin", minRole: "manager" },
-  { label: "Add Media", to: "/admin/media/add", section: "admin", minRole: "manager" },
-  { label: "Categories", to: "/admin/categories", section: "admin", minRole: "manager" },
-  { label: "Media Categories", to: "/admin/media-categories", section: "admin", minRole: "manager" },
-  { label: "Users", to: "/admin/users", section: "admin", minRole: "manager" },
-  { label: "Groups", to: "/admin/groups", section: "admin", minRole: "manager" },
+  { label: "Add Site", to: "/admin/sites/add", section: "admin", minRole: "manager", adminGroup: "websites" },
+  { label: "Categories", to: "/admin/categories", section: "admin", minRole: "manager", adminGroup: "websites" },
+  { label: "Add Media", to: "/admin/media/add", section: "admin", minRole: "manager", adminGroup: "media" },
+  { label: "Media Categories", to: "/admin/media-categories", section: "admin", minRole: "manager", adminGroup: "media" },
+  { label: "Users", to: "/admin/users", section: "admin", minRole: "manager", adminGroup: "membership" },
+  { label: "Groups", to: "/admin/groups", section: "admin", minRole: "manager", adminGroup: "membership" },
   { label: "Branding", to: "/admin/branding", section: "admin", minRole: "superadmin" }
 ];
+
+const adminGroupLabels: Record<string, string> = {
+  membership: "Membership",
+  websites: "Websites",
+  media: "Media"
+};
+
+const adminGroupOrder = ["membership", "websites", "media"] as const;
+const WINDOWSHADE_STORAGE_KEY = "funkedupshift_adminGroupOpen";
+const DEFAULT_COLLAPSED = { membership: false, websites: false, media: false };
+
+function loadWindowshadeState(): Record<string, boolean> {
+  try {
+    const raw = sessionStorage.getItem(WINDOWSHADE_STORAGE_KEY);
+    if (!raw) return { ...DEFAULT_COLLAPSED };
+    const parsed = JSON.parse(raw);
+    if (typeof parsed !== "object" || parsed === null) return { ...DEFAULT_COLLAPSED };
+    return { ...DEFAULT_COLLAPSED, ...parsed };
+  } catch {
+    return { ...DEFAULT_COLLAPSED };
+  }
+}
+
+function saveWindowshadeState(state: Record<string, boolean>) {
+  try {
+    sessionStorage.setItem(WINDOWSHADE_STORAGE_KEY, JSON.stringify(state));
+  } catch {
+    /* ignore */
+  }
+}
 
 const AppLayout: React.FC = () => {
   const { user, isLoading, signOut } = useAuth();
   const { logo } = useBranding();
+  const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = React.useState(false);
+  const [adminGroupOpen, setAdminGroupOpen] = React.useState<Record<string, boolean>>(
+    loadWindowshadeState
+  );
+
+  const toggleAdminGroup = (key: string) => {
+    setAdminGroupOpen((prev) => {
+      const next = { ...prev, [key]: !prev[key] };
+      saveWindowshadeState(next);
+      return next;
+    });
+  };
+
+  const handleSignOut = () => {
+    signOut();
+    setMobileOpen(false);
+    navigate("/");
+  };
 
   const role = user?.role ?? "guest";
 
@@ -57,6 +106,8 @@ const AppLayout: React.FC = () => {
   const discoverItems = visibleNavItems.filter((i) => i.section === "discover");
   const squashItems = visibleNavItems.filter((i) => i.section === "squash");
   const adminItems = visibleNavItems.filter((i) => i.section === "admin");
+  const adminStandaloneItems = adminItems.filter((i) => !i.adminGroup);
+  const adminGroupItems = (group: string) => adminItems.filter((i) => i.adminGroup === group);
 
   const navLinkClass = ({ isActive }: { isActive: boolean }) =>
     [
@@ -83,7 +134,7 @@ const AppLayout: React.FC = () => {
                 <img
                   src={logo.url}
                   alt={logo.alt}
-                  className="h-8 w-8 rounded-md border border-slate-700 object-cover"
+                  className="h-8 w-auto rounded-md border border-slate-700 object-contain"
                 />
               ) : (
                 <div className="h-8 w-8 rounded-md border border-slate-700 bg-gradient-to-br from-brand-orange to-brand-navy" />
@@ -104,7 +155,7 @@ const AppLayout: React.FC = () => {
                 </span>
                 <button
                   type="button"
-                  onClick={signOut}
+                  onClick={handleSignOut}
                   className="rounded-full border border-slate-700 px-3 py-1 text-xs font-medium text-slate-200 hover:bg-slate-800"
                 >
                   Sign out
@@ -156,7 +207,38 @@ const AppLayout: React.FC = () => {
               <div>
                 <p className="text-xs font-semibold text-slate-500 uppercase mb-2">Admin</p>
                 <div className="space-y-1">
-                  {adminItems.map((item) => (
+                  {adminGroupOrder.map((groupKey) => {
+                    const items = adminGroupItems(groupKey);
+                    if (items.length === 0) return null;
+                    const isOpen = adminGroupOpen[groupKey] ?? false;
+                    const label = adminGroupLabels[groupKey];
+                    return (
+                      <div key={groupKey}>
+                        <button
+                          type="button"
+                          onClick={() => toggleAdminGroup(groupKey)}
+                          className="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800/70 hover:text-white"
+                        >
+                          {label}
+                          {isOpen ? (
+                            <ChevronDownIcon className="h-4 w-4 shrink-0" />
+                          ) : (
+                            <ChevronRightIcon className="h-4 w-4 shrink-0" />
+                          )}
+                        </button>
+                        {isOpen && (
+                          <div className="ml-2 mt-1 space-y-1 border-l border-slate-800 pl-2">
+                            {items.map((item) => (
+                              <NavLink key={item.to} to={item.to} className={navLinkClass}>
+                                {item.label}
+                              </NavLink>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                  {adminStandaloneItems.map((item) => (
                     <NavLink key={item.to} to={item.to} className={navLinkClass}>
                       {item.label}
                     </NavLink>
@@ -223,7 +305,43 @@ const AppLayout: React.FC = () => {
                 <div>
                   <p className="text-xs font-semibold text-slate-500 uppercase mb-2">Admin</p>
                   <div className="space-y-1">
-                    {adminItems.map((item) => (
+                    {adminGroupOrder.map((groupKey) => {
+                      const items = adminGroupItems(groupKey);
+                      if (items.length === 0) return null;
+                      const isOpen = adminGroupOpen[groupKey] ?? false;
+                      const label = adminGroupLabels[groupKey];
+                      return (
+                        <div key={groupKey}>
+                          <button
+                            type="button"
+                            onClick={() => toggleAdminGroup(groupKey)}
+                            className="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800/70 hover:text-white"
+                          >
+                            {label}
+                            {isOpen ? (
+                              <ChevronDownIcon className="h-4 w-4 shrink-0" />
+                            ) : (
+                              <ChevronRightIcon className="h-4 w-4 shrink-0" />
+                            )}
+                          </button>
+                          {isOpen && (
+                            <div className="ml-2 mt-1 space-y-1 border-l border-slate-800 pl-2">
+                              {items.map((item) => (
+                                <NavLink
+                                  key={item.to}
+                                  to={item.to}
+                                  className={navLinkClass}
+                                  onClick={() => setMobileOpen(false)}
+                                >
+                                  {item.label}
+                                </NavLink>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                    {adminStandaloneItems.map((item) => (
                       <NavLink
                         key={item.to}
                         to={item.to}

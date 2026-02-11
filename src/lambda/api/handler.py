@@ -246,6 +246,10 @@ def handler(event, context):
             username = path_params.get("username") or path.split("/admin/users/")[-1].rstrip("/groups").strip("/")
             if username:
                 return addUserToGroup(event, username)
+        if method == "DELETE" and path.startswith("/admin/users/") and "/groups/" not in path:
+            username = path_params.get("username") or path.split("/admin/users/")[-1].strip("/")
+            if username:
+                return deleteAdminUser(event, username)
         if method == "DELETE" and "/admin/users/" in path and "/groups/" in path:
             username = path_params.get("username")
             group_name = path_params.get("groupName")
@@ -2879,6 +2883,49 @@ def addUserToGroup(event, username):
         if "UserNotFoundException" in str(type(e).__name__) or "UserNotFoundException" in str(e):
             return jsonResponse({"error": "User not found"}, 404)
         logger.exception("addUserToGroup error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def deleteAdminUser(event, username):
+    """DELETE /admin/users/{username} - Delete user from Cognito and DynamoDB (SuperAdmin only)."""
+    _, err = _requireSuperAdmin(event)
+    if err:
+        return err
+    if not COGNITO_USER_POOL_ID:
+        return jsonResponse({"error": "COGNITO_USER_POOL_ID not set"}, 500)
+    try:
+        import boto3
+        cognito = boto3.client("cognito-idp")
+        user_resp = cognito.admin_get_user(
+            UserPoolId=COGNITO_USER_POOL_ID,
+            Username=username,
+        )
+        attrs = {a["Name"]: a["Value"] for a in user_resp.get("UserAttributes", [])}
+        sub = attrs.get("sub", "")
+        cognito.admin_delete_user(
+            UserPoolId=COGNITO_USER_POOL_ID,
+            Username=username,
+        )
+        if TABLE_NAME and sub:
+            dynamodb = boto3.client("dynamodb")
+            items = dynamodb.query(
+                TableName=TABLE_NAME,
+                KeyConditionExpression="PK = :pk",
+                ExpressionAttributeValues={":pk": {"S": f"USER#{sub}"}},
+            )
+            for item in items.get("Items", []):
+                pk = item.get("PK", {}).get("S", "")
+                sk = item.get("SK", {}).get("S", "")
+                if pk and sk:
+                    dynamodb.delete_item(
+                        TableName=TABLE_NAME,
+                        Key={"PK": {"S": pk}, "SK": {"S": sk}},
+                    )
+        return jsonResponse({"deleted": True, "username": username}, 200)
+    except Exception as e:
+        if "UserNotFoundException" in str(type(e).__name__) or "UserNotFoundException" in str(e):
+            return jsonResponse({"error": "User not found"}, 404)
+        logger.exception("deleteAdminUser error")
         return jsonResponse({"error": str(e)}, 500)
 
 
