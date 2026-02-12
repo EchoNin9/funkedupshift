@@ -407,6 +407,9 @@ const MediaAdminPage: React.FC = () => {
               onChange={onFileChange}
               className="block w-full text-xs text-slate-300 file:mr-3 file:rounded-md file:border-0 file:bg-slate-800 file:px-3 file:py-1.5 file:text-slate-100"
             />
+            <p className="mt-1 text-xs text-slate-500">
+              Videos get an auto-generated thumbnail from the 3–4 sec frame. Change it when editing.
+            </p>
             {filePreview && (
               <div className="mt-2">
                 {file?.type.startsWith("video/") ? (

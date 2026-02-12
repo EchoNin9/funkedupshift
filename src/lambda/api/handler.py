@@ -207,6 +207,8 @@ def handler(event, context):
             return getPresignedMediaUpload(event)
         if method == "POST" and path == "/media/thumbnail-upload":
             return getPresignedThumbnailUpload(event)
+        if method == "POST" and path == "/media/regenerate-thumbnail":
+            return postMediaRegenerateThumbnail(event)
         if method == "POST" and path == "/media/stars":
             return setMediaStar(event)
         if method == "GET" and path == "/media-categories":
@@ -1888,6 +1890,44 @@ def getPresignedThumbnailUpload(event):
         return jsonResponse({"uploadUrl": upload_url, "key": key})
     except Exception as e:
         logger.exception("getPresignedThumbnailUpload error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def postMediaRegenerateThumbnail(event):
+    """POST /media/regenerate-thumbnail - Trigger thumbnail regeneration for a video (manager or admin)."""
+    _, err = _requireManagerOrAdmin(event)
+    if err:
+        return err
+    try:
+        import boto3
+        body = json.loads(event.get("body", "{}"))
+        media_id = (body.get("mediaId") or body.get("id") or "").strip()
+        if not media_id:
+            return jsonResponse({"error": "mediaId is required"}, 400)
+        thumb_fn = os.environ.get("THUMB_FUNCTION_NAME", "fus-thumb")
+        region = os.environ.get("AWS_REGION", "us-east-1")
+        lambda_client = boto3.client("lambda", region_name=region)
+        payload = json.dumps({"source": "api", "action": "regenerate", "mediaId": media_id})
+        resp = lambda_client.invoke(
+            FunctionName=thumb_fn,
+            InvocationType="RequestResponse",
+            Payload=payload,
+        )
+        payload_out = resp.get("Payload")
+        if payload_out:
+            result = json.loads(payload_out.read().decode())
+            status_code = result.get("statusCode", 200)
+            body_str = result.get("body", "{}")
+            try:
+                body_out = json.loads(body_str) if isinstance(body_str, str) else body_str
+            except Exception:
+                body_out = {"error": body_str}
+            if status_code != 200:
+                return jsonResponse(body_out.get("error", "Regeneration failed"), statusCode=status_code)
+            return jsonResponse({"ok": True, "message": "Thumbnail regeneration started"})
+        return jsonResponse({"error": "No response from thumbnail service"}, 500)
+    except Exception as e:
+        logger.exception("postMediaRegenerateThumbnail error")
         return jsonResponse({"error": str(e)}, 500)
 
 

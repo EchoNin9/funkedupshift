@@ -22,7 +22,9 @@ const EditMediaPage: React.FC = () => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [mediaUrl, setMediaUrl] = useState<string | null>(null);
+  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
   const [mediaType, setMediaType] = useState<"image" | "video" | string>("image");
+  const [isRegenerating, setIsRegenerating] = useState(false);
   const [categories, setCategories] = useState<MediaCategory[]>([]);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [categorySearch, setCategorySearch] = useState("");
@@ -72,6 +74,7 @@ const EditMediaPage: React.FC = () => {
       setTitle((rec.title as string) ?? "");
       setDescription((rec.description as string) ?? "");
       setMediaUrl((rec.mediaUrl as string) || null);
+      setThumbnailUrl((rec.thumbnailUrl as string) || null);
       setMediaType((rec.mediaType as string) || "image");
       setSelectedCategoryIds(Array.isArray(rec.categoryIds) ? (rec.categoryIds as string[]) : []);
       const catResp = await fetch(`${apiBase}/media-categories`, { headers: { Authorization: `Bearer ${token}` } });
@@ -136,6 +139,38 @@ const EditMediaPage: React.FC = () => {
       setError(e?.message ?? "Failed to update media.");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleRegenerateThumbnail = async () => {
+    if (!mediaId) return;
+    const apiBase = getApiBaseUrl();
+    if (!apiBase) return;
+    const w = window as any;
+    if (!w.auth?.getAccessToken) return;
+    setIsRegenerating(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
+      const resp = await fetch(`${apiBase}/media/regenerate-thumbnail`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ mediaId })
+      });
+      if (!resp.ok) throw new Error(await resp.text());
+      setMessage("Thumbnail regeneration started. New thumbnail will appear in a few seconds.");
+      setTimeout(async () => {
+        const refresh = await fetch(`${apiBase}/media?id=${encodeURIComponent(mediaId)}`);
+        if (refresh.ok) {
+          const d = (await refresh.json()) as { media?: { thumbnailUrl?: string } };
+          if (d?.media?.thumbnailUrl) setThumbnailUrl(d.media.thumbnailUrl);
+        }
+      }, 6000);
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to regenerate thumbnail.");
+    } finally {
+      setIsRegenerating(false);
     }
   };
 
@@ -226,6 +261,28 @@ const EditMediaPage: React.FC = () => {
               />
             )}
           </div>
+          {mediaType === "video" && (
+            <div className="px-4 py-3 border-t border-slate-800 space-y-2">
+              <p className="text-xs font-medium text-slate-400">Thumbnail</p>
+              <div className="flex flex-wrap items-center gap-3">
+                {thumbnailUrl && (
+                  <img
+                    src={thumbnailUrl}
+                    alt="Thumbnail"
+                    className="h-16 w-auto rounded border border-slate-700 object-cover"
+                  />
+                )}
+                <button
+                  type="button"
+                  onClick={handleRegenerateThumbnail}
+                  disabled={isRegenerating}
+                  className="rounded-md border border-slate-600 px-3 py-1.5 text-sm font-medium text-slate-200 hover:bg-slate-800 disabled:opacity-50"
+                >
+                  {isRegenerating ? "Regenerating…" : "Take screenshot"}
+                </button>
+              </div>
+            </div>
+          )}
         </section>
       )}
 

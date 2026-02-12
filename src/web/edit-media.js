@@ -266,6 +266,54 @@
     });
   }
 
+  var takeScreenshotBtn = document.getElementById('takeScreenshotBtn');
+  if (takeScreenshotBtn) {
+    takeScreenshotBtn.addEventListener('click', function () {
+      var id = document.getElementById('mediaId').value.trim();
+      if (!id) return;
+      var thumbErr = document.getElementById('thumbnailError');
+      if (thumbErr) { thumbErr.textContent = ''; thumbErr.hidden = true; }
+      takeScreenshotBtn.disabled = true;
+      takeScreenshotBtn.textContent = 'Regenerating…';
+      fetchWithAuth(base + '/media/regenerate-thumbnail', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mediaId: id })
+      })
+        .then(function (r) {
+          if (r.ok) return r.json();
+          return r.text().then(function (t) { throw new Error(t || 'Regeneration failed'); });
+        })
+        .then(function () {
+          if (thumbErr) { thumbErr.textContent = 'Screenshot started. New thumbnail will appear in a few seconds.'; thumbErr.className = 'status'; thumbErr.hidden = false; }
+          takeScreenshotBtn.disabled = false;
+          takeScreenshotBtn.textContent = 'Take screenshot';
+          setTimeout(function () {
+            fetchWithAuth(base + '/media?id=' + encodeURIComponent(id))
+              .then(function (r) { return r.ok ? r.json() : null; })
+              .then(function (data) {
+                var m = data && data.media;
+                var thumbImg = document.getElementById('currentThumbImg');
+                var noThumbPlaceholder = document.getElementById('noThumbPlaceholder');
+                if (m && thumbImg) {
+                  if (m.thumbnailUrl && m.thumbnailUrl.trim()) {
+                    thumbImg.src = m.thumbnailUrl;
+                    thumbImg.style.display = 'block';
+                    if (noThumbPlaceholder) noThumbPlaceholder.hidden = true;
+                  }
+                  if (thumbErr) { thumbErr.textContent = ''; thumbErr.hidden = true; }
+                }
+              });
+          }, 6000);
+        })
+        .catch(function (e) {
+          if (thumbErr) { thumbErr.textContent = 'Error: ' + e.message; thumbErr.hidden = false; }
+          takeScreenshotBtn.disabled = false;
+          takeScreenshotBtn.textContent = 'Take screenshot';
+        });
+    });
+  }
+
   var thumbnailFileInput = document.getElementById('thumbnailFile');
   if (thumbnailFileInput) {
     thumbnailFileInput.addEventListener('change', function () {

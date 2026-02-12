@@ -26,12 +26,14 @@ def _extract_media_id(key):
 
 
 def handler(event, context):
-    """Process S3 event or MediaConvert completion event."""
+    """Process S3 event, MediaConvert completion event, or API-triggered regenerate."""
     try:
         if "Records" in event:
             return _handle_s3_event(event)
         if "detail" in event and event.get("source") == "aws.mediaconvert":
             return _handle_mediaconvert_event(event)
+        if event.get("source") == "api" and event.get("action") == "regenerate":
+            return _handle_regenerate(event)
         logger.warning("Unknown event format: %s", list(event.keys())[:5])
         return {"statusCode": 200, "body": "ignored"}
     except Exception as e:
@@ -189,6 +191,53 @@ def _process_video(bucket, key, media_id, use_first_frame=False):
         )
     except Exception as e:
         logger.exception("_process_video failed: %s", e)
+
+
+def _handle_regenerate(event):
+    """API-triggered thumbnail regeneration for a video. Clears existing thumbnail and submits MediaConvert job."""
+    import boto3
+
+    media_id = (event.get("mediaId") or "").strip()
+    if not media_id or not media_id.startswith("MEDIA#"):
+        logger.warning("regenerate: invalid mediaId")
+        return {"statusCode": 400, "body": json.dumps({"error": "mediaId required"})}
+    if not TABLE_NAME or not MEDIA_BUCKET:
+        logger.warning("TABLE_NAME or MEDIA_BUCKET not set")
+        return {"statusCode": 500, "body": json.dumps({"error": "server misconfigured"})}
+    try:
+        dynamodb = boto3.client("dynamodb", region_name=AWS_REGION)
+        resp = dynamodb.get_item(
+            TableName=TABLE_NAME,
+            Key={"PK": {"S": media_id}, "SK": {"S": "METADATA"}},
+            ProjectionExpression="mediaKey, mediaType, thumbnailKey",
+        )
+        item = resp.get("Item") or {}
+        media_key = (item.get("mediaKey", {}).get("S") or "").strip()
+        media_type = (item.get("mediaType", {}).get("S") or "").strip().lower()
+        if media_type != "video":
+            return {"statusCode": 400, "body": json.dumps({"error": "only videos can regenerate thumbnail"})}
+        if not media_key.startswith("media/videos/"):
+            return {"statusCode": 400, "body": json.dumps({"error": "invalid media key"})}
+        current_thumb = (item.get("thumbnailKey", {}).get("S") or "").strip()
+        if current_thumb and "_custom" in current_thumb:
+            try:
+                s3 = boto3.client("s3", region_name=AWS_REGION)
+                s3.delete_object(Bucket=MEDIA_BUCKET, Key=current_thumb)
+            except Exception as e:
+                logger.warning("Failed to delete custom thumbnail %s: %s", current_thumb, e)
+        dynamodb.update_item(
+            TableName=TABLE_NAME,
+            Key={"PK": {"S": media_id}, "SK": {"S": "METADATA"}},
+            UpdateExpression="REMOVE thumbnailKey SET updatedAt = :now",
+            ExpressionAttributeValues={
+                ":now": {"S": __import__("datetime").datetime.utcnow().isoformat() + "Z"},
+            },
+        )
+        _process_video(MEDIA_BUCKET, media_key, media_id)
+        return {"statusCode": 200, "body": json.dumps({"ok": True, "message": "Thumbnail regeneration started"})}
+    except Exception as e:
+        logger.exception("_handle_regenerate failed: %s", e)
+        return {"statusCode": 500, "body": json.dumps({"error": str(e)})}
 
 
 def _submit_first_frame_fallback(media_id, thumbnail_key, bucket, original_key):
