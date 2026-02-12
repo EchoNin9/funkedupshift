@@ -148,7 +148,14 @@ const DashboardPage: React.FC = () => {
               key={s.domain}
               className={`rounded-lg border p-3 text-center text-sm ${statusClass}`}
             >
-              <div className="font-semibold break-all">{s.domain}</div>
+              <a
+                href={`https://${s.domain}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold break-all hover:underline block"
+              >
+                {s.domain}
+              </a>
               <div className="mt-1 text-xs capitalize opacity-90">{status}</div>
               {rtStr && (
                 <div className="mt-0.5 text-[11px] opacity-75">{rtStr}</div>

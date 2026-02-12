@@ -1,6 +1,6 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeftIcon } from "@heroicons/react/24/outline";
+import { ArrowLeftIcon, Bars3Icon } from "@heroicons/react/24/outline";
 import { useAuth, hasRole } from "../../shell/AuthContext";
 
 function getApiBaseUrl(): string | null {
@@ -12,6 +12,9 @@ function getApiBaseUrl(): string | null {
 const InternetDashboardAdminPage: React.FC = () => {
   const { user } = useAuth();
   const [sites, setSites] = useState<string[]>([]);
+  const [displayOrder, setDisplayOrder] = useState<"custom" | "a-z" | "z-a">("custom");
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [newDomain, setNewDomain] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -96,6 +99,47 @@ const InternetDashboardAdminPage: React.FC = () => {
     saveSites(updated);
   };
 
+  const displayedSites = useMemo(() => {
+    if (displayOrder === "custom") return [...sites];
+    const copy = [...sites];
+    copy.sort((a, b) => (displayOrder === "a-z" ? a.localeCompare(b) : b.localeCompare(a)));
+    return copy;
+  }, [sites, displayOrder]);
+
+  const handleDragStart = (index: number) => {
+    setDraggedIndex(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setDragOverIndex(index);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverIndex(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    setDragOverIndex(null);
+    if (displayOrder !== "custom" || draggedIndex === null || draggedIndex === dropIndex) {
+      setDraggedIndex(null);
+      return;
+    }
+    const reordered = [...displayedSites];
+    const [removed] = reordered.splice(draggedIndex, 1);
+    reordered.splice(dropIndex, 0, removed);
+    setSites(reordered);
+    saveSites(reordered);
+    setDraggedIndex(null);
+  };
+
   const handleRemove = (domain: string) => {
     const updated = sites.filter((s) => s !== domain);
     if (updated.length === 0) {
@@ -144,7 +188,38 @@ const InternetDashboardAdminPage: React.FC = () => {
       </header>
 
       <section className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 space-y-4 max-w-2xl">
-        <h2 className="text-base font-semibold text-slate-200">Sites list ({sites.length})</h2>
+        <div className="flex flex-wrap items-center gap-3">
+          <h2 className="text-base font-semibold text-slate-200">Sites list ({sites.length})</h2>
+          <div className="inline-flex rounded-md border border-slate-700 bg-slate-950 p-0.5">
+            <button
+              type="button"
+              onClick={() => setDisplayOrder("custom")}
+              className={`rounded px-2 py-0.5 text-xs font-medium ${
+                displayOrder === "custom" ? "bg-brand-orange text-slate-950" : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              Custom
+            </button>
+            <button
+              type="button"
+              onClick={() => setDisplayOrder("a-z")}
+              className={`rounded px-2 py-0.5 text-xs font-medium ${
+                displayOrder === "a-z" ? "bg-brand-orange text-slate-950" : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              A–Z
+            </button>
+            <button
+              type="button"
+              onClick={() => setDisplayOrder("z-a")}
+              className={`rounded px-2 py-0.5 text-xs font-medium ${
+                displayOrder === "z-a" ? "bg-brand-orange text-slate-950" : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              Z–A
+            </button>
+          </div>
+        </div>
 
         <form onSubmit={handleAdd} className="flex gap-2 flex-wrap items-end">
           <div className="flex-1 min-w-[12rem]">
@@ -170,12 +245,27 @@ const InternetDashboardAdminPage: React.FC = () => {
         </form>
 
         <ul className="space-y-2">
-          {sites.map((domain) => (
+          {displayedSites.map((domain, index) => (
             <li
               key={domain}
-              className="flex items-center justify-between gap-2 rounded-md border border-slate-700 bg-slate-900 px-3 py-2"
+              draggable={displayOrder === "custom"}
+              onDragStart={() => handleDragStart(index)}
+              onDragOver={(e) => handleDragOver(e, index)}
+              onDragLeave={handleDragLeave}
+              onDragEnd={handleDragEnd}
+              onDrop={(e) => handleDrop(e, index)}
+              className={`flex items-center gap-2 rounded-md border px-3 py-2 ${
+                draggedIndex === index
+                  ? "border-brand-orange bg-slate-800 opacity-60"
+                  : dragOverIndex === index
+                  ? "border-brand-orange/70 bg-slate-800/80"
+                  : "border-slate-700 bg-slate-900"
+              } ${displayOrder === "custom" ? "cursor-grab active:cursor-grabbing" : ""}`}
             >
-              <span className="font-medium text-slate-200 break-all">{domain}</span>
+              {displayOrder === "custom" && (
+                <Bars3Icon className="h-4 w-4 flex-shrink-0 text-slate-500" aria-hidden />
+              )}
+              <span className="font-medium text-slate-200 break-all flex-1">{domain}</span>
               <button
                 type="button"
                 onClick={() => handleRemove(domain)}
