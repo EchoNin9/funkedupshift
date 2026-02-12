@@ -355,7 +355,11 @@ const MediaPage: React.FC = () => {
       ) : isLoading ? (
         <div className="text-sm text-slate-400">Loading media…</div>
       ) : (
-        <ul className="space-y-3">
+        <>
+          <div className="rounded-md border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm text-slate-400">
+            {sortedItems.length === 0 ? "No results" : `${sortedItems.length} results`}
+          </div>
+          <ul className="space-y-3 mt-2">
           {pageItems.map((m) => {
             const thumb = m.thumbnailUrl || (m.mediaType === "image" ? m.mediaUrl : undefined);
             const title = m.title || m.PK || "Untitled";
@@ -454,6 +458,7 @@ const MediaPage: React.FC = () => {
             );
           })}
         </ul>
+        </>
       )}
 
       {hasActiveSearch && totalPages > 1 && (

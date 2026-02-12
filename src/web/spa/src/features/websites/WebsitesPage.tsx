@@ -354,7 +354,11 @@ const WebsitesPage: React.FC = () => {
       ) : isLoading ? (
         <div className="text-sm text-slate-400">Loading sites…</div>
       ) : (
-        <ul className="space-y-2">
+        <>
+          <div className="rounded-md border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm text-slate-400">
+            {sortedSites.length === 0 ? "No results" : `${sortedSites.length} results`}
+          </div>
+          <ul className="space-y-2 mt-2">
           {pageSites.map((site) => {
             const title = site.title || site.url || site.PK || "Untitled";
             const logo = site.logoUrl;
@@ -449,6 +453,7 @@ const WebsitesPage: React.FC = () => {
             );
           })}
         </ul>
+        </>
       )}
 
       {hasActiveSearch && totalPages > 1 && (

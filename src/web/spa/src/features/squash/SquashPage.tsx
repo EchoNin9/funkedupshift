@@ -397,6 +397,11 @@ const SquashPage: React.FC = () => {
             </div>
           )}
         </div>
+        {hasSearched && (
+          <div className="rounded-md border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm text-slate-400 mb-3">
+            {sortedMatches.length === 0 ? "No results" : `${sortedMatches.length} results`}
+          </div>
+        )}
         {!hasSearched ? (
           <div className="flex items-center justify-center min-h-[280px]">
             <p className="text-2xl sm:text-3xl font-light text-slate-500/80 tracking-wide animate-pulse">
