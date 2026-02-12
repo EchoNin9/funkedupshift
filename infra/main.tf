@@ -993,6 +993,12 @@ resource "aws_apigatewayv2_route" "internetDashboard" {
   target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
 }
 
+resource "aws_apigatewayv2_route" "ourProperties" {
+  api_id    = aws_apigatewayv2_api.main.id
+  route_key = "GET /other-properties/our-properties"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+}
+
 resource "aws_apigatewayv2_route" "sites" {
   api_id    = aws_apigatewayv2_api.main.id
   route_key = "GET /sites"
@@ -1409,6 +1415,22 @@ resource "aws_apigatewayv2_route" "adminInternetDashboardSitesGet" {
 resource "aws_apigatewayv2_route" "adminInternetDashboardSitesPut" {
   api_id             = aws_apigatewayv2_api.main.id
   route_key          = "PUT /admin/internet-dashboard/sites"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "adminOurPropertiesSitesGet" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /admin/other-properties/our-properties/sites"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "adminOurPropertiesSitesPut" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "PUT /admin/other-properties/our-properties/sites"
   target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
   authorization_type = "JWT"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
