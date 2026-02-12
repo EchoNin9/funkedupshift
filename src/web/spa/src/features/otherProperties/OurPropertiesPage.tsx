@@ -1,6 +1,10 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { Dialog } from "@headlessui/react";
+import { XMarkIcon } from "@heroicons/react/24/outline";
 import { useAuth, hasRole } from "../../shell/AuthContext";
+
+const SOFT_GREEN = "#3d7a3d";
 
 interface OurPropertiesSite {
   url: string;
@@ -19,6 +23,7 @@ function getApiBaseUrl(): string | null {
 const OurPropertiesPage: React.FC = () => {
   const { user } = useAuth();
   const [sites, setSites] = useState<OurPropertiesSite[]>([]);
+  const [selectedSite, setSelectedSite] = useState<OurPropertiesSite | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -61,21 +66,21 @@ const OurPropertiesPage: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold tracking-tight" style={{ color: "#fdde13" }}>
+      <h1 className="text-2xl font-semibold tracking-tight" style={{ color: SOFT_GREEN }}>
         Our Properties
       </h1>
-      <div className="rounded-xl border-2 border-[#14a113] bg-[#000000] p-4 shadow-lg" style={{ background: "linear-gradient(135deg, #000000 0%, #14a11322 50%, #fdde1322 75%, #e5020322 100%)" }}>
-        <p className="text-sm font-medium text-[#fdde13]">
+      <div className="rounded-xl border-2 p-4 shadow-lg" style={{ borderColor: SOFT_GREEN, background: SOFT_GREEN }}>
+        <p className="text-sm font-medium text-[#000000]">
           Live status of our sites
         </p>
-        <p className="mt-1 text-xs text-[#14a113]/90">
+        <p className="mt-1 text-xs text-[#000000]/90">
           Shows availability and response time for our properties
         </p>
         {canEdit && (
           <p className="mt-2">
             <Link
               to="/admin/other-properties/our-properties"
-              className="text-[#e50203] hover:text-[#14a113] font-semibold text-sm"
+              className="text-[#000000] hover:text-[#e50203] font-semibold text-sm"
             >
               Edit sites list
             </Link>
@@ -111,26 +116,36 @@ const OurPropertiesPage: React.FC = () => {
         <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-3">
           {sites.map((s) => {
             const status = (s.status || "down").toLowerCase();
-            const statusStyles =
+            const statusBorderBg =
               status === "up"
-                ? { borderColor: "#14a113", background: "#14a113", color: "#ffffff" }
+                ? { borderColor: SOFT_GREEN, background: SOFT_GREEN }
                 : status === "degraded"
-                ? { borderColor: "#fdde13", background: "#fdde13", color: "#000000" }
-                : { borderColor: "#e50203", background: "#e50203", color: "#ffffff" };
+                ? { borderColor: "#fdde13", background: "#fdde13" }
+                : { borderColor: "#e50203", background: "#e50203" };
             const rtStr =
               s.responseTimeMs != null ? `${s.responseTimeMs} ms` : null;
             const hasDescription = (s.description || "").trim().length > 0;
             return (
               <div
                 key={s.url || s.domain}
-                className="rounded-lg border-2 p-3 text-center text-sm min-w-0"
-                style={statusStyles}
+                className="rounded-lg border-2 p-3 text-center text-sm min-w-0 cursor-pointer text-[#000000]"
+                style={statusBorderBg}
+                onClick={() => setSelectedSite(s)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setSelectedSite(s);
+                  }
+                }}
               >
                 <a
                   href={s.url || `https://${s.domain}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="font-semibold break-all hover:underline block text-inherit"
+                  className="font-semibold break-all block text-[#000000] hover:text-[#e50203] hover:underline"
+                  onClick={(e) => e.stopPropagation()}
                 >
                   {s.domain}
                 </a>
@@ -151,6 +166,60 @@ const OurPropertiesPage: React.FC = () => {
           })}
         </div>
       )}
+
+      <Dialog open={!!selectedSite} onClose={() => setSelectedSite(null)} className="relative z-50">
+        <div className="fixed inset-0 bg-black/50" aria-hidden="true" />
+        <div className="fixed inset-0 flex items-center justify-center p-4">
+          <Dialog.Panel className="mx-auto max-w-md w-full rounded-xl border-2 border-slate-700 bg-slate-900 p-4 shadow-xl">
+            {selectedSite && (
+              <>
+                <div className="flex items-start justify-between gap-2">
+                  <Dialog.Title className="text-lg font-semibold text-slate-100">
+                    {selectedSite.domain}
+                  </Dialog.Title>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedSite(null)}
+                    className="rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+                    aria-label="Close"
+                  >
+                    <XMarkIcon className="h-5 w-5" />
+                  </button>
+                </div>
+                <div className="mt-3 space-y-2 text-sm">
+                  <p>
+                    <span className="text-slate-500">Status:</span>{" "}
+                    <span className="capitalize font-medium text-slate-200">{selectedSite.status}</span>
+                  </p>
+                  {selectedSite.responseTimeMs != null && (
+                    <p>
+                      <span className="text-slate-500">Response time:</span>{" "}
+                      <span className="text-slate-200">{selectedSite.responseTimeMs} ms</span>
+                    </p>
+                  )}
+                  <p>
+                    <span className="text-slate-500">URL:</span>{" "}
+                    <a
+                      href={selectedSite.url || `https://${selectedSite.domain}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[#e50203] hover:underline break-all"
+                    >
+                      {selectedSite.url || `https://${selectedSite.domain}`}
+                    </a>
+                  </p>
+                  {(selectedSite.description || "").trim().length > 0 && (
+                    <p>
+                      <span className="text-slate-500 block mb-0.5">Description:</span>
+                      <span className="text-slate-200">{selectedSite.description}</span>
+                    </p>
+                  )}
+                </div>
+              </>
+            )}
+          </Dialog.Panel>
+        </div>
+      </Dialog>
     </div>
   );
 };
