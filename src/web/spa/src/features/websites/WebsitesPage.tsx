@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../shell/AuthContext";
 
 interface SiteCategory {
@@ -31,10 +31,17 @@ const PAGE_SIZE = 10;
 
 const WebsitesPage: React.FC = () => {
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [sites, setSites] = useState<Site[]>([]);
-  const [search, setSearch] = useState("");
-  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
-  const [categoryMode, setCategoryMode] = useState<"and" | "or">("and");
+  const [search, setSearch] = useState(() => searchParams.get("q") ?? "");
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>(() => {
+    const ids = searchParams.get("categoryIds");
+    return ids ? ids.split(",").filter(Boolean) : [];
+  });
+  const [categoryMode, setCategoryMode] = useState<"and" | "or">(() => {
+    const m = searchParams.get("categoryMode");
+    return m === "or" ? "or" : "and";
+  });
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const [categorySearch, setCategorySearch] = useState("");
   const [sort, setSort] = useState<SortKey>("avgDesc");
@@ -90,6 +97,20 @@ const WebsitesPage: React.FC = () => {
   }, [categoriesForDropdown, selectedCategoryIds, categorySearch]);
 
   const hasActiveSearch = search.trim().length > 0 || selectedCategoryIds.length > 0;
+
+  useEffect(() => {
+    if (hasActiveSearch) {
+      const next = new URLSearchParams();
+      if (search.trim()) next.set("q", search.trim());
+      if (selectedCategoryIds.length) {
+        next.set("categoryIds", selectedCategoryIds.join(","));
+        next.set("categoryMode", categoryMode);
+      }
+      setSearchParams(next, { replace: true });
+    } else {
+      setSearchParams({}, { replace: true });
+    }
+  }, [hasActiveSearch, search, selectedCategoryIds, categoryMode, setSearchParams]);
 
   useEffect(() => {
     if (!hasActiveSearch) {
@@ -354,7 +375,11 @@ const WebsitesPage: React.FC = () => {
       ) : isLoading ? (
         <div className="text-sm text-slate-400">Loading sites…</div>
       ) : (
-        <ul className="space-y-2">
+        <>
+          <div className="rounded-md border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm text-slate-400">
+            {sortedSites.length === 0 ? "No results" : `${sortedSites.length} results`}
+          </div>
+          <ul className="space-y-2 mt-2">
           {pageSites.map((site) => {
             const title = site.title || site.url || site.PK || "Untitled";
             const logo = site.logoUrl;
@@ -449,6 +474,7 @@ const WebsitesPage: React.FC = () => {
             );
           })}
         </ul>
+        </>
       )}
 
       {hasActiveSearch && totalPages > 1 && (
