@@ -1762,7 +1762,10 @@ def updateMedia(event):
             )
             if "Item" in get_resp and "thumbnailKey" in get_resp["Item"]:
                 current_thumb_key = get_resp["Item"]["thumbnailKey"].get("S", "").strip() or None
-        if MEDIA_BUCKET and current_thumb_key and (delete_thumbnail or thumbnail_key is not None):
+        # Only delete from S3 when the key is actually changing (or on explicit delete).
+        # If thumbnail_key equals current_thumb_key, we're reusing the same key (e.g. same extension);
+        # deleting would remove the object before the new upload overwrites it.
+        if MEDIA_BUCKET and current_thumb_key and (delete_thumbnail or (thumbnail_key is not None and thumbnail_key != current_thumb_key)):
             try:
                 s3 = boto3.client("s3")
                 s3.delete_object(Bucket=MEDIA_BUCKET, Key=current_thumb_key)
