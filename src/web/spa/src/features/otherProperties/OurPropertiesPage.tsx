@@ -129,10 +129,10 @@ const OurPropertiesPage: React.FC = () => {
             const status = (s.status || "down").toLowerCase();
             const statusClass =
               status === "up"
-                ? "border-emerald-500/50 bg-emerald-500/15 text-emerald-200"
+                ? "border-violet-400/50 bg-violet-400/20 text-violet-200"
                 : status === "degraded"
-                ? "border-amber-500/50 bg-amber-500/15 text-amber-200"
-                : "border-red-500/50 bg-red-500/15 text-red-200";
+                ? "border-violet-500/50 bg-violet-500/15 text-violet-200"
+                : "border-violet-600/50 bg-violet-600/15 text-violet-200";
             const rtStr =
               s.responseTimeMs != null ? `${s.responseTimeMs} ms` : null;
             const hasDescription = (s.description || "").trim().length > 0;
@@ -180,17 +180,17 @@ const OurPropertiesPage: React.FC = () => {
       <Dialog open={!!selectedSite} onClose={() => setSelectedSite(null)} className="relative z-50">
         <div className="fixed inset-0 bg-black/50" aria-hidden="true" />
         <div className="fixed inset-0 flex items-center justify-center p-4">
-          <Dialog.Panel className="mx-auto max-w-md w-full rounded-xl border-2 border-slate-700 bg-slate-900 p-4 shadow-xl">
+          <Dialog.Panel className="mx-auto max-w-md w-full rounded-xl border border-violet-800/60 bg-gradient-to-br from-violet-900/40 to-violet-950/60 p-4 shadow-xl">
             {selectedSite && (
               <>
                 <div className="flex items-start justify-between gap-2">
-                  <Dialog.Title className="text-lg font-semibold text-slate-100">
+                  <Dialog.Title className="text-lg font-semibold text-violet-100">
                     {selectedSite.domain}
                   </Dialog.Title>
                   <button
                     type="button"
                     onClick={() => setSelectedSite(null)}
-                    className="rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+                    className="rounded p-1 text-violet-400 hover:bg-violet-800/40 hover:text-violet-200"
                     aria-label="Close modal"
                   >
                     <XMarkIcon className="h-5 w-5" />
@@ -198,30 +198,30 @@ const OurPropertiesPage: React.FC = () => {
                 </div>
                 <div className="mt-3 space-y-2 text-sm">
                   <p>
-                    <span className="text-slate-500">Status:</span>{" "}
-                    <span className="capitalize font-medium text-slate-200">{selectedSite.status}</span>
+                    <span className="text-violet-400/90">Status:</span>{" "}
+                    <span className="capitalize font-medium text-violet-200">{selectedSite.status}</span>
                   </p>
                   {selectedSite.responseTimeMs != null && (
                     <p>
-                      <span className="text-slate-500">Response time:</span>{" "}
-                      <span className="text-slate-200">{selectedSite.responseTimeMs} ms</span>
+                      <span className="text-violet-400/90">Response time:</span>{" "}
+                      <span className="text-violet-200">{selectedSite.responseTimeMs} ms</span>
                     </p>
                   )}
                   <p>
-                    <span className="text-slate-500">URL:</span>{" "}
+                    <span className="text-violet-400/90">URL:</span>{" "}
                     <a
                       href={selectedSite.url || `https://${selectedSite.domain}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-violet-400 hover:text-violet-300 hover:underline break-all"
+                      className="text-violet-300 hover:text-violet-200 hover:underline break-all"
                     >
                       {selectedSite.url || `https://${selectedSite.domain}`}
                     </a>
                   </p>
                   {(selectedSite.description || "").trim().length > 0 && (
                     <p>
-                      <span className="text-slate-500 block mb-0.5">Description:</span>
-                      <span className="text-slate-200">{selectedSite.description}</span>
+                      <span className="text-violet-400/90 block mb-0.5">Description:</span>
+                      <span className="text-violet-200">{selectedSite.description}</span>
                     </p>
                   )}
                 </div>
