@@ -154,8 +154,10 @@ def handler(event, context):
             return postBrandingLogoUpload(event)
         if method == "GET" and path == "/internet-dashboard":
             return getInternetDashboard(event)
-        if method == "GET" and path == "/other-properties/our-properties":
+        if method == "GET" and path == "/recommended/highlights":
             return getOurProperties(event)
+        if method == "GET" and path == "/recommended/highest-rated":
+            return getHighestRated(event)
         if method == "GET" and path == "/sites":
             return listSites(event)
         if method == "GET" and path == "/sites/all":
@@ -282,10 +284,18 @@ def handler(event, context):
             return getInternetDashboardSites(event)
         if method == "PUT" and path == "/admin/internet-dashboard/sites":
             return putInternetDashboardSites(event)
-        if method == "GET" and path == "/admin/other-properties/our-properties/sites":
+        if method == "GET" and path == "/admin/recommended/highlights/sites":
             return getOurPropertiesSites(event)
-        if method == "PUT" and path == "/admin/other-properties/our-properties/sites":
+        if method == "PUT" and path == "/admin/recommended/highlights/sites":
             return putOurPropertiesSites(event)
+        if method == "POST" and path == "/admin/recommended/highlights/generate":
+            return postOurPropertiesGenerate(event)
+        if method == "GET" and path == "/admin/recommended/highest-rated/sites":
+            return getHighestRatedSites(event)
+        if method == "PUT" and path == "/admin/recommended/highest-rated/sites":
+            return putHighestRatedSites(event)
+        if method == "POST" and path == "/admin/recommended/highest-rated/generate":
+            return postHighestRatedGenerate(event)
         if method == "OPTIONS":
             # CORS preflight
             return jsonResponse({}, 200)
@@ -351,7 +361,7 @@ def putInternetDashboardSites(event):
 
 
 def getOurProperties(event):
-    """GET /other-properties/our-properties: status of our sites (public, no auth)."""
+    """GET /recommended/highlights: status of our sites (public, no auth)."""
     try:
         from api.our_properties import fetch_our_properties
         sites = fetch_our_properties()
@@ -362,21 +372,40 @@ def getOurProperties(event):
 
 
 def getOurPropertiesSites(event):
-    """GET /admin/other-properties/our-properties/sites - Return our properties sites list (manager or admin)."""
+    """GET /admin/recommended/highlights/sites - Return highlights cache (manager or admin)."""
     _, err = _requireManagerOrAdmin(event)
     if err:
         return err
     try:
-        from api.our_properties import get_our_properties_sites
+        from api.our_properties import get_our_properties_sites, get_our_properties_updated_at
         sites = get_our_properties_sites()
-        return jsonResponse({"sites": sites})
+        updated_at = get_our_properties_updated_at()
+        return jsonResponse({"sites": sites, "updatedAt": updated_at})
     except Exception as e:
         logger.exception("getOurPropertiesSites error: %s", e)
         return jsonResponse({"error": str(e)}, 500)
 
 
+def postOurPropertiesGenerate(event):
+    """POST /admin/recommended/highlights/generate - Generate cache from highlight category (manager or admin)."""
+    _, err = _requireManagerOrAdmin(event)
+    if err:
+        return err
+    try:
+        from api.our_properties import generate_highlights_cache_from_category
+        sites, err_msg = generate_highlights_cache_from_category()
+        if err_msg:
+            return jsonResponse({"error": err_msg}, 400)
+        from api.our_properties import get_our_properties_updated_at
+        updated_at = get_our_properties_updated_at()
+        return jsonResponse({"sites": sites, "updatedAt": updated_at})
+    except Exception as e:
+        logger.exception("postOurPropertiesGenerate error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
 def putOurPropertiesSites(event):
-    """PUT /admin/other-properties/our-properties/sites - Update our properties sites list (manager or admin)."""
+    """PUT /admin/recommended/highlights/sites - Update our properties sites list (manager or admin)."""
     _, err = _requireManagerOrAdmin(event)
     if err:
         return err
@@ -389,15 +418,87 @@ def putOurPropertiesSites(event):
         sites = body.get("sites")
         if not isinstance(sites, list):
             return jsonResponse({"error": "sites must be an array"}, 400)
-        from api.our_properties import save_our_properties_sites, normalize_sites
+        from api.our_properties import save_our_properties_sites, normalize_sites, get_our_properties_updated_at
         sites = normalize_sites(sites)
         if not save_our_properties_sites(sites):
             return jsonResponse({"error": "Failed to save"}, 500)
-        return jsonResponse({"sites": sites})
+        updated_at = get_our_properties_updated_at()
+        return jsonResponse({"sites": sites, "updatedAt": updated_at})
     except json.JSONDecodeError:
         return jsonResponse({"error": "Invalid JSON body"}, 400)
     except Exception as e:
         logger.exception("putOurPropertiesSites error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def getHighestRated(event):
+    """GET /recommended/highest-rated: top 14 sites by stars (public, no auth)."""
+    try:
+        from api.our_properties import fetch_highest_rated
+        sites = fetch_highest_rated()
+        return jsonResponse({"sites": sites})
+    except Exception as e:
+        logger.exception("getHighestRated error: %s", e)
+        return jsonResponse({"error": str(e), "sites": []}, 500)
+
+
+def getHighestRatedSites(event):
+    """GET /admin/recommended/highest-rated/sites - Return highest rated cache (manager or admin)."""
+    _, err = _requireManagerOrAdmin(event)
+    if err:
+        return err
+    try:
+        from api.our_properties import get_highest_rated_sites, get_highest_rated_updated_at
+        sites = get_highest_rated_sites()
+        updated_at = get_highest_rated_updated_at()
+        return jsonResponse({"sites": sites, "updatedAt": updated_at})
+    except Exception as e:
+        logger.exception("getHighestRatedSites error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def postHighestRatedGenerate(event):
+    """POST /admin/recommended/highest-rated/generate - Generate cache from top 14 by stars (manager or admin)."""
+    _, err = _requireManagerOrAdmin(event)
+    if err:
+        return err
+    try:
+        from api.our_properties import generate_highest_rated_cache_from_stars
+        sites, err_msg = generate_highest_rated_cache_from_stars()
+        if err_msg:
+            return jsonResponse({"error": err_msg}, 400)
+        from api.our_properties import get_highest_rated_updated_at
+        updated_at = get_highest_rated_updated_at()
+        return jsonResponse({"sites": sites, "updatedAt": updated_at})
+    except Exception as e:
+        logger.exception("postHighestRatedGenerate error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def putHighestRatedSites(event):
+    """PUT /admin/recommended/highest-rated/sites - Update highest rated sites list (manager or admin)."""
+    _, err = _requireManagerOrAdmin(event)
+    if err:
+        return err
+    try:
+        body = event.get("body")
+        if body and isinstance(body, str):
+            body = json.loads(body)
+        else:
+            body = body or {}
+        sites = body.get("sites")
+        if not isinstance(sites, list):
+            return jsonResponse({"error": "sites must be an array"}, 400)
+        from api.our_properties import save_highest_rated_sites, normalize_highest_rated_sites, get_highest_rated_updated_at
+        sites = normalize_highest_rated_sites(sites)
+        if not save_highest_rated_sites(sites):
+            return jsonResponse({"error": "Failed to save"}, 500)
+        updated_at = get_highest_rated_updated_at()
+        return jsonResponse({"sites": sites, "updatedAt": updated_at})
+    except json.JSONDecodeError:
+        return jsonResponse({"error": "Invalid JSON body"}, 400)
+    except Exception as e:
+        logger.exception("putHighestRatedSites error: %s", e)
         return jsonResponse({"error": str(e)}, 500)
 
 

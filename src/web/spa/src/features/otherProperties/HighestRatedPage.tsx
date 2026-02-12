@@ -2,16 +2,17 @@ import React, { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Dialog } from "@headlessui/react";
 import { XMarkIcon } from "@heroicons/react/24/outline";
+import { StarIcon } from "@heroicons/react/24/solid";
 import { useAuth, hasRole } from "../../shell/AuthContext";
 
-interface OurPropertiesSite {
+interface HighestRatedSite {
   url: string;
   domain: string;
   title?: string;
   status: string;
-  responseTimeMs?: number;
   description?: string;
   logoUrl?: string;
+  averageRating?: number;
 }
 
 function getApiBaseUrl(): string | null {
@@ -21,10 +22,10 @@ function getApiBaseUrl(): string | null {
   return raw.replace(/\/$/, "");
 }
 
-const OurPropertiesPage: React.FC = () => {
+const HighestRatedPage: React.FC = () => {
   const { user } = useAuth();
-  const [sites, setSites] = useState<OurPropertiesSite[]>([]);
-  const [selectedSite, setSelectedSite] = useState<OurPropertiesSite | null>(null);
+  const [sites, setSites] = useState<HighestRatedSite[]>([]);
+  const [selectedSite, setSelectedSite] = useState<HighestRatedSite | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,7 +44,7 @@ const OurPropertiesPage: React.FC = () => {
     setError(null);
 
     try {
-      const resp = await fetch(`${apiBase}/recommended/highlights`);
+      const resp = await fetch(`${apiBase}/recommended/highest-rated`);
       const txt = await resp.text();
       if (!resp.ok) {
         throw new Error(txt || `HTTP ${resp.status}`);
@@ -53,9 +54,9 @@ const OurPropertiesPage: React.FC = () => {
           "API returned HTML instead of JSON. For local dev, set window.API_BASE_URL in public/config.js to your staging API URL (e.g. terraform -chdir=infra output -raw apiInvokeUrl)"
         );
       }
-      let data: { sites?: OurPropertiesSite[] };
+      let data: { sites?: HighestRatedSite[] };
       try {
-        data = JSON.parse(txt) as { sites?: OurPropertiesSite[] };
+        data = JSON.parse(txt) as { sites?: HighestRatedSite[] };
       } catch {
         throw new Error("API returned invalid JSON.");
       }
@@ -79,23 +80,23 @@ const OurPropertiesPage: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold tracking-tight text-violet-200">
-        Highlights and faves
+      <h1 className="text-2xl font-semibold tracking-tight text-amber-200">
+        Highest rated
       </h1>
-      <div className="rounded-xl border border-violet-800/60 bg-gradient-to-br from-violet-900/40 to-violet-950/60 p-4 shadow-lg">
-        <p className="text-sm font-medium text-violet-100">
-          Our curated list of exceptional sites
+      <div className="rounded-xl border border-amber-800/60 bg-gradient-to-br from-amber-900/40 to-amber-950/60 p-4 shadow-lg">
+        <p className="text-sm font-medium text-amber-100">
+          Top sites rated by our community
         </p>
-        <p className="mt-1 text-xs text-violet-200/80">
+        <p className="mt-1 text-xs text-amber-200/80">
           Click a card below for more detail
         </p>
         {canEdit && (
           <p className="mt-2">
             <Link
-              to="/admin/recommended?tab=highlights"
-              className="text-violet-300 hover:text-violet-200 font-semibold text-sm"
+              to="/admin/recommended?tab=highest-rated"
+              className="text-amber-300 hover:text-amber-200 font-semibold text-sm"
             >
-              Edit sites list
+              Edit list
             </Link>
           </p>
         )}
@@ -116,10 +117,10 @@ const OurPropertiesPage: React.FC = () => {
           No sites configured yet.{" "}
           {canEdit && (
             <Link
-              to="/admin/recommended?tab=highlights"
-              className="text-violet-400 hover:text-violet-300"
+              to="/admin/recommended?tab=highest-rated"
+              className="text-amber-400 hover:text-amber-300"
             >
-              Add sites
+              Generate cache
             </Link>
           )}
         </p>
@@ -131,10 +132,10 @@ const OurPropertiesPage: React.FC = () => {
             const status = (s.status || "up").toLowerCase();
             const statusClass =
               status === "up"
-                ? "border-violet-400/50 bg-violet-400/20 text-violet-200"
+                ? "border-amber-400/50 bg-amber-400/20 text-amber-200"
                 : status === "degraded"
-                ? "border-violet-500/50 bg-violet-500/15 text-violet-200"
-                : "border-violet-600/50 bg-violet-600/15 text-violet-200";
+                ? "border-amber-500/50 bg-amber-500/15 text-amber-200"
+                : "border-amber-600/50 bg-amber-600/15 text-amber-200";
             const hasDescription = (s.description || "").trim().length > 0;
             const displayTitle = s.title || s.domain;
             const fullUrl = s.url || `https://${s.domain}`;
@@ -163,14 +164,20 @@ const OurPropertiesPage: React.FC = () => {
                     {displayTitle}
                   </a>
                   <span
-                    className="absolute left-0 top-full mt-1 px-2 py-1.5 rounded bg-slate-900 border border-violet-700/60 text-xs text-violet-200 break-all max-w-[280px] shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-10 pointer-events-none"
+                    className="absolute left-0 top-full mt-1 px-2 py-1.5 rounded bg-slate-900 border border-amber-700/60 text-xs text-amber-200 break-all max-w-[280px] shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-10 pointer-events-none"
                     role="tooltip"
                   >
                     {fullUrl}
                   </span>
                 </span>
+                {s.averageRating != null && (
+                  <div className="mt-1 flex items-center gap-0.5 text-amber-300">
+                    <StarIcon className="h-3.5 w-3.5" />
+                    <span className="font-medium">{s.averageRating}</span>
+                  </div>
+                )}
                 {hasDescription && (
-                  <div className="mt-2 text-xs text-violet-200/90 leading-relaxed break-words">
+                  <div className="mt-2 text-xs text-amber-200/90 leading-relaxed break-words">
                     {s.description}
                   </div>
                 )}
@@ -183,13 +190,13 @@ const OurPropertiesPage: React.FC = () => {
       <Dialog open={!!selectedSite} onClose={() => setSelectedSite(null)} className="relative z-50">
         <div className="fixed inset-0 bg-black/50" aria-hidden="true" />
         <div className="fixed inset-0 flex items-center justify-center p-4">
-          <Dialog.Panel className="mx-auto w-full max-w-xl rounded-xl border border-violet-800/60 bg-gradient-to-br from-violet-900/40 to-violet-950/60 p-6 shadow-xl">
+          <Dialog.Panel className="mx-auto w-full max-w-xl rounded-xl border border-amber-800/60 bg-gradient-to-br from-amber-900/40 to-amber-950/60 p-6 shadow-xl">
             {selectedSite && (
               <div className="relative flex min-h-[12rem] items-center justify-center">
                 <button
                   type="button"
                   onClick={() => setSelectedSite(null)}
-                  className="absolute right-0 top-0 rounded p-1 text-violet-400 hover:bg-violet-800/40 hover:text-violet-200"
+                  className="absolute right-0 top-0 rounded p-1 text-amber-400 hover:bg-amber-800/40 hover:text-amber-200"
                   aria-label="Close modal"
                 >
                   <XMarkIcon className="h-6 w-6" />
@@ -204,7 +211,7 @@ const OurPropertiesPage: React.FC = () => {
                     }}
                   />
                 ) : (
-                  <div className="h-24 w-24 rounded-lg border border-violet-700/60 bg-violet-900/40" />
+                  <div className="h-24 w-24 rounded-lg border border-amber-700/60 bg-amber-900/40" />
                 )}
               </div>
             )}
@@ -215,4 +222,4 @@ const OurPropertiesPage: React.FC = () => {
   );
 };
 
-export default OurPropertiesPage;
+export default HighestRatedPage;
