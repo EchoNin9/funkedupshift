@@ -207,6 +207,8 @@ def handler(event, context):
             return getPresignedMediaUpload(event)
         if method == "POST" and path == "/media/thumbnail-upload":
             return getPresignedThumbnailUpload(event)
+        if method == "POST" and path == "/media/regenerate-thumbnail":
+            return postMediaRegenerateThumbnail(event)
         if method == "POST" and path == "/media/stars":
             return setMediaStar(event)
         if method == "GET" and path == "/media-categories":
@@ -1539,6 +1541,9 @@ def _addMediaUrls(media_list, region=None):
             for key_attr, url_attr in [("mediaKey", "mediaUrl"), ("thumbnailKey", "thumbnailUrl")]:
                 key = m.get(key_attr)
                 if key and isinstance(key, str) and key.strip():
+                    if url_attr == "thumbnailUrl" and "#" in key:
+                        logger.info("Skipping thumbnailKey with # (presigned URL broken): %s", key[:50])
+                        continue
                     url = s3.generate_presigned_url(
                         "get_object",
                         Params={"Bucket": MEDIA_BUCKET, "Key": key},
@@ -1745,15 +1750,41 @@ def updateMedia(event):
         if media_key is not None:
             set_parts.append("mediaKey = :mediaKey")
             values[":mediaKey"] = {"S": media_key}
+        delete_thumbnail = body.get("deleteThumbnail") is True
         thumbnail_key = (body.get("thumbnailKey") or "").strip() or None
-        if thumbnail_key is not None:
+        remove_parts = []
+        current_thumb_key = None
+        if delete_thumbnail or thumbnail_key is not None:
+            get_resp = dynamodb.get_item(
+                TableName=TABLE_NAME,
+                Key={"PK": {"S": media_id}, "SK": {"S": "METADATA"}},
+                ProjectionExpression="thumbnailKey",
+            )
+            if "Item" in get_resp and "thumbnailKey" in get_resp["Item"]:
+                current_thumb_key = get_resp["Item"]["thumbnailKey"].get("S", "").strip() or None
+        # Only delete from S3 when the key is actually changing (or on explicit delete).
+        # If thumbnail_key equals current_thumb_key, we're reusing the same key (e.g. same extension);
+        # deleting would remove the object before the new upload overwrites it.
+        if MEDIA_BUCKET and current_thumb_key and (delete_thumbnail or (thumbnail_key is not None and thumbnail_key != current_thumb_key)):
+            try:
+                s3 = boto3.client("s3")
+                s3.delete_object(Bucket=MEDIA_BUCKET, Key=current_thumb_key)
+            except Exception as e:
+                logger.warning("S3 delete_object for thumbnail failed: %s", e)
+        if delete_thumbnail:
+            remove_parts.append("#thumbnailKey")
+            names["#thumbnailKey"] = "thumbnailKey"
+        elif thumbnail_key is not None:
             set_parts.append("#thumbnailKey = :thumbnailKey")
             names["#thumbnailKey"] = "thumbnailKey"
             values[":thumbnailKey"] = {"S": thumbnail_key}
+        update_expr = "SET " + ", ".join(set_parts)
+        if remove_parts:
+            update_expr += " REMOVE " + ", ".join(remove_parts)
         dynamodb.update_item(
             TableName=TABLE_NAME,
             Key={"PK": {"S": media_id}, "SK": {"S": "METADATA"}},
-            UpdateExpression="SET " + ", ".join(set_parts),
+            UpdateExpression=update_expr,
             ExpressionAttributeNames=names if names else None,
             ExpressionAttributeValues=values,
         )
@@ -1877,7 +1908,7 @@ def getPresignedThumbnailUpload(event):
             ext = "gif"
         elif "webp" in contentType:
             ext = "webp"
-        key = f"media/thumbnails/{media_id}_custom.{ext}"
+        key = f"media/thumbnails/{media_id.replace('#', '_')}_custom.{ext}"
         region = os.environ.get("AWS_REGION", "us-east-1")
         s3 = boto3.client("s3", region_name=region)
         upload_url = s3.generate_presigned_url(
@@ -1888,6 +1919,44 @@ def getPresignedThumbnailUpload(event):
         return jsonResponse({"uploadUrl": upload_url, "key": key})
     except Exception as e:
         logger.exception("getPresignedThumbnailUpload error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def postMediaRegenerateThumbnail(event):
+    """POST /media/regenerate-thumbnail - Trigger thumbnail regeneration for a video (manager or admin)."""
+    _, err = _requireManagerOrAdmin(event)
+    if err:
+        return err
+    try:
+        import boto3
+        body = json.loads(event.get("body", "{}"))
+        media_id = (body.get("mediaId") or body.get("id") or "").strip()
+        if not media_id:
+            return jsonResponse({"error": "mediaId is required"}, 400)
+        thumb_fn = os.environ.get("THUMB_FUNCTION_NAME", "fus-thumb")
+        region = os.environ.get("AWS_REGION", "us-east-1")
+        lambda_client = boto3.client("lambda", region_name=region)
+        payload = json.dumps({"source": "api", "action": "regenerate", "mediaId": media_id})
+        resp = lambda_client.invoke(
+            FunctionName=thumb_fn,
+            InvocationType="RequestResponse",
+            Payload=payload,
+        )
+        payload_out = resp.get("Payload")
+        if payload_out:
+            result = json.loads(payload_out.read().decode())
+            status_code = result.get("statusCode", 200)
+            body_str = result.get("body", "{}")
+            try:
+                body_out = json.loads(body_str) if isinstance(body_str, str) else body_str
+            except Exception:
+                body_out = {"error": body_str}
+            if status_code != 200:
+                return jsonResponse(body_out.get("error", "Regeneration failed"), statusCode=status_code)
+            return jsonResponse({"ok": True, "message": "Thumbnail regeneration started"})
+        return jsonResponse({"error": "No response from thumbnail service"}, 500)
+    except Exception as e:
+        logger.exception("postMediaRegenerateThumbnail error")
         return jsonResponse({"error": str(e)}, 500)
 
 

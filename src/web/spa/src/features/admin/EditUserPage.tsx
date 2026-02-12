@@ -226,7 +226,7 @@ const EditUserPage: React.FC = () => {
         throw new Error((d as { error?: string }).error || "Failed to save");
       }
       window.alert("Changes saved");
-      navigate("/admin/users");
+      navigate("/admin/membership");
     } catch (e: any) {
       setSaveError(e?.message ?? "Failed to save");
     } finally {
@@ -258,7 +258,7 @@ const EditUserPage: React.FC = () => {
         const d = await resp.json().catch(() => ({}));
         throw new Error((d as { error?: string }).error || "Failed to delete user");
       }
-      navigate("/admin/users");
+      navigate("/admin/membership");
     } catch (e: any) {
       setSaveError(e?.message ?? "Failed to delete user");
     } finally {
@@ -307,7 +307,7 @@ const EditUserPage: React.FC = () => {
   return (
     <div className="space-y-6">
       <Link
-        to="/admin/users"
+        to="/admin/membership"
         className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-slate-200"
       >
         <ArrowLeftIcon className="h-4 w-4" />
@@ -406,7 +406,7 @@ const EditUserPage: React.FC = () => {
           <label className="block text-sm font-medium text-slate-200">Custom groups</label>
           {allCustomGroups.length === 0 ? (
             <p className="text-sm text-slate-500">
-              No custom groups. <Link to="/admin/groups" className="text-brand-orange hover:underline">Create groups</Link>.
+              No custom groups. <Link to="/admin/membership?tab=groups" className="text-brand-orange hover:underline">Create groups</Link>.
             </p>
           ) : (
             <>
@@ -479,7 +479,7 @@ const EditUserPage: React.FC = () => {
             {isSubmitting ? "Saving…" : "Save"}
           </button>
           <Link
-            to="/admin/users"
+            to="/admin/membership"
             className="rounded-md border border-slate-700 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800"
           >
             Cancel

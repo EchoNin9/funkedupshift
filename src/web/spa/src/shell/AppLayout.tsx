@@ -11,15 +11,12 @@ import MediaPage from "../features/media/MediaPage";
 import MediaDetailPage from "../features/media/MediaDetailPage";
 import DashboardPage from "../features/dashboard/DashboardPage";
 import BrandingPage from "../features/admin/BrandingPage";
-import AddSitePage from "../features/admin/AddSitePage";
+import MembershipPage from "../features/admin/MembershipPage";
+import WebsitesAdminPage from "../features/admin/WebsitesAdminPage";
+import MediaAdminPage from "../features/admin/MediaAdminPage";
 import EditSitePage from "../features/admin/EditSitePage";
-import AddMediaPage from "../features/admin/AddMediaPage";
 import EditMediaPage from "../features/admin/EditMediaPage";
-import CategoriesPage from "../features/admin/CategoriesPage";
-import MediaCategoriesPage from "../features/admin/MediaCategoriesPage";
-import UsersPage from "../features/admin/UsersPage";
 import EditUserPage from "../features/admin/EditUserPage";
-import GroupsPage from "../features/admin/GroupsPage";
 import AuthPage from "../features/auth/AuthPage";
 import ProfilePage from "../features/profile/ProfilePage";
 import SquashPage from "../features/squash/SquashPage";
@@ -30,7 +27,6 @@ interface NavItem {
   to: string;
   section: "discover" | "squash" | "admin";
   minRole: "guest" | "user" | "manager" | "superadmin";
-  adminGroup?: "membership" | "websites" | "media";
 }
 
 const navItems: NavItem[] = [
@@ -40,38 +36,36 @@ const navItems: NavItem[] = [
   { label: "Profile", to: "/profile", section: "discover", minRole: "user" },
   { label: "Squash", to: "/squash", section: "squash", minRole: "user" },
   { label: "Squash Admin", to: "/squash-admin", section: "squash", minRole: "manager" },
-  { label: "Add Site", to: "/admin/sites/add", section: "admin", minRole: "manager", adminGroup: "websites" },
-  { label: "Categories", to: "/admin/categories", section: "admin", minRole: "manager", adminGroup: "websites" },
-  { label: "Add Media", to: "/admin/media/add", section: "admin", minRole: "manager", adminGroup: "media" },
-  { label: "Media Categories", to: "/admin/media-categories", section: "admin", minRole: "manager", adminGroup: "media" },
-  { label: "Users", to: "/admin/users", section: "admin", minRole: "manager", adminGroup: "membership" },
-  { label: "Groups", to: "/admin/groups", section: "admin", minRole: "manager", adminGroup: "membership" },
+  { label: "Membership", to: "/admin/membership", section: "admin", minRole: "manager" },
+  { label: "Websites", to: "/admin/websites", section: "admin", minRole: "manager" },
+  { label: "Media", to: "/admin/media", section: "admin", minRole: "manager" },
   { label: "Branding", to: "/admin/branding", section: "admin", minRole: "superadmin" }
 ];
 
-const adminGroupLabels: Record<string, string> = {
-  membership: "Membership",
-  websites: "Websites",
-  media: "Media"
-};
+const WINDOWSHADE_STORAGE_KEY = "funkedupshift_sectionOpen";
 
-const adminGroupOrder = ["membership", "websites", "media"] as const;
-const WINDOWSHADE_STORAGE_KEY = "funkedupshift_adminGroupOpen";
-const DEFAULT_COLLAPSED = { membership: false, websites: false, media: false };
+function getDefaultSectionState(): Record<string, boolean> {
+  return {
+    discover: true,
+    squash: false,
+    admin: false
+  };
+}
 
-function loadWindowshadeState(): Record<string, boolean> {
+function loadSectionState(): Record<string, boolean> {
   try {
     const raw = sessionStorage.getItem(WINDOWSHADE_STORAGE_KEY);
-    if (!raw) return { ...DEFAULT_COLLAPSED };
+    if (!raw) return getDefaultSectionState();
     const parsed = JSON.parse(raw);
-    if (typeof parsed !== "object" || parsed === null) return { ...DEFAULT_COLLAPSED };
-    return { ...DEFAULT_COLLAPSED, ...parsed };
+    if (typeof parsed !== "object" || parsed === null) return getDefaultSectionState();
+    const defaults = getDefaultSectionState();
+    return { ...defaults, ...parsed };
   } catch {
-    return { ...DEFAULT_COLLAPSED };
+    return getDefaultSectionState();
   }
 }
 
-function saveWindowshadeState(state: Record<string, boolean>) {
+function saveSectionState(state: Record<string, boolean>) {
   try {
     sessionStorage.setItem(WINDOWSHADE_STORAGE_KEY, JSON.stringify(state));
   } catch {
@@ -84,14 +78,14 @@ const AppLayout: React.FC = () => {
   const { logo } = useBranding();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = React.useState(false);
-  const [adminGroupOpen, setAdminGroupOpen] = React.useState<Record<string, boolean>>(
-    loadWindowshadeState
+  const [sectionOpen, setSectionOpen] = React.useState<Record<string, boolean>>(
+    loadSectionState
   );
 
-  const toggleAdminGroup = (key: string) => {
-    setAdminGroupOpen((prev) => {
+  const toggleSection = (key: string) => {
+    setSectionOpen((prev) => {
       const next = { ...prev, [key]: !prev[key] };
-      saveWindowshadeState(next);
+      saveSectionState(next);
       return next;
     });
   };
@@ -110,8 +104,6 @@ const AppLayout: React.FC = () => {
     .filter((i) => i.section === "squash")
     .filter((i) => (i.to === "/squash" ? canAccessSquash(user) : canModifySquash(user)));
   const adminItems = visibleNavItems.filter((i) => i.section === "admin");
-  const adminStandaloneItems = adminItems.filter((i) => !i.adminGroup);
-  const adminGroupItems = (group: string) => adminItems.filter((i) => i.adminGroup === group);
 
   const navLinkClass = ({ isActive }: { isActive: boolean }) =>
     [
@@ -184,70 +176,78 @@ const AppLayout: React.FC = () => {
         <aside className="hidden lg:block w-64 border-r border-slate-800 bg-slate-950/80">
           <nav className="h-full overflow-y-auto px-4 py-6 space-y-6 text-sm">
             <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase mb-2">Discover</p>
-              <div className="space-y-1">
-                {discoverItems.map((item) => (
-                  <NavLink key={item.to} to={item.to} className={navLinkClass}>
-                    {item.label}
-                  </NavLink>
-                ))}
-              </div>
-            </div>
-
-            {squashItems.length > 0 && (
-              <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase mb-2">Squash</p>
+              <button
+                type="button"
+                onClick={() => toggleSection("discover")}
+                className="flex w-full items-center justify-between rounded-md px-3 py-2 text-xs font-semibold text-slate-500 uppercase mb-2 hover:bg-slate-800/70 hover:text-slate-300"
+              >
+                Discover
+                {(sectionOpen["discover"] ?? true) ? (
+                  <ChevronDownIcon className="h-4 w-4 shrink-0" />
+                ) : (
+                  <ChevronRightIcon className="h-4 w-4 shrink-0" />
+                )}
+              </button>
+              {(sectionOpen["discover"] ?? true) && (
                 <div className="space-y-1">
-                  {squashItems.map((item) => (
+                  {discoverItems.map((item) => (
                     <NavLink key={item.to} to={item.to} className={navLinkClass}>
                       {item.label}
                     </NavLink>
                   ))}
                 </div>
+              )}
+            </div>
+
+            {squashItems.length > 0 && (
+              <div>
+                <button
+                  type="button"
+                  onClick={() => toggleSection("squash")}
+                  className="flex w-full items-center justify-between rounded-md px-3 py-2 text-xs font-semibold text-slate-500 uppercase mb-2 hover:bg-slate-800/70 hover:text-slate-300"
+                >
+                  Squash
+                  {(sectionOpen["squash"] ?? false) ? (
+                    <ChevronDownIcon className="h-4 w-4 shrink-0" />
+                  ) : (
+                    <ChevronRightIcon className="h-4 w-4 shrink-0" />
+                  )}
+                </button>
+                {(sectionOpen["squash"] ?? false) && (
+                  <div className="space-y-1">
+                    {squashItems.map((item) => (
+                      <NavLink key={item.to} to={item.to} className={navLinkClass}>
+                        {item.label}
+                      </NavLink>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
             {adminItems.length > 0 && (
               <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase mb-2">Admin</p>
-                <div className="space-y-1">
-                  {adminGroupOrder.map((groupKey) => {
-                    const items = adminGroupItems(groupKey);
-                    if (items.length === 0) return null;
-                    const isOpen = adminGroupOpen[groupKey] ?? false;
-                    const label = adminGroupLabels[groupKey];
-                    return (
-                      <div key={groupKey}>
-                        <button
-                          type="button"
-                          onClick={() => toggleAdminGroup(groupKey)}
-                          className="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800/70 hover:text-white"
-                        >
-                          {label}
-                          {isOpen ? (
-                            <ChevronDownIcon className="h-4 w-4 shrink-0" />
-                          ) : (
-                            <ChevronRightIcon className="h-4 w-4 shrink-0" />
-                          )}
-                        </button>
-                        {isOpen && (
-                          <div className="ml-2 mt-1 space-y-1 border-l border-slate-800 pl-2">
-                            {items.map((item) => (
-                              <NavLink key={item.to} to={item.to} className={navLinkClass}>
-                                {item.label}
-                              </NavLink>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                  {adminStandaloneItems.map((item) => (
-                    <NavLink key={item.to} to={item.to} className={navLinkClass}>
-                      {item.label}
-                    </NavLink>
-                  ))}
-                </div>
+                <button
+                  type="button"
+                  onClick={() => toggleSection("admin")}
+                  className="flex w-full items-center justify-between rounded-md px-3 py-2 text-xs font-semibold text-slate-500 uppercase mb-2 hover:bg-slate-800/70 hover:text-slate-300"
+                >
+                  Admin
+                  {(sectionOpen["admin"] ?? false) ? (
+                    <ChevronDownIcon className="h-4 w-4 shrink-0" />
+                  ) : (
+                    <ChevronRightIcon className="h-4 w-4 shrink-0" />
+                  )}
+                </button>
+                {(sectionOpen["admin"] ?? false) && (
+                  <div className="space-y-1">
+                    {adminItems.map((item) => (
+                      <NavLink key={item.to} to={item.to} className={navLinkClass}>
+                        {item.label}
+                      </NavLink>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </nav>
@@ -272,26 +272,21 @@ const AppLayout: React.FC = () => {
             </div>
             <nav className="flex-1 overflow-y-auto space-y-6 text-sm">
               <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase mb-2">Discover</p>
-                <div className="space-y-1">
-                  {discoverItems.map((item) => (
-                    <NavLink
-                      key={item.to}
-                      to={item.to}
-                      className={navLinkClass}
-                      onClick={() => setMobileOpen(false)}
-                    >
-                      {item.label}
-                    </NavLink>
-                  ))}
-                </div>
-              </div>
-
-              {squashItems.length > 0 && (
-                <div>
-                  <p className="text-xs font-semibold text-slate-500 uppercase mb-2">Squash</p>
+                <button
+                  type="button"
+                  onClick={() => toggleSection("discover")}
+                  className="flex w-full items-center justify-between rounded-md px-3 py-2 text-xs font-semibold text-slate-500 uppercase mb-2 hover:bg-slate-800/70 hover:text-slate-300"
+                >
+                  Discover
+                  {(sectionOpen["discover"] ?? true) ? (
+                    <ChevronDownIcon className="h-4 w-4 shrink-0" />
+                  ) : (
+                    <ChevronRightIcon className="h-4 w-4 shrink-0" />
+                  )}
+                </button>
+                {(sectionOpen["discover"] ?? true) && (
                   <div className="space-y-1">
-                    {squashItems.map((item) => (
+                    {discoverItems.map((item) => (
                       <NavLink
                         key={item.to}
                         to={item.to}
@@ -302,60 +297,68 @@ const AppLayout: React.FC = () => {
                       </NavLink>
                     ))}
                   </div>
+                )}
+              </div>
+
+              {squashItems.length > 0 && (
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => toggleSection("squash")}
+                    className="flex w-full items-center justify-between rounded-md px-3 py-2 text-xs font-semibold text-slate-500 uppercase mb-2 hover:bg-slate-800/70 hover:text-slate-300"
+                  >
+                    Squash
+                    {(sectionOpen["squash"] ?? false) ? (
+                      <ChevronDownIcon className="h-4 w-4 shrink-0" />
+                    ) : (
+                      <ChevronRightIcon className="h-4 w-4 shrink-0" />
+                    )}
+                  </button>
+                  {(sectionOpen["squash"] ?? false) && (
+                    <div className="space-y-1">
+                      {squashItems.map((item) => (
+                        <NavLink
+                          key={item.to}
+                          to={item.to}
+                          className={navLinkClass}
+                          onClick={() => setMobileOpen(false)}
+                        >
+                          {item.label}
+                        </NavLink>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 
               {adminItems.length > 0 && (
                 <div>
-                  <p className="text-xs font-semibold text-slate-500 uppercase mb-2">Admin</p>
-                  <div className="space-y-1">
-                    {adminGroupOrder.map((groupKey) => {
-                      const items = adminGroupItems(groupKey);
-                      if (items.length === 0) return null;
-                      const isOpen = adminGroupOpen[groupKey] ?? false;
-                      const label = adminGroupLabels[groupKey];
-                      return (
-                        <div key={groupKey}>
-                          <button
-                            type="button"
-                            onClick={() => toggleAdminGroup(groupKey)}
-                            className="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800/70 hover:text-white"
-                          >
-                            {label}
-                            {isOpen ? (
-                              <ChevronDownIcon className="h-4 w-4 shrink-0" />
-                            ) : (
-                              <ChevronRightIcon className="h-4 w-4 shrink-0" />
-                            )}
-                          </button>
-                          {isOpen && (
-                            <div className="ml-2 mt-1 space-y-1 border-l border-slate-800 pl-2">
-                              {items.map((item) => (
-                                <NavLink
-                                  key={item.to}
-                                  to={item.to}
-                                  className={navLinkClass}
-                                  onClick={() => setMobileOpen(false)}
-                                >
-                                  {item.label}
-                                </NavLink>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                    {adminStandaloneItems.map((item) => (
-                      <NavLink
-                        key={item.to}
-                        to={item.to}
-                        className={navLinkClass}
-                        onClick={() => setMobileOpen(false)}
-                      >
-                        {item.label}
-                      </NavLink>
-                    ))}
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => toggleSection("admin")}
+                    className="flex w-full items-center justify-between rounded-md px-3 py-2 text-xs font-semibold text-slate-500 uppercase mb-2 hover:bg-slate-800/70 hover:text-slate-300"
+                  >
+                    Admin
+                    {(sectionOpen["admin"] ?? false) ? (
+                      <ChevronDownIcon className="h-4 w-4 shrink-0" />
+                    ) : (
+                      <ChevronRightIcon className="h-4 w-4 shrink-0" />
+                    )}
+                  </button>
+                  {(sectionOpen["admin"] ?? false) && (
+                    <div className="space-y-1">
+                      {adminItems.map((item) => (
+                        <NavLink
+                          key={item.to}
+                          to={item.to}
+                          className={navLinkClass}
+                          onClick={() => setMobileOpen(false)}
+                        >
+                          {item.label}
+                        </NavLink>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </nav>
@@ -375,15 +378,12 @@ const AppLayout: React.FC = () => {
               <Route path="/squash" element={<SquashPage />} />
               <Route path="/squash-admin" element={<SquashAdminPage />} />
               <Route path="/admin/branding" element={<BrandingPage />} />
-              <Route path="/admin/sites/add" element={<AddSitePage />} />
-              <Route path="/admin/sites/edit/:id" element={<EditSitePage />} />
-              <Route path="/admin/media/add" element={<AddMediaPage />} />
-              <Route path="/admin/media/edit/:id" element={<EditMediaPage />} />
-              <Route path="/admin/categories" element={<CategoriesPage />} />
-              <Route path="/admin/media-categories" element={<MediaCategoriesPage />} />
-              <Route path="/admin/users" element={<UsersPage />} />
+              <Route path="/admin/membership" element={<MembershipPage />} />
               <Route path="/admin/users/edit" element={<EditUserPage />} />
-              <Route path="/admin/groups" element={<GroupsPage />} />
+              <Route path="/admin/websites" element={<WebsitesAdminPage />} />
+              <Route path="/admin/sites/edit/:id" element={<EditSitePage />} />
+              <Route path="/admin/media" element={<MediaAdminPage />} />
+              <Route path="/admin/media/edit/:id" element={<EditMediaPage />} />
               <Route path="/admin/*" element={<div>Admin area</div>} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/auth" element={<AuthPage />} />

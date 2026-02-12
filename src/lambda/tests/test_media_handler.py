@@ -259,6 +259,41 @@ def test_updateMedia_thumbnailKey_success(mock_boto_client):
 
 
 @patch("api.handler.TABLE_NAME", "fus-main")
+@patch("boto3.client")
+def test_regenerateThumbnail_success(mock_boto_client):
+    """POST /media/regenerate-thumbnail as admin invokes thumb Lambda and returns success."""
+    from api.handler import handler
+    mock_lambda = MagicMock()
+    mock_payload = MagicMock()
+    mock_payload.read.return_value = json.dumps({
+        "statusCode": 200,
+        "body": json.dumps({"ok": True, "message": "Thumbnail regeneration started"})
+    }).encode()
+    mock_lambda.invoke.return_value = {"Payload": mock_payload}
+    mock_boto_client.return_value = mock_lambda
+
+    event = _admin_event("/media/regenerate-thumbnail", body={"mediaId": "MEDIA#test-123"})
+    result = handler(event, None)
+
+    assert result["statusCode"] == 200
+    mock_lambda.invoke.assert_called_once()
+    call_kw = mock_lambda.invoke.call_args[1]
+    assert call_kw["FunctionName"] == "fus-thumb"
+    payload = json.loads(call_kw["Payload"])
+    assert payload.get("source") == "api" and payload.get("action") == "regenerate"
+    assert payload.get("mediaId") == "MEDIA#test-123"
+
+
+@patch("api.handler.TABLE_NAME", "fus-main")
+def test_regenerateThumbnail_requires_admin():
+    """POST /media/regenerate-thumbnail without admin returns 403."""
+    from api.handler import handler
+    event = _auth_event("/media/regenerate-thumbnail", body={"mediaId": "MEDIA#test-123"})
+    result = handler(event, None)
+    assert result["statusCode"] == 403
+
+
+@patch("api.handler.TABLE_NAME", "fus-main")
 def test_media_all_requires_admin():
     """GET /media/all without admin returns 403."""
     from api.handler import handler

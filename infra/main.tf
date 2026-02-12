@@ -751,6 +751,11 @@ resource "aws_iam_role_policy" "lambdaApi" {
         Effect   = "Allow"
         Action   = ["bedrock:InvokeModel"]
         Resource = "arn:aws:bedrock:${var.awsRegion}::foundation-model/amazon.nova-micro-*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["lambda:InvokeFunction"]
+        Resource = aws_lambda_function.thumb.arn
       }
     ]
   })
@@ -768,9 +773,10 @@ resource "aws_lambda_function" "api" {
 
   environment {
     variables = {
-      TABLE_NAME            = aws_dynamodb_table.main.name
-      MEDIA_BUCKET          = aws_s3_bucket.media.id
-      COGNITO_USER_POOL_ID  = aws_cognito_user_pool.main.id
+      TABLE_NAME             = aws_dynamodb_table.main.name
+      MEDIA_BUCKET           = aws_s3_bucket.media.id
+      COGNITO_USER_POOL_ID   = aws_cognito_user_pool.main.id
+      THUMB_FUNCTION_NAME    = aws_lambda_function.thumb.function_name
     }
   }
 }
@@ -835,7 +841,7 @@ resource "aws_iam_role_policy" "lambdaThumb" {
       },
       {
         Effect   = "Allow"
-        Action   = ["dynamodb:UpdateItem"]
+        Action   = ["dynamodb:GetItem", "dynamodb:UpdateItem"]
         Resource = aws_dynamodb_table.main.arn
       },
       {
@@ -1194,6 +1200,14 @@ resource "aws_apigatewayv2_route" "mediaUpload" {
 resource "aws_apigatewayv2_route" "mediaThumbnailUpload" {
   api_id             = aws_apigatewayv2_api.main.id
   route_key          = "POST /media/thumbnail-upload"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "mediaRegenerateThumbnail" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /media/regenerate-thumbnail"
   target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
   authorization_type = "JWT"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id

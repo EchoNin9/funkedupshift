@@ -1,7 +1,7 @@
 """
 Thumbnail generation Lambda. Triggered by S3 PutObject on media/images/ or media/videos/.
-- Images: copy to media/thumbnails/{mediaId}.jpg and update DynamoDB
-- Videos: submit MediaConvert frame capture job; EventBridge invokes on completion to update DynamoDB
+- Images: copy to media/thumbnails/{mediaId_safe}.ext and update DynamoDB (mediaId_safe = mediaId with # replaced by _)
+- Videos: submit MediaConvert frame capture + minimal video job; EventBridge invokes on completion to update DynamoDB
 """
 import json
 import logging
@@ -26,12 +26,14 @@ def _extract_media_id(key):
 
 
 def handler(event, context):
-    """Process S3 event or MediaConvert completion event."""
+    """Process S3 event, MediaConvert completion event, or API-triggered regenerate."""
     try:
         if "Records" in event:
             return _handle_s3_event(event)
         if "detail" in event and event.get("source") == "aws.mediaconvert":
             return _handle_mediaconvert_event(event)
+        if event.get("source") == "api" and event.get("action") == "regenerate":
+            return _handle_regenerate(event)
         logger.warning("Unknown event format: %s", list(event.keys())[:5])
         return {"statusCode": 200, "body": "ignored"}
     except Exception as e:
@@ -70,7 +72,7 @@ def _process_image(bucket, key, media_id):
     ext = key.split(".")[-1].lower() if "." in key else "jpg"
     if ext not in ("jpg", "jpeg", "png", "gif", "webp"):
         ext = "jpg"
-    thumb_key = f"media/thumbnails/{media_id}.{ext}"
+    thumb_key = f"media/thumbnails/{media_id.replace('#', '_')}.{ext}"
     try:
         s3 = boto3.client("s3", region_name=AWS_REGION)
         s3.copy_object(
@@ -117,8 +119,10 @@ def _process_video(bucket, key, media_id, use_first_frame=False):
         mc = boto3.client("mediaconvert", region_name=AWS_REGION, endpoint_url=account)
 
         input_path = f"s3://{bucket}/{key}"
-        output_prefix = f"s3://{bucket}/media/thumbnails/mc_{media_id.replace('#', '_')}"
-        thumb_key = f"media/thumbnails/{media_id}.jpg"
+        media_id_safe = media_id.replace("#", "_")
+        frame_prefix = f"s3://{bucket}/media/thumbnails/mc_{media_id_safe}"
+        temp_video_prefix = f"s3://{bucket}/media/thumbnails/_temp/{media_id_safe}"
+        thumb_key = f"media/thumbnails/{media_id_safe}.jpg"
 
         if use_first_frame:
             input_clipping = {
@@ -156,7 +160,7 @@ def _process_video(bucket, key, media_id, use_first_frame=False):
                         "Name": "File Group",
                         "OutputGroupSettings": {
                             "Type": "FILE_GROUP_SETTINGS",
-                            "FileGroupSettings": {"Destination": output_prefix},
+                            "FileGroupSettings": {"Destination": frame_prefix},
                         },
                         "Outputs": [
                             {
@@ -177,7 +181,42 @@ def _process_video(bucket, key, media_id, use_first_frame=False):
                                 },
                             }
                         ],
-                    }
+                    },
+                    {
+                        "Name": "File Group",
+                        "OutputGroupSettings": {
+                            "Type": "FILE_GROUP_SETTINGS",
+                            "FileGroupSettings": {"Destination": temp_video_prefix},
+                        },
+                        "Outputs": [
+                            {
+                                "NameModifier": "_temp",
+                                "ContainerSettings": {
+                                    "Container": "MP4",
+                                    "Mp4Settings": {
+                                        "CslgAtom": "INCLUDE",
+                                        "FreeSpaceBox": "EXCLUDE",
+                                        "MoovPlacement": "PROGRESSIVE_DOWNLOAD",
+                                    },
+                                },
+                                "VideoDescription": {
+                                    "Width": 320,
+                                    "Height": 180,
+                                    "ScalingBehavior": "DEFAULT",
+                                    "CodecSettings": {
+                                        "Codec": "H_264",
+                                        "H264Settings": {
+                                            "Bitrate": 200000,
+                                            "CodecProfile": "BASELINE",
+                                            "FramerateControl": "INITIALIZE_FROM_SOURCE",
+                                            "RateControlMode": "CBR",
+                                            "InterlaceMode": "PROGRESSIVE",
+                                        },
+                                    },
+                                },
+                            }
+                        ],
+                    },
                 ],
             },
         )
@@ -189,6 +228,53 @@ def _process_video(bucket, key, media_id, use_first_frame=False):
         )
     except Exception as e:
         logger.exception("_process_video failed: %s", e)
+
+
+def _handle_regenerate(event):
+    """API-triggered thumbnail regeneration for a video. Clears existing thumbnail and submits MediaConvert job."""
+    import boto3
+
+    media_id = (event.get("mediaId") or "").strip()
+    if not media_id or not media_id.startswith("MEDIA#"):
+        logger.warning("regenerate: invalid mediaId")
+        return {"statusCode": 400, "body": json.dumps({"error": "mediaId required"})}
+    if not TABLE_NAME or not MEDIA_BUCKET:
+        logger.warning("TABLE_NAME or MEDIA_BUCKET not set")
+        return {"statusCode": 500, "body": json.dumps({"error": "server misconfigured"})}
+    try:
+        dynamodb = boto3.client("dynamodb", region_name=AWS_REGION)
+        resp = dynamodb.get_item(
+            TableName=TABLE_NAME,
+            Key={"PK": {"S": media_id}, "SK": {"S": "METADATA"}},
+            ProjectionExpression="mediaKey, mediaType, thumbnailKey",
+        )
+        item = resp.get("Item") or {}
+        media_key = (item.get("mediaKey", {}).get("S") or "").strip()
+        media_type = (item.get("mediaType", {}).get("S") or "").strip().lower()
+        if media_type != "video":
+            return {"statusCode": 400, "body": json.dumps({"error": "only videos can regenerate thumbnail"})}
+        if not media_key.startswith("media/videos/"):
+            return {"statusCode": 400, "body": json.dumps({"error": "invalid media key"})}
+        current_thumb = (item.get("thumbnailKey", {}).get("S") or "").strip()
+        if current_thumb and "_custom" in current_thumb:
+            try:
+                s3 = boto3.client("s3", region_name=AWS_REGION)
+                s3.delete_object(Bucket=MEDIA_BUCKET, Key=current_thumb)
+            except Exception as e:
+                logger.warning("Failed to delete custom thumbnail %s: %s", current_thumb, e)
+        dynamodb.update_item(
+            TableName=TABLE_NAME,
+            Key={"PK": {"S": media_id}, "SK": {"S": "METADATA"}},
+            UpdateExpression="REMOVE thumbnailKey SET updatedAt = :now",
+            ExpressionAttributeValues={
+                ":now": {"S": __import__("datetime").datetime.utcnow().isoformat() + "Z"},
+            },
+        )
+        _process_video(MEDIA_BUCKET, media_key, media_id)
+        return {"statusCode": 200, "body": json.dumps({"ok": True, "message": "Thumbnail regeneration started"})}
+    except Exception as e:
+        logger.exception("_handle_regenerate failed: %s", e)
+        return {"statusCode": 500, "body": json.dumps({"error": str(e)})}
 
 
 def _submit_first_frame_fallback(media_id, thumbnail_key, bucket, original_key):
@@ -235,27 +321,35 @@ def _handle_mediaconvert_event(event):
         return {"statusCode": 200, "body": "ok"}
 
     try:
-        mc = boto3.client("mediaconvert", region_name=AWS_REGION)
-        account = mc.describe_endpoints()["Endpoints"][0]["Url"]
-        mc = boto3.client("mediaconvert", region_name=AWS_REGION, endpoint_url=account)
-        job = mc.get_job(Id=job_id)
-        job_data = job.get("Job", {})
-        output_groups = job_data.get("OutputGroupDetails", [])
+        output_groups = detail.get("outputGroupDetails") or detail.get("OutputGroupDetails")
+        if not output_groups:
+            logger.info("No outputGroupDetails in event, fetching job %s via get_job", job_id)
+            mc = boto3.client("mediaconvert", region_name=AWS_REGION)
+            account = mc.describe_endpoints()["Endpoints"][0]["Url"]
+            mc = boto3.client("mediaconvert", region_name=AWS_REGION, endpoint_url=account)
+            job = mc.get_job(Id=job_id)
+            output_groups = job.get("Job", {}).get("OutputGroupDetails", [])
+
         src_key = None
         bucket = MEDIA_BUCKET
+        temp_keys_to_delete = []
         for og in output_groups:
-            for od in og.get("OutputDetails", []):
-                for path in od.get("OutputFilePaths", []):
+            output_details = og.get("OutputDetails") or og.get("outputDetails") or []
+            for od in output_details:
+                paths = od.get("OutputFilePaths") or od.get("outputFilePaths") or []
+                for path in paths:
                     match = re.search(r"s3://([^/]+)/(.+)", path)
                     if match:
-                        bucket, src_key = match.group(1), match.group(2)
-                        break
-            if src_key:
-                break
+                        b, k = match.group(1), match.group(2)
+                        if k.lower().endswith(".jpg"):
+                            bucket, src_key = b, k
+                        else:
+                            temp_keys_to_delete.append((b, k))
         if not src_key:
-            logger.warning("No output file path in job %s", job_id)
+            logger.warning("No .jpg output file path in job %s (outputGroupCount=%s)", job_id, len(output_groups))
             return {"statusCode": 200, "body": "ok"}
 
+        logger.info("MediaConvert COMPLETE: jobId=%s, src_key=%s, temp_keys=%s", job_id, src_key, len(temp_keys_to_delete))
         s3 = boto3.client("s3", region_name=AWS_REGION)
         s3.copy_object(
             Bucket=bucket,
@@ -263,6 +357,11 @@ def _handle_mediaconvert_event(event):
             Key=thumbnail_key,
         )
         s3.delete_object(Bucket=bucket, Key=src_key)
+        for b, k in temp_keys_to_delete:
+            try:
+                s3.delete_object(Bucket=b, Key=k)
+            except Exception as e:
+                logger.warning("Failed to delete temp output %s: %s", k, e)
         dynamodb = boto3.client("dynamodb", region_name=AWS_REGION)
         current = dynamodb.get_item(
             TableName=TABLE_NAME,

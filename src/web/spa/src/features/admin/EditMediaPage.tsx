@@ -22,7 +22,11 @@ const EditMediaPage: React.FC = () => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [mediaUrl, setMediaUrl] = useState<string | null>(null);
+  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
   const [mediaType, setMediaType] = useState<"image" | "video" | string>("image");
+  const [isRegenerating, setIsRegenerating] = useState(false);
+  const [isUploadingThumb, setIsUploadingThumb] = useState(false);
+  const [isDeletingThumb, setIsDeletingThumb] = useState(false);
   const [categories, setCategories] = useState<MediaCategory[]>([]);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [categorySearch, setCategorySearch] = useState("");
@@ -72,6 +76,7 @@ const EditMediaPage: React.FC = () => {
       setTitle((rec.title as string) ?? "");
       setDescription((rec.description as string) ?? "");
       setMediaUrl((rec.mediaUrl as string) || null);
+      setThumbnailUrl((rec.thumbnailUrl as string) || null);
       setMediaType((rec.mediaType as string) || "image");
       setSelectedCategoryIds(Array.isArray(rec.categoryIds) ? (rec.categoryIds as string[]) : []);
       const catResp = await fetch(`${apiBase}/media-categories`, { headers: { Authorization: `Bearer ${token}` } });
@@ -136,6 +141,124 @@ const EditMediaPage: React.FC = () => {
       setError(e?.message ?? "Failed to update media.");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleUploadThumbnail = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !mediaId) return;
+    if (!file.type.startsWith("image/")) {
+      setError("Please choose an image (PNG, JPEG, GIF, WebP).");
+      return;
+    }
+    const apiBase = getApiBaseUrl();
+    if (!apiBase) return;
+    const w = window as any;
+    if (!w.auth?.getAccessToken) return;
+    setIsUploadingThumb(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
+      const uploadResp = await fetch(`${apiBase}/media/thumbnail-upload`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ mediaId, contentType: file.type || "image/png" })
+      });
+      if (!uploadResp.ok) throw new Error("Upload request failed");
+      const { uploadUrl: putUrl, key } = (await uploadResp.json()) as { uploadUrl: string; key: string };
+      const putResp = await fetch(putUrl, {
+        method: "PUT",
+        headers: { "Content-Type": file.type || "image/png" },
+        body: file
+      });
+      if (!putResp.ok) throw new Error("File upload failed");
+      const updateResp = await fetch(`${apiBase}/media`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ id: mediaId, thumbnailKey: key })
+      });
+      if (!updateResp.ok) throw new Error(await updateResp.text());
+      const refreshResp = await fetch(`${apiBase}/media?id=${encodeURIComponent(mediaId)}`);
+      if (refreshResp.ok) {
+        const d = (await refreshResp.json()) as { media?: { thumbnailUrl?: string } };
+        const m = Array.isArray(d.media) ? d.media[0] : d.media;
+        if (m?.thumbnailUrl) setThumbnailUrl(m.thumbnailUrl);
+      }
+      setMessage("Logo/thumbnail updated.");
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to upload thumbnail.");
+    } finally {
+      setIsUploadingThumb(false);
+      e.target.value = "";
+    }
+  };
+
+  const handleDeleteThumbnail = async () => {
+    if (!mediaId) return;
+    if (!window.confirm("Remove the custom logo/thumbnail? You can regenerate from video or upload a new one.")) return;
+    const apiBase = getApiBaseUrl();
+    if (!apiBase) return;
+    const w = window as any;
+    if (!w.auth?.getAccessToken) return;
+    setIsDeletingThumb(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
+      const resp = await fetch(`${apiBase}/media`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ id: mediaId, deleteThumbnail: true })
+      });
+      if (!resp.ok) throw new Error(await resp.text());
+      setThumbnailUrl(null);
+      setMessage("Logo/thumbnail removed.");
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to remove thumbnail.");
+    } finally {
+      setIsDeletingThumb(false);
+    }
+  };
+
+  const handleRegenerateThumbnail = async () => {
+    if (!mediaId) return;
+    const apiBase = getApiBaseUrl();
+    if (!apiBase) return;
+    const w = window as any;
+    if (!w.auth?.getAccessToken) return;
+    setIsRegenerating(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
+      const resp = await fetch(`${apiBase}/media/regenerate-thumbnail`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ mediaId })
+      });
+      if (!resp.ok) throw new Error(await resp.text());
+      setMessage("Thumbnail regeneration started. New thumbnail will appear in 30–60 seconds.");
+      const pollForThumbnail = async (attempt: number) => {
+        if (attempt > 6) return;
+        await new Promise((r) => setTimeout(r, 10000));
+        const refresh = await fetch(`${apiBase}/media?id=${encodeURIComponent(mediaId)}`);
+        if (refresh.ok) {
+          const d = (await refresh.json()) as { media?: { thumbnailUrl?: string } };
+          const m = Array.isArray(d.media) ? d.media[0] : d.media;
+          if (m?.thumbnailUrl) {
+            setThumbnailUrl(m.thumbnailUrl);
+            setMessage("Thumbnail updated.");
+            return;
+          }
+        }
+        pollForThumbnail(attempt + 1);
+      };
+      pollForThumbnail(1);
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to regenerate thumbnail.");
+    } finally {
+      setIsRegenerating(false);
     }
   };
 
@@ -226,6 +349,48 @@ const EditMediaPage: React.FC = () => {
               />
             )}
           </div>
+          {mediaType === "video" && (
+            <div className="px-4 py-3 border-t border-slate-800 space-y-2">
+              <p className="text-xs font-medium text-slate-400">Logo / Thumbnail</p>
+              <div className="flex flex-wrap items-center gap-3">
+                {thumbnailUrl && (
+                  <img
+                    src={thumbnailUrl}
+                    alt="Thumbnail"
+                    className="h-16 w-auto rounded border border-slate-700 object-cover"
+                  />
+                )}
+                <button
+                  type="button"
+                  onClick={handleRegenerateThumbnail}
+                  disabled={isRegenerating}
+                  className="rounded-md border border-slate-600 px-3 py-1.5 text-sm font-medium text-slate-200 hover:bg-slate-800 disabled:opacity-50"
+                >
+                  {isRegenerating ? "Regenerating…" : "Take screenshot"}
+                </button>
+                <label className="cursor-pointer rounded-md border border-slate-600 px-3 py-1.5 text-sm font-medium text-slate-200 hover:bg-slate-800">
+                  {isUploadingThumb ? "Uploading…" : "Add logo"}
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/gif,image/webp"
+                    className="hidden"
+                    onChange={handleUploadThumbnail}
+                    disabled={isUploadingThumb}
+                  />
+                </label>
+                {thumbnailUrl && (
+                  <button
+                    type="button"
+                    onClick={handleDeleteThumbnail}
+                    disabled={isDeletingThumb}
+                    className="rounded-md border border-red-500/60 px-3 py-1.5 text-sm font-medium text-red-400 hover:bg-red-500/20 disabled:opacity-50"
+                  >
+                    {isDeletingThumb ? "Removing…" : "Delete logo"}
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
         </section>
       )}
 
