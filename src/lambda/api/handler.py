@@ -154,6 +154,8 @@ def handler(event, context):
             return postBrandingLogoUpload(event)
         if method == "GET" and path == "/internet-dashboard":
             return getInternetDashboard(event)
+        if method == "GET" and path == "/other-properties/our-properties":
+            return getOurProperties(event)
         if method == "GET" and path == "/sites":
             return listSites(event)
         if method == "GET" and path == "/sites/all":
@@ -280,6 +282,10 @@ def handler(event, context):
             return getInternetDashboardSites(event)
         if method == "PUT" and path == "/admin/internet-dashboard/sites":
             return putInternetDashboardSites(event)
+        if method == "GET" and path == "/admin/other-properties/our-properties/sites":
+            return getOurPropertiesSites(event)
+        if method == "PUT" and path == "/admin/other-properties/our-properties/sites":
+            return putOurPropertiesSites(event)
         if method == "OPTIONS":
             # CORS preflight
             return jsonResponse({}, 200)
@@ -341,6 +347,57 @@ def putInternetDashboardSites(event):
         return jsonResponse({"error": "Invalid JSON body"}, 400)
     except Exception as e:
         logger.exception("putInternetDashboardSites error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def getOurProperties(event):
+    """GET /other-properties/our-properties: status of our sites (public, no auth)."""
+    try:
+        from api.our_properties import fetch_our_properties
+        sites = fetch_our_properties()
+        return jsonResponse({"sites": sites})
+    except Exception as e:
+        logger.exception("getOurProperties error: %s", e)
+        return jsonResponse({"error": str(e), "sites": []}, 500)
+
+
+def getOurPropertiesSites(event):
+    """GET /admin/other-properties/our-properties/sites - Return our properties sites list (manager or admin)."""
+    _, err = _requireManagerOrAdmin(event)
+    if err:
+        return err
+    try:
+        from api.our_properties import get_our_properties_sites
+        sites = get_our_properties_sites()
+        return jsonResponse({"sites": sites})
+    except Exception as e:
+        logger.exception("getOurPropertiesSites error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def putOurPropertiesSites(event):
+    """PUT /admin/other-properties/our-properties/sites - Update our properties sites list (manager or admin)."""
+    _, err = _requireManagerOrAdmin(event)
+    if err:
+        return err
+    try:
+        body = event.get("body")
+        if body and isinstance(body, str):
+            body = json.loads(body)
+        else:
+            body = body or {}
+        sites = body.get("sites")
+        if not isinstance(sites, list):
+            return jsonResponse({"error": "sites must be an array"}, 400)
+        from api.our_properties import save_our_properties_sites, normalize_sites
+        sites = normalize_sites(sites)
+        if not save_our_properties_sites(sites):
+            return jsonResponse({"error": "Failed to save"}, 500)
+        return jsonResponse({"sites": sites})
+    except json.JSONDecodeError:
+        return jsonResponse({"error": "Invalid JSON body"}, 400)
+    except Exception as e:
+        logger.exception("putOurPropertiesSites error: %s", e)
         return jsonResponse({"error": str(e)}, 500)
 
 
