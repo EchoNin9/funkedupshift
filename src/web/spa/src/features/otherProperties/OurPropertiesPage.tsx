@@ -4,7 +4,9 @@ import { Dialog } from "@headlessui/react";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import { useAuth, hasRole } from "../../shell/AuthContext";
 
-const SOFT_GREEN = "#3d7a3d";
+const SOFT_GREEN = "#3d7a3d"; // rasta soft-green
+const RASTA_RED = "#e50203";
+const RASTA_YELLOW = "#fdde13";
 
 interface OurPropertiesSite {
   url: string;
@@ -17,7 +19,8 @@ interface OurPropertiesSite {
 function getApiBaseUrl(): string | null {
   if (typeof window === "undefined") return null;
   const raw = (window as any).API_BASE_URL as string | undefined;
-  return raw ? raw.replace(/\/$/, "") : null;
+  if (!raw || raw === "API_URL_PLACEHOLDER" || !raw.startsWith("http")) return null;
+  return raw.replace(/\/$/, "");
 }
 
 const OurPropertiesPage: React.FC = () => {
@@ -31,7 +34,9 @@ const OurPropertiesPage: React.FC = () => {
     const apiBase = getApiBaseUrl();
 
     if (!apiBase) {
-      setError("API URL not set.");
+      setError(
+        "API URL not set. For local dev, edit public/config.js and set window.API_BASE_URL to your staging API (e.g. terraform -chdir=infra output -raw apiInvokeUrl)."
+      );
       setIsLoading(false);
       return;
     }
@@ -41,11 +46,21 @@ const OurPropertiesPage: React.FC = () => {
 
     try {
       const resp = await fetch(`${apiBase}/other-properties/our-properties`);
+      const txt = await resp.text();
       if (!resp.ok) {
-        const txt = await resp.text();
         throw new Error(txt || `HTTP ${resp.status}`);
       }
-      const data = (await resp.json()) as { sites?: OurPropertiesSite[] };
+      if (txt.trim().startsWith("<")) {
+        throw new Error(
+          "API returned HTML instead of JSON. For local dev, set window.API_BASE_URL in public/config.js to your staging API URL (e.g. terraform -chdir=infra output -raw apiInvokeUrl)"
+        );
+      }
+      let data: { sites?: OurPropertiesSite[] };
+      try {
+        data = JSON.parse(txt) as { sites?: OurPropertiesSite[] };
+      } catch {
+        throw new Error("API returned invalid JSON.");
+      }
       const list = Array.isArray(data.sites) ? data.sites : [];
       setSites(list);
       setError(null);
@@ -70,17 +85,17 @@ const OurPropertiesPage: React.FC = () => {
         Our Properties
       </h1>
       <div className="rounded-xl border-2 p-4 shadow-lg" style={{ borderColor: SOFT_GREEN, background: SOFT_GREEN }}>
-        <p className="text-sm font-medium text-[#000000]">
+        <p className="text-sm font-medium text-black">
           Live status of our sites
         </p>
-        <p className="mt-1 text-xs text-[#000000]/90">
+        <p className="mt-1 text-xs text-black/90">
           Shows availability and response time for our properties
         </p>
         {canEdit && (
           <p className="mt-2">
             <Link
               to="/admin/other-properties/our-properties"
-              className="text-[#000000] hover:text-[#e50203] font-semibold text-sm"
+              className="text-black hover:text-rasta-red font-semibold text-sm"
             >
               Edit sites list
             </Link>
@@ -120,15 +135,15 @@ const OurPropertiesPage: React.FC = () => {
               status === "up"
                 ? { borderColor: SOFT_GREEN, background: SOFT_GREEN }
                 : status === "degraded"
-                ? { borderColor: "#fdde13", background: "#fdde13" }
-                : { borderColor: "#e50203", background: "#e50203" };
+                ? { borderColor: RASTA_YELLOW, background: RASTA_YELLOW }
+                : { borderColor: RASTA_RED, background: RASTA_RED };
             const rtStr =
               s.responseTimeMs != null ? `${s.responseTimeMs} ms` : null;
             const hasDescription = (s.description || "").trim().length > 0;
             return (
               <div
                 key={s.url || s.domain}
-                className="rounded-lg border-2 p-3 text-center text-sm min-w-0 cursor-pointer text-[#000000]"
+                className="rounded-lg border-2 p-3 text-center text-sm min-w-0 cursor-pointer text-black"
                 style={statusBorderBg}
                 onClick={() => setSelectedSite(s)}
                 role="button"
@@ -144,7 +159,7 @@ const OurPropertiesPage: React.FC = () => {
                   href={s.url || `https://${s.domain}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="font-semibold break-all block text-[#000000] hover:text-[#e50203] hover:underline"
+                  className="font-semibold break-all block text-black hover:text-rasta-red hover:underline"
                   onClick={(e) => e.stopPropagation()}
                 >
                   {s.domain}
@@ -203,7 +218,7 @@ const OurPropertiesPage: React.FC = () => {
                       href={selectedSite.url || `https://${selectedSite.domain}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-[#e50203] hover:underline break-all"
+                      className="text-rasta-red hover:underline break-all"
                     >
                       {selectedSite.url || `https://${selectedSite.domain}`}
                     </a>
