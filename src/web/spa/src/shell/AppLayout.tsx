@@ -27,7 +27,6 @@ interface NavItem {
   to: string;
   section: "discover" | "squash" | "admin";
   minRole: "guest" | "user" | "manager" | "superadmin";
-  adminGroup?: "membership" | "websites" | "media";
 }
 
 const navItems: NavItem[] = [
@@ -37,29 +36,19 @@ const navItems: NavItem[] = [
   { label: "Profile", to: "/profile", section: "discover", minRole: "user" },
   { label: "Squash", to: "/squash", section: "squash", minRole: "user" },
   { label: "Squash Admin", to: "/squash-admin", section: "squash", minRole: "manager" },
-  { label: "Membership", to: "/admin/membership", section: "admin", minRole: "manager", adminGroup: "membership" },
-  { label: "Websites", to: "/admin/websites", section: "admin", minRole: "manager", adminGroup: "websites" },
-  { label: "Media", to: "/admin/media", section: "admin", minRole: "manager", adminGroup: "media" },
+  { label: "Membership", to: "/admin/membership", section: "admin", minRole: "manager" },
+  { label: "Websites", to: "/admin/websites", section: "admin", minRole: "manager" },
+  { label: "Media", to: "/admin/media", section: "admin", minRole: "manager" },
   { label: "Branding", to: "/admin/branding", section: "admin", minRole: "superadmin" }
 ];
 
-const adminGroupLabels: Record<string, string> = {
-  membership: "Membership",
-  websites: "Websites",
-  media: "Media"
-};
-
-const adminGroupOrder = ["membership", "websites", "media"] as const;
 const WINDOWSHADE_STORAGE_KEY = "funkedupshift_sectionOpen";
 
 function getDefaultSectionState(): Record<string, boolean> {
   return {
     discover: true,
     squash: false,
-    admin: false,
-    membership: false,
-    websites: false,
-    media: false
+    admin: false
   };
 }
 
@@ -115,8 +104,6 @@ const AppLayout: React.FC = () => {
     .filter((i) => i.section === "squash")
     .filter((i) => (i.to === "/squash" ? canAccessSquash(user) : canModifySquash(user)));
   const adminItems = visibleNavItems.filter((i) => i.section === "admin");
-  const adminStandaloneItems = adminItems.filter((i) => !i.adminGroup);
-  const adminGroupItems = (group: string) => adminItems.filter((i) => i.adminGroup === group);
 
   const navLinkClass = ({ isActive }: { isActive: boolean }) =>
     [
@@ -254,38 +241,7 @@ const AppLayout: React.FC = () => {
                 </button>
                 {(sectionOpen["admin"] ?? false) && (
                   <div className="space-y-1">
-                    {adminGroupOrder.map((groupKey) => {
-                      const items = adminGroupItems(groupKey);
-                      if (items.length === 0) return null;
-                      const isOpen = sectionOpen[groupKey] ?? false;
-                      const label = adminGroupLabels[groupKey];
-                      return (
-                        <div key={groupKey}>
-                          <button
-                            type="button"
-                            onClick={() => toggleSection(groupKey)}
-                            className="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800/70 hover:text-white"
-                          >
-                            {label}
-                            {isOpen ? (
-                              <ChevronDownIcon className="h-4 w-4 shrink-0" />
-                            ) : (
-                              <ChevronRightIcon className="h-4 w-4 shrink-0" />
-                            )}
-                          </button>
-                          {isOpen && (
-                            <div className="ml-2 mt-1 space-y-1 border-l border-slate-800 pl-2">
-                              {items.map((item) => (
-                                <NavLink key={item.to} to={item.to} className={navLinkClass}>
-                                  {item.label}
-                                </NavLink>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                    {adminStandaloneItems.map((item) => (
+                    {adminItems.map((item) => (
                       <NavLink key={item.to} to={item.to} className={navLinkClass}>
                         {item.label}
                       </NavLink>
@@ -391,43 +347,7 @@ const AppLayout: React.FC = () => {
                   </button>
                   {(sectionOpen["admin"] ?? false) && (
                     <div className="space-y-1">
-                      {adminGroupOrder.map((groupKey) => {
-                        const items = adminGroupItems(groupKey);
-                        if (items.length === 0) return null;
-                        const isOpen = sectionOpen[groupKey] ?? false;
-                        const label = adminGroupLabels[groupKey];
-                        return (
-                          <div key={groupKey}>
-                            <button
-                              type="button"
-                              onClick={() => toggleSection(groupKey)}
-                              className="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800/70 hover:text-white"
-                            >
-                              {label}
-                              {isOpen ? (
-                                <ChevronDownIcon className="h-4 w-4 shrink-0" />
-                              ) : (
-                                <ChevronRightIcon className="h-4 w-4 shrink-0" />
-                              )}
-                            </button>
-                            {isOpen && (
-                              <div className="ml-2 mt-1 space-y-1 border-l border-slate-800 pl-2">
-                                {items.map((item) => (
-                                  <NavLink
-                                    key={item.to}
-                                    to={item.to}
-                                    className={navLinkClass}
-                                    onClick={() => setMobileOpen(false)}
-                                  >
-                                    {item.label}
-                                  </NavLink>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                      {adminStandaloneItems.map((item) => (
+                      {adminItems.map((item) => (
                         <NavLink
                           key={item.to}
                           to={item.to}
