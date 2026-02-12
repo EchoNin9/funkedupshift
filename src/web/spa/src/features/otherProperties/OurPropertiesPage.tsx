@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useAuth, hasRole } from "../../shell/AuthContext";
 
 interface OurPropertiesSite {
+  url: string;
   domain: string;
   status: string;
   responseTimeMs?: number;
@@ -119,11 +120,11 @@ const OurPropertiesPage: React.FC = () => {
               s.responseTimeMs != null ? `${s.responseTimeMs} ms` : null;
             return (
               <div
-                key={s.domain}
+                key={s.url || s.domain}
                 className={`rounded-lg border p-3 text-center text-sm ${statusClass}`}
               >
                 <a
-                  href={`https://${s.domain}`}
+                  href={s.url || `https://${s.domain}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="font-semibold break-all hover:underline block"

@@ -9,13 +9,30 @@ function getApiBaseUrl(): string | null {
   return raw ? raw.replace(/\/$/, "") : null;
 }
 
+function normalizeUrl(raw: string): string | null {
+  const s = raw.trim();
+  if (!s) return null;
+  if (s.toLowerCase().startsWith("http://") || s.toLowerCase().startsWith("https://")) return s;
+  return `https://${s.replace(/^https?:\/\//i, "")}`;
+}
+
+function domainFromUrl(url: string): string {
+  try {
+    return new URL(url.startsWith("http") ? url : `https://${url}`).hostname;
+  } catch {
+    return url;
+  }
+}
+
 const OurPropertiesAdminPage: React.FC = () => {
   const { user } = useAuth();
   const [sites, setSites] = useState<string[]>([]);
   const [displayOrder, setDisplayOrder] = useState<"custom" | "a-z" | "z-a">("custom");
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
-  const [newDomain, setNewDomain] = useState("");
+  const [newUrl, setNewUrl] = useState("");
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editingValue, setEditingValue] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -87,22 +104,56 @@ const OurPropertiesAdminPage: React.FC = () => {
 
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
-    const domain = newDomain.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "");
-    if (!domain) return;
-    if (sites.includes(domain)) {
-      setError("Domain already in list.");
+    const url = normalizeUrl(newUrl);
+    if (!url) return;
+    if (sites.includes(url)) {
+      setError("URL already in list.");
       return;
     }
-    const updated = [...sites, domain];
-    setNewDomain("");
+    const updated = [...sites, url];
+    setNewUrl("");
     setError(null);
     saveSites(updated);
+  };
+
+  const startEdit = (index: number) => {
+    setEditingIndex(index);
+    setEditingValue(displayedSites[index]);
+  };
+
+  const saveEdit = () => {
+    if (editingIndex === null) return;
+    const url = normalizeUrl(editingValue);
+    if (!url) {
+      setError("Invalid URL.");
+      return;
+    }
+    const oldUrl = displayedSites[editingIndex];
+    if (sites.filter((u) => u === url).length > (url === oldUrl ? 1 : 0)) {
+      setError("URL already in list.");
+      return;
+    }
+    setError(null);
+    const updated = sites.map((u) => (u === oldUrl ? url : u));
+    setSites(updated);
+    saveSites(updated);
+    setEditingIndex(null);
+    setEditingValue("");
+  };
+
+  const cancelEdit = () => {
+    setEditingIndex(null);
+    setEditingValue("");
   };
 
   const displayedSites = useMemo(() => {
     if (displayOrder === "custom") return [...sites];
     const copy = [...sites];
-    copy.sort((a, b) => (displayOrder === "a-z" ? a.localeCompare(b) : b.localeCompare(a)));
+    copy.sort((a, b) => {
+      const da = domainFromUrl(a);
+      const db = domainFromUrl(b);
+      return displayOrder === "a-z" ? da.localeCompare(db) : db.localeCompare(da);
+    });
     return copy;
   }, [sites, displayOrder]);
 
@@ -219,21 +270,21 @@ const OurPropertiesAdminPage: React.FC = () => {
 
         <form onSubmit={handleAdd} className="flex gap-2 flex-wrap items-end">
           <div className="flex-1 min-w-[12rem]">
-            <label htmlFor="newDomain" className="block text-xs font-medium text-slate-400 mb-1">
-              Add domain
+            <label htmlFor="newUrl" className="block text-xs font-medium text-slate-400 mb-1">
+              Add URL
             </label>
             <input
-              id="newDomain"
+              id="newUrl"
               type="text"
-              value={newDomain}
-              onChange={(e) => setNewDomain(e.target.value)}
-              placeholder="example.com"
+              value={newUrl}
+              onChange={(e) => setNewUrl(e.target.value)}
+              placeholder="https://example.com or example.com"
               className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-500 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange"
             />
           </div>
           <button
             type="submit"
-            disabled={isSaving || !newDomain.trim()}
+            disabled={isSaving || !newUrl.trim()}
             className="rounded-md bg-brand-orange px-4 py-2 text-sm font-medium text-slate-950 hover:bg-orange-500 disabled:opacity-50"
           >
             Add
@@ -241,10 +292,10 @@ const OurPropertiesAdminPage: React.FC = () => {
         </form>
 
         <ul className="space-y-2">
-          {displayedSites.map((domain, index) => (
+          {displayedSites.map((url, index) => (
             <li
-              key={domain}
-              draggable={displayOrder === "custom"}
+              key={url}
+              draggable={displayOrder === "custom" && editingIndex === null}
               onDragStart={() => handleDragStart(index)}
               onDragOver={(e) => handleDragOver(e, index)}
               onDragLeave={handleDragLeave}
@@ -256,16 +307,37 @@ const OurPropertiesAdminPage: React.FC = () => {
                   : dragOverIndex === index
                   ? "border-brand-orange/70 bg-slate-800/80"
                   : "border-slate-700 bg-slate-900"
-              } ${displayOrder === "custom" ? "cursor-grab active:cursor-grabbing" : ""}`}
+              } ${displayOrder === "custom" && editingIndex === null ? "cursor-grab active:cursor-grabbing" : ""}`}
             >
               {displayOrder === "custom" && (
                 <Bars3Icon className="h-4 w-4 flex-shrink-0 text-slate-500" aria-hidden />
               )}
-              <span className="font-medium text-slate-200 break-all flex-1">{domain}</span>
+              {editingIndex === index ? (
+                <input
+                  type="text"
+                  value={editingValue}
+                  onChange={(e) => setEditingValue(e.target.value)}
+                  onBlur={saveEdit}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") saveEdit();
+                    if (e.key === "Escape") cancelEdit();
+                  }}
+                  autoFocus
+                  className="flex-1 rounded-md border border-slate-600 bg-slate-900 px-2 py-1 text-sm text-slate-50 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange"
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => startEdit(index)}
+                  className="font-medium text-slate-200 break-all flex-1 text-left hover:text-brand-orange hover:underline"
+                >
+                  {domainFromUrl(url)}
+                </button>
+              )}
               <button
                 type="button"
-                onClick={() => handleRemove(domain)}
-                disabled={isSaving}
+                onClick={() => handleRemove(url)}
+                disabled={isSaving || editingIndex !== null}
                 className="flex-shrink-0 rounded-md border border-red-500/60 bg-red-500/10 px-2 py-1 text-xs font-medium text-red-300 hover:bg-red-500/20 disabled:opacity-50"
               >
                 Remove
@@ -275,7 +347,7 @@ const OurPropertiesAdminPage: React.FC = () => {
         </ul>
 
         {displayedSites.length === 0 && (
-          <p className="text-sm text-slate-500">No sites yet. Add a domain above.</p>
+          <p className="text-sm text-slate-500">No sites yet. Add a URL above.</p>
         )}
 
         {message && (

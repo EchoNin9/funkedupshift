@@ -389,8 +389,9 @@ def putOurPropertiesSites(event):
         sites = body.get("sites")
         if not isinstance(sites, list):
             return jsonResponse({"error": "sites must be an array"}, 400)
-        sites = [str(s).strip() for s in sites if str(s).strip()]
-        from api.our_properties import save_our_properties_sites
+        raw = [str(s).strip() for s in sites if str(s).strip()]
+        from api.our_properties import save_our_properties_sites, normalize_urls
+        sites = normalize_urls(raw)
         if not save_our_properties_sites(sites):
             return jsonResponse({"error": "Failed to save"}, 500)
         return jsonResponse({"sites": sites})

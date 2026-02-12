@@ -1,12 +1,14 @@
 """
 Our Properties: status of our own sites (dashboard-style grid).
 Same HTTP check logic as internet dashboard - no external APIs.
+Stores full URLs; returns url + domain for display.
 """
 import json
 import logging
 import os
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 
@@ -16,6 +18,26 @@ logger.setLevel(logging.INFO)
 TABLE_NAME = os.environ.get("TABLE_NAME", "")
 
 OUR_PROPERTIES_KEY = "OUR_PROPERTIES"
+
+
+def _normalize_url(raw):
+    """Normalize input to full URL. Accepts domain or full URL."""
+    s = str(raw).strip()
+    if not s:
+        return None
+    s = s.lower()
+    if not s.startswith("http://") and not s.startswith("https://"):
+        s = "https://" + s
+    parsed = urlparse(s)
+    if not parsed.netloc:
+        return None
+    return s
+
+
+def _domain_from_url(url):
+    """Extract display domain (hostname) from URL."""
+    parsed = urlparse(url)
+    return parsed.netloc or url
 
 
 def get_our_properties_sites():
@@ -41,8 +63,20 @@ def get_our_properties_sites():
         return []
 
 
+def normalize_urls(raw_list):
+    """Normalize list of domains/URLs to full URLs. Dedupe, preserve order."""
+    seen = set()
+    out = []
+    for s in raw_list:
+        u = _normalize_url(s)
+        if u and u not in seen:
+            seen.add(u)
+            out.append(u)
+    return out
+
+
 def save_our_properties_sites(sites):
-    """Save sites list to DynamoDB (manager or admin)."""
+    """Save sites list (full URLs) to DynamoDB (manager or admin)."""
     if not TABLE_NAME:
         return False
     try:
@@ -96,26 +130,28 @@ def _status_from_http(status_code, response_time_ms):
 
 
 def fetch_our_properties():
-    """Fetch status from HTTP HEAD for each site. Return list of site dicts."""
-    sites = get_our_properties_sites()
-    if not sites:
+    """Fetch status from HTTP HEAD for each site. Return list of site dicts with url, domain, status."""
+    raw = get_our_properties_sites()
+    urls = [u for s in raw if (u := _normalize_url(s))]
+    if not urls:
         return []
 
-    domain_to_result = {}
+    url_to_result = {}
 
-    def check_one(domain):
-        url = f"https://{domain}"
+    def check_one(url):
         status_code, response_time_ms = _check_url_http(url)
         status = _status_from_http(status_code, response_time_ms)
-        return domain, {
+        domain = _domain_from_url(url)
+        return url, {
+            "url": url,
             "domain": domain,
             "status": status,
             "responseTimeMs": response_time_ms,
         }
 
     with ThreadPoolExecutor(max_workers=10) as ex:
-        futures = {ex.submit(check_one, d): d for d in sites}
+        futures = {ex.submit(check_one, u): u for u in urls}
         for fut in as_completed(futures, timeout=15):
-            domain, data = fut.result()
-            domain_to_result[domain] = data
-    return [domain_to_result[d] for d in sites]
+            url, data = fut.result()
+            url_to_result[url] = data
+    return [url_to_result[u] for u in urls]
