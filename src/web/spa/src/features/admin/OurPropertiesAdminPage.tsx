@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeftIcon, Bars3Icon } from "@heroicons/react/24/outline";
 import { useAuth, hasRole } from "../../shell/AuthContext";
@@ -24,9 +24,14 @@ function domainFromUrl(url: string): string {
   }
 }
 
+interface SiteEntry {
+  url: string;
+  description: string;
+}
+
 const OurPropertiesAdminPage: React.FC = () => {
   const { user } = useAuth();
-  const [sites, setSites] = useState<string[]>([]);
+  const [sites, setSites] = useState<SiteEntry[]>([]);
   const [displayOrder, setDisplayOrder] = useState<"custom" | "a-z" | "z-a">("custom");
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
@@ -37,8 +42,13 @@ const OurPropertiesAdminPage: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const sitesRef = useRef<SiteEntry[]>([]);
 
   const canEdit = hasRole(user ?? null, "manager");
+
+  useEffect(() => {
+    sitesRef.current = sites;
+  }, [sites]);
 
   const fetchWithAuth = useCallback(async (url: string, options?: RequestInit) => {
     const w = window as any;
@@ -64,8 +74,12 @@ const OurPropertiesAdminPage: React.FC = () => {
         const d = await resp.json().catch(() => ({}));
         throw new Error((d as { error?: string }).error || "Failed to load");
       }
-      const data = (await resp.json()) as { sites?: string[] };
-      setSites(Array.isArray(data.sites) ? data.sites : []);
+      const data = (await resp.json()) as { sites?: SiteEntry[] };
+      const list = Array.isArray(data.sites) ? data.sites : [];
+      setSites(list.map((s) => ({
+        url: typeof s === "string" ? s : (s.url || ""),
+        description: typeof s === "string" ? "" : (s.description || ""),
+      })));
     } catch (e: any) {
       setError(e?.message ?? "Failed to load sites.");
     } finally {
@@ -77,7 +91,7 @@ const OurPropertiesAdminPage: React.FC = () => {
     if (canEdit) loadSites();
   }, [canEdit, loadSites]);
 
-  const saveSites = async (updated: string[]) => {
+  const saveSites = async (updated: SiteEntry[]) => {
     const apiBase = getApiBaseUrl();
     if (!apiBase) return;
     setIsSaving(true);
@@ -87,7 +101,7 @@ const OurPropertiesAdminPage: React.FC = () => {
       const resp = await fetchWithAuth(`${apiBase}/admin/other-properties/our-properties/sites`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sites: updated }),
+        body: JSON.stringify({ sites: updated.map((s) => ({ url: s.url, description: s.description })) }),
       });
       if (!resp.ok) {
         const d = await resp.json().catch(() => ({}));
@@ -106,11 +120,11 @@ const OurPropertiesAdminPage: React.FC = () => {
     e.preventDefault();
     const url = normalizeUrl(newUrl);
     if (!url) return;
-    if (sites.includes(url)) {
+    if (sites.some((s) => s.url === url)) {
       setError("URL already in list.");
       return;
     }
-    const updated = [...sites, url];
+    const updated = [...sites, { url, description: "" }];
     setNewUrl("");
     setError(null);
     saveSites(updated);
@@ -118,7 +132,7 @@ const OurPropertiesAdminPage: React.FC = () => {
 
   const startEdit = (index: number) => {
     setEditingIndex(index);
-    setEditingValue(displayedSites[index]);
+    setEditingValue(displayedSites[index].url);
   };
 
   const saveEdit = () => {
@@ -128,13 +142,15 @@ const OurPropertiesAdminPage: React.FC = () => {
       setError("Invalid URL.");
       return;
     }
-    const oldUrl = displayedSites[editingIndex];
-    if (sites.filter((u) => u === url).length > (url === oldUrl ? 1 : 0)) {
+    const oldEntry = displayedSites[editingIndex];
+    if (sites.some((s) => s.url === url && s.url !== oldEntry.url)) {
       setError("URL already in list.");
       return;
     }
     setError(null);
-    const updated = sites.map((u) => (u === oldUrl ? url : u));
+    const updated = sites.map((s) =>
+      s.url === oldEntry.url ? { ...s, url } : s
+    );
     setSites(updated);
     saveSites(updated);
     setEditingIndex(null);
@@ -146,12 +162,23 @@ const OurPropertiesAdminPage: React.FC = () => {
     setEditingValue("");
   };
 
+  const updateDescription = (url: string, description: string) => {
+    const updated = sites.map((s) =>
+      s.url === url ? { ...s, description: description.slice(0, 255) } : s
+    );
+    setSites(updated);
+  };
+
+  const saveDescription = () => {
+    saveSites(sitesRef.current);
+  };
+
   const displayedSites = useMemo(() => {
     if (displayOrder === "custom") return [...sites];
     const copy = [...sites];
     copy.sort((a, b) => {
-      const da = domainFromUrl(a);
-      const db = domainFromUrl(b);
+      const da = domainFromUrl(a.url);
+      const db = domainFromUrl(b.url);
       return displayOrder === "a-z" ? da.localeCompare(db) : db.localeCompare(da);
     });
     return copy;
@@ -191,8 +218,8 @@ const OurPropertiesAdminPage: React.FC = () => {
     setDraggedIndex(null);
   };
 
-  const handleRemove = (domain: string) => {
-    const updated = sites.filter((s) => s !== domain);
+  const handleRemove = (url: string) => {
+    const updated = sites.filter((s) => s.url !== url);
     setError(null);
     saveSites(updated);
   };
@@ -291,17 +318,17 @@ const OurPropertiesAdminPage: React.FC = () => {
           </button>
         </form>
 
-        <ul className="space-y-2">
-          {displayedSites.map((url, index) => (
+        <ul className="space-y-3">
+          {displayedSites.map((entry, index) => (
             <li
-              key={url}
+              key={entry.url}
               draggable={displayOrder === "custom" && editingIndex === null}
               onDragStart={() => handleDragStart(index)}
               onDragOver={(e) => handleDragOver(e, index)}
               onDragLeave={handleDragLeave}
               onDragEnd={handleDragEnd}
               onDrop={(e) => handleDrop(e, index)}
-              className={`flex items-center gap-2 rounded-md border px-3 py-2 ${
+              className={`flex flex-col gap-2 rounded-md border px-3 py-2 ${
                 draggedIndex === index
                   ? "border-brand-orange bg-slate-800 opacity-60"
                   : dragOverIndex === index
@@ -309,39 +336,58 @@ const OurPropertiesAdminPage: React.FC = () => {
                   : "border-slate-700 bg-slate-900"
               } ${displayOrder === "custom" && editingIndex === null ? "cursor-grab active:cursor-grabbing" : ""}`}
             >
-              {displayOrder === "custom" && (
-                <Bars3Icon className="h-4 w-4 flex-shrink-0 text-slate-500" aria-hidden />
-              )}
-              {editingIndex === index ? (
-                <input
-                  type="text"
-                  value={editingValue}
-                  onChange={(e) => setEditingValue(e.target.value)}
-                  onBlur={saveEdit}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") saveEdit();
-                    if (e.key === "Escape") cancelEdit();
-                  }}
-                  autoFocus
-                  className="flex-1 rounded-md border border-slate-600 bg-slate-900 px-2 py-1 text-sm text-slate-50 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange"
-                />
-              ) : (
+              <div className="flex items-center gap-2">
+                {displayOrder === "custom" && (
+                  <Bars3Icon className="h-4 w-4 flex-shrink-0 text-slate-500" aria-hidden />
+                )}
+                {editingIndex === index ? (
+                  <input
+                    type="text"
+                    value={editingValue}
+                    onChange={(e) => setEditingValue(e.target.value)}
+                    onBlur={saveEdit}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") saveEdit();
+                      if (e.key === "Escape") cancelEdit();
+                    }}
+                    autoFocus
+                    className="flex-1 rounded-md border border-slate-600 bg-slate-900 px-2 py-1 text-sm text-slate-50 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange"
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => startEdit(index)}
+                    className="font-medium text-slate-200 break-all flex-1 text-left hover:text-brand-orange hover:underline"
+                  >
+                    {domainFromUrl(entry.url)}
+                  </button>
+                )}
                 <button
                   type="button"
-                  onClick={() => startEdit(index)}
-                  className="font-medium text-slate-200 break-all flex-1 text-left hover:text-brand-orange hover:underline"
+                  onClick={() => handleRemove(entry.url)}
+                  disabled={isSaving || editingIndex !== null}
+                  className="flex-shrink-0 rounded-md border border-red-500/60 bg-red-500/10 px-2 py-1 text-xs font-medium text-red-300 hover:bg-red-500/20 disabled:opacity-50"
                 >
-                  {domainFromUrl(url)}
+                  Remove
                 </button>
-              )}
-              <button
-                type="button"
-                onClick={() => handleRemove(url)}
-                disabled={isSaving || editingIndex !== null}
-                className="flex-shrink-0 rounded-md border border-red-500/60 bg-red-500/10 px-2 py-1 text-xs font-medium text-red-300 hover:bg-red-500/20 disabled:opacity-50"
-              >
-                Remove
-              </button>
+              </div>
+              <div>
+                <label htmlFor={`desc-${index}`} className="block text-xs font-medium text-slate-400 mb-0.5">
+                  Description
+                </label>
+                <input
+                  id={`desc-${index}`}
+                  type="text"
+                  value={entry.description}
+                  onChange={(e) => updateDescription(entry.url, e.target.value)}
+                  onBlur={saveDescription}
+                  maxLength={255}
+                  placeholder="One-line description (255 chars max)"
+                  disabled={isSaving}
+                  className="w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1 text-sm text-slate-50 placeholder:text-slate-500 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange disabled:opacity-50"
+                />
+                <span className="text-[10px] text-slate-500">{entry.description.length}/255</span>
+              </div>
             </li>
           ))}
         </ul>

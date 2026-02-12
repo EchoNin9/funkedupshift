@@ -40,8 +40,19 @@ def _domain_from_url(url):
     return parsed.netloc or url
 
 
+def _site_to_entry(s):
+    """Convert stored item to (url, description). Handles legacy string format."""
+    if isinstance(s, dict):
+        url = (s.get("url") or "").strip()
+        url = _normalize_url(url) if url else None
+        desc = (s.get("description") or "").strip()[:255]
+        return (url, desc) if url else (None, None)
+    url = _normalize_url(s) if isinstance(s, str) else None
+    return (url, "") if url else (None, None)
+
+
 def get_our_properties_sites():
-    """Return sites list from DynamoDB, or empty list if not set."""
+    """Return list of (url, description) from DynamoDB. Handles legacy string list."""
     if not TABLE_NAME:
         return []
     try:
@@ -54,29 +65,39 @@ def get_our_properties_sites():
         if "Item" not in resp:
             return []
         data = resp["Item"].get("sites", {}).get("S", "[]")
-        sites = json.loads(data)
-        if isinstance(sites, list) and len(sites) >= 1:
-            return [str(s).strip() for s in sites if str(s).strip()]
-        return []
+        raw = json.loads(data)
+        if not isinstance(raw, list):
+            return []
+        out = []
+        for s in raw:
+            url, desc = _site_to_entry(s)
+            if url:
+                out.append({"url": url, "description": desc})
+        return out
     except Exception as e:
         logger.warning("Our properties sites config read failed: %s", e)
         return []
 
 
-def normalize_urls(raw_list):
-    """Normalize list of domains/URLs to full URLs. Dedupe, preserve order."""
+def normalize_sites(raw_list):
+    """Normalize list of domains/URLs or {url,description} to entries. Dedupe by URL, preserve order."""
     seen = set()
     out = []
     for s in raw_list:
-        u = _normalize_url(s)
-        if u and u not in seen:
-            seen.add(u)
-            out.append(u)
+        if isinstance(s, dict):
+            url = _normalize_url(s.get("url") or "")
+            desc = (s.get("description") or "").strip()[:255]
+        else:
+            url = _normalize_url(s)
+            desc = ""
+        if url and url not in seen:
+            seen.add(url)
+            out.append({"url": url, "description": desc})
     return out
 
 
 def save_our_properties_sites(sites):
-    """Save sites list (full URLs) to DynamoDB (manager or admin)."""
+    """Save sites list [{url, description}] to DynamoDB (manager or admin)."""
     if not TABLE_NAME:
         return False
     try:
@@ -84,12 +105,22 @@ def save_our_properties_sites(sites):
         from datetime import datetime
         dynamodb = boto3.client("dynamodb")
         now = datetime.utcnow().isoformat() + "Z"
+        to_save = []
+        for s in sites:
+            if isinstance(s, dict):
+                url = s.get("url") or ""
+                desc = (s.get("description") or "").strip()[:255]
+            else:
+                url = str(s)
+                desc = ""
+            if url:
+                to_save.append({"url": url, "description": desc})
         dynamodb.put_item(
             TableName=TABLE_NAME,
             Item={
                 "PK": {"S": OUR_PROPERTIES_KEY},
                 "SK": {"S": "SITES"},
-                "sites": {"S": json.dumps(sites)},
+                "sites": {"S": json.dumps(to_save)},
                 "updatedAt": {"S": now},
             },
         )
@@ -130,11 +161,13 @@ def _status_from_http(status_code, response_time_ms):
 
 
 def fetch_our_properties():
-    """Fetch status from HTTP HEAD for each site. Return list of site dicts with url, domain, status."""
-    raw = get_our_properties_sites()
-    urls = [u for s in raw if (u := _normalize_url(s))]
-    if not urls:
+    """Fetch status from HTTP HEAD for each site. Return list of site dicts with url, domain, status, description."""
+    entries = get_our_properties_sites()
+    if not entries:
         return []
+
+    url_to_desc = {e["url"]: e.get("description", "") or "" for e in entries}
+    urls = [e["url"] for e in entries]
 
     url_to_result = {}
 
@@ -147,6 +180,7 @@ def fetch_our_properties():
             "domain": domain,
             "status": status,
             "responseTimeMs": response_time_ms,
+            "description": url_to_desc.get(url, ""),
         }
 
     with ThreadPoolExecutor(max_workers=10) as ex:

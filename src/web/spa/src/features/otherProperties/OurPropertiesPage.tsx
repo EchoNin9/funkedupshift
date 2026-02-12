@@ -7,6 +7,7 @@ interface OurPropertiesSite {
   domain: string;
   status: string;
   responseTimeMs?: number;
+  description?: string;
 }
 
 function getApiBaseUrl(): string | null {
@@ -60,21 +61,21 @@ const OurPropertiesPage: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold tracking-tight text-slate-50">
+      <h1 className="text-2xl font-semibold tracking-tight" style={{ color: "#fdde13" }}>
         Our Properties
       </h1>
-      <div className="rounded-xl border border-teal-800/60 bg-gradient-to-br from-teal-900/40 to-teal-950/60 p-4 shadow-lg">
-        <p className="text-sm font-medium text-teal-100">
+      <div className="rounded-xl border-2 border-[#14a113] bg-[#000000] p-4 shadow-lg" style={{ background: "linear-gradient(135deg, #000000 0%, #14a11322 50%, #fdde1322 75%, #e5020322 100%)" }}>
+        <p className="text-sm font-medium text-[#fdde13]">
           Live status of our sites
         </p>
-        <p className="mt-1 text-xs text-teal-200/80">
+        <p className="mt-1 text-xs text-[#14a113]/90">
           Shows availability and response time for our properties
         </p>
         {canEdit && (
           <p className="mt-2">
             <Link
               to="/admin/other-properties/our-properties"
-              className="text-brand-orange hover:text-orange-400 text-sm"
+              className="text-[#e50203] hover:text-[#14a113] font-semibold text-sm"
             >
               Edit sites list
             </Link>
@@ -110,30 +111,40 @@ const OurPropertiesPage: React.FC = () => {
         <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-3">
           {sites.map((s) => {
             const status = (s.status || "down").toLowerCase();
-            const statusClass =
+            const statusStyles =
               status === "up"
-                ? "border-emerald-500/50 bg-emerald-500/15 text-emerald-200"
+                ? { borderColor: "#14a113", background: "rgba(20,161,19,0.25)", color: "#000000" }
                 : status === "degraded"
-                ? "border-amber-500/50 bg-amber-500/15 text-amber-200"
-                : "border-red-500/50 bg-red-500/15 text-red-200";
+                ? { borderColor: "#fdde13", background: "rgba(253,222,19,0.35)", color: "#000000" }
+                : { borderColor: "#e50203", background: "rgba(229,2,3,0.25)", color: "#000000" };
             const rtStr =
               s.responseTimeMs != null ? `${s.responseTimeMs} ms` : null;
+            const hasDescription = (s.description || "").trim().length > 0;
             return (
               <div
                 key={s.url || s.domain}
-                className={`rounded-lg border p-3 text-center text-sm ${statusClass}`}
+                className="rounded-lg border-2 p-3 text-center text-sm min-w-0"
+                style={statusStyles}
               >
                 <a
                   href={s.url || `https://${s.domain}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="font-semibold break-all hover:underline block"
+                  className="font-semibold break-all hover:underline block text-inherit"
                 >
                   {s.domain}
                 </a>
                 <div className="mt-1 text-xs capitalize opacity-90">{status}</div>
                 {rtStr && (
                   <div className="mt-0.5 text-[11px] opacity-75">{rtStr}</div>
+                )}
+                {hasDescription && (
+                  <div
+                    className="mt-0.5 text-[11px] opacity-90 truncate w-full"
+                    title={s.description}
+                  >
+                    {s.description}
+                  </div>
                 )}
               </div>
             );

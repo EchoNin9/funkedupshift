@@ -41,8 +41,8 @@ def test_getOurProperties_returns_sites(mock_fetch):
     from api.handler import handler
 
     mock_fetch.return_value = [
-        {"domain": "example.com", "status": "up", "responseTimeMs": 120},
-        {"domain": "mysite.com", "status": "degraded", "responseTimeMs": 3500},
+        {"url": "https://example.com", "domain": "example.com", "status": "up", "responseTimeMs": 120, "description": "Test site"},
+        {"url": "https://mysite.com/path", "domain": "mysite.com", "status": "degraded", "responseTimeMs": 3500, "description": ""},
     ]
 
     event = _event()
@@ -53,7 +53,9 @@ def test_getOurProperties_returns_sites(mock_fetch):
     assert "sites" in body
     assert len(body["sites"]) == 2
     assert body["sites"][0]["domain"] == "example.com"
+    assert body["sites"][0]["url"] == "https://example.com"
     assert body["sites"][0]["status"] == "up"
+    assert body["sites"][0]["description"] == "Test site"
     mock_fetch.assert_called_once()
 
 
