@@ -36,14 +36,16 @@ def _domain_from_url(url):
 
 
 def _site_to_entry(s):
-    """Convert stored item to (url, description). Handles legacy string format."""
+    """Convert stored item to (url, description, title, logoKey). Handles legacy string format."""
     if isinstance(s, dict):
         url = (s.get("url") or "").strip()
         url = _normalize_url(url) if url else None
         desc = (s.get("description") or "").strip()[:255]
-        return (url, desc) if url else (None, None)
+        title = (s.get("title") or "").strip()
+        logo_key = (s.get("logoKey") or "").strip() or None
+        return (url, desc, title, logo_key) if url else (None, None, None, None)
     url = _normalize_url(s) if isinstance(s, str) else None
-    return (url, "") if url else (None, None)
+    return (url, "", "", None) if url else (None, None, None, None)
 
 
 def get_our_properties_sites():
@@ -65,9 +67,14 @@ def get_our_properties_sites():
             return []
         out = []
         for s in raw:
-            url, desc = _site_to_entry(s)
+            url, desc, title, logo_key = _site_to_entry(s)
             if url:
-                out.append({"url": url, "description": desc})
+                entry = {"url": url, "description": desc}
+                if title:
+                    entry["title"] = title
+                if logo_key:
+                    entry["logoKey"] = logo_key
+                out.append(entry)
         return out
     except Exception as e:
         logger.warning("Our properties sites config read failed: %s", e)
@@ -149,8 +156,15 @@ def generate_highlights_cache_from_category():
             if not url:
                 continue
             url = _normalize_url(url) or url
-            desc = (item.get("description", {}).get("S", "") or item.get("title", {}).get("S", "") or "").strip()[:255]
-            out.append({"url": url, "description": desc})
+            title = (item.get("title", {}).get("S", "") or "").strip()
+            desc = (item.get("description", {}).get("S", "") or "").strip()[:255]
+            logo_key = (item.get("logoKey", {}).get("S", "") or "").strip() or None
+            entry = {"url": url, "description": desc}
+            if title:
+                entry["title"] = title
+            if logo_key:
+                entry["logoKey"] = logo_key
+            out.append(entry)
 
         if not out:
             return [], "No sites in the 'highlight' category."
@@ -165,19 +179,28 @@ def generate_highlights_cache_from_category():
 
 
 def normalize_sites(raw_list):
-    """Normalize list of domains/URLs or {url,description} to entries. Dedupe by URL, preserve order."""
+    """Normalize list of domains/URLs or {url,description,title,logoKey} to entries. Dedupe by URL, preserve order."""
     seen = set()
     out = []
     for s in raw_list:
         if isinstance(s, dict):
             url = _normalize_url(s.get("url") or "")
             desc = (s.get("description") or "").strip()[:255]
+            title = (s.get("title") or "").strip()
+            logo_key = (s.get("logoKey") or "").strip() or None
         else:
             url = _normalize_url(s)
             desc = ""
+            title = ""
+            logo_key = None
         if url and url not in seen:
             seen.add(url)
-            out.append({"url": url, "description": desc})
+            entry = {"url": url, "description": desc}
+            if title:
+                entry["title"] = title
+            if logo_key:
+                entry["logoKey"] = logo_key
+            out.append(entry)
     return out
 
 
@@ -195,11 +218,20 @@ def save_our_properties_sites(sites):
             if isinstance(s, dict):
                 url = s.get("url") or ""
                 desc = (s.get("description") or "").strip()[:255]
+                title = (s.get("title") or "").strip()
+                logo_key = (s.get("logoKey") or "").strip() or None
             else:
                 url = str(s)
                 desc = ""
+                title = ""
+                logo_key = None
             if url:
-                to_save.append({"url": url, "description": desc})
+                entry = {"url": url, "description": desc}
+                if title:
+                    entry["title"] = title
+                if logo_key:
+                    entry["logoKey"] = logo_key
+                to_save.append(entry)
         dynamodb.put_item(
             TableName=TABLE_NAME,
             Item={
@@ -215,15 +247,42 @@ def save_our_properties_sites(sites):
         return False
 
 
+def _add_logo_urls(entries):
+    """Add logoUrl to entries that have logoKey. In-place."""
+    media_bucket = os.environ.get("MEDIA_BUCKET", "")
+    if not media_bucket:
+        return
+    for e in entries:
+        key = e.get("logoKey")
+        if not key or not isinstance(key, str) or not key.strip():
+            continue
+        try:
+            import boto3
+            s3 = boto3.client("s3", region_name=os.environ.get("AWS_REGION", "us-east-1"))
+            e["logoUrl"] = s3.generate_presigned_url(
+                "get_object",
+                Params={"Bucket": media_bucket, "Key": key},
+                ExpiresIn=3600,
+            )
+        except Exception as ex:
+            logger.debug("Presigned logo URL failed for %s: %s", key, ex)
+
+
 def fetch_our_properties():
     """Return list of sites from storage. No HTTP checks, PageSpeed, or external APIs."""
     entries = get_our_properties_sites()
-    return [
-        {
+    result = []
+    for e in entries:
+        domain = _domain_from_url(e["url"])
+        item = {
             "url": e["url"],
-            "domain": _domain_from_url(e["url"]),
+            "domain": domain,
             "status": "up",
             "description": e.get("description", "") or "",
+            "title": e.get("title") or domain,
         }
-        for e in entries
-    ]
+        if e.get("logoKey"):
+            item["logoKey"] = e["logoKey"]
+        result.append(item)
+    _add_logo_urls(result)
+    return result

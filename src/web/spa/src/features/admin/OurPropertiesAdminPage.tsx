@@ -27,6 +27,8 @@ function domainFromUrl(url: string): string {
 interface SiteEntry {
   url: string;
   description: string;
+  title?: string;
+  logoKey?: string;
 }
 
 const OurPropertiesAdminPage: React.FC = () => {
@@ -78,10 +80,15 @@ const OurPropertiesAdminPage: React.FC = () => {
       }
       const data = (await resp.json()) as { sites?: SiteEntry[]; updatedAt?: string | null };
       const list = Array.isArray(data.sites) ? data.sites : [];
-      setSites(list.map((s) => ({
-        url: typeof s === "string" ? s : (s.url || ""),
-        description: typeof s === "string" ? "" : (s.description || ""),
-      })));
+      setSites(list.map((s) => {
+        if (typeof s === "string") return { url: s, description: "" };
+        return {
+          url: s.url || "",
+          description: s.description || "",
+          title: s.title,
+          logoKey: s.logoKey,
+        };
+      }));
       setUpdatedAt(data.updatedAt ?? null);
     } catch (e: any) {
       setError(e?.message ?? "Failed to load sites.");
@@ -109,10 +116,15 @@ const OurPropertiesAdminPage: React.FC = () => {
         throw new Error(data.error || "Failed to generate");
       }
       const list = Array.isArray(data.sites) ? data.sites : [];
-      setSites(list.map((s) => ({
-        url: typeof s === "string" ? s : (s.url || ""),
-        description: typeof s === "string" ? "" : (s.description || ""),
-      })));
+      setSites(list.map((s) => {
+        if (typeof s === "string") return { url: s, description: "" };
+        return {
+          url: s.url || "",
+          description: s.description || "",
+          title: s.title,
+          logoKey: s.logoKey,
+        };
+      }));
       setUpdatedAt(data.updatedAt ?? null);
       setMessage("Cache generated from sites in the highlight category.");
     } catch (e: any) {
@@ -132,7 +144,14 @@ const OurPropertiesAdminPage: React.FC = () => {
       const resp = await fetchWithAuth(`${apiBase}/admin/recommended/highlights/sites`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sites: updated.map((s) => ({ url: s.url, description: s.description })) }),
+        body: JSON.stringify({
+          sites: updated.map((s) => ({
+            url: s.url,
+            description: s.description,
+            ...(s.title && { title: s.title }),
+            ...(s.logoKey && { logoKey: s.logoKey }),
+          })),
+        }),
       });
       const data = (await resp.json()) as { updatedAt?: string | null; error?: string };
       if (!resp.ok) {
