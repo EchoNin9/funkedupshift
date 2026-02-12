@@ -78,14 +78,14 @@ const OurPropertiesPage: React.FC = () => {
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-semibold tracking-tight text-violet-200">
-        Our Properties
+        Highlights and faves
       </h1>
       <div className="rounded-xl border border-violet-800/60 bg-gradient-to-br from-violet-900/40 to-violet-950/60 p-4 shadow-lg">
         <p className="text-sm font-medium text-violet-100">
-          Live status of our sites
+          Our curated list of exceptional sites
         </p>
         <p className="mt-1 text-xs text-violet-200/80">
-          Quick links to our properties
+          Click a card below for more detail
         </p>
         {canEdit && (
           <p className="mt-2">
