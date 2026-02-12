@@ -4,10 +4,6 @@ import { Dialog } from "@headlessui/react";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import { useAuth, hasRole } from "../../shell/AuthContext";
 
-const SOFT_GREEN = "#3d7a3d"; // rasta soft-green
-const RASTA_RED = "#e50203";
-const RASTA_YELLOW = "#fdde13";
-
 interface OurPropertiesSite {
   url: string;
   domain: string;
@@ -81,21 +77,21 @@ const OurPropertiesPage: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold tracking-tight" style={{ color: SOFT_GREEN }}>
+      <h1 className="text-2xl font-semibold tracking-tight text-violet-200">
         Our Properties
       </h1>
-      <div className="rounded-xl border-2 p-4 shadow-lg" style={{ borderColor: SOFT_GREEN, background: SOFT_GREEN }}>
-        <p className="text-sm font-medium text-black">
+      <div className="rounded-xl border border-violet-800/60 bg-gradient-to-br from-violet-900/40 to-violet-950/60 p-4 shadow-lg">
+        <p className="text-sm font-medium text-violet-100">
           Live status of our sites
         </p>
-        <p className="mt-1 text-xs text-black/90">
+        <p className="mt-1 text-xs text-violet-200/80">
           Shows availability and response time for our properties
         </p>
         {canEdit && (
           <p className="mt-2">
             <Link
               to="/admin/other-properties/our-properties"
-              className="text-black hover:text-rasta-red font-semibold text-sm"
+              className="text-violet-300 hover:text-violet-200 font-semibold text-sm"
             >
               Edit sites list
             </Link>
@@ -119,7 +115,7 @@ const OurPropertiesPage: React.FC = () => {
           {canEdit && (
             <Link
               to="/admin/other-properties/our-properties"
-              className="text-brand-orange hover:text-orange-400"
+              className="text-violet-400 hover:text-violet-300"
             >
               Add sites
             </Link>
@@ -131,20 +127,19 @@ const OurPropertiesPage: React.FC = () => {
         <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-3">
           {sites.map((s) => {
             const status = (s.status || "down").toLowerCase();
-            const statusBorderBg =
+            const statusClass =
               status === "up"
-                ? { borderColor: SOFT_GREEN, background: SOFT_GREEN }
+                ? "border-emerald-500/50 bg-emerald-500/15 text-emerald-200"
                 : status === "degraded"
-                ? { borderColor: RASTA_YELLOW, background: RASTA_YELLOW }
-                : { borderColor: RASTA_RED, background: RASTA_RED };
+                ? "border-amber-500/50 bg-amber-500/15 text-amber-200"
+                : "border-red-500/50 bg-red-500/15 text-red-200";
             const rtStr =
               s.responseTimeMs != null ? `${s.responseTimeMs} ms` : null;
             const hasDescription = (s.description || "").trim().length > 0;
             return (
               <div
                 key={s.url || s.domain}
-                className="rounded-lg border-2 p-3 text-center text-sm min-w-0 cursor-pointer text-black transition-all duration-200 hover:scale-[1.02] hover:shadow-lg"
-                style={statusBorderBg}
+                className={`rounded-lg border p-3 text-center text-sm min-w-0 cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-lg ${statusClass}`}
                 onClick={() => setSelectedSite(s)}
                 role="button"
                 tabIndex={0}
@@ -159,18 +154,18 @@ const OurPropertiesPage: React.FC = () => {
                   href={s.url || `https://${s.domain}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="font-semibold break-all block text-black hover:text-rasta-red hover:underline"
+                  className="font-semibold break-all block hover:underline"
                   onClick={(e) => e.stopPropagation()}
                 >
                   {s.domain}
                 </a>
-                <div className="mt-1 text-xs capitalize font-medium">{status}</div>
+                <div className="mt-1 text-xs capitalize opacity-90">{status}</div>
                 {rtStr && (
-                  <div className="mt-0.5 text-[11px] font-medium">{rtStr}</div>
+                  <div className="mt-0.5 text-[11px] opacity-75">{rtStr}</div>
                 )}
                 {hasDescription && (
                   <div
-                    className="mt-0.5 text-[11px] truncate w-full font-medium"
+                    className="mt-0.5 text-[11px] truncate w-full opacity-90"
                     title={s.description}
                   >
                     {s.description}
@@ -218,7 +213,7 @@ const OurPropertiesPage: React.FC = () => {
                       href={selectedSite.url || `https://${selectedSite.domain}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-rasta-red hover:underline break-all"
+                      className="text-violet-400 hover:text-violet-300 hover:underline break-all"
                     >
                       {selectedSite.url || `https://${selectedSite.domain}`}
                     </a>
