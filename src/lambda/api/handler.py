@@ -2433,7 +2433,7 @@ def deleteSquashPlayer(event):
 
 
 def listSquashMatches(event):
-    """GET /squash/matches - List squash matches (Squash access required). Query: date, dateFrom, dateTo, playerIds."""
+    """GET /squash/matches - List squash matches (Squash access required). Query: date, dateFrom, dateTo, playerIds, playerMode (and|or)."""
     _, err = _requireSquashAccess(event)
     if err:
         return err
@@ -2498,7 +2498,8 @@ def listSquashMatches(event):
                         match_ids.add(pk)
 
         if filter_player_ids:
-            player_match_ids = set()
+            player_mode = (qs.get("playerMode") or "").strip().lower() or "and"
+            per_player_sets = []
             for pid in filter_player_ids:
                 pk = pid if pid.startswith("SQUASH#PLAYER#") else f"SQUASH#PLAYER#{pid}"
                 result = dynamodb.query(
@@ -2506,6 +2507,7 @@ def listSquashMatches(event):
                     KeyConditionExpression="PK = :pk AND begins_with(SK, :sk)",
                     ExpressionAttributeValues={":pk": {"S": pk}, ":sk": {"S": "MATCH#"}},
                 )
+                ids_for_player = set()
                 for item in result.get("Items", []):
                     mid = item.get("matchId", {}).get("S")
                     if not mid:
@@ -2513,9 +2515,19 @@ def listSquashMatches(event):
                         mid = sk.replace("MATCH#", "") if "MATCH#" in sk else ""
                     if mid:
                         full = mid if "SQUASH#" in mid else f"SQUASH#MATCH#{mid}"
-                        player_match_ids.add(full)
-            if player_match_ids:
-                match_ids = match_ids & player_match_ids if match_ids else player_match_ids
+                        ids_for_player.add(full)
+                per_player_sets.append(ids_for_player)
+            if per_player_sets:
+                if player_mode == "or":
+                    player_match_ids = set()
+                    for s in per_player_sets:
+                        player_match_ids |= s
+                else:
+                    player_match_ids = per_player_sets[0].copy()
+                    for s in per_player_sets[1:]:
+                        player_match_ids &= s
+                if player_match_ids:
+                    match_ids = match_ids & player_match_ids if match_ids else player_match_ids
 
         matches = []
         for mid in match_ids:

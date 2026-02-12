@@ -46,6 +46,7 @@ const SquashPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
+  const [playerMode, setPlayerMode] = useState<"and" | "or">("and");
   const playerDropdownRef = useRef<HTMLDivElement>(null);
 
   const access = canAccessSquash(user);
@@ -92,7 +93,10 @@ const SquashPage: React.FC = () => {
     if (searchDate) params.set("date", searchDate);
     if (searchDateFrom) params.set("dateFrom", searchDateFrom);
     if (searchDateTo) params.set("dateTo", searchDateTo);
-    if (selectedPlayerIds.length) params.set("playerIds", selectedPlayerIds.join(","));
+    if (selectedPlayerIds.length) {
+      params.set("playerIds", selectedPlayerIds.join(","));
+      params.set("playerMode", playerMode);
+    }
     const qs = params.toString() ? `?${params.toString()}` : "";
     setIsLoading(true);
     setError(null);
@@ -119,6 +123,7 @@ const SquashPage: React.FC = () => {
     setSearchDateTo("");
     setSelectedPlayerIds([]);
     setPlayerSearch("");
+    setPlayerMode("and");
     setHasSearched(false);
     setAllMatches([]);
     setCurrentPage(1);
@@ -320,6 +325,31 @@ const SquashPage: React.FC = () => {
                 </span>
               ))}
             </div>
+            {selectedPlayerIds.length > 0 && (
+              <div className="mt-2 flex items-center gap-2">
+                <span className="text-xs text-slate-500">Match:</span>
+                <div className="inline-flex rounded-md border border-slate-700 bg-slate-950 p-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setPlayerMode("and")}
+                    className={`rounded px-2 py-0.5 text-xs font-medium ${
+                      playerMode === "and" ? "bg-brand-orange text-slate-950" : "text-slate-400 hover:text-slate-200"
+                    }`}
+                  >
+                    AND
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPlayerMode("or")}
+                    className={`rounded px-2 py-0.5 text-xs font-medium ${
+                      playerMode === "or" ? "bg-brand-orange text-slate-950" : "text-slate-400 hover:text-slate-200"
+                    }`}
+                  >
+                    OR
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
           <div className="flex gap-2">
             <button
