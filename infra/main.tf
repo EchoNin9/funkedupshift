@@ -1398,6 +1398,22 @@ resource "aws_apigatewayv2_route" "adminGroupsDelete" {
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
+resource "aws_apigatewayv2_route" "adminInternetDashboardSitesGet" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /admin/internet-dashboard/sites"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "adminInternetDashboardSitesPut" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "PUT /admin/internet-dashboard/sites"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
 resource "aws_apigatewayv2_stage" "default" {
   api_id      = aws_apigatewayv2_api.main.id
   name        = "$default"
