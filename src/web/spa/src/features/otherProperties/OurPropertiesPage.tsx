@@ -113,10 +113,10 @@ const OurPropertiesPage: React.FC = () => {
             const status = (s.status || "down").toLowerCase();
             const statusStyles =
               status === "up"
-                ? { borderColor: "#14a113", background: "rgba(20,161,19,0.25)", color: "#000000" }
+                ? { borderColor: "#14a113", background: "#14a113", color: "#ffffff" }
                 : status === "degraded"
-                ? { borderColor: "#fdde13", background: "rgba(253,222,19,0.35)", color: "#000000" }
-                : { borderColor: "#e50203", background: "rgba(229,2,3,0.25)", color: "#000000" };
+                ? { borderColor: "#fdde13", background: "#fdde13", color: "#000000" }
+                : { borderColor: "#e50203", background: "#e50203", color: "#ffffff" };
             const rtStr =
               s.responseTimeMs != null ? `${s.responseTimeMs} ms` : null;
             const hasDescription = (s.description || "").trim().length > 0;
@@ -134,13 +134,13 @@ const OurPropertiesPage: React.FC = () => {
                 >
                   {s.domain}
                 </a>
-                <div className="mt-1 text-xs capitalize opacity-90">{status}</div>
+                <div className="mt-1 text-xs capitalize font-medium">{status}</div>
                 {rtStr && (
-                  <div className="mt-0.5 text-[11px] opacity-75">{rtStr}</div>
+                  <div className="mt-0.5 text-[11px] font-medium">{rtStr}</div>
                 )}
                 {hasDescription && (
                   <div
-                    className="mt-0.5 text-[11px] opacity-90 truncate w-full"
+                    className="mt-0.5 text-[11px] truncate w-full font-medium"
                     title={s.description}
                   >
                     {s.description}
