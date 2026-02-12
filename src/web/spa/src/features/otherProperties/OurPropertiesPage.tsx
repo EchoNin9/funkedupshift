@@ -85,7 +85,7 @@ const OurPropertiesPage: React.FC = () => {
           Live status of our sites
         </p>
         <p className="mt-1 text-xs text-violet-200/80">
-          Shows availability and response time for our properties
+          Quick links to our properties
         </p>
         {canEdit && (
           <p className="mt-2">

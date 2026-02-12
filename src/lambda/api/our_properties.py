@@ -1,16 +1,11 @@
 """
-Our Properties: status of our own sites (dashboard-style grid).
-Same HTTP check logic as internet dashboard - no external APIs.
-Stores full URLs; returns url + domain for display.
+Our Properties: list of our own sites (dashboard-style grid).
+No HTTP checks, PageSpeed, or external APIs - just returns stored sites for display.
 """
 import json
 import logging
 import os
-import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import urlparse
-from urllib.request import Request, urlopen
-from urllib.error import HTTPError, URLError
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -130,62 +125,15 @@ def save_our_properties_sites(sites):
         return False
 
 
-def _check_url_http(url, timeout=5):
-    """HEAD request, return (status, response_time_ms) or (None, None) on failure."""
-    start = time.time()
-    try:
-        req = Request(url, method="HEAD")
-        req.add_header("User-Agent", "FunkedUpShift-OurProperties/1.0")
-        with urlopen(req, timeout=timeout) as resp:
-            elapsed_ms = int((time.time() - start) * 1000)
-            return (resp.status, elapsed_ms)
-    except HTTPError as e:
-        elapsed_ms = int((time.time() - start) * 1000)
-        return (e.code, elapsed_ms)
-    except (URLError, OSError, Exception) as e:
-        logger.debug("HTTP check failed for %s: %s", url, e)
-        return (None, None)
-
-
-def _status_from_http(status_code, response_time_ms):
-    """Map HTTP result to up/degraded/down."""
-    if status_code is None:
-        return "down"
-    if 200 <= status_code < 300:
-        if response_time_ms is not None and response_time_ms >= 3000:
-            return "degraded"
-        return "up"
-    if 300 <= status_code < 500:
-        return "degraded"
-    return "down"
-
-
 def fetch_our_properties():
-    """Fetch status from HTTP HEAD for each site. Return list of site dicts with url, domain, status, description."""
+    """Return list of sites from storage. No HTTP checks, PageSpeed, or external APIs."""
     entries = get_our_properties_sites()
-    if not entries:
-        return []
-
-    url_to_desc = {e["url"]: e.get("description", "") or "" for e in entries}
-    urls = [e["url"] for e in entries]
-
-    url_to_result = {}
-
-    def check_one(url):
-        status_code, response_time_ms = _check_url_http(url)
-        status = _status_from_http(status_code, response_time_ms)
-        domain = _domain_from_url(url)
-        return url, {
-            "url": url,
-            "domain": domain,
-            "status": status,
-            "responseTimeMs": response_time_ms,
-            "description": url_to_desc.get(url, ""),
+    return [
+        {
+            "url": e["url"],
+            "domain": _domain_from_url(e["url"]),
+            "status": "up",
+            "description": e.get("description", "") or "",
         }
-
-    with ThreadPoolExecutor(max_workers=10) as ex:
-        futures = {ex.submit(check_one, u): u for u in urls}
-        for fut in as_completed(futures, timeout=15):
-            url, data = fut.result()
-            url_to_result[url] = data
-    return [url_to_result[u] for u in urls]
+        for e in entries
+    ]
