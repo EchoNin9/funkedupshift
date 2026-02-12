@@ -333,7 +333,11 @@ const SquashPage: React.FC = () => {
       <section>
         <h2 className="text-base font-semibold text-slate-200 mb-3">Results</h2>
         {!hasSearched ? (
-          <p className="text-sm text-slate-500">Enter search criteria and click Search to find matches.</p>
+          <div className="flex items-center justify-center min-h-[280px]">
+            <p className="text-2xl sm:text-3xl font-light text-slate-500/80 tracking-wide animate-pulse">
+              Enter search criteria and click Search to find matches.
+            </p>
+          </div>
         ) : pageMatches.length === 0 ? (
           <ul className="list-none p-0">
             <li className="py-2 text-slate-400">No matches found.</li>
