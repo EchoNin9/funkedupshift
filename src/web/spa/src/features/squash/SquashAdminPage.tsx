@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useAuth, canModifySquash } from "../../shell/AuthContext";
 import DateInput from "./DateInput";
 
@@ -39,17 +39,21 @@ const PAGE_SIZE = 10;
 
 const SquashAdminPage: React.FC = () => {
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<"matches" | "players">("matches");
 
   // Matches tab state
   const [allPlayers, setAllPlayers] = useState<Player[]>([]);
-  const [selectedPlayerIds, setSelectedPlayerIds] = useState<string[]>([]);
+  const [selectedPlayerIds, setSelectedPlayerIds] = useState<string[]>(() => {
+    const ids = searchParams.get("playerIds");
+    return ids ? ids.split(",").filter(Boolean) : [];
+  });
   const [allMatches, setAllMatches] = useState<Match[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [hasSearched, setHasSearched] = useState(false);
-  const [searchDate, setSearchDate] = useState("");
-  const [searchDateFrom, setSearchDateFrom] = useState("");
-  const [searchDateTo, setSearchDateTo] = useState("");
+  const [searchDate, setSearchDate] = useState(() => searchParams.get("date") ?? "");
+  const [searchDateFrom, setSearchDateFrom] = useState(() => searchParams.get("dateFrom") ?? "");
+  const [searchDateTo, setSearchDateTo] = useState(() => searchParams.get("dateTo") ?? "");
   const [playerSearch, setPlayerSearch] = useState("");
   const [playerDropdownOpen, setPlayerDropdownOpen] = useState(false);
   const [editingMatchId, setEditingMatchId] = useState<string | null>(null);
@@ -62,8 +66,14 @@ const SquashAdminPage: React.FC = () => {
   const [matchLoserGames, setMatchLoserGames] = useState(0);
   const [isMatchSubmitting, setIsMatchSubmitting] = useState(false);
   const [isMatchesLoading, setIsMatchesLoading] = useState(false);
-  const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
-  const [playerMode, setPlayerMode] = useState<"and" | "or">("and");
+  const [sortOrder, setSortOrder] = useState<"newest" | "oldest">(() => {
+    const s = searchParams.get("sortOrder");
+    return s === "oldest" ? "oldest" : "newest";
+  });
+  const [playerMode, setPlayerMode] = useState<"and" | "or">(() => {
+    const m = searchParams.get("playerMode");
+    return m === "or" ? "or" : "and";
+  });
   const playerDropdownRef = useRef<HTMLDivElement>(null);
 
   // Players tab state
@@ -149,6 +159,16 @@ const SquashAdminPage: React.FC = () => {
       setAllMatches(data.matches ?? []);
       setHasSearched(true);
       setCurrentPage(1);
+      const next = new URLSearchParams();
+      if (searchDate) next.set("date", searchDate);
+      if (searchDateFrom) next.set("dateFrom", searchDateFrom);
+      if (searchDateTo) next.set("dateTo", searchDateTo);
+      if (selectedPlayerIds.length) {
+        next.set("playerIds", selectedPlayerIds.join(","));
+        next.set("playerMode", playerMode);
+      }
+      next.set("sortOrder", sortOrder);
+      setSearchParams(next, { replace: true });
     } catch (e: any) {
       setError(e?.message ?? "Failed to search matches");
     } finally {
@@ -166,6 +186,7 @@ const SquashAdminPage: React.FC = () => {
     setHasSearched(false);
     setAllMatches([]);
     setCurrentPage(1);
+    setSearchParams({}, { replace: true });
   };
 
   const addPlayerFilter = (id: string) => {
@@ -360,6 +381,16 @@ const SquashAdminPage: React.FC = () => {
       if (activeTab === "players") loadAdminUsers();
     }
   }, [canModify, activeTab]);
+
+  const hasUrlSearchParams =
+    searchParams.get("date") ||
+    searchParams.get("dateFrom") ||
+    searchParams.get("dateTo") ||
+    searchParams.get("playerIds");
+  useEffect(() => {
+    if (!canModify || !hasUrlSearchParams) return;
+    searchMatches();
+  }, []);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {

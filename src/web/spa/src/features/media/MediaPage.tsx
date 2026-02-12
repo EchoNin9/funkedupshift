@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { PencilSquareIcon } from "@heroicons/react/24/outline";
 import { useAuth, hasRole } from "../../shell/AuthContext";
 
@@ -31,10 +31,17 @@ const PAGE_SIZE = 10;
 
 const MediaPage: React.FC = () => {
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [items, setItems] = useState<MediaItem[]>([]);
-  const [search, setSearch] = useState("");
-  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
-  const [categoryMode, setCategoryMode] = useState<"and" | "or">("and");
+  const [search, setSearch] = useState(() => searchParams.get("q") ?? "");
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>(() => {
+    const ids = searchParams.get("categoryIds");
+    return ids ? ids.split(",").filter(Boolean) : [];
+  });
+  const [categoryMode, setCategoryMode] = useState<"and" | "or">(() => {
+    const m = searchParams.get("categoryMode");
+    return m === "or" ? "or" : "and";
+  });
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const [categorySearch, setCategorySearch] = useState("");
   const [sort, setSort] = useState<SortKey>("avgDesc");
@@ -91,6 +98,20 @@ const MediaPage: React.FC = () => {
   }, [categoriesForDropdown, selectedCategoryIds, categorySearch]);
 
   const hasActiveSearch = search.trim().length > 0 || selectedCategoryIds.length > 0;
+
+  useEffect(() => {
+    if (hasActiveSearch) {
+      const next = new URLSearchParams();
+      if (search.trim()) next.set("q", search.trim());
+      if (selectedCategoryIds.length) {
+        next.set("categoryIds", selectedCategoryIds.join(","));
+        next.set("categoryMode", categoryMode);
+      }
+      setSearchParams(next, { replace: true });
+    } else {
+      setSearchParams({}, { replace: true });
+    }
+  }, [hasActiveSearch, search, selectedCategoryIds, categoryMode, setSearchParams]);
 
   useEffect(() => {
     if (!hasActiveSearch) {
