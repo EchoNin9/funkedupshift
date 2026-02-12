@@ -74,6 +74,96 @@ def get_our_properties_sites():
         return []
 
 
+def get_our_properties_updated_at():
+    """Return updatedAt timestamp from cache, or None if never updated."""
+    if not TABLE_NAME:
+        return None
+    try:
+        import boto3
+        dynamodb = boto3.client("dynamodb")
+        resp = dynamodb.get_item(
+            TableName=TABLE_NAME,
+            Key={"PK": {"S": OUR_PROPERTIES_KEY}, "SK": {"S": "SITES"}},
+            ProjectionExpression="updatedAt",
+        )
+        if "Item" not in resp:
+            return None
+        return resp["Item"].get("updatedAt", {}).get("S")
+    except Exception as e:
+        logger.warning("Our properties updatedAt read failed: %s", e)
+        return None
+
+
+def generate_highlights_cache_from_category():
+    """
+    Generate highlights cache from sites in the "highlight" category.
+    Returns (sites_list, error). If error, sites_list may be partial/empty.
+    """
+    if not TABLE_NAME:
+        return [], "TABLE_NAME not set"
+    try:
+        import boto3
+        dynamodb = boto3.client("dynamodb")
+
+        # Find category named "highlight" (case-insensitive)
+        cat_resp = dynamodb.query(
+            TableName=TABLE_NAME,
+            IndexName="byEntity",
+            KeyConditionExpression="entityType = :et",
+            ExpressionAttributeValues={":et": {"S": "CATEGORY"}},
+        )
+        highlight_cat_id = None
+        for item in cat_resp.get("Items", []):
+            pk = item.get("PK", {}).get("S", "")
+            name = (item.get("name", {}).get("S", "") or "").strip().lower()
+            if name == "highlight":
+                highlight_cat_id = pk
+                break
+
+        if not highlight_cat_id:
+            return [], "No category named 'highlight' found. Create one and assign it to sites."
+
+        # Query all sites
+        sites = []
+        request_kw = {
+            "TableName": TABLE_NAME,
+            "IndexName": "byEntity",
+            "KeyConditionExpression": "entityType = :et",
+            "ExpressionAttributeValues": {":et": {"S": "SITE"}},
+        }
+        result = dynamodb.query(**request_kw)
+        items = result.get("Items", [])
+        while result.get("LastEvaluatedKey"):
+            request_kw["ExclusiveStartKey"] = result["LastEvaluatedKey"]
+            result = dynamodb.query(**request_kw)
+            items.extend(result.get("Items", []))
+
+        # Filter to sites with highlight category
+        out = []
+        for item in items:
+            cat_ids = item.get("categoryIds", {}).get("L", [])
+            cat_ids = [c.get("S", "") for c in cat_ids if c.get("S")]
+            if highlight_cat_id not in cat_ids:
+                continue
+            url = (item.get("url", {}).get("S", "") or "").strip()
+            if not url:
+                continue
+            url = _normalize_url(url) or url
+            desc = (item.get("description", {}).get("S", "") or item.get("title", {}).get("S", "") or "").strip()[:255]
+            out.append({"url": url, "description": desc})
+
+        if not out:
+            return [], "No sites in the 'highlight' category."
+
+        if not save_our_properties_sites(out):
+            return [], "Failed to save cache"
+
+        return out, None
+    except Exception as e:
+        logger.exception("generate_highlights_cache error: %s", e)
+        return [], str(e)
+
+
 def normalize_sites(raw_list):
     """Normalize list of domains/URLs or {url,description} to entries. Dedupe by URL, preserve order."""
     seen = set()

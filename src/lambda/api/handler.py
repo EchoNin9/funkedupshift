@@ -286,6 +286,8 @@ def handler(event, context):
             return getOurPropertiesSites(event)
         if method == "PUT" and path == "/admin/recommended/highlights/sites":
             return putOurPropertiesSites(event)
+        if method == "POST" and path == "/admin/recommended/highlights/generate":
+            return postOurPropertiesGenerate(event)
         if method == "OPTIONS":
             # CORS preflight
             return jsonResponse({}, 200)
@@ -362,16 +364,35 @@ def getOurProperties(event):
 
 
 def getOurPropertiesSites(event):
-    """GET /admin/recommended/highlights/sites - Return our properties sites list (manager or admin)."""
+    """GET /admin/recommended/highlights/sites - Return highlights cache (manager or admin)."""
     _, err = _requireManagerOrAdmin(event)
     if err:
         return err
     try:
-        from api.our_properties import get_our_properties_sites
+        from api.our_properties import get_our_properties_sites, get_our_properties_updated_at
         sites = get_our_properties_sites()
-        return jsonResponse({"sites": sites})
+        updated_at = get_our_properties_updated_at()
+        return jsonResponse({"sites": sites, "updatedAt": updated_at})
     except Exception as e:
         logger.exception("getOurPropertiesSites error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def postOurPropertiesGenerate(event):
+    """POST /admin/recommended/highlights/generate - Generate cache from highlight category (manager or admin)."""
+    _, err = _requireManagerOrAdmin(event)
+    if err:
+        return err
+    try:
+        from api.our_properties import generate_highlights_cache_from_category
+        sites, err_msg = generate_highlights_cache_from_category()
+        if err_msg:
+            return jsonResponse({"error": err_msg}, 400)
+        from api.our_properties import get_our_properties_updated_at
+        updated_at = get_our_properties_updated_at()
+        return jsonResponse({"sites": sites, "updatedAt": updated_at})
+    except Exception as e:
+        logger.exception("postOurPropertiesGenerate error: %s", e)
         return jsonResponse({"error": str(e)}, 500)
 
 
@@ -389,11 +410,12 @@ def putOurPropertiesSites(event):
         sites = body.get("sites")
         if not isinstance(sites, list):
             return jsonResponse({"error": "sites must be an array"}, 400)
-        from api.our_properties import save_our_properties_sites, normalize_sites
+        from api.our_properties import save_our_properties_sites, normalize_sites, get_our_properties_updated_at
         sites = normalize_sites(sites)
         if not save_our_properties_sites(sites):
             return jsonResponse({"error": "Failed to save"}, 500)
-        return jsonResponse({"sites": sites})
+        updated_at = get_our_properties_updated_at()
+        return jsonResponse({"sites": sites, "updatedAt": updated_at})
     except json.JSONDecodeError:
         return jsonResponse({"error": "Invalid JSON body"}, 400)
     except Exception as e:

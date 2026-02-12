@@ -1436,6 +1436,14 @@ resource "aws_apigatewayv2_route" "adminOurPropertiesSitesPut" {
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
+resource "aws_apigatewayv2_route" "adminOurPropertiesGenerate" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /admin/recommended/highlights/generate"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
 resource "aws_apigatewayv2_stage" "default" {
   api_id      = aws_apigatewayv2_api.main.id
   name        = "$default"

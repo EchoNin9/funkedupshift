@@ -32,6 +32,8 @@ interface SiteEntry {
 const OurPropertiesAdminPage: React.FC = () => {
   const { user } = useAuth();
   const [sites, setSites] = useState<SiteEntry[]>([]);
+  const [updatedAt, setUpdatedAt] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [displayOrder, setDisplayOrder] = useState<"custom" | "a-z" | "z-a">("custom");
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
@@ -74,12 +76,13 @@ const OurPropertiesAdminPage: React.FC = () => {
         const d = await resp.json().catch(() => ({}));
         throw new Error((d as { error?: string }).error || "Failed to load");
       }
-      const data = (await resp.json()) as { sites?: SiteEntry[] };
+      const data = (await resp.json()) as { sites?: SiteEntry[]; updatedAt?: string | null };
       const list = Array.isArray(data.sites) ? data.sites : [];
       setSites(list.map((s) => ({
         url: typeof s === "string" ? s : (s.url || ""),
         description: typeof s === "string" ? "" : (s.description || ""),
       })));
+      setUpdatedAt(data.updatedAt ?? null);
     } catch (e: any) {
       setError(e?.message ?? "Failed to load sites.");
     } finally {
@@ -90,6 +93,34 @@ const OurPropertiesAdminPage: React.FC = () => {
   useEffect(() => {
     if (canEdit) loadSites();
   }, [canEdit, loadSites]);
+
+  const generateCache = async () => {
+    const apiBase = getApiBaseUrl();
+    if (!apiBase) return;
+    setIsGenerating(true);
+    setMessage(null);
+    setError(null);
+    try {
+      const resp = await fetchWithAuth(`${apiBase}/admin/recommended/highlights/generate`, {
+        method: "POST",
+      });
+      const data = (await resp.json()) as { sites?: SiteEntry[]; updatedAt?: string | null; error?: string };
+      if (!resp.ok) {
+        throw new Error(data.error || "Failed to generate");
+      }
+      const list = Array.isArray(data.sites) ? data.sites : [];
+      setSites(list.map((s) => ({
+        url: typeof s === "string" ? s : (s.url || ""),
+        description: typeof s === "string" ? "" : (s.description || ""),
+      })));
+      setUpdatedAt(data.updatedAt ?? null);
+      setMessage("Cache generated from sites in the highlight category.");
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to generate cache.");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   const saveSites = async (updated: SiteEntry[]) => {
     const apiBase = getApiBaseUrl();
@@ -103,12 +134,13 @@ const OurPropertiesAdminPage: React.FC = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sites: updated.map((s) => ({ url: s.url, description: s.description })) }),
       });
+      const data = (await resp.json()) as { updatedAt?: string | null; error?: string };
       if (!resp.ok) {
-        const d = await resp.json().catch(() => ({}));
-        throw new Error((d as { error?: string }).error || "Failed to save");
+        throw new Error(data.error || "Failed to save");
       }
       setSites(updated);
-      setMessage("Sites list saved.");
+      setMessage("Highlights list saved.");
+      setUpdatedAt(data.updatedAt ?? null);
     } catch (e: any) {
       setError(e?.message ?? "Failed to save.");
     } finally {
@@ -227,9 +259,9 @@ const OurPropertiesAdminPage: React.FC = () => {
   if (!canEdit) {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-50">Our Properties</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-50">Highlights Admin</h1>
         <p className="text-sm text-slate-400">
-          Only Manager or SuperAdmin users can edit the our properties sites list.
+          Only Manager or SuperAdmin users can edit the highlights cache.
         </p>
       </div>
     );
@@ -238,11 +270,15 @@ const OurPropertiesAdminPage: React.FC = () => {
   if (isLoading) {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-50">Our Properties</h1>
-        <p className="text-sm text-slate-400">Loading sites…</p>
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-50">Highlights Admin</h1>
+        <p className="text-sm text-slate-400">Loading…</p>
       </div>
     );
   }
+
+  const formattedDate = updatedAt
+    ? new Date(updatedAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })
+    : null;
 
   return (
     <div className="space-y-6">
@@ -251,19 +287,36 @@ const OurPropertiesAdminPage: React.FC = () => {
         className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-slate-200"
       >
         <ArrowLeftIcon className="h-4 w-4" />
-        Back to Our Properties
+        Back to Highlights
       </Link>
 
       <header className="space-y-2">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-50">Our Properties</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-50">Highlights Admin</h1>
         <p className="text-sm text-slate-400">
-          Edit the list of sites shown on the Our Properties dashboard. Manager or SuperAdmin can change this.
+          Manage the cached highlights list. Generate from sites in the &quot;highlight&quot; category, or edit manually.
         </p>
       </header>
 
       <section className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 space-y-4 max-w-2xl">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <h2 className="text-base font-semibold text-slate-200">Highlights list ({sites.length})</h2>
+            {formattedDate && (
+              <span className="text-xs text-slate-500">
+                Cache was last updated {formattedDate}
+              </span>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={generateCache}
+            disabled={isGenerating}
+            className="rounded-md bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-500 disabled:opacity-50"
+          >
+            {isGenerating ? "Generating…" : "Generate new cache"}
+          </button>
+        </div>
         <div className="flex flex-wrap items-center gap-3">
-          <h2 className="text-base font-semibold text-slate-200">Sites list ({sites.length})</h2>
           <div className="inline-flex rounded-md border border-slate-700 bg-slate-950 p-0.5">
             <button
               type="button"
@@ -393,7 +446,7 @@ const OurPropertiesAdminPage: React.FC = () => {
         </ul>
 
         {displayedSites.length === 0 && (
-          <p className="text-sm text-slate-500">No sites yet. Add a URL above.</p>
+          <p className="text-sm text-slate-500">No highlights yet. Generate from the highlight category or add a URL above.</p>
         )}
 
         {message && (
