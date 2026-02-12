@@ -146,7 +146,7 @@ const DashboardPage: React.FC = () => {
           return (
             <div
               key={s.domain}
-              className={`rounded-lg border p-3 text-center text-sm ${statusClass}`}
+              className={`rounded-lg border p-3 text-center text-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-lg ${statusClass}`}
             >
               <a
                 href={`https://${s.domain}`}

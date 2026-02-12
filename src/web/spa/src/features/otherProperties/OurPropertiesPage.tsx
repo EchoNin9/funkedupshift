@@ -143,7 +143,7 @@ const OurPropertiesPage: React.FC = () => {
             return (
               <div
                 key={s.url || s.domain}
-                className="rounded-lg border-2 p-3 text-center text-sm min-w-0 cursor-pointer text-black"
+                className="rounded-lg border-2 p-3 text-center text-sm min-w-0 cursor-pointer text-black transition-all duration-200 hover:scale-[1.02] hover:shadow-lg"
                 style={statusBorderBg}
                 onClick={() => setSelectedSite(s)}
                 role="button"
