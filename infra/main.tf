@@ -999,6 +999,12 @@ resource "aws_apigatewayv2_route" "ourProperties" {
   target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
 }
 
+resource "aws_apigatewayv2_route" "highestRated" {
+  api_id    = aws_apigatewayv2_api.main.id
+  route_key = "GET /recommended/highest-rated"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+}
+
 resource "aws_apigatewayv2_route" "sites" {
   api_id    = aws_apigatewayv2_api.main.id
   route_key = "GET /sites"
@@ -1439,6 +1445,30 @@ resource "aws_apigatewayv2_route" "adminOurPropertiesSitesPut" {
 resource "aws_apigatewayv2_route" "adminOurPropertiesGenerate" {
   api_id             = aws_apigatewayv2_api.main.id
   route_key          = "POST /admin/recommended/highlights/generate"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "adminHighestRatedSitesGet" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /admin/recommended/highest-rated/sites"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "adminHighestRatedSitesPut" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "PUT /admin/recommended/highest-rated/sites"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "adminHighestRatedGenerate" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /admin/recommended/highest-rated/generate"
   target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
   authorization_type = "JWT"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
