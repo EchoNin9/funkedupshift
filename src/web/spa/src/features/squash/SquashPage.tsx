@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth, canAccessSquash, canModifySquash } from "../../shell/AuthContext";
 import DateInput from "./DateInput";
@@ -45,6 +45,7 @@ const SquashPage: React.FC = () => {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
   const playerDropdownRef = useRef<HTMLDivElement>(null);
 
   const access = canAccessSquash(user);
@@ -154,9 +155,19 @@ const SquashPage: React.FC = () => {
     }
   }, [playerDropdownOpen]);
 
-  const totalPages = Math.max(1, Math.ceil(allMatches.length / PAGE_SIZE));
+  const sortedMatches = useMemo(() => {
+    const copy = [...allMatches];
+    copy.sort((a, b) => {
+      const da = a.date || "";
+      const db = b.date || "";
+      return sortOrder === "newest" ? db.localeCompare(da) : da.localeCompare(db);
+    });
+    return copy;
+  }, [allMatches, sortOrder]);
+
+  const totalPages = Math.max(1, Math.ceil(sortedMatches.length / PAGE_SIZE));
   const start = (currentPage - 1) * PAGE_SIZE;
-  const pageMatches = allMatches.slice(start, start + PAGE_SIZE);
+  const pageMatches = sortedMatches.slice(start, start + PAGE_SIZE);
 
   const renderScore = (m: Match) => {
     const ga = m.teamAGames ?? 0;
@@ -331,7 +342,31 @@ const SquashPage: React.FC = () => {
       </section>
 
       <section>
-        <h2 className="text-base font-semibold text-slate-200 mb-3">Results</h2>
+        <div className="flex flex-wrap items-center gap-3 mb-3">
+          <h2 className="text-base font-semibold text-slate-200">Results</h2>
+          {hasSearched && sortedMatches.length > 0 && (
+            <div className="inline-flex rounded-md border border-slate-700 bg-slate-950 p-0.5">
+              <button
+                type="button"
+                onClick={() => setSortOrder("newest")}
+                className={`rounded px-2 py-0.5 text-xs font-medium ${
+                  sortOrder === "newest" ? "bg-brand-orange text-slate-950" : "text-slate-400 hover:text-slate-200"
+                }`}
+              >
+                Newest first
+              </button>
+              <button
+                type="button"
+                onClick={() => setSortOrder("oldest")}
+                className={`rounded px-2 py-0.5 text-xs font-medium ${
+                  sortOrder === "oldest" ? "bg-brand-orange text-slate-950" : "text-slate-400 hover:text-slate-200"
+                }`}
+              >
+                Oldest first
+              </button>
+            </div>
+          )}
+        </div>
         {!hasSearched ? (
           <div className="flex items-center justify-center min-h-[280px]">
             <p className="text-2xl sm:text-3xl font-light text-slate-500/80 tracking-wide animate-pulse">

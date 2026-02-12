@@ -384,6 +384,73 @@ def test_logo_from_url_200_returns_key(mock_urlopen, mock_pil_open, mock_boto_cl
 
 
 # ------------------------------------------------------------------------------
+# Profile avatar-from-url tests (any logged-in user)
+# ------------------------------------------------------------------------------
+
+def _profile_user_event(path, method="POST", body=None):
+    """Event with regular user JWT authorizer for profile endpoints."""
+    ev = _admin_event(path, method, body)
+    ev["requestContext"]["authorizer"]["jwt"]["claims"]["sub"] = "user-456"
+    ev["requestContext"]["authorizer"]["jwt"]["claims"]["cognito:groups"] = "user"
+    return ev
+
+
+def test_avatar_from_url_requires_auth():
+    """POST /profile/avatar-from-url without auth returns 401."""
+    from api.handler import handler
+    event = {
+        "rawPath": "/profile/avatar-from-url",
+        "requestContext": {"http": {"method": "POST", "path": "/profile/avatar-from-url"}},
+        "body": '{"imageUrl": "https://example.com/avatar.png"}',
+    }
+    result = handler(event, None)
+    assert result["statusCode"] == 401
+
+
+@patch("api.handler.MEDIA_BUCKET", "test-media-bucket")
+def test_avatar_from_url_400_missing_image_url():
+    """POST /profile/avatar-from-url without imageUrl returns 400."""
+    from api.handler import handler
+    event = _profile_user_event("/profile/avatar-from-url", body={})
+    result = handler(event, None)
+    assert result["statusCode"] == 400
+    body = json.loads(result["body"])
+    assert "imageUrl" in body.get("error", "").lower() or "required" in body.get("error", "").lower()
+
+
+@patch("api.handler.MEDIA_BUCKET", "test-media-bucket")
+@patch("boto3.client")
+@patch("urllib.request.urlopen")
+def test_avatar_from_url_200_returns_key(mock_urlopen, mock_boto_client):
+    """POST /profile/avatar-from-url as user downloads, validates, uploads to S3 and returns key."""
+    pytest.importorskip("PIL")
+    from api.handler import handler
+    image_bytes = b"\x89PNG\r\n\x1a\n" + b"\x00" * 200
+    mock_resp = MagicMock()
+    mock_resp.read.return_value = image_bytes
+    mock_resp.headers = {"Content-Length": str(len(image_bytes)), "Content-Type": "image/png"}
+    mock_resp.__enter__ = lambda self: self
+    mock_resp.__exit__ = lambda self, *a: None
+    mock_urlopen.return_value = mock_resp
+    mock_img = MagicMock()
+    mock_img.size = (48, 48)
+    mock_s3 = MagicMock()
+    mock_boto_client.return_value = mock_s3
+    with patch("PIL.Image.open", return_value=mock_img):
+        event = _profile_user_event("/profile/avatar-from-url", body={"imageUrl": "https://example.com/avatar.png"})
+        result = handler(event, None)
+    assert result["statusCode"] == 200
+    body = json.loads(result["body"])
+    assert "key" in body
+    assert body["key"].startswith("profile/avatars/")
+    assert body["key"].endswith(".png")
+    mock_s3.put_object.assert_called_once()
+    call_kw = mock_s3.put_object.call_args.kwargs
+    assert call_kw["Bucket"] == "test-media-bucket"
+    assert call_kw["Key"] == body["key"]
+
+
+# ------------------------------------------------------------------------------
 # createSite / updateSite scrapedContent and tags
 # ------------------------------------------------------------------------------
 
