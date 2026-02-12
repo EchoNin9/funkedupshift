@@ -82,6 +82,8 @@ const ProfilePage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
+  const [avatarImageUrl, setAvatarImageUrl] = useState("");
+  const [isAvatarUrlLoading, setIsAvatarUrlLoading] = useState(false);
   const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
 
   const apiBase = getApiBaseUrl();
@@ -205,6 +207,41 @@ const ProfilePage: React.FC = () => {
       );
     } catch (e: any) {
       setAvatarError(`Error: ${e?.message ?? "Unknown"}`);
+    }
+  };
+
+  const handleAvatarFromUrl = async () => {
+    const url = avatarImageUrl.trim();
+    if (!url || !apiBase) return;
+    setAvatarError(null);
+    setIsAvatarUrlLoading(true);
+    try {
+      const importResp = await fetchWithAuth(`${apiBase}/profile/avatar-from-url`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageUrl: url })
+      });
+      if (!importResp.ok) {
+        const d = await importResp.json();
+        throw new Error((d as { error?: string }).error || "Import failed");
+      }
+      const { key } = (await importResp.json()) as { key: string };
+      const updateResp = await fetchWithAuth(`${apiBase}/profile`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ avatarKey: key })
+      });
+      if (!updateResp.ok) {
+        const d = await updateResp.json();
+        throw new Error((d as { error?: string }).error || "Failed");
+      }
+      const fresh = await fetchWithAuth(`${apiBase}/profile`).then((r) => r.json());
+      setProfile(fresh);
+      setAvatarImageUrl("");
+    } catch (e: any) {
+      setAvatarError(`Error: ${e?.message ?? "Unknown"}`);
+    } finally {
+      setIsAvatarUrlLoading(false);
     }
   };
 
@@ -365,6 +402,24 @@ const ProfilePage: React.FC = () => {
                       onChange={handleAvatarChange}
                       className="block w-full text-xs text-slate-300 file:mr-3 file:rounded-md file:border-0 file:bg-slate-800 file:px-3 file:py-1.5 file:text-slate-100"
                     />
+                    <p className="text-xs text-slate-500">Or paste image URL (min 48×48, max 5 MB):</p>
+                    <div className="flex gap-2">
+                      <input
+                        type="url"
+                        value={avatarImageUrl}
+                        onChange={(e) => setAvatarImageUrl(e.target.value)}
+                        placeholder="https://example.com/avatar.png"
+                        className="flex-1 rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-500 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAvatarFromUrl}
+                        disabled={!avatarImageUrl.trim() || isAvatarUrlLoading}
+                        className="rounded-md border border-slate-600 px-3 py-2 text-sm font-medium text-slate-200 hover:bg-slate-800 disabled:opacity-50"
+                      >
+                        {isAvatarUrlLoading ? "Importing…" : "Use from URL"}
+                      </button>
+                    </div>
                     {profile.profile?.avatarUrl && (
                       <button
                         type="button"

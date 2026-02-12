@@ -1095,6 +1095,14 @@ resource "aws_apigatewayv2_route" "profileAvatarUpload" {
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
+resource "aws_apigatewayv2_route" "profileAvatarFromUrl" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /profile/avatar-from-url"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
 resource "aws_apigatewayv2_route" "profileAvatarDelete" {
   api_id             = aws_apigatewayv2_api.main.id
   route_key          = "DELETE /profile/avatar"

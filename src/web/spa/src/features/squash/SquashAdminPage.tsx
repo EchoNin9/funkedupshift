@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth, canModifySquash } from "../../shell/AuthContext";
 import DateInput from "./DateInput";
@@ -62,6 +62,8 @@ const SquashAdminPage: React.FC = () => {
   const [matchLoserGames, setMatchLoserGames] = useState(0);
   const [isMatchSubmitting, setIsMatchSubmitting] = useState(false);
   const [isMatchesLoading, setIsMatchesLoading] = useState(false);
+  const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
+  const [playerMode, setPlayerMode] = useState<"and" | "or">("and");
   const playerDropdownRef = useRef<HTMLDivElement>(null);
 
   // Players tab state
@@ -130,7 +132,10 @@ const SquashAdminPage: React.FC = () => {
     if (searchDate) params.set("date", searchDate);
     if (searchDateFrom) params.set("dateFrom", searchDateFrom);
     if (searchDateTo) params.set("dateTo", searchDateTo);
-    if (selectedPlayerIds.length) params.set("playerIds", selectedPlayerIds.join(","));
+    if (selectedPlayerIds.length) {
+      params.set("playerIds", selectedPlayerIds.join(","));
+      params.set("playerMode", playerMode);
+    }
     const qs = params.toString() ? `?${params.toString()}` : "";
     setIsMatchesLoading(true);
     setError(null);
@@ -156,6 +161,7 @@ const SquashAdminPage: React.FC = () => {
     setSearchDateFrom("");
     setSearchDateTo("");
     setSelectedPlayerIds([]);
+    setPlayerMode("and");
     setPlayerSearch("");
     setHasSearched(false);
     setAllMatches([]);
@@ -367,9 +373,19 @@ const SquashAdminPage: React.FC = () => {
     }
   }, [playerDropdownOpen]);
 
-  const totalPages = Math.max(1, Math.ceil(allMatches.length / PAGE_SIZE));
+  const sortedMatches = useMemo(() => {
+    const copy = [...allMatches];
+    copy.sort((a, b) => {
+      const da = a.date || "";
+      const db = b.date || "";
+      return sortOrder === "newest" ? db.localeCompare(da) : da.localeCompare(db);
+    });
+    return copy;
+  }, [allMatches, sortOrder]);
+
+  const totalPages = Math.max(1, Math.ceil(sortedMatches.length / PAGE_SIZE));
   const start = (currentPage - 1) * PAGE_SIZE;
-  const pageMatches = allMatches.slice(start, start + PAGE_SIZE);
+  const pageMatches = sortedMatches.slice(start, start + PAGE_SIZE);
 
   const renderMatchScore = (m: Match) => {
     const ga = m.teamAGames ?? 0;
@@ -648,6 +664,31 @@ const SquashAdminPage: React.FC = () => {
                     </span>
                   ))}
                 </div>
+                {selectedPlayerIds.length > 0 && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <span className="text-xs text-slate-500">Match:</span>
+                    <div className="inline-flex rounded-md border border-slate-700 bg-slate-950 p-0.5">
+                      <button
+                        type="button"
+                        onClick={() => setPlayerMode("and")}
+                        className={`rounded px-2 py-0.5 text-xs font-medium ${
+                          playerMode === "and" ? "bg-brand-orange text-slate-950" : "text-slate-400 hover:text-slate-200"
+                        }`}
+                      >
+                        AND
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPlayerMode("or")}
+                        className={`rounded px-2 py-0.5 text-xs font-medium ${
+                          playerMode === "or" ? "bg-brand-orange text-slate-950" : "text-slate-400 hover:text-slate-200"
+                        }`}
+                      >
+                        OR
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="flex gap-2">
                 <button
@@ -670,7 +711,31 @@ const SquashAdminPage: React.FC = () => {
           </section>
 
           <section>
-            <h2 className="text-base font-semibold text-slate-200 mb-3">Search results</h2>
+            <div className="flex flex-wrap items-center gap-3 mb-3">
+              <h2 className="text-base font-semibold text-slate-200">Search results</h2>
+              {hasSearched && sortedMatches.length > 0 && (
+                <div className="inline-flex rounded-md border border-slate-700 bg-slate-950 p-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setSortOrder("newest")}
+                    className={`rounded px-2 py-0.5 text-xs font-medium ${
+                      sortOrder === "newest" ? "bg-brand-orange text-slate-950" : "text-slate-400 hover:text-slate-200"
+                    }`}
+                  >
+                    Newest first
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSortOrder("oldest")}
+                    className={`rounded px-2 py-0.5 text-xs font-medium ${
+                      sortOrder === "oldest" ? "bg-brand-orange text-slate-950" : "text-slate-400 hover:text-slate-200"
+                    }`}
+                  >
+                    Oldest first
+                  </button>
+                </div>
+              )}
+            </div>
             {!hasSearched ? (
               <div className="flex items-center justify-center min-h-[280px]">
                 <p className="text-2xl sm:text-3xl font-light text-slate-500/80 tracking-wide animate-pulse">

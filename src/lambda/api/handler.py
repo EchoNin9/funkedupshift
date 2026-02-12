@@ -179,6 +179,8 @@ def handler(event, context):
             return updateProfile(event)
         if method == "POST" and path == "/profile/avatar-upload":
             return getProfileAvatarUpload(event)
+        if method == "POST" and path == "/profile/avatar-from-url":
+            return importProfileAvatarFromUrl(event)
         if method == "DELETE" and path == "/profile/avatar":
             return deleteProfileAvatar(event)
         if method == "GET" and path == "/stars":
@@ -1033,6 +1035,76 @@ def getProfileAvatarUpload(event):
         return jsonResponse({"uploadUrl": upload_url, "key": key})
     except Exception as e:
         logger.exception("getProfileAvatarUpload error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def importProfileAvatarFromUrl(event):
+    """Download image from URL, validate dimensions (min 48x48), upload to S3 (any logged-in user)."""
+    user = getUserInfo(event)
+    if not user.get("userId"):
+        return jsonResponse({"error": "Unauthorized"}, 401)
+    if not MEDIA_BUCKET:
+        return jsonResponse({"error": "MEDIA_BUCKET not configured"}, 500)
+    try:
+        import io
+        import uuid as uuid_mod
+        import urllib.request
+        import urllib.error
+        body = json.loads(event.get("body", "{}"))
+        image_url = (body.get("imageUrl") or "").strip()
+        if not image_url:
+            return jsonResponse({"error": "imageUrl is required"}, 400)
+        MAX_AVATAR_BYTES = 5 * 1024 * 1024
+        MIN_AVATAR_SIZE = 48
+        FETCH_TIMEOUT_SEC = 10
+        req = urllib.request.Request(image_url, headers={"User-Agent": "FunkedupshiftAvatarImport/1.0"})
+        try:
+            with urllib.request.urlopen(req, timeout=FETCH_TIMEOUT_SEC) as resp:
+                content_length = resp.headers.get("Content-Length")
+                if content_length and int(content_length) > MAX_AVATAR_BYTES:
+                    return jsonResponse({"error": "Image too large (max 5 MB)"}, 400)
+                data = resp.read(MAX_AVATAR_BYTES + 1)
+                if len(data) > MAX_AVATAR_BYTES:
+                    return jsonResponse({"error": "Image too large (max 5 MB)"}, 400)
+                content_type = (resp.headers.get("Content-Type") or "").split(";")[0].strip().lower()
+        except urllib.error.HTTPError as e:
+            logger.warning("avatar-from-url HTTP error: %s", e)
+            return jsonResponse({"error": "Could not download image"}, 400)
+        except urllib.error.URLError as e:
+            logger.warning("avatar-from-url URL error: %s", e)
+            return jsonResponse({"error": "Could not download image"}, 400)
+        allowed_types = ("image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp")
+        if content_type not in allowed_types:
+            return jsonResponse({"error": "Unsupported image type (use PNG, JPEG, GIF, or WebP)"}, 400)
+        try:
+            from PIL import Image
+            img = Image.open(io.BytesIO(data))
+            img.load()
+            w, h = img.size
+            if w < MIN_AVATAR_SIZE or h < MIN_AVATAR_SIZE:
+                return jsonResponse({"error": "Image must be at least 48×48 pixels."}, 400)
+        except Exception as e:
+            logger.warning("avatar-from-url PIL/open error: %s", e)
+            return jsonResponse({"error": "Invalid or unsupported image"}, 400)
+        ext = "png"
+        if "jpeg" in content_type or "jpg" in content_type:
+            ext = "jpg"
+        elif "gif" in content_type:
+            ext = "gif"
+        elif "webp" in content_type:
+            ext = "webp"
+        user_id_safe = user.get("userId", "").replace(":", "_").replace("/", "_")
+        unique = str(uuid_mod.uuid4())
+        key = f"profile/avatars/{user_id_safe}/{unique}.{ext}"
+        region = os.environ.get("AWS_REGION", "us-east-1")
+        import boto3
+        s3 = boto3.client("s3", region_name=region)
+        s3.put_object(Bucket=MEDIA_BUCKET, Key=key, Body=data, ContentType=content_type)
+        return jsonResponse({"key": key})
+    except json.JSONDecodeError as e:
+        return jsonResponse({"error": "Invalid JSON body"}, 400)
+    except Exception as e:
+        logger.exception("importProfileAvatarFromUrl error")
         return jsonResponse({"error": str(e)}, 500)
 
 
@@ -2361,7 +2433,7 @@ def deleteSquashPlayer(event):
 
 
 def listSquashMatches(event):
-    """GET /squash/matches - List squash matches (Squash access required). Query: date, dateFrom, dateTo, playerIds."""
+    """GET /squash/matches - List squash matches (Squash access required). Query: date, dateFrom, dateTo, playerIds, playerMode (and|or)."""
     _, err = _requireSquashAccess(event)
     if err:
         return err
@@ -2426,7 +2498,8 @@ def listSquashMatches(event):
                         match_ids.add(pk)
 
         if filter_player_ids:
-            player_match_ids = set()
+            player_mode = (qs.get("playerMode") or "").strip().lower() or "and"
+            per_player_sets = []
             for pid in filter_player_ids:
                 pk = pid if pid.startswith("SQUASH#PLAYER#") else f"SQUASH#PLAYER#{pid}"
                 result = dynamodb.query(
@@ -2434,6 +2507,7 @@ def listSquashMatches(event):
                     KeyConditionExpression="PK = :pk AND begins_with(SK, :sk)",
                     ExpressionAttributeValues={":pk": {"S": pk}, ":sk": {"S": "MATCH#"}},
                 )
+                ids_for_player = set()
                 for item in result.get("Items", []):
                     mid = item.get("matchId", {}).get("S")
                     if not mid:
@@ -2441,9 +2515,19 @@ def listSquashMatches(event):
                         mid = sk.replace("MATCH#", "") if "MATCH#" in sk else ""
                     if mid:
                         full = mid if "SQUASH#" in mid else f"SQUASH#MATCH#{mid}"
-                        player_match_ids.add(full)
-            if player_match_ids:
-                match_ids = match_ids & player_match_ids if match_ids else player_match_ids
+                        ids_for_player.add(full)
+                per_player_sets.append(ids_for_player)
+            if per_player_sets:
+                if player_mode == "or":
+                    player_match_ids = set()
+                    for s in per_player_sets:
+                        player_match_ids |= s
+                else:
+                    player_match_ids = per_player_sets[0].copy()
+                    for s in per_player_sets[1:]:
+                        player_match_ids &= s
+                if player_match_ids:
+                    match_ids = match_ids & player_match_ids if match_ids else player_match_ids
 
         matches = []
         for mid in match_ids:
