@@ -85,7 +85,7 @@ const HighestRatedPage: React.FC = () => {
       </h1>
       <div className="rounded-xl border border-amber-800/60 bg-gradient-to-br from-amber-900/40 to-amber-950/60 p-4 shadow-lg">
         <p className="text-sm font-medium text-amber-100">
-          Top 14 sites by community star ratings
+          Top sites rated by our community
         </p>
         <p className="mt-1 text-xs text-amber-200/80">
           Click a card below for more detail
@@ -192,57 +192,28 @@ const HighestRatedPage: React.FC = () => {
         <div className="fixed inset-0 flex items-center justify-center p-4">
           <Dialog.Panel className="mx-auto w-full max-w-xl rounded-xl border border-amber-800/60 bg-gradient-to-br from-amber-900/40 to-amber-950/60 p-6 shadow-xl">
             {selectedSite && (
-              <>
-                <div className="flex items-start justify-between gap-4">
-                  <header className="flex flex-wrap gap-4 min-w-0 flex-1">
-                    <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-lg border border-amber-700/60 bg-amber-900/40">
-                      {selectedSite.logoUrl ? (
-                        <img
-                          src={selectedSite.logoUrl}
-                          alt=""
-                          className="h-full w-full object-cover"
-                          onError={(e) => {
-                            (e.currentTarget as HTMLImageElement).style.visibility = "hidden";
-                          }}
-                        />
-                      ) : null}
-                    </div>
-                    <div className="min-w-0 flex-1 space-y-2">
-                      <Dialog.Title className="text-2xl font-semibold tracking-tight text-amber-100">
-                        {selectedSite.title || selectedSite.domain}
-                      </Dialog.Title>
-                      <a
-                        href={selectedSite.url || `https://${selectedSite.domain}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block truncate text-base text-amber-300 hover:text-amber-200 hover:underline"
-                      >
-                        {selectedSite.url || `https://${selectedSite.domain}`}
-                      </a>
-                      {selectedSite.averageRating != null && (
-                        <div className="flex items-center gap-1 text-amber-300">
-                          <StarIcon className="h-4 w-4" />
-                          <span className="font-semibold">{selectedSite.averageRating}</span>
-                          <span className="text-xs text-amber-200/80">/ 5</span>
-                        </div>
-                      )}
-                    </div>
-                  </header>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedSite(null)}
-                    className="rounded p-1 text-amber-400 hover:bg-amber-800/40 hover:text-amber-200 flex-shrink-0"
-                    aria-label="Close modal"
-                  >
-                    <XMarkIcon className="h-6 w-6" />
-                  </button>
-                </div>
-                {(selectedSite.description || "").trim().length > 0 && (
-                  <div className="mt-4">
-                    <p className="text-base text-amber-200">{selectedSite.description}</p>
-                  </div>
+              <div className="relative flex min-h-[12rem] items-center justify-center">
+                <button
+                  type="button"
+                  onClick={() => setSelectedSite(null)}
+                  className="absolute right-0 top-0 rounded p-1 text-amber-400 hover:bg-amber-800/40 hover:text-amber-200"
+                  aria-label="Close modal"
+                >
+                  <XMarkIcon className="h-6 w-6" />
+                </button>
+                {selectedSite.logoUrl ? (
+                  <img
+                    src={selectedSite.logoUrl}
+                    alt=""
+                    className="max-h-48 max-w-full object-contain"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).style.visibility = "hidden";
+                    }}
+                  />
+                ) : (
+                  <div className="h-24 w-24 rounded-lg border border-amber-700/60 bg-amber-900/40" />
                 )}
-              </>
+              </div>
             )}
           </Dialog.Panel>
         </div>

@@ -185,50 +185,28 @@ const OurPropertiesPage: React.FC = () => {
         <div className="fixed inset-0 flex items-center justify-center p-4">
           <Dialog.Panel className="mx-auto w-full max-w-xl rounded-xl border border-violet-800/60 bg-gradient-to-br from-violet-900/40 to-violet-950/60 p-6 shadow-xl">
             {selectedSite && (
-              <>
-                <div className="flex items-start justify-between gap-4">
-                  <header className="flex flex-wrap gap-4 min-w-0 flex-1">
-                    <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-lg border border-violet-700/60 bg-violet-900/40">
-                      {selectedSite.logoUrl ? (
-                        <img
-                          src={selectedSite.logoUrl}
-                          alt=""
-                          className="h-full w-full object-cover"
-                          onError={(e) => {
-                            (e.currentTarget as HTMLImageElement).style.visibility = "hidden";
-                          }}
-                        />
-                      ) : null}
-                    </div>
-                    <div className="min-w-0 flex-1 space-y-2">
-                      <Dialog.Title className="text-2xl font-semibold tracking-tight text-violet-100">
-                        {selectedSite.title || selectedSite.domain}
-                      </Dialog.Title>
-                      <a
-                        href={selectedSite.url || `https://${selectedSite.domain}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block truncate text-base text-violet-300 hover:text-violet-200 hover:underline"
-                      >
-                        {selectedSite.url || `https://${selectedSite.domain}`}
-                      </a>
-                    </div>
-                  </header>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedSite(null)}
-                    className="rounded p-1 text-violet-400 hover:bg-violet-800/40 hover:text-violet-200 flex-shrink-0"
-                    aria-label="Close modal"
-                  >
-                    <XMarkIcon className="h-6 w-6" />
-                  </button>
-                </div>
-                {(selectedSite.description || "").trim().length > 0 && (
-                  <div className="mt-4">
-                    <p className="text-base text-violet-200">{selectedSite.description}</p>
-                  </div>
+              <div className="relative flex min-h-[12rem] items-center justify-center">
+                <button
+                  type="button"
+                  onClick={() => setSelectedSite(null)}
+                  className="absolute right-0 top-0 rounded p-1 text-violet-400 hover:bg-violet-800/40 hover:text-violet-200"
+                  aria-label="Close modal"
+                >
+                  <XMarkIcon className="h-6 w-6" />
+                </button>
+                {selectedSite.logoUrl ? (
+                  <img
+                    src={selectedSite.logoUrl}
+                    alt=""
+                    className="max-h-48 max-w-full object-contain"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).style.visibility = "hidden";
+                    }}
+                  />
+                ) : (
+                  <div className="h-24 w-24 rounded-lg border border-violet-700/60 bg-violet-900/40" />
                 )}
-              </>
+              </div>
             )}
           </Dialog.Panel>
         </div>
