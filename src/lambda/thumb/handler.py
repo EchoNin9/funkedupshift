@@ -1,7 +1,7 @@
 """
 Thumbnail generation Lambda. Triggered by S3 PutObject on media/images/ or media/videos/.
-- Images: copy to media/thumbnails/{mediaId}.jpg and update DynamoDB
-- Videos: submit MediaConvert frame capture job; EventBridge invokes on completion to update DynamoDB
+- Images: copy to media/thumbnails/{mediaId_safe}.ext and update DynamoDB (mediaId_safe = mediaId with # replaced by _)
+- Videos: submit MediaConvert frame capture + minimal video job; EventBridge invokes on completion to update DynamoDB
 """
 import json
 import logging
@@ -72,7 +72,7 @@ def _process_image(bucket, key, media_id):
     ext = key.split(".")[-1].lower() if "." in key else "jpg"
     if ext not in ("jpg", "jpeg", "png", "gif", "webp"):
         ext = "jpg"
-    thumb_key = f"media/thumbnails/{media_id}.{ext}"
+    thumb_key = f"media/thumbnails/{media_id.replace('#', '_')}.{ext}"
     try:
         s3 = boto3.client("s3", region_name=AWS_REGION)
         s3.copy_object(
@@ -119,8 +119,10 @@ def _process_video(bucket, key, media_id, use_first_frame=False):
         mc = boto3.client("mediaconvert", region_name=AWS_REGION, endpoint_url=account)
 
         input_path = f"s3://{bucket}/{key}"
-        output_prefix = f"s3://{bucket}/media/thumbnails/mc_{media_id.replace('#', '_')}"
-        thumb_key = f"media/thumbnails/{media_id.replace('#', '_')}.jpg"
+        media_id_safe = media_id.replace("#", "_")
+        frame_prefix = f"s3://{bucket}/media/thumbnails/mc_{media_id_safe}"
+        temp_video_prefix = f"s3://{bucket}/media/thumbnails/_temp/{media_id_safe}"
+        thumb_key = f"media/thumbnails/{media_id_safe}.jpg"
 
         if use_first_frame:
             input_clipping = {
@@ -158,7 +160,7 @@ def _process_video(bucket, key, media_id, use_first_frame=False):
                         "Name": "File Group",
                         "OutputGroupSettings": {
                             "Type": "FILE_GROUP_SETTINGS",
-                            "FileGroupSettings": {"Destination": output_prefix},
+                            "FileGroupSettings": {"Destination": frame_prefix},
                         },
                         "Outputs": [
                             {
@@ -179,7 +181,42 @@ def _process_video(bucket, key, media_id, use_first_frame=False):
                                 },
                             }
                         ],
-                    }
+                    },
+                    {
+                        "Name": "File Group",
+                        "OutputGroupSettings": {
+                            "Type": "FILE_GROUP_SETTINGS",
+                            "FileGroupSettings": {"Destination": temp_video_prefix},
+                        },
+                        "Outputs": [
+                            {
+                                "NameModifier": "_temp",
+                                "ContainerSettings": {
+                                    "Container": "MP4",
+                                    "Mp4Settings": {
+                                        "CslgAtom": "INCLUDE",
+                                        "FreeSpaceBox": "EXCLUDE",
+                                        "MoovPlacement": "PROGRESSIVE_DOWNLOAD",
+                                    },
+                                },
+                                "VideoDescription": {
+                                    "Width": 320,
+                                    "Height": 180,
+                                    "ScalingBehavior": "DEFAULT",
+                                    "CodecSettings": {
+                                        "Codec": "H_264",
+                                        "H264Settings": {
+                                            "Bitrate": 200000,
+                                            "CodecProfile": "BASELINE",
+                                            "FramerateControl": "INITIALIZE_FROM_SOURCE",
+                                            "RateControlMode": "CBR",
+                                            "InterlaceMode": "PROGRESSIVE",
+                                        },
+                                    },
+                                },
+                            }
+                        ],
+                    },
                 ],
             },
         )
@@ -292,17 +329,19 @@ def _handle_mediaconvert_event(event):
         output_groups = job_data.get("OutputGroupDetails", [])
         src_key = None
         bucket = MEDIA_BUCKET
+        temp_keys_to_delete = []
         for og in output_groups:
             for od in og.get("OutputDetails", []):
                 for path in od.get("OutputFilePaths", []):
                     match = re.search(r"s3://([^/]+)/(.+)", path)
                     if match:
-                        bucket, src_key = match.group(1), match.group(2)
-                        break
-            if src_key:
-                break
+                        b, k = match.group(1), match.group(2)
+                        if k.lower().endswith(".jpg"):
+                            bucket, src_key = b, k
+                        else:
+                            temp_keys_to_delete.append((b, k))
         if not src_key:
-            logger.warning("No output file path in job %s", job_id)
+            logger.warning("No .jpg output file path in job %s", job_id)
             return {"statusCode": 200, "body": "ok"}
 
         s3 = boto3.client("s3", region_name=AWS_REGION)
@@ -312,6 +351,11 @@ def _handle_mediaconvert_event(event):
             Key=thumbnail_key,
         )
         s3.delete_object(Bucket=bucket, Key=src_key)
+        for b, k in temp_keys_to_delete:
+            try:
+                s3.delete_object(Bucket=b, Key=k)
+            except Exception as e:
+                logger.warning("Failed to delete temp output %s: %s", k, e)
         dynamodb = boto3.client("dynamodb", region_name=AWS_REGION)
         current = dynamodb.get_item(
             TableName=TABLE_NAME,

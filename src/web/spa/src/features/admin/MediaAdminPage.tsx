@@ -205,12 +205,6 @@ const MediaAdminPage: React.FC = () => {
       });
       if (!uploadResp.ok) throw new Error("Upload request failed");
       const { uploadUrl: putUrl, key } = (await uploadResp.json()) as { uploadUrl: string; key: string };
-      const putResp = await fetch(putUrl, {
-        method: "PUT",
-        headers: { "Content-Type": file.type || (mediaType === "image" ? "image/png" : "video/mp4") },
-        body: file
-      });
-      if (!putResp.ok) throw new Error("File upload failed");
       const createResp = await fetch(`${apiBase}/media`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -224,6 +218,12 @@ const MediaAdminPage: React.FC = () => {
         })
       });
       if (!createResp.ok) throw new Error(await createResp.text());
+      const putResp = await fetch(putUrl, {
+        method: "PUT",
+        headers: { "Content-Type": file.type || (mediaType === "image" ? "image/png" : "video/mp4") },
+        body: file
+      });
+      if (!putResp.ok) throw new Error("File upload failed");
       setMessage("Media added.");
       setTitle("");
       setDescription("");
