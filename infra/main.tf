@@ -841,7 +841,7 @@ resource "aws_iam_role_policy" "lambdaThumb" {
       },
       {
         Effect   = "Allow"
-        Action   = ["dynamodb:UpdateItem"]
+        Action   = ["dynamodb:GetItem", "dynamodb:UpdateItem"]
         Resource = aws_dynamodb_table.main.arn
       },
       {
