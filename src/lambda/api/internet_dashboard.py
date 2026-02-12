@@ -1,5 +1,5 @@
 """
-Internet Dashboard: status of 20 popular sites (green/yellow/red).
+Internet Dashboard: status of popular sites (green/yellow/red).
 Source cascade: Lambda HTTP -> UptimeRobot -> StatusCake -> Site Informant -> DynamoDB cache.
 """
 import json

@@ -11,6 +11,7 @@ import MediaPage from "../features/media/MediaPage";
 import MediaDetailPage from "../features/media/MediaDetailPage";
 import DashboardPage from "../features/dashboard/DashboardPage";
 import BrandingPage from "../features/admin/BrandingPage";
+import InternetDashboardAdminPage from "../features/admin/InternetDashboardAdminPage";
 import MembershipPage from "../features/admin/MembershipPage";
 import WebsitesAdminPage from "../features/admin/WebsitesAdminPage";
 import MediaAdminPage from "../features/admin/MediaAdminPage";
@@ -39,7 +40,8 @@ const navItems: NavItem[] = [
   { label: "Membership", to: "/admin/membership", section: "admin", minRole: "manager" },
   { label: "Websites", to: "/admin/websites", section: "admin", minRole: "manager" },
   { label: "Media", to: "/admin/media", section: "admin", minRole: "manager" },
-  { label: "Branding", to: "/admin/branding", section: "admin", minRole: "superadmin" }
+  { label: "Branding", to: "/admin/branding", section: "admin", minRole: "superadmin" },
+  { label: "Internet Dashboard", to: "/admin/internet-dashboard", section: "admin", minRole: "superadmin" }
 ];
 
 const WINDOWSHADE_STORAGE_KEY = "funkedupshift_sectionOpen";
@@ -378,6 +380,7 @@ const AppLayout: React.FC = () => {
               <Route path="/squash" element={<SquashPage />} />
               <Route path="/squash-admin" element={<SquashAdminPage />} />
               <Route path="/admin/branding" element={<BrandingPage />} />
+              <Route path="/admin/internet-dashboard" element={<InternetDashboardAdminPage />} />
               <Route path="/admin/membership" element={<MembershipPage />} />
               <Route path="/admin/users/edit" element={<EditUserPage />} />
               <Route path="/admin/websites" element={<WebsitesAdminPage />} />

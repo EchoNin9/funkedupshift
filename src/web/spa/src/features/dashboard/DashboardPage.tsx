@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { useAuth, hasRole } from "../../shell/AuthContext";
 
 const CACHE_KEY = "funkedupshift_internet_dashboard";
 const CACHE_TTL_MS = 5 * 60 * 1000;
@@ -41,6 +43,7 @@ function setCachedSites(sites: DashboardSite[]): void {
 }
 
 const DashboardPage: React.FC = () => {
+  const { user } = useAuth();
   const [sites, setSites] = useState<DashboardSite[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -110,6 +113,13 @@ const DashboardPage: React.FC = () => {
         <p className="mt-1 text-xs text-teal-200/80">
           Refreshes when data is older than 5 minutes
         </p>
+        {hasRole(user ?? null, "superadmin") && (
+          <p className="mt-2">
+            <Link to="/admin/internet-dashboard" className="text-brand-orange hover:text-orange-400 text-sm">
+              Edit sites list
+            </Link>
+          </p>
+        )}
       </div>
 
       {isLoading && (
