@@ -41,7 +41,7 @@ const OurPropertiesPage: React.FC = () => {
     setError(null);
 
     try {
-      const resp = await fetch(`${apiBase}/other-properties/our-properties`);
+      const resp = await fetch(`${apiBase}/recommended/highlights`);
       const txt = await resp.text();
       if (!resp.ok) {
         throw new Error(txt || `HTTP ${resp.status}`);
@@ -90,7 +90,7 @@ const OurPropertiesPage: React.FC = () => {
         {canEdit && (
           <p className="mt-2">
             <Link
-              to="/admin/other-properties/our-properties"
+              to="/admin/recommended/highlights"
               className="text-violet-300 hover:text-violet-200 font-semibold text-sm"
             >
               Edit sites list
@@ -114,7 +114,7 @@ const OurPropertiesPage: React.FC = () => {
           No sites configured yet.{" "}
           {canEdit && (
             <Link
-              to="/admin/other-properties/our-properties"
+              to="/admin/recommended/highlights"
               className="text-violet-400 hover:text-violet-300"
             >
               Add sites

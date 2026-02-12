@@ -995,7 +995,7 @@ resource "aws_apigatewayv2_route" "internetDashboard" {
 
 resource "aws_apigatewayv2_route" "ourProperties" {
   api_id    = aws_apigatewayv2_api.main.id
-  route_key = "GET /other-properties/our-properties"
+  route_key = "GET /recommended/highlights"
   target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
 }
 
@@ -1422,7 +1422,7 @@ resource "aws_apigatewayv2_route" "adminInternetDashboardSitesPut" {
 
 resource "aws_apigatewayv2_route" "adminOurPropertiesSitesGet" {
   api_id             = aws_apigatewayv2_api.main.id
-  route_key          = "GET /admin/other-properties/our-properties/sites"
+  route_key          = "GET /admin/recommended/highlights/sites"
   target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
   authorization_type = "JWT"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
@@ -1430,7 +1430,7 @@ resource "aws_apigatewayv2_route" "adminOurPropertiesSitesGet" {
 
 resource "aws_apigatewayv2_route" "adminOurPropertiesSitesPut" {
   api_id             = aws_apigatewayv2_api.main.id
-  route_key          = "PUT /admin/other-properties/our-properties/sites"
+  route_key          = "PUT /admin/recommended/highlights/sites"
   target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
   authorization_type = "JWT"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id

@@ -69,7 +69,7 @@ const OurPropertiesAdminPage: React.FC = () => {
     setIsLoading(true);
     setError(null);
     try {
-      const resp = await fetchWithAuth(`${apiBase}/admin/other-properties/our-properties/sites`);
+      const resp = await fetchWithAuth(`${apiBase}/admin/recommended/highlights/sites`);
       if (!resp.ok) {
         const d = await resp.json().catch(() => ({}));
         throw new Error((d as { error?: string }).error || "Failed to load");
@@ -98,7 +98,7 @@ const OurPropertiesAdminPage: React.FC = () => {
     setMessage(null);
     setError(null);
     try {
-      const resp = await fetchWithAuth(`${apiBase}/admin/other-properties/our-properties/sites`, {
+      const resp = await fetchWithAuth(`${apiBase}/admin/recommended/highlights/sites`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sites: updated.map((s) => ({ url: s.url, description: s.description })) }),
@@ -247,7 +247,7 @@ const OurPropertiesAdminPage: React.FC = () => {
   return (
     <div className="space-y-6">
       <Link
-        to="/other-properties/our-properties"
+        to="/recommended/highlights"
         className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-slate-200"
       >
         <ArrowLeftIcon className="h-4 w-4" />

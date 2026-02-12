@@ -28,7 +28,7 @@ import SquashAdminPage from "../features/squash/SquashAdminPage";
 interface NavItem {
   label: string;
   to: string;
-  section: "discover" | "squash" | "otherProperties" | "admin";
+  section: "discover" | "squash" | "recommended" | "admin";
   minRole: "guest" | "user" | "manager" | "superadmin";
 }
 
@@ -39,8 +39,8 @@ const navItems: NavItem[] = [
   { label: "Profile", to: "/profile", section: "discover", minRole: "user" },
   { label: "Squash", to: "/squash", section: "squash", minRole: "user" },
   { label: "Squash Admin", to: "/squash-admin", section: "squash", minRole: "manager" },
-  { label: "Our Properties", to: "/other-properties/our-properties", section: "otherProperties", minRole: "guest" },
-  { label: "Our Properties", to: "/admin/other-properties/our-properties", section: "admin", minRole: "manager" },
+  { label: "Highlights", to: "/recommended/highlights", section: "recommended", minRole: "guest" },
+  { label: "Highlights", to: "/admin/recommended/highlights", section: "admin", minRole: "manager" },
   { label: "Membership", to: "/admin/membership", section: "admin", minRole: "manager" },
   { label: "Websites", to: "/admin/websites", section: "admin", minRole: "manager" },
   { label: "Media", to: "/admin/media", section: "admin", minRole: "manager" },
@@ -54,7 +54,7 @@ function getDefaultSectionState(): Record<string, boolean> {
   return {
     discover: true,
     squash: false,
-    otherProperties: true,
+    recommended: true,
     admin: false
   };
 }
@@ -107,7 +107,7 @@ const AppLayout: React.FC = () => {
 
   const visibleNavItems = navItems.filter((item) => hasRole(user ?? null, item.minRole));
   const discoverItems = visibleNavItems.filter((i) => i.section === "discover");
-  const otherPropertiesItems = visibleNavItems.filter((i) => i.section === "otherProperties");
+  const recommendedItems = visibleNavItems.filter((i) => i.section === "recommended");
   const squashItems = navItems
     .filter((i) => i.section === "squash")
     .filter((i) => (i.to === "/squash" ? canAccessSquash(user) : canModifySquash(user)));
@@ -207,23 +207,23 @@ const AppLayout: React.FC = () => {
               )}
             </div>
 
-            {otherPropertiesItems.length > 0 && (
+            {recommendedItems.length > 0 && (
               <div>
                 <button
                   type="button"
-                  onClick={() => toggleSection("otherProperties")}
+                  onClick={() => toggleSection("recommended")}
                   className="flex w-full items-center justify-between rounded-md px-3 py-2 text-xs font-semibold text-slate-500 uppercase mb-2 hover:bg-slate-800/70 hover:text-slate-300"
                 >
-                  Other Properties
-                  {(sectionOpen["otherProperties"] ?? true) ? (
+                  Recommended
+                  {(sectionOpen["recommended"] ?? true) ? (
                     <ChevronDownIcon className="h-4 w-4 shrink-0" />
                   ) : (
                     <ChevronRightIcon className="h-4 w-4 shrink-0" />
                   )}
                 </button>
-                {(sectionOpen["otherProperties"] ?? true) && (
+                {(sectionOpen["recommended"] ?? true) && (
                   <div className="space-y-1">
-                    {otherPropertiesItems.map((item) => (
+                    {recommendedItems.map((item) => (
                       <NavLink key={item.to} to={item.to} className={navLinkClass}>
                         {item.label}
                       </NavLink>
@@ -334,23 +334,23 @@ const AppLayout: React.FC = () => {
                 )}
               </div>
 
-              {otherPropertiesItems.length > 0 && (
+              {recommendedItems.length > 0 && (
                 <div>
                   <button
                     type="button"
-                    onClick={() => toggleSection("otherProperties")}
+                    onClick={() => toggleSection("recommended")}
                     className="flex w-full items-center justify-between rounded-md px-3 py-2 text-xs font-semibold text-slate-500 uppercase mb-2 hover:bg-slate-800/70 hover:text-slate-300"
                   >
-                    Other Properties
-                    {(sectionOpen["otherProperties"] ?? true) ? (
+                    Recommended
+                    {(sectionOpen["recommended"] ?? true) ? (
                       <ChevronDownIcon className="h-4 w-4 shrink-0" />
                     ) : (
                       <ChevronRightIcon className="h-4 w-4 shrink-0" />
                     )}
                   </button>
-                  {(sectionOpen["otherProperties"] ?? true) && (
+                  {(sectionOpen["recommended"] ?? true) && (
                     <div className="space-y-1">
-                      {otherPropertiesItems.map((item) => (
+                      {recommendedItems.map((item) => (
                         <NavLink
                           key={item.to}
                           to={item.to}
@@ -440,12 +440,12 @@ const AppLayout: React.FC = () => {
               <Route path="/media" element={<MediaPage />} />
               <Route path="/media/:id" element={<MediaDetailPage />} />
               <Route path="/internet-dashboard" element={<DashboardPage />} />
-              <Route path="/other-properties/our-properties" element={<OurPropertiesPage />} />
+              <Route path="/recommended/highlights" element={<OurPropertiesPage />} />
               <Route path="/squash" element={<SquashPage />} />
               <Route path="/squash-admin" element={<SquashAdminPage />} />
               <Route path="/admin/branding" element={<BrandingPage />} />
               <Route path="/admin/internet-dashboard" element={<InternetDashboardAdminPage />} />
-              <Route path="/admin/other-properties/our-properties" element={<OurPropertiesAdminPage />} />
+              <Route path="/admin/recommended/highlights" element={<OurPropertiesAdminPage />} />
               <Route path="/admin/membership" element={<MembershipPage />} />
               <Route path="/admin/users/edit" element={<EditUserPage />} />
               <Route path="/admin/websites" element={<WebsitesAdminPage />} />
@@ -477,8 +477,8 @@ const AppLayout: React.FC = () => {
             <Link to="/internet-dashboard" className="hover:text-slate-300">
               Internet dashboard
             </Link>
-            <Link to="/other-properties/our-properties" className="hover:text-slate-300">
-              Our Properties
+            <Link to="/recommended/highlights" className="hover:text-slate-300">
+              Highlights
             </Link>
             {user && (
               <Link to="/profile" className="hover:text-slate-300">

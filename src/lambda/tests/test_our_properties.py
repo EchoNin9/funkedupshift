@@ -9,15 +9,15 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 
-def _event(path="/other-properties/our-properties", method="GET"):
-    """Event for GET /other-properties/our-properties (no auth required)."""
+def _event(path="/recommended/highlights", method="GET"):
+    """Event for GET /recommended/highlights (no auth required)."""
     return {
         "rawPath": path,
         "requestContext": {"http": {"method": method, "path": path}},
     }
 
 
-def _admin_event(path="/admin/other-properties/our-properties/sites", method="GET"):
+def _admin_event(path="/admin/recommended/highlights/sites", method="GET"):
     """Event for admin routes (requires auth)."""
     return {
         "rawPath": path,
@@ -37,7 +37,7 @@ def _admin_event(path="/admin/other-properties/our-properties/sites", method="GE
 
 @patch("api.our_properties.fetch_our_properties")
 def test_getOurProperties_returns_sites(mock_fetch):
-    """GET /other-properties/our-properties returns sites array when fetch succeeds."""
+    """GET /recommended/highlights returns sites array when fetch succeeds."""
     from api.handler import handler
 
     mock_fetch.return_value = [
@@ -61,7 +61,7 @@ def test_getOurProperties_returns_sites(mock_fetch):
 
 @patch("api.our_properties.fetch_our_properties")
 def test_getOurProperties_empty_list(mock_fetch):
-    """GET /other-properties/our-properties returns empty list when no sites."""
+    """GET /recommended/highlights returns empty list when no sites."""
     from api.handler import handler
 
     mock_fetch.return_value = []
@@ -76,7 +76,7 @@ def test_getOurProperties_empty_list(mock_fetch):
 
 @patch("api.our_properties.fetch_our_properties")
 def test_getOurProperties_fallback_on_error(mock_fetch):
-    """GET /other-properties/our-properties returns 500 with sites=[] when fetch raises."""
+    """GET /recommended/highlights returns 500 with sites=[] when fetch raises."""
     from api.handler import handler
 
     mock_fetch.side_effect = Exception("Network error")

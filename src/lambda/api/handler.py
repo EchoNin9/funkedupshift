@@ -154,7 +154,7 @@ def handler(event, context):
             return postBrandingLogoUpload(event)
         if method == "GET" and path == "/internet-dashboard":
             return getInternetDashboard(event)
-        if method == "GET" and path == "/other-properties/our-properties":
+        if method == "GET" and path == "/recommended/highlights":
             return getOurProperties(event)
         if method == "GET" and path == "/sites":
             return listSites(event)
@@ -282,9 +282,9 @@ def handler(event, context):
             return getInternetDashboardSites(event)
         if method == "PUT" and path == "/admin/internet-dashboard/sites":
             return putInternetDashboardSites(event)
-        if method == "GET" and path == "/admin/other-properties/our-properties/sites":
+        if method == "GET" and path == "/admin/recommended/highlights/sites":
             return getOurPropertiesSites(event)
-        if method == "PUT" and path == "/admin/other-properties/our-properties/sites":
+        if method == "PUT" and path == "/admin/recommended/highlights/sites":
             return putOurPropertiesSites(event)
         if method == "OPTIONS":
             # CORS preflight
@@ -351,7 +351,7 @@ def putInternetDashboardSites(event):
 
 
 def getOurProperties(event):
-    """GET /other-properties/our-properties: status of our sites (public, no auth)."""
+    """GET /recommended/highlights: status of our sites (public, no auth)."""
     try:
         from api.our_properties import fetch_our_properties
         sites = fetch_our_properties()
@@ -362,7 +362,7 @@ def getOurProperties(event):
 
 
 def getOurPropertiesSites(event):
-    """GET /admin/other-properties/our-properties/sites - Return our properties sites list (manager or admin)."""
+    """GET /admin/recommended/highlights/sites - Return our properties sites list (manager or admin)."""
     _, err = _requireManagerOrAdmin(event)
     if err:
         return err
@@ -376,7 +376,7 @@ def getOurPropertiesSites(event):
 
 
 def putOurPropertiesSites(event):
-    """PUT /admin/other-properties/our-properties/sites - Update our properties sites list (manager or admin)."""
+    """PUT /admin/recommended/highlights/sites - Update our properties sites list (manager or admin)."""
     _, err = _requireManagerOrAdmin(event)
     if err:
         return err
