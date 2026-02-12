@@ -52,6 +52,8 @@ const MediaAdminPage: React.FC = () => {
   const [description, setDescription] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [filePreview, setFilePreview] = useState<string | null>(null);
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+  const [showThumbnailDialog, setShowThumbnailDialog] = useState(false);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [categorySearch, setCategorySearch] = useState("");
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
@@ -118,12 +120,27 @@ const MediaAdminPage: React.FC = () => {
   const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     setFile(f ?? null);
+    setThumbnailFile(null);
     setError(null);
     if (filePreview) {
       URL.revokeObjectURL(filePreview);
       setFilePreview(null);
     }
-    if (f) setFilePreview(URL.createObjectURL(f));
+    if (f) {
+      setFilePreview(URL.createObjectURL(f));
+      if (f.type.startsWith("video/")) setShowThumbnailDialog(true);
+    }
+  };
+
+  const thumbnailInputRef = useRef<HTMLInputElement>(null);
+
+  const onThumbnailFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (f && f.type.startsWith("image/")) {
+      setThumbnailFile(f);
+      setShowThumbnailDialog(false);
+    }
+    e.target.value = "";
   };
 
   const addCategory = (id: string) => {
@@ -224,10 +241,36 @@ const MediaAdminPage: React.FC = () => {
         body: file
       });
       if (!putResp.ok) throw new Error("File upload failed");
+      if (mediaType === "video" && thumbnailFile) {
+        const thumbResp = await fetch(`${apiBase}/media/thumbnail-upload`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ mediaId, contentType: thumbnailFile.type || "image/jpeg" })
+        });
+        if (thumbResp.ok) {
+          const { uploadUrl: thumbPutUrl, key: thumbKey } = (await thumbResp.json()) as { uploadUrl: string; key: string };
+          const thumbPutResp = await fetch(thumbPutUrl, {
+            method: "PUT",
+            headers: { "Content-Type": thumbnailFile.type || "image/jpeg" },
+            body: thumbnailFile
+          });
+          if (thumbPutResp.ok) {
+            const updateResp = await fetch(`${apiBase}/media`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+              body: JSON.stringify({ id: mediaId, thumbnailKey: thumbKey })
+            });
+            if (!updateResp.ok) {
+              console.warn("Thumbnail uploaded but update failed");
+            }
+          }
+        }
+      }
       setMessage("Media added.");
       setTitle("");
       setDescription("");
       setFile(null);
+      setThumbnailFile(null);
       if (filePreview) URL.revokeObjectURL(filePreview);
       setFilePreview(null);
       setSelectedCategoryIds([]);
@@ -410,6 +453,54 @@ const MediaAdminPage: React.FC = () => {
             <p className="mt-1 text-xs text-slate-500">
               Videos get an auto-generated thumbnail from the 3–4 sec frame. Change it when editing.
             </p>
+            {file?.type.startsWith("video/") && thumbnailFile && (
+              <p className="mt-1 text-xs text-emerald-400">
+                Custom thumbnail: {thumbnailFile.name}{" "}
+                <button type="button" onClick={() => setShowThumbnailDialog(true)} className="text-brand-orange hover:underline">
+                  Change
+                </button>
+              </p>
+            )}
+            {showThumbnailDialog && file?.type.startsWith("video/") && (
+              <div
+                className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="thumbnail-dialog-title"
+                onClick={() => setShowThumbnailDialog(false)}
+              >
+                <div
+                  className="rounded-lg border border-slate-700 bg-slate-900 p-6 shadow-xl max-w-sm w-full mx-4"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <h2 id="thumbnail-dialog-title" className="text-lg font-medium text-slate-100 mb-2">Add thumbnail</h2>
+                  <p className="text-sm text-slate-400 mb-4">Choose a custom thumbnail image for this video (optional).</p>
+                  <input
+                    ref={thumbnailInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/gif,image/webp"
+                    onChange={onThumbnailFileChange}
+                    className="hidden"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => thumbnailInputRef.current?.click()}
+                      className="rounded-md bg-slate-700 px-3 py-2 text-sm font-medium text-slate-100 hover:bg-slate-600"
+                    >
+                      Choose file
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowThumbnailDialog(false)}
+                      className="rounded-md border border-slate-600 px-3 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800"
+                    >
+                      Skip
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
             {filePreview && (
               <div className="mt-2">
                 {file?.type.startsWith("video/") ? (
