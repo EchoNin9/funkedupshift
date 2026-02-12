@@ -155,11 +155,6 @@
           showMessage('Media not found.', true);
           return;
         }
-        // #region agent log
-        try {
-          fetch('http://127.0.0.1:7243/ingest/51517f45-4cb4-45b6-9d26-950ab96994fd', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'edit-media.js:load', message: 'API media single', data: { PK: m.PK, mediaType: m.mediaType, hasThumbnailUrl: !!(m.thumbnailUrl && m.thumbnailUrl.trim()), hasMediaUrl: !!m.mediaUrl }, timestamp: Date.now(), hypothesisId: 'C' }) }).catch(function () {});
-        } catch (e) {}
-        // #endregion
 
         document.getElementById('mediaId').value = m.PK || m.id || mediaId;
         document.getElementById('mediaTitle').value = m.title || '';
@@ -184,6 +179,7 @@
         var thumbWrap = document.getElementById('thumbnailUploadWrap');
         var thumbImg = document.getElementById('currentThumbImg');
         var noThumbPlaceholder = document.getElementById('noThumbPlaceholder');
+        var deleteThumbBtn = document.getElementById('deleteThumbnailBtn');
         if (thumbWrap && thumbImg) {
           if (m.mediaType === 'video') {
             thumbWrap.hidden = false;
@@ -191,10 +187,12 @@
               thumbImg.src = m.thumbnailUrl;
               thumbImg.style.display = 'block';
               if (noThumbPlaceholder) noThumbPlaceholder.hidden = true;
+              if (deleteThumbBtn) deleteThumbBtn.hidden = false;
             } else {
               thumbImg.src = '';
               thumbImg.style.display = 'none';
               if (noThumbPlaceholder) { noThumbPlaceholder.textContent = 'Using auto-generated thumbnail'; noThumbPlaceholder.hidden = false; }
+              if (deleteThumbBtn) deleteThumbBtn.hidden = true;
             }
           } else {
             thumbWrap.hidden = true;
@@ -290,26 +288,34 @@
           return r.text().then(function (t) { throw new Error(t || 'Regeneration failed'); });
         })
         .then(function () {
-          if (thumbErr) { thumbErr.textContent = 'Screenshot started. New thumbnail will appear in a few seconds.'; thumbErr.className = 'status'; thumbErr.hidden = false; }
+          if (thumbErr) { thumbErr.textContent = 'Screenshot started. New thumbnail will appear in 30–60 seconds.'; thumbErr.className = 'status'; thumbErr.hidden = false; }
           takeScreenshotBtn.disabled = false;
           takeScreenshotBtn.textContent = 'Take screenshot';
-          setTimeout(function () {
-            fetchWithAuth(base + '/media?id=' + encodeURIComponent(id))
-              .then(function (r) { return r.ok ? r.json() : null; })
-              .then(function (data) {
-                var m = data && data.media;
-                var thumbImg = document.getElementById('currentThumbImg');
-                var noThumbPlaceholder = document.getElementById('noThumbPlaceholder');
-                if (m && thumbImg) {
-                  if (m.thumbnailUrl && m.thumbnailUrl.trim()) {
-                    thumbImg.src = m.thumbnailUrl;
-                    thumbImg.style.display = 'block';
-                    if (noThumbPlaceholder) noThumbPlaceholder.hidden = true;
+          function poll(attempt) {
+            if (attempt > 6) return;
+            setTimeout(function () {
+              fetchWithAuth(base + '/media?id=' + encodeURIComponent(id))
+                .then(function (r) { return r.ok ? r.json() : null; })
+                .then(function (data) {
+                  var m = data && data.media;
+                  var thumbImg = document.getElementById('currentThumbImg');
+                  var noThumbPlaceholder = document.getElementById('noThumbPlaceholder');
+                  var dtb = document.getElementById('deleteThumbnailBtn');
+                  if (m && thumbImg) {
+                    if (m.thumbnailUrl && m.thumbnailUrl.trim()) {
+                      thumbImg.src = m.thumbnailUrl;
+                      thumbImg.style.display = 'block';
+                      if (noThumbPlaceholder) noThumbPlaceholder.hidden = true;
+                      if (thumbErr) { thumbErr.textContent = 'Thumbnail updated.'; thumbErr.hidden = false; }
+                      if (dtb) dtb.hidden = false;
+                      return;
+                    }
                   }
-                  if (thumbErr) { thumbErr.textContent = ''; thumbErr.hidden = true; }
-                }
-              });
-          }, 6000);
+                  poll(attempt + 1);
+                });
+            }, 10000);
+          }
+          poll(1);
         })
         .catch(function (e) {
           if (thumbErr) { thumbErr.textContent = 'Error: ' + e.message; thumbErr.hidden = false; }
@@ -385,6 +391,8 @@
             thumbImg.style.display = 'block';
             thumbImg.alt = 'Custom thumbnail';
             if (noThumbPlaceholder) noThumbPlaceholder.hidden = true;
+            var dtb = document.getElementById('deleteThumbnailBtn');
+            if (dtb) dtb.hidden = false;
           }
           thumbnailFileInput.value = '';
           if (thumbErr) { thumbErr.textContent = ''; thumbErr.hidden = true; }
@@ -392,6 +400,39 @@
         .catch(function (e) {
           if (thumbErr) { thumbErr.textContent = 'Error: ' + e.message; thumbErr.hidden = false; }
           thumbnailFileInput.value = '';
+        });
+    });
+  }
+
+  var deleteThumbnailBtn = document.getElementById('deleteThumbnailBtn');
+  if (deleteThumbnailBtn) {
+    deleteThumbnailBtn.addEventListener('click', function () {
+      var id = document.getElementById('mediaId').value.trim();
+      if (!id) return;
+      if (!window.confirm('Remove the custom logo/thumbnail? You can regenerate from video or upload a new one.')) return;
+      var thumbErr = document.getElementById('thumbnailError');
+      var thumbImg = document.getElementById('currentThumbImg');
+      var noThumbPlaceholder = document.getElementById('noThumbPlaceholder');
+      deleteThumbnailBtn.disabled = true;
+      if (thumbErr) { thumbErr.textContent = ''; thumbErr.hidden = true; }
+      fetchWithAuth(base + '/media', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: id, deleteThumbnail: true })
+      })
+        .then(function (r) {
+          if (r.ok) return r.json();
+          return r.text().then(function (t) { throw new Error(t || 'Failed'); });
+        })
+        .then(function () {
+          if (thumbImg) { thumbImg.src = ''; thumbImg.style.display = 'none'; }
+          if (noThumbPlaceholder) { noThumbPlaceholder.textContent = 'Using auto-generated thumbnail'; noThumbPlaceholder.hidden = false; }
+          deleteThumbnailBtn.hidden = true;
+          deleteThumbnailBtn.disabled = false;
+        })
+        .catch(function (e) {
+          if (thumbErr) { thumbErr.textContent = 'Error: ' + e.message; thumbErr.hidden = false; }
+          deleteThumbnailBtn.disabled = false;
         });
     });
   }

@@ -118,14 +118,6 @@ const MediaPage: React.FC = () => {
           params.set("categoryMode", categoryMode);
         }
         const resp = await fetch(`${apiBase}/media?${params.toString()}`);
-        // #region agent log
-        try {
-          const clone = resp.clone();
-          const data = await clone.json().catch(() => ({}));
-          const sample = (data.media || []).slice(0, 5).map((m: any) => ({ PK: m.PK, mediaType: m.mediaType, hasThumbnailUrl: !!m.thumbnailUrl, hasMediaUrl: !!m.mediaUrl, thumbnailUrlLen: (m.thumbnailUrl || "").length }));
-          fetch("http://127.0.0.1:7243/ingest/51517f45-4cb4-45b6-9d26-950ab96994fd", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ location: "MediaPage.tsx:load", message: "API media response", data: { count: (data.media || []).length, sample }, timestamp: Date.now(), hypothesisId: "C" }) }).catch(() => {});
-        } catch (_) {}
-        // #endregion
         if (!resp.ok) {
           const txt = await resp.text();
           throw new Error(`HTTP ${resp.status}: ${txt}`);

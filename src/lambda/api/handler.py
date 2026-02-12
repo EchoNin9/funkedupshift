@@ -1531,14 +1531,6 @@ def _resolveCategoriesForMedia(dynamodb, media_list):
 
 def _addMediaUrls(media_list, region=None):
     """Set mediaUrl and thumbnailUrl (presigned GET) for each media item."""
-    # #region agent log
-    try:
-        with open("/Users/adam/Github/EchoNin9/funkedupshift/.cursor/debug.log", "a") as _f:
-            import json as _j
-            _f.write(_j.dumps({"location": "handler.py:_addMediaUrls", "message": "entry", "data": {"media_count": len(media_list or []), "MEDIA_BUCKET": bool(MEDIA_BUCKET), "sample_keys": [{k: m.get(k) for k in ("PK", "mediaKey", "thumbnailKey", "mediaType")} for m in (media_list or [])[:3]]}, "timestamp": __import__("time").time() * 1000, "hypothesisId": "A"}) + "\n")
-    except Exception:
-        pass
-    # #endregion
     if not MEDIA_BUCKET or not media_list:
         return
     try:
@@ -1562,14 +1554,6 @@ def _addMediaUrls(media_list, region=None):
                 m["thumbnailUrl"] = m["mediaUrl"]
     except Exception as e:
         logger.warning("_addMediaUrls failed: %s", e)
-        # #region agent log
-        try:
-            with open("/Users/adam/Github/EchoNin9/funkedupshift/.cursor/debug.log", "a") as _f:
-                import json as _j
-                _f.write(_j.dumps({"location": "handler.py:_addMediaUrls", "message": "exception", "data": {"error": str(e)}, "timestamp": __import__("time").time() * 1000, "hypothesisId": "B"}) + "\n")
-        except Exception:
-            pass
-        # #endregion
 
 
 def _dynamoItemToMedia(item):
@@ -1766,15 +1750,38 @@ def updateMedia(event):
         if media_key is not None:
             set_parts.append("mediaKey = :mediaKey")
             values[":mediaKey"] = {"S": media_key}
+        delete_thumbnail = body.get("deleteThumbnail") is True
         thumbnail_key = (body.get("thumbnailKey") or "").strip() or None
-        if thumbnail_key is not None:
+        remove_parts = []
+        current_thumb_key = None
+        if delete_thumbnail or thumbnail_key is not None:
+            get_resp = dynamodb.get_item(
+                TableName=TABLE_NAME,
+                Key={"PK": {"S": media_id}, "SK": {"S": "METADATA"}},
+                ProjectionExpression="thumbnailKey",
+            )
+            if "Item" in get_resp and "thumbnailKey" in get_resp["Item"]:
+                current_thumb_key = get_resp["Item"]["thumbnailKey"].get("S", "").strip() or None
+        if MEDIA_BUCKET and current_thumb_key and (delete_thumbnail or thumbnail_key is not None):
+            try:
+                s3 = boto3.client("s3")
+                s3.delete_object(Bucket=MEDIA_BUCKET, Key=current_thumb_key)
+            except Exception as e:
+                logger.warning("S3 delete_object for thumbnail failed: %s", e)
+        if delete_thumbnail:
+            remove_parts.append("#thumbnailKey")
+            names["#thumbnailKey"] = "thumbnailKey"
+        elif thumbnail_key is not None:
             set_parts.append("#thumbnailKey = :thumbnailKey")
             names["#thumbnailKey"] = "thumbnailKey"
             values[":thumbnailKey"] = {"S": thumbnail_key}
+        update_expr = "SET " + ", ".join(set_parts)
+        if remove_parts:
+            update_expr += " REMOVE " + ", ".join(remove_parts)
         dynamodb.update_item(
             TableName=TABLE_NAME,
             Key={"PK": {"S": media_id}, "SK": {"S": "METADATA"}},
-            UpdateExpression="SET " + ", ".join(set_parts),
+            UpdateExpression=update_expr,
             ExpressionAttributeNames=names if names else None,
             ExpressionAttributeValues=values,
         )

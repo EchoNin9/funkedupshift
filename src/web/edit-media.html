@@ -163,8 +163,9 @@
         </div>
         <div class="thumbnail-actions" style="margin-top:0.5rem;display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
           <button type="button" id="takeScreenshotBtn" class="secondary">Take screenshot</button>
-          <span class="thumbnail-hint" style="margin:0;">or upload custom image:</span>
-          <input type="file" id="thumbnailFile" accept="image/png,image/jpeg,image/gif,image/webp">
+          <span class="thumbnail-hint" style="margin:0;">or</span>
+          <label class="secondary" style="margin:0;cursor:pointer;display:inline-block;padding:0.35rem 0.5rem;">Add logo<input type="file" id="thumbnailFile" accept="image/png,image/jpeg,image/gif,image/webp" style="display:none"></label>
+          <button type="button" id="deleteThumbnailBtn" class="secondary" style="margin:0;" hidden>Delete logo</button>
         </div>
         <span id="thumbnailError" class="media-error" hidden></span>
       </div>

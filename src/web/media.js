@@ -482,12 +482,6 @@
       .then(function (data) {
         var list = data.media;
         if (!Array.isArray(list)) list = [];
-        // #region agent log
-        try {
-          var sample = list.slice(0, 5).map(function (m) { return { PK: m.PK, mediaType: m.mediaType, hasThumbnailUrl: !!(m.thumbnailUrl && m.thumbnailUrl.trim()), hasMediaUrl: !!m.mediaUrl }; });
-          fetch('http://127.0.0.1:7243/ingest/51517f45-4cb4-45b6-9d26-950ab96994fd', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'media.js:load', message: 'API media response', data: { count: list.length, sample }, timestamp: Date.now(), hypothesisId: 'C' }) }).catch(function () {});
-        } catch (e) {}
-        // #endregion
         var sorted = applySort(list, 'avgDesc');
         var top7 = sorted.slice(0, 7);
         try {
