@@ -120,7 +120,7 @@ def _process_video(bucket, key, media_id, use_first_frame=False):
 
         input_path = f"s3://{bucket}/{key}"
         output_prefix = f"s3://{bucket}/media/thumbnails/mc_{media_id.replace('#', '_')}"
-        thumb_key = f"media/thumbnails/{media_id}.jpg"
+        thumb_key = f"media/thumbnails/{media_id.replace('#', '_')}.jpg"
 
         if use_first_frame:
             input_clipping = {

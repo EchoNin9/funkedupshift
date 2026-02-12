@@ -59,6 +59,14 @@ const EditMediaPage: React.FC = () => {
       const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
       if (!token || cancelled) return;
       const mediaResp = await fetch(`${apiBase}/media?id=${encodeURIComponent(mediaId)}`);
+      // #region agent log
+      try {
+        const clone = mediaResp.clone();
+        const d = await clone.json().catch(() => ({}));
+        const m = Array.isArray(d.media) ? d.media[0] : d.media;
+        fetch("http://127.0.0.1:7243/ingest/51517f45-4cb4-45b6-9d26-950ab96994fd", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ location: "EditMediaPage.tsx:load", message: "API media single", data: m ? { PK: m.PK, mediaType: m.mediaType, hasThumbnailUrl: !!m.thumbnailUrl, hasMediaUrl: !!m.mediaUrl } : null, timestamp: Date.now(), hypothesisId: "C" }) }).catch(() => {});
+      } catch (_) {}
+      // #endregion
       if (mediaResp.status === 404 || !mediaResp.ok) {
         if (!cancelled) setError("Media not found.");
         setLoading(false);

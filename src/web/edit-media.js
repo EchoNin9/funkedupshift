@@ -155,6 +155,11 @@
           showMessage('Media not found.', true);
           return;
         }
+        // #region agent log
+        try {
+          fetch('http://127.0.0.1:7243/ingest/51517f45-4cb4-45b6-9d26-950ab96994fd', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'edit-media.js:load', message: 'API media single', data: { PK: m.PK, mediaType: m.mediaType, hasThumbnailUrl: !!(m.thumbnailUrl && m.thumbnailUrl.trim()), hasMediaUrl: !!m.mediaUrl }, timestamp: Date.now(), hypothesisId: 'C' }) }).catch(function () {});
+        } catch (e) {}
+        // #endregion
 
         document.getElementById('mediaId').value = m.PK || m.id || mediaId;
         document.getElementById('mediaTitle').value = m.title || '';

@@ -1531,6 +1531,14 @@ def _resolveCategoriesForMedia(dynamodb, media_list):
 
 def _addMediaUrls(media_list, region=None):
     """Set mediaUrl and thumbnailUrl (presigned GET) for each media item."""
+    # #region agent log
+    try:
+        with open("/Users/adam/Github/EchoNin9/funkedupshift/.cursor/debug.log", "a") as _f:
+            import json as _j
+            _f.write(_j.dumps({"location": "handler.py:_addMediaUrls", "message": "entry", "data": {"media_count": len(media_list or []), "MEDIA_BUCKET": bool(MEDIA_BUCKET), "sample_keys": [{k: m.get(k) for k in ("PK", "mediaKey", "thumbnailKey", "mediaType")} for m in (media_list or [])[:3]]}, "timestamp": __import__("time").time() * 1000, "hypothesisId": "A"}) + "\n")
+    except Exception:
+        pass
+    # #endregion
     if not MEDIA_BUCKET or not media_list:
         return
     try:
@@ -1541,6 +1549,9 @@ def _addMediaUrls(media_list, region=None):
             for key_attr, url_attr in [("mediaKey", "mediaUrl"), ("thumbnailKey", "thumbnailUrl")]:
                 key = m.get(key_attr)
                 if key and isinstance(key, str) and key.strip():
+                    if url_attr == "thumbnailUrl" and "#" in key:
+                        logger.info("Skipping thumbnailKey with # (presigned URL broken): %s", key[:50])
+                        continue
                     url = s3.generate_presigned_url(
                         "get_object",
                         Params={"Bucket": MEDIA_BUCKET, "Key": key},
@@ -1551,6 +1562,14 @@ def _addMediaUrls(media_list, region=None):
                 m["thumbnailUrl"] = m["mediaUrl"]
     except Exception as e:
         logger.warning("_addMediaUrls failed: %s", e)
+        # #region agent log
+        try:
+            with open("/Users/adam/Github/EchoNin9/funkedupshift/.cursor/debug.log", "a") as _f:
+                import json as _j
+                _f.write(_j.dumps({"location": "handler.py:_addMediaUrls", "message": "exception", "data": {"error": str(e)}, "timestamp": __import__("time").time() * 1000, "hypothesisId": "B"}) + "\n")
+        except Exception:
+            pass
+        # #endregion
 
 
 def _dynamoItemToMedia(item):
@@ -1879,7 +1898,7 @@ def getPresignedThumbnailUpload(event):
             ext = "gif"
         elif "webp" in contentType:
             ext = "webp"
-        key = f"media/thumbnails/{media_id}_custom.{ext}"
+        key = f"media/thumbnails/{media_id.replace('#', '_')}_custom.{ext}"
         region = os.environ.get("AWS_REGION", "us-east-1")
         s3 = boto3.client("s3", region_name=region)
         upload_url = s3.generate_presigned_url(
