@@ -26,10 +26,13 @@ function domainFromUrl(url: string): string {
 }
 
 interface SiteEntry {
-  url: string;
+  type?: "site" | "media";
+  url?: string;
+  id?: string;
   description: string;
   title?: string;
   logoKey?: string;
+  thumbnailKey?: string;
   averageRating?: number;
 }
 
@@ -73,8 +76,8 @@ const TABS: TabConfig[] = [
     generatePath: "/admin/recommended/highest-rated/generate",
     generateLabel: "Generate new cache",
     listLabel: "Highest rated list",
-    emptyMessage: "No sites yet. Generate from top 14 by star rating or add a URL above.",
-    generateSuccessMessage: "Cache generated from top 14 sites by star rating.",
+    emptyMessage: "No items yet. Generate from top 14 by star rating or add a URL above.",
+    generateSuccessMessage: "Cache generated from top 14 sites and media by star rating.",
     saveSuccessMessage: "Highest rated list saved.",
     buttonClass: "bg-amber-600 hover:bg-amber-500",
     viewPath: "/recommended/highest-rated",
@@ -126,8 +129,20 @@ const ListTab: React.FC<ListTabProps> = ({ config }) => {
       const data = (await resp.json()) as { sites?: SiteEntry[]; updatedAt?: string | null };
       const list = Array.isArray(data.sites) ? data.sites : [];
       setSites(list.map((s) => {
-        if (typeof s === "string") return { url: s, description: "" };
+        if (typeof s === "string") return { type: "site" as const, url: s, description: "" };
+        const t = s.type || "site";
+        if (t === "media") {
+          return {
+            type: "media" as const,
+            id: s.id || "",
+            description: s.description || "",
+            title: s.title,
+            thumbnailKey: s.thumbnailKey,
+            averageRating: s.averageRating,
+          };
+        }
         return {
+          type: "site" as const,
           url: s.url || "",
           description: s.description || "",
           title: s.title,
@@ -157,8 +172,20 @@ const ListTab: React.FC<ListTabProps> = ({ config }) => {
       if (!resp.ok) throw new Error(data.error || "Failed to generate");
       const list = Array.isArray(data.sites) ? data.sites : [];
       setSites(list.map((s) => {
-        if (typeof s === "string") return { url: s, description: "" };
+        if (typeof s === "string") return { type: "site" as const, url: s, description: "" };
+        const t = s.type || "site";
+        if (t === "media") {
+          return {
+            type: "media" as const,
+            id: s.id || "",
+            description: s.description || "",
+            title: s.title,
+            thumbnailKey: s.thumbnailKey,
+            averageRating: s.averageRating,
+          };
+        }
         return {
+          type: "site" as const,
           url: s.url || "",
           description: s.description || "",
           title: s.title,
@@ -183,13 +210,26 @@ const ListTab: React.FC<ListTabProps> = ({ config }) => {
     setError(null);
     try {
       const body: Record<string, unknown> = {
-        sites: updated.map((s) => ({
-          url: s.url,
-          description: s.description,
-          ...(s.title && { title: s.title }),
-          ...(s.logoKey && { logoKey: s.logoKey }),
-          ...(s.averageRating != null && { averageRating: s.averageRating }),
-        })),
+        sites: updated.map((s) => {
+          if (s.type === "media") {
+            return {
+              type: "media",
+              id: s.id,
+              description: s.description,
+              ...(s.title && { title: s.title }),
+              ...(s.thumbnailKey && { thumbnailKey: s.thumbnailKey }),
+              ...(s.averageRating != null && { averageRating: s.averageRating }),
+            };
+          }
+          return {
+            type: "site",
+            url: s.url,
+            description: s.description,
+            ...(s.title && { title: s.title }),
+            ...(s.logoKey && { logoKey: s.logoKey }),
+            ...(s.averageRating != null && { averageRating: s.averageRating }),
+          };
+        }),
       };
       const resp = await fetchWithAuth(`${apiBase}${config.savePath}`, {
         method: "PUT",
@@ -218,23 +258,28 @@ const ListTab: React.FC<ListTabProps> = ({ config }) => {
     }
     setNewUrl("");
     setError(null);
-    saveSites([...sites, { url, description: "" }]);
+    saveSites([...sites, { type: "site" as const, url, description: "" }]);
   };
+
+  const getDisplayKey = (entry: SiteEntry) =>
+    entry.type === "media" ? (entry.title || entry.id || "").toLowerCase() : domainFromUrl(entry.url || "").toLowerCase();
 
   const displayedSites = useMemo(() => {
     if (displayOrder === "custom") return [...sites];
     const copy = [...sites];
     copy.sort((a, b) => {
-      const da = domainFromUrl(a.url);
-      const db = domainFromUrl(b.url);
+      const da = getDisplayKey(a);
+      const db = getDisplayKey(b);
       return displayOrder === "a-z" ? da.localeCompare(db) : db.localeCompare(da);
     });
     return copy;
   }, [sites, displayOrder]);
 
   const startEdit = (index: number) => {
+    const entry = displayedSites[index];
+    if (entry.type === "media") return;
     setEditingIndex(index);
-    setEditingValue(displayedSites[index].url);
+    setEditingValue(entry.url || "");
   };
 
   const saveEdit = () => {
@@ -245,12 +290,13 @@ const ListTab: React.FC<ListTabProps> = ({ config }) => {
       return;
     }
     const oldEntry = displayedSites[editingIndex];
-    if (sites.some((s) => s.url === url && s.url !== oldEntry.url)) {
+    if (oldEntry.type === "media") return;
+    if (sites.some((s) => s.type === "site" && s.url === url && s.url !== oldEntry.url)) {
       setError("URL already in list.");
       return;
     }
     setError(null);
-    const updated = sites.map((s) => (s.url === oldEntry.url ? { ...s, url } : s));
+    const updated = sites.map((s) => (s.type === "site" && s.url === oldEntry.url ? { ...s, url } : s));
     setSites(updated);
     saveSites(updated);
     setEditingIndex(null);
@@ -262,9 +308,12 @@ const ListTab: React.FC<ListTabProps> = ({ config }) => {
     setEditingValue("");
   };
 
-  const updateDescription = (url: string, description: string) => {
+  const updateDescription = (entry: SiteEntry, description: string) => {
     setSites((prev) =>
-      prev.map((s) => (s.url === url ? { ...s, description: description.slice(0, 255) } : s))
+      prev.map((s) => {
+        const match = s.type === "media" ? s.id === entry.id : s.url === entry.url;
+        return match ? { ...s, description: description.slice(0, 255) } : s;
+      })
     );
   };
 
@@ -297,9 +346,9 @@ const ListTab: React.FC<ListTabProps> = ({ config }) => {
     saveSites(reordered);
     setDraggedIndex(null);
   };
-  const handleRemove = (url: string) => {
+  const handleRemove = (entry: SiteEntry) => {
     setError(null);
-    saveSites(sites.filter((s) => s.url !== url));
+    saveSites(sites.filter((s) => (s.type === "media" ? s.id !== entry.id : s.url !== entry.url)));
   };
 
   const formattedDate = updatedAt
@@ -375,7 +424,7 @@ const ListTab: React.FC<ListTabProps> = ({ config }) => {
       <ul className="space-y-3">
         {displayedSites.map((entry, index) => (
           <li
-            key={entry.url}
+            key={entry.id || entry.url || index}
             draggable={displayOrder === "custom" && editingIndex === null}
             onDragStart={() => handleDragStart(index)}
             onDragOver={(e) => handleDragOver(e, index)}
@@ -408,13 +457,19 @@ const ListTab: React.FC<ListTabProps> = ({ config }) => {
                   className="flex-1 rounded-md border border-slate-600 bg-slate-900 px-2 py-1 text-sm text-slate-50 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange"
                 />
               ) : (
-                <button
-                  type="button"
-                  onClick={() => startEdit(index)}
-                  className="font-medium text-slate-200 break-all flex-1 text-left hover:text-brand-orange hover:underline"
-                >
-                  {domainFromUrl(entry.url)}
-                </button>
+                entry.type === "media" ? (
+                  <span className="font-medium text-slate-200 break-all flex-1">
+                    {entry.title || entry.id}
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => startEdit(index)}
+                    className="font-medium text-slate-200 break-all flex-1 text-left hover:text-brand-orange hover:underline"
+                  >
+                    {domainFromUrl(entry.url || "")}
+                  </button>
+                )
               )}
               {config.id === "highestRated" && entry.averageRating != null && (
                 <span className="flex items-center gap-0.5 text-amber-400 text-xs">
@@ -422,10 +477,10 @@ const ListTab: React.FC<ListTabProps> = ({ config }) => {
                   {entry.averageRating}
                 </span>
               )}
-              <button
-                type="button"
-                onClick={() => handleRemove(entry.url)}
-                disabled={isSaving || editingIndex !== null}
+                <button
+                  type="button"
+                  onClick={() => handleRemove(entry)}
+                  disabled={isSaving || editingIndex !== null}
                 className="flex-shrink-0 rounded-md border border-red-500/60 bg-red-500/10 px-2 py-1 text-xs font-medium text-red-300 hover:bg-red-500/20 disabled:opacity-50"
               >
                 Remove
@@ -439,7 +494,7 @@ const ListTab: React.FC<ListTabProps> = ({ config }) => {
                 id={`desc-${config.id}-${index}`}
                 type="text"
                 value={entry.description}
-                onChange={(e) => updateDescription(entry.url, e.target.value)}
+                onChange={(e) => updateDescription(entry, e.target.value)}
                 onBlur={saveDescription}
                 maxLength={255}
                 placeholder="One-line description (255 chars max)"

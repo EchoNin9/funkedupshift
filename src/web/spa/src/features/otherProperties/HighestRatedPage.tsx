@@ -5,8 +5,11 @@ import { XMarkIcon } from "@heroicons/react/24/outline";
 import { StarIcon } from "@heroicons/react/24/solid";
 import { useAuth, hasRole } from "../../shell/AuthContext";
 
-interface HighestRatedSite {
-  url: string;
+interface HighestRatedItem {
+  type: "site" | "media";
+  url?: string;
+  id?: string;
+  link: string;
   domain: string;
   title?: string;
   status: string;
@@ -24,8 +27,8 @@ function getApiBaseUrl(): string | null {
 
 const HighestRatedPage: React.FC = () => {
   const { user } = useAuth();
-  const [sites, setSites] = useState<HighestRatedSite[]>([]);
-  const [selectedSite, setSelectedSite] = useState<HighestRatedSite | null>(null);
+  const [items, setItems] = useState<HighestRatedItem[]>([]);
+  const [selectedItem, setSelectedItem] = useState<HighestRatedItem | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -54,19 +57,19 @@ const HighestRatedPage: React.FC = () => {
           "API returned HTML instead of JSON. For local dev, set window.API_BASE_URL in public/config.js to your staging API URL (e.g. terraform -chdir=infra output -raw apiInvokeUrl)"
         );
       }
-      let data: { sites?: HighestRatedSite[] };
+      let data: { sites?: HighestRatedItem[] };
       try {
-        data = JSON.parse(txt) as { sites?: HighestRatedSite[] };
+        data = JSON.parse(txt) as { sites?: HighestRatedItem[] };
       } catch {
         throw new Error("API returned invalid JSON.");
       }
       const list = Array.isArray(data.sites) ? data.sites : [];
-      setSites(list);
+      setItems(list);
       setError(null);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Failed to load.";
       setError(msg);
-      setSites([]);
+      setItems([]);
     } finally {
       setIsLoading(false);
     }
@@ -85,7 +88,7 @@ const HighestRatedPage: React.FC = () => {
       </h1>
       <div className="rounded-xl border border-amber-800/60 bg-gradient-to-br from-amber-900/40 to-amber-950/60 p-4 shadow-lg">
         <p className="text-sm font-medium text-amber-100">
-          Top sites rated by our community
+          Top sites and media rated by our community
         </p>
         <p className="mt-1 text-xs text-amber-200/80">
           Click a card below for more detail
@@ -106,15 +109,15 @@ const HighestRatedPage: React.FC = () => {
         <p className="text-sm text-slate-400">Loading…</p>
       )}
 
-      {error && !sites.length && (
+      {error && !items.length && (
         <div className="rounded-md border border-red-500/60 bg-red-500/10 px-3 py-2 text-xs text-red-200">
           {error}
         </div>
       )}
 
-      {!isLoading && sites.length === 0 && !error && (
+      {!isLoading && items.length === 0 && !error && (
         <p className="text-sm text-slate-400">
-          No sites configured yet.{" "}
+          No items configured yet.{" "}
           {canEdit && (
             <Link
               to="/admin/recommended?tab=highest-rated"
@@ -126,59 +129,70 @@ const HighestRatedPage: React.FC = () => {
         </p>
       )}
 
-      {sites.length > 0 && (
+      {items.length > 0 && (
         <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-4">
-          {sites.map((s) => {
-            const status = (s.status || "up").toLowerCase();
+          {items.map((item) => {
+            const status = (item.status || "up").toLowerCase();
             const statusClass =
               status === "up"
                 ? "border-amber-400/50 bg-amber-400/20 text-amber-200"
                 : status === "degraded"
                 ? "border-amber-500/50 bg-amber-500/15 text-amber-200"
                 : "border-amber-600/50 bg-amber-600/15 text-amber-200";
-            const hasDescription = (s.description || "").trim().length > 0;
-            const displayTitle = s.title || s.domain;
-            const fullUrl = s.url || `https://${s.domain}`;
+            const hasDescription = (item.description || "").trim().length > 0;
+            const displayTitle = item.title || item.domain;
+            const isMedia = item.type === "media";
+            const key = item.id || item.url || item.domain;
             return (
               <div
-                key={s.url || s.domain}
+                key={key}
                 className={`rounded-lg border p-4 text-left text-sm min-w-0 cursor-pointer transition-all duration-200 hover:scale-[1.01] hover:shadow-lg ${statusClass}`}
-                onClick={() => setSelectedSite(s)}
+                onClick={() => setSelectedItem(item)}
                 role="button"
                 tabIndex={0}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
-                    setSelectedSite(s);
+                    setSelectedItem(item);
                   }
                 }}
               >
                 <span className="relative group block">
-                  <a
-                    href={fullUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="font-semibold block hover:underline break-all"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {displayTitle}
-                  </a>
+                  {isMedia ? (
+                    <Link
+                      to={item.link}
+                      className="font-semibold block hover:underline break-all"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {displayTitle}
+                    </Link>
+                  ) : (
+                    <a
+                      href={item.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-semibold block hover:underline break-all"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {displayTitle}
+                    </a>
+                  )}
                   <span
                     className="absolute left-0 top-full mt-1 px-2 py-1.5 rounded bg-slate-900 border border-amber-700/60 text-xs text-amber-200 break-all max-w-[280px] shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-10 pointer-events-none"
                     role="tooltip"
                   >
-                    {fullUrl}
+                    {isMedia ? item.link : item.link}
                   </span>
                 </span>
-                {s.averageRating != null && (
+                {item.averageRating != null && (
                   <div className="mt-1 flex items-center gap-0.5 text-amber-300">
                     <StarIcon className="h-3.5 w-3.5" />
-                    <span className="font-medium">{s.averageRating}</span>
+                    <span className="font-medium">{item.averageRating}</span>
                   </div>
                 )}
                 {hasDescription && (
                   <div className="mt-2 text-xs text-amber-200/90 leading-relaxed break-words">
-                    {s.description}
+                    {item.description}
                   </div>
                 )}
               </div>
@@ -187,23 +201,23 @@ const HighestRatedPage: React.FC = () => {
         </div>
       )}
 
-      <Dialog open={!!selectedSite} onClose={() => setSelectedSite(null)} className="relative z-50">
+      <Dialog open={!!selectedItem} onClose={() => setSelectedItem(null)} className="relative z-50">
         <div className="fixed inset-0 bg-black/50" aria-hidden="true" />
         <div className="fixed inset-0 flex items-center justify-center p-4">
           <Dialog.Panel className="mx-auto w-full max-w-xl rounded-xl border border-amber-800/60 bg-gradient-to-br from-amber-900/40 to-amber-950/60 p-6 shadow-xl">
-            {selectedSite && (
+            {selectedItem && (
               <div className="relative flex min-h-[12rem] items-center justify-center">
                 <button
                   type="button"
-                  onClick={() => setSelectedSite(null)}
+                  onClick={() => setSelectedItem(null)}
                   className="absolute right-0 top-0 rounded p-1 text-amber-400 hover:bg-amber-800/40 hover:text-amber-200"
                   aria-label="Close modal"
                 >
                   <XMarkIcon className="h-6 w-6" />
                 </button>
-                {selectedSite.logoUrl ? (
+                {selectedItem.logoUrl ? (
                   <img
-                    src={selectedSite.logoUrl}
+                    src={selectedItem.logoUrl}
                     alt=""
                     className="max-h-48 max-w-full object-contain"
                     onError={(e) => {
