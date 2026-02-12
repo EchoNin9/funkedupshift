@@ -181,7 +181,7 @@ const OurPropertiesPage: React.FC = () => {
                     type="button"
                     onClick={() => setSelectedSite(null)}
                     className="rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
-                    aria-label="Close"
+                    aria-label="Close modal"
                   >
                     <XMarkIcon className="h-5 w-5" />
                   </button>
