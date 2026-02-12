@@ -20,12 +20,60 @@ STATUSCAKE_API_KEY = os.environ.get("STATUSCAKE_API_KEY", "")
 INTERNET_DASHBOARD_CACHE_KEY = "funkedupshift_internet_dashboard"
 CACHE_TTL_SECONDS = 300  # 5 min
 
-SITES = [
+DEFAULT_SITES = [
     "google.com", "facebook.com", "youtube.com", "twitter.com", "instagram.com",
     "amazon.com", "netflix.com", "github.com", "stackoverflow.com", "reddit.com",
     "wikipedia.org", "linkedin.com", "microsoft.com", "apple.com", "cloudflare.com",
     "discord.com", "twitch.tv", "spotify.com", "zoom.us", "slack.com",
+    "openai.com",
 ]
+
+
+def get_dashboard_sites():
+    """Return sites list from DynamoDB config, or DEFAULT_SITES if not set."""
+    if not TABLE_NAME:
+        return DEFAULT_SITES
+    try:
+        import boto3
+        dynamodb = boto3.client("dynamodb")
+        resp = dynamodb.get_item(
+            TableName=TABLE_NAME,
+            Key={"PK": {"S": "INTERNET_DASHBOARD"}, "SK": {"S": "SITES"}},
+        )
+        if "Item" not in resp:
+            return DEFAULT_SITES
+        data = resp["Item"].get("sites", {}).get("S", "[]")
+        sites = json.loads(data)
+        if isinstance(sites, list) and len(sites) >= 1:
+            return [str(s).strip() for s in sites if str(s).strip()]
+        return DEFAULT_SITES
+    except Exception as e:
+        logger.warning("Dashboard sites config read failed: %s", e)
+        return DEFAULT_SITES
+
+
+def save_dashboard_sites(sites):
+    """Save sites list to DynamoDB (SuperAdmin only)."""
+    if not TABLE_NAME:
+        return False
+    try:
+        import boto3
+        from datetime import datetime
+        dynamodb = boto3.client("dynamodb")
+        now = datetime.utcnow().isoformat() + "Z"
+        dynamodb.put_item(
+            TableName=TABLE_NAME,
+            Item={
+                "PK": {"S": "INTERNET_DASHBOARD"},
+                "SK": {"S": "SITES"},
+                "sites": {"S": json.dumps(sites)},
+                "updatedAt": {"S": now},
+            },
+        )
+        return True
+    except Exception as e:
+        logger.warning("Dashboard sites config write failed: %s", e)
+        return False
 
 
 def _check_url_http(url, timeout=5):
@@ -58,7 +106,7 @@ def _status_from_http(status_code, response_time_ms):
     return "down"
 
 
-def _fetch_level1_http():
+def _fetch_level1_http(sites):
     """Level 1: Lambda HTTP HEAD to each site (parallel)."""
     domain_to_result = {}
 
@@ -74,14 +122,14 @@ def _fetch_level1_http():
         }
 
     with ThreadPoolExecutor(max_workers=10) as ex:
-        futures = {ex.submit(check_one, d): d for d in SITES}
+        futures = {ex.submit(check_one, d): d for d in sites}
         for fut in as_completed(futures, timeout=15):
             domain, data = fut.result()
             domain_to_result[domain] = data
-    return [domain_to_result[d] for d in SITES]
+    return [domain_to_result[d] for d in sites]
 
 
-def _fetch_level2_uptimerobot():
+def _fetch_level2_uptimerobot(sites):
     """Level 2: UptimeRobot API. Requires UPTIMEROBOT_API_KEY and pre-created monitors."""
     if not UPTIMEROBOT_API_KEY:
         return None
@@ -104,7 +152,7 @@ def _fetch_level2_uptimerobot():
                 url = url.split("/")[0]
             by_url[url] = m
         results = []
-        for domain in SITES:
+        for domain in sites:
             m = by_url.get(domain)
             if m:
                 st = m.get("status", 9)
@@ -123,7 +171,7 @@ def _fetch_level2_uptimerobot():
         return None
 
 
-def _fetch_level3_statuscake():
+def _fetch_level3_statuscake(sites):
     """Level 3: StatusCake API. Requires STATUSCAKE_API_KEY and pre-created tests."""
     if not STATUSCAKE_API_KEY:
         return None
@@ -142,7 +190,7 @@ def _fetch_level3_statuscake():
                 url = url.split("/")[0]
             by_url[url] = t
         results = []
-        for domain in SITES:
+        for domain in sites:
             t = by_url.get(domain)
             if t:
                 uptime = t.get("uptime", 0)
@@ -161,11 +209,11 @@ def _fetch_level3_statuscake():
         return None
 
 
-def _fetch_level4_site_informant():
+def _fetch_level4_site_informant(sites):
     """Level 4: Site Informant API. Only works for opted-in domains."""
     results = []
     has_valid = False
-    for domain in SITES:
+    for domain in sites:
         try:
             req = Request(f"https://api.siteinformant.com/api/public/status/{domain}")
             req.add_header("User-Agent", "FunkedUpShift-InternetDashboard/1.0")
@@ -241,11 +289,12 @@ def _save_to_dynamodb(sites):
 
 def fetchDashboard():
     """Fetch status from sources in cascade order. Return list of site dicts."""
+    sites = get_dashboard_sites()
     sources = [
-        ("http", _fetch_level1_http),
-        ("uptimerobot", _fetch_level2_uptimerobot),
-        ("statuscake", _fetch_level3_statuscake),
-        ("siteinformant", _fetch_level4_site_informant),
+        ("http", lambda: _fetch_level1_http(sites)),
+        ("uptimerobot", lambda: _fetch_level2_uptimerobot(sites)),
+        ("statuscake", lambda: _fetch_level3_statuscake(sites)),
+        ("siteinformant", lambda: _fetch_level4_site_informant(sites)),
         ("cache", _fetch_level5_dynamodb),
     ]
     for name, fn in sources:
@@ -256,4 +305,4 @@ def fetchDashboard():
                 return result
         except Exception as e:
             logger.warning("Source %s failed: %s", name, e)
-    return _fetch_level1_http()  # Fallback: always return HTTP results even if partial
+    return _fetch_level1_http(sites)  # Fallback: always return HTTP results even if partial

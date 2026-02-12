@@ -276,6 +276,10 @@ def handler(event, context):
             name = path_params.get("name") or path.split("/admin/groups/")[-1].strip("/")
             if name:
                 return deleteAdminGroup(event, name)
+        if method == "GET" and path == "/admin/internet-dashboard/sites":
+            return getInternetDashboardSites(event)
+        if method == "PUT" and path == "/admin/internet-dashboard/sites":
+            return putInternetDashboardSites(event)
         if method == "OPTIONS":
             # CORS preflight
             return jsonResponse({}, 200)
@@ -288,7 +292,7 @@ def handler(event, context):
 
 
 def getInternetDashboard(event):
-    """GET /internet-dashboard: status of 20 popular sites (public, no auth)."""
+    """GET /internet-dashboard: status of popular sites (public, no auth)."""
     try:
         from api.internet_dashboard import fetchDashboard
         sites = fetchDashboard()
@@ -296,6 +300,48 @@ def getInternetDashboard(event):
     except Exception as e:
         logger.exception("getInternetDashboard error: %s", e)
         return jsonResponse({"error": str(e), "sites": []}, 500)
+
+
+def getInternetDashboardSites(event):
+    """GET /admin/internet-dashboard/sites - Return dashboard sites list (SuperAdmin only)."""
+    _, err = _requireAdmin(event)
+    if err:
+        return err
+    try:
+        from api.internet_dashboard import get_dashboard_sites
+        sites = get_dashboard_sites()
+        return jsonResponse({"sites": sites})
+    except Exception as e:
+        logger.exception("getInternetDashboardSites error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def putInternetDashboardSites(event):
+    """PUT /admin/internet-dashboard/sites - Update dashboard sites list (SuperAdmin only)."""
+    _, err = _requireAdmin(event)
+    if err:
+        return err
+    try:
+        body = event.get("body")
+        if body and isinstance(body, str):
+            body = json.loads(body)
+        else:
+            body = body or {}
+        sites = body.get("sites")
+        if not isinstance(sites, list):
+            return jsonResponse({"error": "sites must be a non-empty array"}, 400)
+        sites = [str(s).strip() for s in sites if str(s).strip()]
+        if not sites:
+            return jsonResponse({"error": "sites must have at least one domain"}, 400)
+        from api.internet_dashboard import save_dashboard_sites
+        if not save_dashboard_sites(sites):
+            return jsonResponse({"error": "Failed to save"}, 500)
+        return jsonResponse({"sites": sites})
+    except json.JSONDecodeError:
+        return jsonResponse({"error": "Invalid JSON body"}, 400)
+    except Exception as e:
+        logger.exception("putInternetDashboardSites error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
 
 
 def _resolveCategoriesForSites(dynamodb, sites):
