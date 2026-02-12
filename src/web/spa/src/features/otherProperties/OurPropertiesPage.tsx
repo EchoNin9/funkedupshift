@@ -92,7 +92,7 @@ const OurPropertiesPage: React.FC = () => {
         {canEdit && (
           <p className="mt-2">
             <Link
-              to="/admin/recommended/highlights"
+              to="/admin/recommended?tab=highlights"
               className="text-violet-300 hover:text-violet-200 font-semibold text-sm"
             >
               Edit sites list
@@ -116,7 +116,7 @@ const OurPropertiesPage: React.FC = () => {
           No sites configured yet.{" "}
           {canEdit && (
             <Link
-              to="/admin/recommended/highlights"
+              to="/admin/recommended?tab=highlights"
               className="text-violet-400 hover:text-violet-300"
             >
               Add sites
@@ -126,7 +126,7 @@ const OurPropertiesPage: React.FC = () => {
       )}
 
       {sites.length > 0 && (
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-3">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-4">
           {sites.map((s) => {
             const status = (s.status || "up").toLowerCase();
             const statusClass =
@@ -141,7 +141,7 @@ const OurPropertiesPage: React.FC = () => {
             return (
               <div
                 key={s.url || s.domain}
-                className={`rounded-lg border p-3 text-center text-sm min-w-0 cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-lg ${statusClass}`}
+                className={`rounded-lg border p-4 text-left text-sm min-w-0 cursor-pointer transition-all duration-200 hover:scale-[1.01] hover:shadow-lg ${statusClass}`}
                 onClick={() => setSelectedSite(s)}
                 role="button"
                 tabIndex={0}
@@ -157,23 +157,20 @@ const OurPropertiesPage: React.FC = () => {
                     href={fullUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="font-semibold block hover:underline truncate w-full"
+                    className="font-semibold block hover:underline break-all"
                     onClick={(e) => e.stopPropagation()}
                   >
                     {displayTitle}
                   </a>
                   <span
-                    className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1 px-2 py-1.5 rounded bg-slate-900 border border-violet-700/60 text-xs text-violet-200 break-all max-w-[240px] shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-10 pointer-events-none"
+                    className="absolute left-0 top-full mt-1 px-2 py-1.5 rounded bg-slate-900 border border-violet-700/60 text-xs text-violet-200 break-all max-w-[280px] shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-10 pointer-events-none"
                     role="tooltip"
                   >
                     {fullUrl}
                   </span>
                 </span>
                 {hasDescription && (
-                  <div
-                    className="mt-0.5 text-[11px] truncate w-full opacity-90"
-                    title={s.description}
-                  >
+                  <div className="mt-2 text-xs text-violet-200/90 leading-relaxed break-words">
                     {s.description}
                   </div>
                 )}

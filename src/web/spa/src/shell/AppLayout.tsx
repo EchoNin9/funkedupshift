@@ -14,8 +14,7 @@ import OurPropertiesPage from "../features/otherProperties/OurPropertiesPage";
 import HighestRatedPage from "../features/otherProperties/HighestRatedPage";
 import BrandingPage from "../features/admin/BrandingPage";
 import InternetDashboardAdminPage from "../features/admin/InternetDashboardAdminPage";
-import OurPropertiesAdminPage from "../features/admin/OurPropertiesAdminPage";
-import HighestRatedAdminPage from "../features/admin/HighestRatedAdminPage";
+import RecommendedAdminPage from "../features/admin/RecommendedAdminPage";
 import MembershipPage from "../features/admin/MembershipPage";
 import WebsitesAdminPage from "../features/admin/WebsitesAdminPage";
 import MediaAdminPage from "../features/admin/MediaAdminPage";
@@ -43,8 +42,7 @@ const navItems: NavItem[] = [
   { label: "Squash Admin", to: "/squash-admin", section: "squash", minRole: "manager" },
   { label: "Highlights", to: "/recommended/highlights", section: "recommended", minRole: "guest" },
   { label: "Highest Rated", to: "/recommended/highest-rated", section: "recommended", minRole: "guest" },
-  { label: "Highlights", to: "/admin/recommended/highlights", section: "admin", minRole: "manager" },
-  { label: "Highest Rated", to: "/admin/recommended/highest-rated", section: "admin", minRole: "manager" },
+  { label: "Recommended", to: "/admin/recommended", section: "admin", minRole: "manager" },
   { label: "Membership", to: "/admin/membership", section: "admin", minRole: "manager" },
   { label: "Websites", to: "/admin/websites", section: "admin", minRole: "manager" },
   { label: "Media", to: "/admin/media", section: "admin", minRole: "manager" },
@@ -450,8 +448,7 @@ const AppLayout: React.FC = () => {
               <Route path="/squash-admin" element={<SquashAdminPage />} />
               <Route path="/admin/branding" element={<BrandingPage />} />
               <Route path="/admin/internet-dashboard" element={<InternetDashboardAdminPage />} />
-              <Route path="/admin/recommended/highlights" element={<OurPropertiesAdminPage />} />
-              <Route path="/admin/recommended/highest-rated" element={<HighestRatedAdminPage />} />
+              <Route path="/admin/recommended" element={<RecommendedAdminPage />} />
               <Route path="/admin/membership" element={<MembershipPage />} />
               <Route path="/admin/users/edit" element={<EditUserPage />} />
               <Route path="/admin/websites" element={<WebsitesAdminPage />} />
