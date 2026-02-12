@@ -321,18 +321,23 @@ def _handle_mediaconvert_event(event):
         return {"statusCode": 200, "body": "ok"}
 
     try:
-        mc = boto3.client("mediaconvert", region_name=AWS_REGION)
-        account = mc.describe_endpoints()["Endpoints"][0]["Url"]
-        mc = boto3.client("mediaconvert", region_name=AWS_REGION, endpoint_url=account)
-        job = mc.get_job(Id=job_id)
-        job_data = job.get("Job", {})
-        output_groups = job_data.get("OutputGroupDetails", [])
+        output_groups = detail.get("outputGroupDetails") or detail.get("OutputGroupDetails")
+        if not output_groups:
+            logger.info("No outputGroupDetails in event, fetching job %s via get_job", job_id)
+            mc = boto3.client("mediaconvert", region_name=AWS_REGION)
+            account = mc.describe_endpoints()["Endpoints"][0]["Url"]
+            mc = boto3.client("mediaconvert", region_name=AWS_REGION, endpoint_url=account)
+            job = mc.get_job(Id=job_id)
+            output_groups = job.get("Job", {}).get("OutputGroupDetails", [])
+
         src_key = None
         bucket = MEDIA_BUCKET
         temp_keys_to_delete = []
         for og in output_groups:
-            for od in og.get("OutputDetails", []):
-                for path in od.get("OutputFilePaths", []):
+            output_details = og.get("OutputDetails") or og.get("outputDetails") or []
+            for od in output_details:
+                paths = od.get("OutputFilePaths") or od.get("outputFilePaths") or []
+                for path in paths:
                     match = re.search(r"s3://([^/]+)/(.+)", path)
                     if match:
                         b, k = match.group(1), match.group(2)
@@ -341,9 +346,10 @@ def _handle_mediaconvert_event(event):
                         else:
                             temp_keys_to_delete.append((b, k))
         if not src_key:
-            logger.warning("No .jpg output file path in job %s", job_id)
+            logger.warning("No .jpg output file path in job %s (outputGroupCount=%s)", job_id, len(output_groups))
             return {"statusCode": 200, "body": "ok"}
 
+        logger.info("MediaConvert COMPLETE: jobId=%s, src_key=%s, temp_keys=%s", job_id, src_key, len(temp_keys_to_delete))
         s3 = boto3.client("s3", region_name=AWS_REGION)
         s3.copy_object(
             Bucket=bucket,
