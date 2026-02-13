@@ -191,7 +191,8 @@ def list_memes(event, user, json_response):
 
         search_q_param = (qs.get("q") or "").strip()
         tag_ids_param = (qs.get("tagIds") or "").strip()
-        use_cache = not search_q_param and not tag_ids_param
+        mine_param = (qs.get("mine") or "").strip().lower() in ("1", "true", "yes")
+        use_cache = not search_q_param and not tag_ids_param and not mine_param
         if use_cache:
             cache_resp = dynamodb.get_item(
                 TableName=TABLE_NAME,
@@ -239,6 +240,9 @@ def list_memes(event, user, json_response):
         is_admin = "admin" in user.get("groups", [])
         meme_list = [m for m in meme_list if not m.get("isPrivate") or m.get("userId") == user_id or is_admin]
 
+        if mine_param and user_id:
+            meme_list = [m for m in meme_list if m.get("userId") == user_id]
+
         tag_ids = [x.strip() for x in (qs.get("tagIds") or "").split(",") if x.strip()]
         tag_mode = (qs.get("tagMode") or "or").strip().lower() or "or"
         if tag_ids:
@@ -255,8 +259,10 @@ def list_memes(event, user, json_response):
                 if q_lower in (m.get("title") or "").lower() or q_lower in (m.get("description") or "").lower()
             ]
 
-        limit = min(20, max(1, int((qs.get("limit") or "20").strip() or 20)))
+        limit = min(100 if mine_param else 20, max(1, int((qs.get("limit") or "20").strip() or 20)))
         meme_list = meme_list[:limit]
+        if mine_param:
+            meme_list.sort(key=lambda m: (m.get("createdAt") or ""), reverse=True)
         _add_meme_urls(meme_list, region=region)
         return json_response({"memes": meme_list})
     except Exception as e:

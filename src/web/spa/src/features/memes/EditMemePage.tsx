@@ -77,6 +77,11 @@ const EditMemePage: React.FC = () => {
     return () => { cancelled = true; };
   }, [memeId, fetchWithAuth]);
 
+  const initialIsPrivate = useRef<boolean | null>(null);
+  useEffect(() => {
+    if (item && initialIsPrivate.current === null) initialIsPrivate.current = item.isPrivate ?? false;
+  }, [item]);
+
   const handleSave = async () => {
     const apiBase = getApiBaseUrl();
     if (!apiBase || !item) return;
@@ -95,6 +100,15 @@ const EditMemePage: React.FC = () => {
       if (!resp.ok) {
         const errData = (await resp.json()) as { error?: string };
         throw new Error(errData.error || "Failed to save");
+      }
+      const tagOnly = initialIsPrivate.current === (isPrivate ?? false);
+      try {
+        sessionStorage.setItem(
+          "memes_my_cache_invalidate",
+          JSON.stringify({ memeId: item.PK, tagOnly, tags })
+        );
+      } catch {
+        /* ignore */
       }
       navigate(`/memes/${encodeURIComponent(item.PK)}`);
     } catch (e: any) {

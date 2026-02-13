@@ -237,6 +237,11 @@ const MemeGeneratorPage: React.FC = () => {
         throw new Error(errData.error || "Failed to save meme");
       }
       const createData = (await createResp.json()) as { id?: string };
+      try {
+        sessionStorage.setItem("memes_my_cache_invalidate", JSON.stringify({ tagOnly: false }));
+      } catch {
+        /* ignore */
+      }
       navigate(createData.id ? `/memes/${encodeURIComponent(createData.id)}` : "/memes");
     } catch (e: any) {
       setError(e?.message ?? "Failed to save meme");

@@ -24,9 +24,12 @@ function getApiBaseUrl(): string | null {
   return raw ? raw.replace(/\/$/, "") : null;
 }
 
+const MY_MEMES_INVALIDATE_KEY = "memes_my_cache_invalidate";
+
 const MemeBrowsePage: React.FC = () => {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
+  const tab = (searchParams.get("tab") || "all") === "mine" ? "mine" : "all";
   const [items, setItems] = useState<MemeItem[]>([]);
   const [search, setSearch] = useState(() => searchParams.get("q") ?? "");
   const [selectedTags, setSelectedTags] = useState<string[]>(() => {
@@ -44,6 +47,8 @@ const MemeBrowsePage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const tagDropdownRef = useRef<HTMLDivElement>(null);
   const [allTags, setAllTags] = useState<string[]>([]);
+  const myMemesCacheRef = useRef<MemeItem[] | null>(null);
+  const [invalidateMyCache, setInvalidateMyCache] = useState(false);
 
   const canRate = !!user;
   const canEditTags = !!user && (hasRole(user, "user") || hasRole(user, "manager") || hasRole(user, "superadmin"));
@@ -60,6 +65,34 @@ const MemeBrowsePage: React.FC = () => {
   const hasActiveSearch = search.trim().length > 0 || selectedTags.length > 0;
 
   useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(MY_MEMES_INVALIDATE_KEY);
+      if (!raw) return;
+      sessionStorage.removeItem(MY_MEMES_INVALIDATE_KEY);
+      const data = JSON.parse(raw) as { memeId?: string; tagOnly?: boolean; tags?: string[] };
+      if (data.tagOnly && data.memeId && data.tags) {
+        const updated = (myMemesCacheRef.current ?? []).map((m) =>
+          m.PK === data.memeId ? { ...m, tags: data.tags } : m
+        );
+        myMemesCacheRef.current = updated;
+        if (tab === "mine") {
+          let filtered = updated;
+          if (selectedTags.length > 0) {
+            filtered = tagMode === "and"
+              ? updated.filter((m) => selectedTags.every((t) => (m.tags ?? []).includes(t)))
+              : updated.filter((m) => selectedTags.some((t) => (m.tags ?? []).includes(t)));
+          }
+          setItems(filtered);
+        }
+      } else {
+        setInvalidateMyCache(true);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
     const apiBase = getApiBaseUrl();
     if (!apiBase) return;
     let cancelled = false;
@@ -74,18 +107,17 @@ const MemeBrowsePage: React.FC = () => {
   }, [fetchWithAuth]);
 
   useEffect(() => {
+    const next = new URLSearchParams();
+    if (tab === "mine") next.set("tab", "mine");
     if (hasActiveSearch) {
-      const next = new URLSearchParams();
       if (search.trim()) next.set("q", search.trim());
       if (selectedTags.length) {
         next.set("tagIds", selectedTags.join(","));
         next.set("tagMode", tagMode);
       }
-      setSearchParams(next, { replace: true });
-    } else {
-      setSearchParams({}, { replace: true });
     }
-  }, [hasActiveSearch, search, selectedTags, tagMode, setSearchParams]);
+    setSearchParams(next, { replace: true });
+  }, [tab, hasActiveSearch, search, selectedTags, tagMode, setSearchParams]);
 
   useEffect(() => {
     const apiBase = getApiBaseUrl();
@@ -94,14 +126,35 @@ const MemeBrowsePage: React.FC = () => {
       return;
     }
     let cancelled = false;
+
+    if (tab === "mine") {
+      const cached = myMemesCacheRef.current;
+      const hasTagFilter = selectedTags.length > 0;
+      if (cached && !invalidateMyCache && !search.trim()) {
+        setInvalidateMyCache(false);
+        let filtered = cached;
+        if (hasTagFilter) {
+          if (tagMode === "and") {
+            filtered = cached.filter((m) => selectedTags.every((t) => (m.tags ?? []).includes(t)));
+          } else {
+            filtered = cached.filter((m) => selectedTags.some((t) => (m.tags ?? []).includes(t)));
+          }
+        }
+        setItems(filtered);
+        setIsLoading(false);
+        return;
+      }
+    }
+
     async function load() {
       setIsLoading(true);
       setError(null);
       try {
         const params = new URLSearchParams();
-        params.set("limit", "20");
+        params.set("limit", tab === "mine" ? "100" : "20");
+        if (tab === "mine") params.set("mine", "1");
         if (search.trim()) params.set("q", search.trim());
-        if (selectedTags.length > 0) {
+        if (selectedTags.length > 0 && tab !== "mine") {
           params.set("tagIds", selectedTags.join(","));
           params.set("tagMode", tagMode);
         }
@@ -112,7 +165,21 @@ const MemeBrowsePage: React.FC = () => {
         }
         const data = (await resp.json()) as { memes?: MemeItem[] };
         if (cancelled) return;
-        setItems(data.memes ?? []);
+        const list = data.memes ?? [];
+        if (tab === "mine") {
+          myMemesCacheRef.current = list;
+          setInvalidateMyCache(false);
+          if (selectedTags.length > 0) {
+            const filtered = tagMode === "and"
+              ? list.filter((m) => selectedTags.every((t) => (m.tags ?? []).includes(t)))
+              : list.filter((m) => selectedTags.some((t) => (m.tags ?? []).includes(t)));
+            setItems(filtered);
+          } else {
+            setItems(list);
+          }
+        } else {
+          setItems(list);
+        }
       } catch (e: any) {
         if (!cancelled) setError(e?.message ?? "Failed to load memes.");
       } finally {
@@ -121,7 +188,7 @@ const MemeBrowsePage: React.FC = () => {
     }
     load();
     return () => { cancelled = true; };
-  }, [search, selectedTags, tagMode, fetchWithAuth]);
+  }, [tab, search, selectedTags, tagMode, fetchWithAuth, invalidateMyCache]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -219,12 +286,43 @@ const MemeBrowsePage: React.FC = () => {
     );
   }
 
+  const setTab = (t: "all" | "mine") => {
+    const next = new URLSearchParams(searchParams);
+    if (t === "mine") next.set("tab", "mine");
+    else next.delete("tab");
+    setSearchParams(next, { replace: true });
+  };
+
   return (
     <div className="space-y-6">
       <header className="space-y-2">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-50">Memes</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-50">Memes</h1>
+          <div className="flex rounded-lg border border-slate-700 bg-slate-900/60 p-0.5">
+            <button
+              type="button"
+              onClick={() => setTab("all")}
+              className={`rounded-md px-3 py-1 text-sm font-medium transition-colors ${
+                tab === "all" ? "bg-slate-700 text-slate-50" : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              All
+            </button>
+            <button
+              type="button"
+              onClick={() => setTab("mine")}
+              className={`rounded-md px-3 py-1 text-sm font-medium transition-colors ${
+                tab === "mine" ? "bg-slate-700 text-slate-50" : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              My Memes
+            </button>
+          </div>
+        </div>
         <p className="text-sm text-slate-400">
-          Browse and rate memes. Latest 20 shown by default.
+          {tab === "mine"
+            ? "Your memes, newest first. Filter by tags below."
+            : "Browse and rate memes. Latest 20 shown by default."}
         </p>
       </header>
 
@@ -450,7 +548,13 @@ const MemeBrowsePage: React.FC = () => {
           {sortedItems.length === 0 && !isLoading && (
             <div className="flex items-center justify-center min-h-[200px]">
               <p className="text-lg text-slate-500">
-                {hasActiveSearch ? "No memes found." : "No memes yet. Create one!"}
+                {tab === "mine"
+                  ? hasActiveSearch
+                    ? "No memes match the selected tags."
+                    : "You haven't created any memes yet. Create one!"
+                  : hasActiveSearch
+                    ? "No memes found."
+                    : "No memes yet. Create one!"}
               </p>
             </div>
           )}
