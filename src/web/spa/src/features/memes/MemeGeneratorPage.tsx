@@ -123,44 +123,52 @@ const MemeGeneratorPage: React.FC = () => {
     }
   };
 
-  const drawCanvas = useCallback(() => {
+  const drawCanvas = useCallback((): Promise<void> => {
     const canvas = canvasRef.current;
-    if (!canvas || !imageSrc) return;
+    if (!canvas || !imageSrc) return Promise.resolve();
     const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => {
-      const w = canvas.width;
-      const h = canvas.height;
-      ctx.clearRect(0, 0, w, h);
-      if (sizeMode === "resize") {
-        const scale = Math.min(w / img.width, h / img.height);
-        const dw = img.width * scale;
-        const dh = img.height * scale;
-        const dx = (w - dw) / 2;
-        const dy = (h - dh) / 2;
-        ctx.drawImage(img, dx, dy, dw, dh);
-      } else {
-        ctx.drawImage(img, 0, 0, w, h);
-      }
-      textBoxes.forEach((tb) => {
-        const zone = FIXED_ZONES.find((z) => z.id === tb.zoneId);
-        if (!zone || !tb.text) return;
-        ctx.font = `${tb.size}px ${tb.font}`;
-        ctx.fillStyle = tb.color;
-        ctx.textAlign = zone.align;
-        ctx.textBaseline = zone.y < 0.5 ? "top" : "bottom";
-        const x = zone.x * w;
-        const y = zone.y * h;
-        ctx.fillText(tb.text, x, y);
-      });
-    };
-    img.onerror = () => setError("Failed to load image");
-    img.src = imageSrc;
+    if (!ctx) return Promise.resolve();
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        const w = canvas.width;
+        const h = canvas.height;
+        ctx.clearRect(0, 0, w, h);
+        if (sizeMode === "resize") {
+          const scale = Math.min(w / img.width, h / img.height);
+          const dw = img.width * scale;
+          const dh = img.height * scale;
+          const dx = (w - dw) / 2;
+          const dy = (h - dh) / 2;
+          ctx.drawImage(img, dx, dy, dw, dh);
+        } else {
+          ctx.drawImage(img, 0, 0, w, h);
+        }
+        textBoxes.forEach((tb) => {
+          const zone = FIXED_ZONES.find((z) => z.id === tb.zoneId);
+          if (!zone || !tb.text) return;
+          ctx.font = `${tb.size}px ${tb.font}`;
+          ctx.fillStyle = tb.color;
+          ctx.textAlign = zone.align;
+          ctx.textBaseline = zone.y < 0.5 ? "top" : "bottom";
+          const x = zone.x * w;
+          const y = zone.y * h;
+          ctx.fillText(tb.text, x, y);
+        });
+        resolve();
+      };
+      img.onerror = () => {
+        setError("Failed to load image");
+        reject(new Error("Failed to load image"));
+      };
+      img.src = imageSrc;
+    });
   }, [imageSrc, textBoxes, sizeMode]);
 
-  useEffect(() => drawCanvas(), [drawCanvas]);
+  useEffect(() => {
+    drawCanvas().catch(() => {});
+  }, [drawCanvas]);
 
   useEffect(() => {
     const apiBase = getApiBaseUrl();
@@ -191,6 +199,7 @@ const MemeGeneratorPage: React.FC = () => {
     setIsSubmitting(true);
     setError(null);
     try {
+      await drawCanvas();
       const blob = await new Promise<Blob | null>((resolve) => {
         canvas.toBlob((b) => resolve(b), "image/png", 0.95);
       });

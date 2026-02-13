@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeftIcon, PencilSquareIcon } from "@heroicons/react/24/outline";
 import { useAuth, canAccessMemes, canRateMemes, canCreateMemes, canEditAnyMeme } from "../../shell/AuthContext";
+import ShareMemeBox from "./ShareMemeBox";
 import { fetchWithAuthOptional } from "../../utils/api";
 
 interface MemeItem {
@@ -166,6 +167,8 @@ const MemeDetailPage: React.FC = () => {
           <div className="py-12 text-slate-500">No image</div>
         )}
       </div>
+
+      <ShareMemeBox memeId={item.PK} title={title} />
 
       <div className="space-y-2">
         <h1 className="text-xl font-semibold text-slate-50">{title}</h1>

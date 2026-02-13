@@ -3,6 +3,7 @@ import { Link, useParams, useNavigate } from "react-router-dom";
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 import { useAuth, canCreateMemes, canEditAnyMeme } from "../../shell/AuthContext";
 import AddTagInput from "./AddTagInput";
+import ShareMemeBox from "./ShareMemeBox";
 import { fetchWithAuth } from "../../utils/api";
 
 interface MemeItem {
@@ -12,6 +13,8 @@ interface MemeItem {
   tags?: string[];
   isPrivate?: boolean;
   userId?: string;
+  mediaUrl?: string;
+  thumbnailUrl?: string;
 }
 
 function getApiBaseUrl(): string | null {
@@ -153,6 +156,9 @@ const EditMemePage: React.FC = () => {
     );
   }
 
+  const imgUrl = item.mediaUrl || item.thumbnailUrl;
+  const title = item.title || item.PK || "Untitled";
+
   return (
     <div className="space-y-6">
       <header className="flex items-center gap-4">
@@ -162,6 +168,28 @@ const EditMemePage: React.FC = () => {
         </Link>
         <h1 className="text-xl font-semibold text-slate-50">Edit meme</h1>
       </header>
+
+      <div className="rounded-xl border border-slate-800 bg-slate-950/60 overflow-hidden min-h-[200px] flex items-center justify-center p-4">
+        {imgUrl ? (
+          <>
+            <img
+              src={imgUrl}
+              alt={title}
+              className="w-full max-w-2xl mx-auto block object-contain max-h-[70vh]"
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).style.display = "none";
+                const next = (e.currentTarget as HTMLImageElement).nextElementSibling;
+                if (next) (next as HTMLElement).classList.remove("hidden");
+              }}
+            />
+            <div className="hidden py-12 text-slate-500" aria-hidden>Image failed to load</div>
+          </>
+        ) : (
+          <div className="py-12 text-slate-500">No image</div>
+        )}
+      </div>
+
+      <ShareMemeBox memeId={item.PK} title={title} />
 
       <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 space-y-4 max-w-xl">
         <div>
