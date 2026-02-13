@@ -5,7 +5,7 @@ No HTTP checks, PageSpeed, or external APIs - just returns stored sites for disp
 import json
 import logging
 import os
-from urllib.parse import urlparse
+from urllib.parse import urlparse, quote
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -621,7 +621,7 @@ def fetch_highest_rated():
             item = {
                 "type": "media",
                 "id": mid,
-                "link": f"/media/{mid}",
+                "link": f"/media/{quote(mid, safe='')}",
                 "domain": "Media",
                 "status": "up",
                 "description": e.get("description", "") or "",
