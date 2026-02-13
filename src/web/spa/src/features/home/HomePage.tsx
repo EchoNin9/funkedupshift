@@ -1,10 +1,11 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { useAuth, canAccessSquash } from "../../shell/AuthContext";
+import { useAuth, canAccessSquash, canAccessMemes } from "../../shell/AuthContext";
 
 const HomePage: React.FC = () => {
   const { user } = useAuth();
   const showSquash = canAccessSquash(user);
+  const showMemes = canAccessMemes(user);
 
   return (
     <div className="space-y-8">
@@ -45,6 +46,14 @@ const HomePage: React.FC = () => {
                 className="inline-flex items-center rounded-full border border-slate-500/60 px-4 py-2 text-sm font-semibold text-slate-100 hover:border-slate-300/80"
               >
                 Squash
+              </Link>
+            )}
+            {showMemes && (
+              <Link
+                to="/memes"
+                className="inline-flex items-center rounded-full border border-slate-500/60 px-4 py-2 text-sm font-semibold text-slate-100 hover:border-slate-300/80"
+              >
+                Memes
               </Link>
             )}
           </div>

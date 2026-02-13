@@ -163,3 +163,10 @@ export function canAccessFinancialAdmin(user: AuthUser | null): boolean {
   return (user.customGroups ?? []).includes("Financial");
 }
 
+/** User can access Memes: SuperAdmin OR in Memes custom group (user or above). */
+export function canAccessMemes(user: AuthUser | null): boolean {
+  if (!user?.userId) return false;
+  if (user.role === "superadmin") return true;
+  return (user.customGroups ?? []).includes("Memes");
+}
+

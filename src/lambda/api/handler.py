@@ -225,6 +225,27 @@ def handler(event, context):
             return updateMediaCategory(event)
         if method == "DELETE" and path == "/media-categories":
             return deleteMediaCategory(event)
+        # Memes section routes (Memes custom group or admin required)
+        if method == "GET" and path == "/memes":
+            return listMemes(event)
+        if method == "GET" and path == "/memes/tags":
+            return listMemeTags(event)
+        if method == "POST" and path == "/memes":
+            return createMeme(event)
+        if method == "PUT" and path == "/memes":
+            return updateMeme(event)
+        if method == "DELETE" and path == "/memes":
+            return deleteMeme(event)
+        if method == "POST" and path == "/memes/upload":
+            return getMemePresignedUpload(event)
+        if method == "POST" and path == "/memes/validate-url":
+            return validateMemeImageUrl(event)
+        if method == "POST" and path == "/memes/import-from-url":
+            return importMemeFromUrl(event)
+        if method == "POST" and path == "/memes/generate-title":
+            return generateMemeTitle(event)
+        if method == "POST" and path == "/memes/stars":
+            return setMemeStar(event)
         # Squash section routes
         if method == "GET" and path == "/squash/players":
             return listSquashPlayers(event)
@@ -2589,6 +2610,100 @@ def deleteMediaCategory(event):
 
 
 # ------------------------------------------------------------------------------
+# Memes section (Memes custom group or admin required)
+# ------------------------------------------------------------------------------
+
+def listMemes(event):
+    """GET /memes - List memes (cache default or search). Memes access required."""
+    user, err = _requireMemesAccess(event)
+    if err:
+        return err
+    from api.memes import list_memes
+    return list_memes(event, user, jsonResponse)
+
+
+def listMemeTags(event):
+    """GET /memes/tags - List meme tags for autocomplete. Memes access required."""
+    _, err = _requireMemesAccess(event)
+    if err:
+        return err
+    from api.memes import list_meme_tags
+    return list_meme_tags(event, jsonResponse)
+
+
+def createMeme(event):
+    """POST /memes - Create meme. Memes access required."""
+    user, err = _requireMemesAccess(event)
+    if err:
+        return err
+    from api.memes import create_meme
+    return create_meme(event, user, jsonResponse)
+
+
+def updateMeme(event):
+    """PUT /memes - Update meme (creator, manager, or admin). Memes access required."""
+    user, err = _requireMemesAccess(event)
+    if err:
+        return err
+    from api.memes import update_meme
+    return update_meme(event, user, jsonResponse)
+
+
+def deleteMeme(event):
+    """DELETE /memes - Delete meme (creator or admin). Memes access required."""
+    user, err = _requireMemesAccess(event)
+    if err:
+        return err
+    from api.memes import delete_meme
+    return delete_meme(event, user, jsonResponse)
+
+
+def getMemePresignedUpload(event):
+    """POST /memes/upload - Presigned PUT URL for meme image. Memes access required."""
+    user, err = _requireMemesAccess(event)
+    if err:
+        return err
+    from api.memes import get_meme_presigned_upload
+    return get_meme_presigned_upload(event, user, jsonResponse)
+
+
+def validateMemeImageUrl(event):
+    """POST /memes/validate-url - Validate image URL. Memes access required."""
+    _, err = _requireMemesAccess(event)
+    if err:
+        return err
+    from api.memes import validate_image_url
+    return validate_image_url(event, jsonResponse)
+
+
+def importMemeFromUrl(event):
+    """POST /memes/import-from-url - Import image from URL to S3. Memes access required."""
+    user, err = _requireMemesAccess(event)
+    if err:
+        return err
+    from api.memes import import_meme_from_url
+    return import_meme_from_url(event, user, jsonResponse)
+
+
+def generateMemeTitle(event):
+    """POST /memes/generate-title - Generate meme title. Memes access required."""
+    user, err = _requireMemesAccess(event)
+    if err:
+        return err
+    from api.memes import generate_meme_title_handler
+    return generate_meme_title_handler(event, user, jsonResponse)
+
+
+def setMemeStar(event):
+    """POST /memes/stars - Set star rating for meme. Memes access required."""
+    user, err = _requireMemesAccess(event)
+    if err:
+        return err
+    from api.memes import set_meme_star
+    return set_meme_star(event, user, jsonResponse)
+
+
+# ------------------------------------------------------------------------------
 # Squash doubles section
 # ------------------------------------------------------------------------------
 
@@ -2619,6 +2734,26 @@ def _requireFinancialAdmin(event):
         return None, jsonResponse({"error": "Unauthorized"}, 401)
     if not _canAccessFinancialAdmin(user):
         return None, jsonResponse({"error": "Forbidden: Financial admin required"}, 403)
+    return user, None
+
+
+def _canAccessMemes(user):
+    """User can access Memes: admin OR in Memes custom group."""
+    if not user.get("userId"):
+        return False
+    if "admin" in user.get("groups", []):
+        return True
+    custom = _getUserCustomGroups(user["userId"])
+    return "Memes" in custom
+
+
+def _requireMemesAccess(event):
+    """Return (user, None) if user can access Memes, else (None, error_response)."""
+    user = getUserInfo(event)
+    if not user.get("userId"):
+        return None, jsonResponse({"error": "Unauthorized"}, 401)
+    if not _canAccessMemes(user):
+        return None, jsonResponse({"error": "Forbidden: Memes access required (join Memes group or contact admin)"}, 403)
     return user, None
 
 
