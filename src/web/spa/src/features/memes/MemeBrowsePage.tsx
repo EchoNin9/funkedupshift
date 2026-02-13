@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { PencilSquareIcon } from "@heroicons/react/24/outline";
-import { useAuth, hasRole, canAccessMemes } from "../../shell/AuthContext";
+import { useAuth, canAccessMemes, canRateMemes, canCreateMemes, canEditAnyMeme } from "../../shell/AuthContext";
 
 interface MemeItem {
   PK: string;
@@ -50,14 +50,16 @@ const MemeBrowsePage: React.FC = () => {
   const myMemesCacheRef = useRef<MemeItem[] | null>(null);
   const [invalidateMyCache, setInvalidateMyCache] = useState(false);
 
-  const canRate = !!user;
-  const canEditTags = !!user && (hasRole(user, "user") || hasRole(user, "manager") || hasRole(user, "superadmin"));
+  const canRate = canRateMemes(user);
+  const canCreate = canCreateMemes(user);
+  const canEditAny = canEditAnyMeme(user);
+  const canEditMeme = (m: MemeItem) => canEditAny || (canCreate && m.userId === user?.userId);
 
   const fetchWithAuth = useCallback(async (url: string, options?: RequestInit) => {
     const w = window as any;
-    if (!w.auth?.getAccessToken) throw new Error("Not signed in");
+    if (!w.auth?.getAccessToken) return fetch(url, options);
     const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
-    if (!token) throw new Error("Not signed in");
+    if (!token) return fetch(url, options);
     const headers = { ...options?.headers, Authorization: `Bearer ${token}` };
     return fetch(url, { ...options, headers });
   }, []);
@@ -127,7 +129,7 @@ const MemeBrowsePage: React.FC = () => {
     }
     let cancelled = false;
 
-    if (tab === "mine") {
+    if (tab === "mine" && showMyMemes) {
       const cached = myMemesCacheRef.current;
       const hasTagFilter = selectedTags.length > 0;
       if (cached && !invalidateMyCache && !search.trim()) {
@@ -149,12 +151,13 @@ const MemeBrowsePage: React.FC = () => {
     async function load() {
       setIsLoading(true);
       setError(null);
+      const useMine = tab === "mine" && showMyMemes;
       try {
         const params = new URLSearchParams();
-        params.set("limit", tab === "mine" ? "100" : "20");
-        if (tab === "mine") params.set("mine", "1");
+        params.set("limit", useMine ? "100" : "20");
+        if (useMine) params.set("mine", "1");
         if (search.trim()) params.set("q", search.trim());
-        if (selectedTags.length > 0 && tab !== "mine") {
+        if (selectedTags.length > 0 && !useMine) {
           params.set("tagIds", selectedTags.join(","));
           params.set("tagMode", tagMode);
         }
@@ -166,7 +169,7 @@ const MemeBrowsePage: React.FC = () => {
         const data = (await resp.json()) as { memes?: MemeItem[] };
         if (cancelled) return;
         const list = data.memes ?? [];
-        if (tab === "mine") {
+        if (useMine) {
           myMemesCacheRef.current = list;
           setInvalidateMyCache(false);
           if (selectedTags.length > 0) {
@@ -188,7 +191,7 @@ const MemeBrowsePage: React.FC = () => {
     }
     load();
     return () => { cancelled = true; };
-  }, [tab, search, selectedTags, tagMode, fetchWithAuth, invalidateMyCache]);
+  }, [tab, search, selectedTags, tagMode, fetchWithAuth, invalidateMyCache, showMyMemes]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -264,18 +267,8 @@ const MemeBrowsePage: React.FC = () => {
     }
   };
 
-  const access = canAccessMemes(user);
-  if (!user) {
-    return (
-      <div className="space-y-6">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-50">Memes</h1>
-        <div className="rounded-md border border-slate-700 bg-slate-900/60 px-4 py-3 text-slate-200">
-          Sign in to browse memes.
-        </div>
-      </div>
-    );
-  }
-  if (!access) {
+  const showMyMemes = user && canCreateMemes(user);
+  if (user && !canAccessMemes(user)) {
     return (
       <div className="space-y-6">
         <h1 className="text-2xl font-semibold tracking-tight text-slate-50">Memes</h1>
@@ -293,39 +286,54 @@ const MemeBrowsePage: React.FC = () => {
     setSearchParams(next, { replace: true });
   };
 
+  useEffect(() => {
+    if (tab === "mine" && !showMyMemes) {
+      setSearchParams((p) => {
+        const next = new URLSearchParams(p);
+        next.delete("tab");
+        return next;
+      }, { replace: true });
+    }
+  }, [tab, showMyMemes, setSearchParams]);
+
   return (
     <div className="space-y-6">
       <header className="space-y-2">
         <div className="flex items-center gap-2">
           <h1 className="text-2xl font-semibold tracking-tight text-slate-50">Memes</h1>
-          <div className="flex rounded-lg border border-slate-700 bg-slate-900/60 p-0.5">
-            <button
-              type="button"
-              onClick={() => setTab("all")}
-              className={`rounded-md px-3 py-1 text-sm font-medium transition-colors ${
-                tab === "all" ? "bg-slate-700 text-slate-50" : "text-slate-400 hover:text-slate-200"
-              }`}
-            >
-              All
-            </button>
-            <button
-              type="button"
-              onClick={() => setTab("mine")}
-              className={`rounded-md px-3 py-1 text-sm font-medium transition-colors ${
-                tab === "mine" ? "bg-slate-700 text-slate-50" : "text-slate-400 hover:text-slate-200"
-              }`}
-            >
-              My Memes
-            </button>
-          </div>
+          {showMyMemes && (
+            <div className="flex rounded-lg border border-slate-700 bg-slate-900/60 p-0.5">
+              <button
+                type="button"
+                onClick={() => setTab("all")}
+                className={`rounded-md px-3 py-1 text-sm font-medium transition-colors ${
+                  tab === "all" ? "bg-slate-700 text-slate-50" : "text-slate-400 hover:text-slate-200"
+                }`}
+              >
+                All
+              </button>
+              <button
+                type="button"
+                onClick={() => setTab("mine")}
+                className={`rounded-md px-3 py-1 text-sm font-medium transition-colors ${
+                  tab === "mine" ? "bg-slate-700 text-slate-50" : "text-slate-400 hover:text-slate-200"
+                }`}
+              >
+                My Memes
+              </button>
+            </div>
+          )}
         </div>
         <p className="text-sm text-slate-400">
           {tab === "mine"
             ? "Your memes, newest first. Filter by tags below."
-            : "Browse and rate memes. Latest 20 shown by default."}
+            : user
+              ? "Browse and rate memes. Latest 20 shown by default."
+              : "Cached memes. Sign in to rate or create."}
         </p>
       </header>
 
+      {user && (
       <section className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 space-y-4" aria-label="Search and filter">
         <form
           className="flex flex-col gap-3 sm:flex-row sm:items-center"
@@ -438,6 +446,7 @@ const MemeBrowsePage: React.FC = () => {
           </div>
         </div>
       </section>
+      )}
 
       {error && (
         <div className="rounded-md border border-red-500/60 bg-red-500/10 px-3 py-2 text-xs text-red-200">
@@ -510,7 +519,7 @@ const MemeBrowsePage: React.FC = () => {
                       </div>
                     )}
                     <div className="pt-1 flex items-center gap-3">
-                      {canEditTags && (
+                      {canEditMeme(m) && (
                         <Link
                           to={`/memes/${encodeURIComponent(m.PK)}/edit`}
                           className="inline-flex items-center gap-1 text-[11px] text-slate-400 hover:text-slate-200"

@@ -2614,26 +2614,69 @@ def deleteMediaCategory(event):
 # ------------------------------------------------------------------------------
 
 def listMemes(event):
-    """GET /memes - List memes (cache default or search). Memes access required."""
-    user, err = _requireMemesAccess(event)
-    if err:
-        return err
+    """GET /memes - List memes. Guests: cache-only. Logged-in: cache + search. Mine: user+memes only."""
+    user = getUserInfo(event)
+    qs = event.get("queryStringParameters") or {}
+    mine_param = (qs.get("mine") or "").strip().lower() in ("1", "true", "yes")
+    search_param = bool((qs.get("q") or "").strip() or (qs.get("tagIds") or "").strip())
+
+    if not user.get("userId"):
+        if mine_param or search_param:
+            return jsonResponse({"error": "Unauthorized"}, 401)
+        from api.memes import list_memes
+        return list_memes(event, user, jsonResponse)
+
+    if mine_param:
+        from api.memes import can_create_memes
+        if not can_create_memes(user):
+            return jsonResponse({"error": "Forbidden: Memes creator access required (user + Memes group) for My Memes"}, 403)
+    elif search_param:
+        if not _canAccessMemes(user):
+            return jsonResponse({"error": "Forbidden: Memes access required (join Memes group or contact admin)"}, 403)
+
     from api.memes import list_memes
     return list_memes(event, user, jsonResponse)
 
 
 def listMemeTags(event):
-    """GET /memes/tags - List meme tags for autocomplete. Memes access required."""
-    _, err = _requireMemesAccess(event)
-    if err:
-        return err
+    """GET /memes/tags - List meme tags for autocomplete. Public (no auth required)."""
     from api.memes import list_meme_tags
     return list_meme_tags(event, jsonResponse)
 
 
+def _requireAuth(event):
+    """Return (user, None) if logged in, else (None, error_response)."""
+    user = getUserInfo(event)
+    if not user.get("userId"):
+        return None, jsonResponse({"error": "Unauthorized"}, 401)
+    return user, None
+
+
+def _requireMemesRateAccess(event):
+    """Return (user, None) if user can rate memes (logged in + Memes group), else (None, error_response)."""
+    user, err = _requireAuth(event)
+    if err:
+        return None, err
+    from api.memes import can_rate_memes
+    if not can_rate_memes(user):
+        return None, jsonResponse({"error": "Forbidden: Memes access required to rate (join Memes group)"}, 403)
+    return user, None
+
+
+def _requireMemesCreateAccess(event):
+    """Return (user, None) if user can create memes (user+Memes or admin), else (None, error_response)."""
+    user, err = _requireAuth(event)
+    if err:
+        return None, err
+    from api.memes import can_create_memes
+    if not can_create_memes(user):
+        return None, jsonResponse({"error": "Forbidden: Memes creator access required (user + Memes group)"}, 403)
+    return user, None
+
+
 def createMeme(event):
-    """POST /memes - Create meme. Memes access required."""
-    user, err = _requireMemesAccess(event)
+    """POST /memes - Create meme. User+Memes or admin required."""
+    user, err = _requireMemesCreateAccess(event)
     if err:
         return err
     from api.memes import create_meme
@@ -2641,26 +2684,30 @@ def createMeme(event):
 
 
 def updateMeme(event):
-    """PUT /memes - Update meme (creator, manager, or admin). Memes access required."""
-    user, err = _requireMemesAccess(event)
+    """PUT /memes - Update meme. Creator (user+memes), manager+memes, or admin."""
+    user, err = _requireAuth(event)
     if err:
         return err
+    if not _canAccessMemes(user):
+        return jsonResponse({"error": "Forbidden: Memes access required"}, 403)
     from api.memes import update_meme
     return update_meme(event, user, jsonResponse)
 
 
 def deleteMeme(event):
-    """DELETE /memes - Delete meme (creator or admin). Memes access required."""
-    user, err = _requireMemesAccess(event)
+    """DELETE /memes - Delete meme. Creator (user+memes), manager+memes, or admin."""
+    user, err = _requireAuth(event)
     if err:
         return err
+    if not _canAccessMemes(user):
+        return jsonResponse({"error": "Forbidden: Memes access required"}, 403)
     from api.memes import delete_meme
     return delete_meme(event, user, jsonResponse)
 
 
 def getMemePresignedUpload(event):
-    """POST /memes/upload - Presigned PUT URL for meme image. Memes access required."""
-    user, err = _requireMemesAccess(event)
+    """POST /memes/upload - Presigned PUT URL. User+Memes or admin required."""
+    user, err = _requireMemesCreateAccess(event)
     if err:
         return err
     from api.memes import get_meme_presigned_upload
@@ -2668,8 +2715,8 @@ def getMemePresignedUpload(event):
 
 
 def validateMemeImageUrl(event):
-    """POST /memes/validate-url - Validate image URL. Memes access required."""
-    _, err = _requireMemesAccess(event)
+    """POST /memes/validate-url - Validate image URL. User+Memes or admin required."""
+    _, err = _requireMemesCreateAccess(event)
     if err:
         return err
     from api.memes import validate_image_url
@@ -2677,8 +2724,8 @@ def validateMemeImageUrl(event):
 
 
 def importMemeFromUrl(event):
-    """POST /memes/import-from-url - Import image from URL to S3. Memes access required."""
-    user, err = _requireMemesAccess(event)
+    """POST /memes/import-from-url - Import image from URL. User+Memes or admin required."""
+    user, err = _requireMemesCreateAccess(event)
     if err:
         return err
     from api.memes import import_meme_from_url
@@ -2686,8 +2733,8 @@ def importMemeFromUrl(event):
 
 
 def generateMemeTitle(event):
-    """POST /memes/generate-title - Generate meme title. Memes access required."""
-    user, err = _requireMemesAccess(event)
+    """POST /memes/generate-title - Generate meme title. User+Memes or admin required."""
+    user, err = _requireMemesCreateAccess(event)
     if err:
         return err
     from api.memes import generate_meme_title_handler
@@ -2695,8 +2742,8 @@ def generateMemeTitle(event):
 
 
 def setMemeStar(event):
-    """POST /memes/stars - Set star rating for meme. Memes access required."""
-    user, err = _requireMemesAccess(event)
+    """POST /memes/stars - Set star rating. Logged in + Memes group required."""
+    user, err = _requireMemesRateAccess(event)
     if err:
         return err
     from api.memes import set_meme_star

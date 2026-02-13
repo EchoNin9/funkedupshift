@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeftIcon, PencilSquareIcon } from "@heroicons/react/24/outline";
-import { useAuth, hasRole, canAccessMemes } from "../../shell/AuthContext";
+import { useAuth, canAccessMemes, canRateMemes, canCreateMemes, canEditAnyMeme } from "../../shell/AuthContext";
 
 interface MemeItem {
   PK: string;
@@ -28,14 +28,14 @@ const MemeDetailPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const canEditTags = !!user && (hasRole(user, "user") || hasRole(user, "manager") || hasRole(user, "superadmin"));
+  const canEdit = !!item && (canEditAnyMeme(user) || (canCreateMemes(user) && item.userId === user?.userId));
   const memeId = id ? decodeURIComponent(id) : "";
 
   const fetchWithAuth = React.useCallback(async (url: string) => {
     const w = window as any;
-    if (!w.auth?.getAccessToken) throw new Error("Not signed in");
+    if (!w.auth?.getAccessToken) return fetch(url);
     const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
-    if (!token) throw new Error("Not signed in");
+    if (!token) return fetch(url);
     return fetch(url, { headers: { Authorization: `Bearer ${token}` } });
   }, []);
 
@@ -93,8 +93,8 @@ const MemeDetailPage: React.FC = () => {
     }
   };
 
-  const access = canAccessMemes(user);
-  if (!user || !access) {
+  const access = !user || canAccessMemes(user);
+  if (user && !canAccessMemes(user)) {
     return (
       <div className="space-y-6">
         <Link to="/memes" className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-slate-200">
@@ -144,7 +144,7 @@ const MemeDetailPage: React.FC = () => {
           <ArrowLeftIcon className="h-4 w-4" />
           Back to Memes
         </Link>
-        {canEditTags && (
+        {canEdit && (
           <Link
             to={`/memes/${encodeURIComponent(item.PK)}/edit`}
             className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-slate-200"
@@ -200,7 +200,7 @@ const MemeDetailPage: React.FC = () => {
             <span className="text-xs text-slate-500">—</span>
           )}
         </div>
-        {user && (
+        {user && canRateMemes(user) && (
           <div className="pt-2">
             <label className="inline-flex items-center gap-2 text-sm text-slate-400">
               <span>Rate:</span>

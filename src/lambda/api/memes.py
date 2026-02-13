@@ -52,10 +52,44 @@ def _get_user_custom_groups(user_id):
 
 def can_access_memes(user):
     """User can access Memes: admin OR in Memes custom group."""
-    if not user.get("userId"):
+    if not user or not user.get("userId"):
         return False
     if "admin" in user.get("groups", []):
         return True
+    custom = _get_user_custom_groups(user["userId"])
+    return "Memes" in custom
+
+
+def can_rate_memes(user):
+    """User can rate memes: logged in + in Memes custom group (any Cognito role)."""
+    if not user or not user.get("userId"):
+        return False
+    if "admin" in user.get("groups", []):
+        return True
+    custom = _get_user_custom_groups(user["userId"])
+    return "Memes" in custom
+
+
+def can_create_memes(user):
+    """User can create memes: (Cognito user + Memes group) OR admin."""
+    if not user or not user.get("userId"):
+        return False
+    if "admin" in user.get("groups", []):
+        return True
+    if "user" not in user.get("groups", []):
+        return False
+    custom = _get_user_custom_groups(user["userId"])
+    return "Memes" in custom
+
+
+def can_edit_any_meme(user):
+    """User can edit/delete any meme: (manager + Memes group) OR admin."""
+    if not user or not user.get("userId"):
+        return False
+    if "admin" in user.get("groups", []):
+        return True
+    if "manager" not in user.get("groups", []):
+        return False
     custom = _get_user_custom_groups(user["userId"])
     return "Memes" in custom
 
@@ -167,7 +201,7 @@ def generate_meme_title():
 
 
 def list_memes(event, user, json_response):
-    """List memes: cache (default), or search. Public memes + user's private memes."""
+    """List memes: cache (default), or search. Public memes + user's private memes. user may be None for guests."""
     if not TABLE_NAME:
         return json_response({"memes": [], "error": "TABLE_NAME not set"}, 200)
     try:
@@ -175,6 +209,10 @@ def list_memes(event, user, json_response):
         region = os.environ.get("AWS_REGION", "us-east-1")
         dynamodb = boto3.client("dynamodb", region_name=region)
         qs = event.get("queryStringParameters") or {}
+        user_id = (user or {}).get("userId")
+        user_groups = (user or {}).get("groups", [])
+        is_admin = "admin" in user_groups
+
         single_id = (qs.get("id") or "").strip()
         if single_id:
             resp = dynamodb.get_item(
@@ -185,7 +223,7 @@ def list_memes(event, user, json_response):
                 return json_response({"error": "Meme not found"}, 404)
             m = _dynamo_item_to_meme(resp["Item"])
             _add_meme_urls([m], region=region)
-            if m.get("isPrivate") and m.get("userId") != user.get("userId") and "admin" not in user.get("groups", []):
+            if m.get("isPrivate") and m.get("userId") != user_id and not is_admin:
                 return json_response({"error": "Meme not found"}, 404)
             return json_response({"meme": m})
 
@@ -211,7 +249,7 @@ def list_memes(event, user, json_response):
                 batch_resp = dynamodb.batch_get_item(RequestItems={TABLE_NAME: {"Keys": batch}})
                 for item in batch_resp.get("Responses", {}).get(TABLE_NAME, []):
                     m = _dynamo_item_to_meme(item)
-                    if m.get("isPrivate") and m.get("userId") != user.get("userId") and "admin" not in user.get("groups", []):
+                    if m.get("isPrivate") and m.get("userId") != user_id and not is_admin:
                         continue
                     id_to_meme[m.get("PK", "")] = m
             memes = [id_to_meme[mid] for mid in meme_ids if mid in id_to_meme]
@@ -236,8 +274,6 @@ def list_memes(event, user, json_response):
             items.extend(result.get("Items", []))
 
         meme_list = [_dynamo_item_to_meme(i) for i in items]
-        user_id = user.get("userId")
-        is_admin = "admin" in user.get("groups", [])
         meme_list = [m for m in meme_list if not m.get("isPrivate") or m.get("userId") == user_id or is_admin]
 
         if mine_param and user_id:
@@ -397,12 +433,11 @@ def create_meme(event, user, json_response):
 
 
 def update_meme(event, user, json_response):
-    """Update meme (creator, manager, or admin). Tags only for user/manager/admin."""
+    """Update meme: creator (user+memes), manager+memes, or admin."""
     if not TABLE_NAME:
         return json_response({"error": "TABLE_NAME not set"}, 500)
     try:
         import boto3
-        import uuid as uuid_mod
         body = json.loads(event.get("body", "{}"))
         meme_id = (body.get("id") or "").strip()
         if not meme_id or not meme_id.startswith("MEME#"):
@@ -416,9 +451,8 @@ def update_meme(event, user, json_response):
             return json_response({"error": "Meme not found"}, 404)
         existing = _dynamo_item_to_meme(resp["Item"])
         creator_id = existing.get("userId", "")
-        is_admin = "admin" in user.get("groups", [])
-        is_manager = "manager" in user.get("groups", [])
-        can_edit = creator_id == user.get("userId") or is_admin or is_manager
+        is_creator = creator_id == user.get("userId", "")
+        can_edit = (is_creator and can_create_memes(user)) or can_edit_any_meme(user)
         if not can_edit:
             return json_response({"error": "Forbidden: cannot edit this meme"}, 403)
 
@@ -462,7 +496,7 @@ def update_meme(event, user, json_response):
 
 
 def delete_meme(event, user, json_response):
-    """Delete meme (creator or admin)."""
+    """Delete meme: creator (user+memes), manager+memes, or admin."""
     if not TABLE_NAME:
         return json_response({"error": "TABLE_NAME not set"}, 500)
     try:
@@ -480,7 +514,9 @@ def delete_meme(event, user, json_response):
         if "Item" not in resp:
             return json_response({"error": "Meme not found"}, 404)
         creator_id = resp["Item"].get("userId", {}).get("S", "")
-        if creator_id != user.get("userId") and "admin" not in user.get("groups", []):
+        is_creator = creator_id == user.get("userId", "")
+        can_delete = (is_creator and can_create_memes(user)) or can_edit_any_meme(user)
+        if not can_delete:
             return json_response({"error": "Forbidden: cannot delete this meme"}, 403)
         dynamodb.delete_item(
             TableName=TABLE_NAME,

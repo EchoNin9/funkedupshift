@@ -163,10 +163,33 @@ export function canAccessFinancialAdmin(user: AuthUser | null): boolean {
   return (user.customGroups ?? []).includes("Financial");
 }
 
-/** User can access Memes: SuperAdmin OR in Memes custom group (user or above). */
+/** User can view Memes browse (cache + search): SuperAdmin OR in Memes custom group. */
 export function canAccessMemes(user: AuthUser | null): boolean {
   if (!user?.userId) return false;
   if (user.role === "superadmin") return true;
+  return (user.customGroups ?? []).includes("Memes");
+}
+
+/** User can rate memes: logged in + Memes group (any Cognito role). */
+export function canRateMemes(user: AuthUser | null): boolean {
+  if (!user?.userId) return false;
+  if (user.role === "superadmin") return true;
+  return (user.customGroups ?? []).includes("Memes");
+}
+
+/** User can create memes and edit/delete own: Cognito user/manager + Memes group. */
+export function canCreateMemes(user: AuthUser | null): boolean {
+  if (!user?.userId) return false;
+  if (user.role === "superadmin") return true;
+  if (user.role === "guest") return false;
+  return (user.customGroups ?? []).includes("Memes");
+}
+
+/** User can edit/delete any meme: manager + Memes group OR superadmin. */
+export function canEditAnyMeme(user: AuthUser | null): boolean {
+  if (!user?.userId) return false;
+  if (user.role === "superadmin") return true;
+  if (user.role !== "manager") return false;
   return (user.customGroups ?? []).includes("Memes");
 }
 

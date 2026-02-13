@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
-import { useAuth, canAccessMemes } from "../../shell/AuthContext";
+import { useAuth, canCreateMemes } from "../../shell/AuthContext";
 import AddTagInput from "./AddTagInput";
 
 const FONTS = ["Impact", "Arial Black", "Comic Sans MS", "Georgia", "Verdana", "Times New Roman", "Courier New"];
@@ -250,7 +250,7 @@ const MemeGeneratorPage: React.FC = () => {
     }
   };
 
-  const access = canAccessMemes(user);
+  const canCreate = canCreateMemes(user);
   if (!user) {
     return (
       <div className="space-y-6">
@@ -261,12 +261,12 @@ const MemeGeneratorPage: React.FC = () => {
       </div>
     );
   }
-  if (!access) {
+  if (!canCreate) {
     return (
       <div className="space-y-6">
         <h1 className="text-2xl font-semibold text-slate-50">Meme Generator</h1>
         <div className="rounded-md border border-slate-700 bg-slate-900/60 px-4 py-3 text-slate-200">
-          You do not have access. Join the Memes custom group or contact an admin.
+          Meme creator access required (user + Memes group). Join the Memes custom group or contact an admin.
         </div>
       </div>
     );

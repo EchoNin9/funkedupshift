@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
-import { useAuth, hasRole, canAccessMemes } from "../../shell/AuthContext";
+import { useAuth, canCreateMemes, canEditAnyMeme } from "../../shell/AuthContext";
 import AddTagInput from "./AddTagInput";
 
 interface MemeItem {
@@ -39,6 +39,8 @@ const EditMemePage: React.FC = () => {
     if (!token) throw new Error("Not signed in");
     return fetch(url, { ...options, headers: { ...options?.headers, Authorization: `Bearer ${token}` } });
   }, []);
+
+  const canEdit = !!(user && (canCreateMemes(user) || canEditAnyMeme(user)));
 
   useEffect(() => {
     const apiBase = getApiBaseUrl();
@@ -118,10 +120,7 @@ const EditMemePage: React.FC = () => {
     }
   };
 
-  const access = canAccessMemes(user);
-  const canEdit = !!user && (hasRole(user, "user") || hasRole(user, "manager") || hasRole(user, "superadmin"));
-
-  if (!user || !access) {
+  if (!user || !canEdit) {
     return (
       <div className="space-y-6">
         <Link to="/memes" className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-slate-200">
