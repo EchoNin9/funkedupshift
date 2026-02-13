@@ -581,7 +581,12 @@ def import_meme_from_url(event, user, json_response):
         region = os.environ.get("AWS_REGION", "us-east-1")
         s3 = boto3.client("s3", region_name=region)
         s3.put_object(Bucket=MEDIA_BUCKET, Key=key, Body=data, ContentType=content_type)
-        return json_response({"key": key, "memeId": meme_id})
+        presigned_url = s3.generate_presigned_url(
+            "get_object",
+            Params={"Bucket": MEDIA_BUCKET, "Key": key},
+            ExpiresIn=3600,
+        )
+        return json_response({"key": key, "memeId": meme_id, "presignedUrl": presigned_url})
     except Exception as e:
         logger.exception("importMemeFromUrl error: %s", e)
         return json_response({"error": str(e)}, 500)

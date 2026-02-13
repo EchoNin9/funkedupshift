@@ -94,20 +94,20 @@ const MemeGeneratorPage: React.FC = () => {
     if (!url) return;
     setError(null);
     try {
-      const resp = await fetchWithAuth(`${getApiBaseUrl()}/memes/validate-url`, {
+      const resp = await fetchWithAuth(`${getApiBaseUrl()}/memes/import-from-url`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url })
       });
-      const data = (await resp.json()) as { valid?: boolean; error?: string };
-      if (!data.valid) {
-        setError(data.error || "Invalid image URL");
+      const data = (await resp.json()) as { presignedUrl?: string; error?: string };
+      if (!data.presignedUrl) {
+        setError(data.error || "Failed to load image from URL");
         return;
       }
-      setImageSrc(url);
+      setImageSrc(data.presignedUrl);
       setImageFile(null);
     } catch (e: any) {
-      setError(e?.message ?? "Failed to validate URL");
+      setError(e?.message ?? "Failed to load image from URL");
     }
   };
 
@@ -193,9 +193,6 @@ const MemeGeneratorPage: React.FC = () => {
         body: JSON.stringify({ contentType: "image/png" })
       });
       const uploadData = (await uploadResp.json()) as { uploadUrl?: string; key?: string };
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/51517f45-4cb4-45b6-9d26-950ab96994fd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'MemeGeneratorPage.tsx:uploadData',message:'uploadData after upload',data:{hasUploadUrl:!!uploadData?.uploadUrl,hasKey:!!uploadData?.key,key:uploadData?.key},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
       if (!uploadData.uploadUrl || !uploadData.key) {
         throw new Error((uploadData as { error?: string }).error || "Failed to get upload URL");
       }
