@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { useImpersonation } from "./ImpersonationContext";
 
 export type UserRole = "superadmin" | "manager" | "user" | "guest";
 
@@ -8,6 +9,8 @@ export interface AuthUser {
   groups: string[];
   role: UserRole;
   customGroups?: string[];
+  impersonated?: boolean;
+  impersonatedAs?: string;
 }
 
 interface AuthContextValue {
@@ -35,6 +38,7 @@ function getApiBaseUrl(): string | null {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const { getImpersonationHeaders } = useImpersonation();
 
   const bootstrap = React.useCallback(async () => {
       const apiBase = getApiBaseUrl();
@@ -72,7 +76,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       const resp = await fetch(`${apiBase}/me`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}`, ...getImpersonationHeaders() }
       });
       if (!resp.ok) {
         setUser(null);
@@ -90,14 +94,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email: String(data.email || ""),
         groups,
         role,
-        customGroups
+        customGroups,
+        impersonated: !!data.impersonated,
+        impersonatedAs: data.impersonatedAs
       });
     } catch {
       setUser(null);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [getImpersonationHeaders]);
 
   useEffect(() => {
     bootstrap();

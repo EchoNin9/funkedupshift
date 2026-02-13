@@ -1083,6 +1083,31 @@ resource "aws_apigatewayv2_route" "me" {
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
+# Self-service group membership (any logged-in user)
+resource "aws_apigatewayv2_route" "groupsList" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /groups"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "meGroupsJoin" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /me/groups"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "meGroupsLeave" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "DELETE /me/groups/{groupName}"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
 # User profile (any logged-in user)
 resource "aws_apigatewayv2_route" "profileGet" {
   api_id             = aws_apigatewayv2_api.main.id
@@ -1540,6 +1565,39 @@ resource "aws_apigatewayv2_route" "adminGroupsPut" {
 resource "aws_apigatewayv2_route" "adminGroupsDelete" {
   api_id             = aws_apigatewayv2_api.main.id
   route_key          = "DELETE /admin/groups/{name}"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+# Admin roles (SuperAdmin only)
+resource "aws_apigatewayv2_route" "adminRolesGet" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /admin/roles"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "adminRolesPost" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /admin/roles"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "adminRolesPut" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "PUT /admin/roles/{name}"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "adminRolesDelete" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "DELETE /admin/roles/{name}"
   target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
   authorization_type = "JWT"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id

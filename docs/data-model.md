@@ -81,6 +81,17 @@ One item per user per site. Logged-in users write their own.
 
 - **User's custom groups:** Query `PK=USER#\<sub\>` where `SK begins_with MEMBERSHIP#`.
 - **Group members:** Query GSI **byGroup** with `groupName=\<name\>`.
+- **Self-service:** Users can add/remove themselves via `POST /me/groups` and `DELETE /me/groups/{groupName}`.
+
+### 6b. Named role (for impersonation)
+
+| PK             | SK       | Attributes                                                                 |
+|----------------|----------|----------------------------------------------------------------------------|
+| ROLE#\<name\>  | METADATA | name, cognitoGroups (list), customGroups (list), createdAt, updatedAt, **entityType**=ROLE, **entitySk**=ROLE#\<name\> |
+
+- **List roles:** Query GSI **byEntity** with `entityType=ROLE`.
+- **Get role:** `GetItem(PK=ROLE#\<name\>, SK=METADATA)`.
+- **Impersonation:** SuperAdmin can assume a role via `X-Impersonate-Role` header.
 
 ### 7. User profile (avatar, description, last login)
 

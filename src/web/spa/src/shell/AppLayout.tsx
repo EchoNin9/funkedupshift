@@ -4,6 +4,8 @@ import { Bars3Icon, ChevronDownIcon, ChevronRightIcon, XMarkIcon } from "@heroic
 import { Dialog } from "@headlessui/react";
 import { useAuth, hasRole, canAccessSquash, canModifySquash, canAccessFinancial, canAccessFinancialAdmin, canAccessMemes, canCreateMemes } from "./AuthContext";
 import { useBranding } from "./BrandingContext";
+import ImpersonationBanner from "./ImpersonationBanner";
+import ImpersonationSelector from "./ImpersonationSelector";
 import HomePage from "../features/home/HomePage";
 import WebsitesPage from "../features/websites/WebsitesPage";
 import SiteDetailPage from "../features/websites/SiteDetailPage";
@@ -147,6 +149,7 @@ const AppLayout: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-50 flex flex-col">
+      <ImpersonationBanner />
       {/* Header */}
       <header className="border-b border-slate-800 bg-slate-950/80 backdrop-blur z-20 sticky top-0">
         <div className="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between gap-3">
@@ -177,6 +180,7 @@ const AppLayout: React.FC = () => {
           <div className="flex items-center gap-3">
             {user ? (
               <>
+                <ImpersonationSelector />
                 <span className="hidden sm:inline text-xs text-slate-300">
                   {user.email}{" "}
                   <span className="text-slate-500">
