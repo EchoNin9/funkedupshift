@@ -37,6 +37,7 @@ const MemeGeneratorPage: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const textBoxesRef = useRef<TextBox[]>([]);
   const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imageUrl, setImageUrl] = useState("");
@@ -53,18 +54,27 @@ const MemeGeneratorPage: React.FC = () => {
   const [allTags, setAllTags] = useState<string[]>([]);
 
   const addTextBox = (zoneId: string) => {
-    if (textBoxes.some((t) => t.zoneId === zoneId)) return;
-    setTextBoxes((prev) => [...prev, { zoneId, text: "", font: FONTS[0], color: "#ffffff", size: 32 }]);
+    const prev = textBoxesRef.current;
+    if (prev.some((t) => t.zoneId === zoneId)) return;
+    const next = [...prev, { zoneId, text: "", font: FONTS[0], color: "#ffffff", size: 32 }];
+    textBoxesRef.current = next;
+    setTextBoxes(next);
     setSelectedZone(zoneId);
   };
 
   const removeTextBox = (zoneId: string) => {
-    setTextBoxes((prev) => prev.filter((t) => t.zoneId !== zoneId));
+    const prev = textBoxesRef.current;
+    const next = prev.filter((t) => t.zoneId !== zoneId);
+    textBoxesRef.current = next;
+    setTextBoxes(next);
     if (selectedZone === zoneId) setSelectedZone(null);
   };
 
   const updateTextBox = (zoneId: string, updates: Partial<TextBox>) => {
-    setTextBoxes((prev) => prev.map((t) => (t.zoneId === zoneId ? { ...t, ...updates } : t)));
+    const prev = textBoxesRef.current;
+    const next = prev.map((t) => (t.zoneId === zoneId ? { ...t, ...updates } : t));
+    textBoxesRef.current = next;
+    setTextBoxes(next);
   };
 
   const loadImageFromFile = (file: File) => {
@@ -145,7 +155,7 @@ const MemeGeneratorPage: React.FC = () => {
         } else {
           ctx.drawImage(img, 0, 0, w, h);
         }
-        textBoxes.forEach((tb) => {
+        textBoxesRef.current.forEach((tb) => {
           const zone = FIXED_ZONES.find((z) => z.id === tb.zoneId);
           if (!zone || !tb.text) return;
           ctx.font = `${tb.size}px ${tb.font}`;
@@ -200,6 +210,7 @@ const MemeGeneratorPage: React.FC = () => {
     setError(null);
     try {
       await drawCanvas();
+      await new Promise((r) => requestAnimationFrame(r));
       const blob = await new Promise<Blob | null>((resolve) => {
         canvas.toBlob((b) => resolve(b), "image/png", 0.95);
       });
@@ -229,7 +240,7 @@ const MemeGeneratorPage: React.FC = () => {
           title: title.trim() || undefined,
           description: description.trim() || undefined,
           isPrivate: isPrivate,
-          textBoxes,
+          textBoxes: textBoxesRef.current,
           sizeMode,
           tags
         })
