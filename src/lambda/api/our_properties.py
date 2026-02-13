@@ -294,7 +294,7 @@ def fetch_our_properties():
 # -----------------------------------------------------------------------------
 
 def get_highest_rated_sites():
-    """Return list of {url, description, title, logoKey, averageRating} from DynamoDB."""
+    """Return list of {type, url|id, description, title, logoKey|thumbnailKey, averageRating} from DynamoDB."""
     if not TABLE_NAME:
         return []
     try:
@@ -312,17 +312,32 @@ def get_highest_rated_sites():
             return []
         out = []
         for s in raw:
-            url, desc, title, logo_key = _site_to_entry(s)
-            if url:
-                entry = {"url": url, "description": desc}
-                if title:
-                    entry["title"] = title
-                if logo_key:
-                    entry["logoKey"] = logo_key
-                avg = s.get("averageRating") if isinstance(s, dict) else None
-                if avg is not None:
-                    entry["averageRating"] = round(float(avg), 1)
+            if not isinstance(s, dict):
+                continue
+            t = s.get("type", "site")
+            if t == "media":
+                mid = (s.get("id") or "").strip()
+                if not mid:
+                    continue
+                entry = {"type": "media", "id": mid, "description": (s.get("description") or "").strip()[:255]}
+                if s.get("title"):
+                    entry["title"] = (s.get("title") or "").strip()
+                if s.get("thumbnailKey"):
+                    entry["thumbnailKey"] = (s.get("thumbnailKey") or "").strip()
+                if s.get("averageRating") is not None:
+                    entry["averageRating"] = round(float(s["averageRating"]), 1)
                 out.append(entry)
+            else:
+                url, desc, title, logo_key = _site_to_entry(s)
+                if url:
+                    entry = {"type": "site", "url": url, "description": desc}
+                    if title:
+                        entry["title"] = title
+                    if logo_key:
+                        entry["logoKey"] = logo_key
+                    if s.get("averageRating") is not None:
+                        entry["averageRating"] = round(float(s["averageRating"]), 1)
+                    out.append(entry)
         return out
     except Exception as e:
         logger.warning("Highest rated sites config read failed: %s", e)
@@ -349,10 +364,73 @@ def get_highest_rated_updated_at():
         return None
 
 
+def _score_site(item):
+    """Extract (avg, entry) from site item, or None if invalid/unrated."""
+    url = (item.get("url", {}).get("S", "") or "").strip()
+    if not url:
+        return None
+    url = _normalize_url(url) or url
+    total_sum = item.get("totalStarsSum", {})
+    total_count = item.get("totalStarsCount", {})
+    try:
+        s_val = int(total_sum.get("N", 0)) if total_sum else 0
+        c_val = int(total_count.get("N", 0)) if total_count else 0
+    except (TypeError, ValueError):
+        return None
+    if c_val <= 0:
+        return None
+    avg = s_val / c_val
+    if avg < 1.0:
+        avg = 1.0
+    if avg > 5.0:
+        avg = 5.0
+    title = (item.get("title", {}).get("S", "") or "").strip()
+    desc = (item.get("description", {}).get("S", "") or "").strip()[:255]
+    logo_key = (item.get("logoKey", {}).get("S", "") or "").strip() or None
+    entry = {"type": "site", "url": url, "description": desc, "averageRating": round(avg, 1)}
+    if title:
+        entry["title"] = title
+    if logo_key:
+        entry["logoKey"] = logo_key
+    return (avg, entry)
+
+
+def _score_media(item):
+    """Extract (avg, entry) from media item, or None if invalid/unrated."""
+    pk = (item.get("PK", {}).get("S", "") or "").strip()
+    if not pk or not pk.startswith("MEDIA#"):
+        return None
+    total_sum = item.get("totalStarsSum", {})
+    total_count = item.get("totalStarsCount", {})
+    try:
+        s_val = int(total_sum.get("N", 0)) if total_sum else 0
+        c_val = int(total_count.get("N", 0)) if total_count else 0
+    except (TypeError, ValueError):
+        return None
+    if c_val <= 0:
+        return None
+    avg = s_val / c_val
+    if avg < 1.0:
+        avg = 1.0
+    if avg > 5.0:
+        avg = 5.0
+    title = (item.get("title", {}).get("S", "") or "").strip()
+    desc = (item.get("description", {}).get("S", "") or "").strip()[:255]
+    thumb_key = (item.get("thumbnailKey", {}).get("S", "") or "").strip() or None
+    media_key = (item.get("mediaKey", {}).get("S", "") or "").strip() or None
+    image_key = thumb_key or (media_key if (item.get("mediaType", {}).get("S") == "image") else None)
+    entry = {"type": "media", "id": pk, "description": desc, "averageRating": round(avg, 1)}
+    if title:
+        entry["title"] = title
+    if image_key:
+        entry["thumbnailKey"] = image_key
+    return (avg, entry)
+
+
 def generate_highest_rated_cache_from_stars():
     """
-    Generate highest rated cache from top 14 sites by stars rating.
-    Returns (sites_list, error). If error, sites_list may be partial/empty.
+    Generate highest rated cache from top 14 items (sites + media) by stars rating.
+    Returns (items_list, error). If error, items_list may be partial/empty.
     """
     if not TABLE_NAME:
         return [], "TABLE_NAME not set"
@@ -360,8 +438,9 @@ def generate_highest_rated_cache_from_stars():
         import boto3
         dynamodb = boto3.client("dynamodb")
 
+        scored = []
+
         # Query all sites
-        items = []
         request_kw = {
             "TableName": TABLE_NAME,
             "IndexName": "byEntity",
@@ -369,49 +448,39 @@ def generate_highest_rated_cache_from_stars():
             "ExpressionAttributeValues": {":et": {"S": "SITE"}},
         }
         result = dynamodb.query(**request_kw)
-        items.extend(result.get("Items", []))
+        for item in result.get("Items", []):
+            t = _score_site(item)
+            if t:
+                scored.append(t)
         while result.get("LastEvaluatedKey"):
             request_kw["ExclusiveStartKey"] = result["LastEvaluatedKey"]
             result = dynamodb.query(**request_kw)
-            items.extend(result.get("Items", []))
+            for item in result.get("Items", []):
+                t = _score_site(item)
+                if t:
+                    scored.append(t)
 
-        # Compute averageRating and build list (only sites with at least one rating)
-        scored = []
-        for item in items:
-            url = (item.get("url", {}).get("S", "") or "").strip()
-            if not url:
-                continue
-            url = _normalize_url(url) or url
-            total_sum = item.get("totalStarsSum", {})
-            total_count = item.get("totalStarsCount", {})
-            try:
-                s_val = int(total_sum.get("N", 0)) if total_sum else 0
-                c_val = int(total_count.get("N", 0)) if total_count else 0
-            except (TypeError, ValueError):
-                s_val, c_val = 0, 0
-            if c_val <= 0:
-                continue
-            avg = s_val / c_val
-            if avg < 1.0:
-                avg = 1.0
-            if avg > 5.0:
-                avg = 5.0
-            title = (item.get("title", {}).get("S", "") or "").strip()
-            desc = (item.get("description", {}).get("S", "") or "").strip()[:255]
-            logo_key = (item.get("logoKey", {}).get("S", "") or "").strip() or None
-            entry = {"url": url, "description": desc, "averageRating": round(avg, 1)}
-            if title:
-                entry["title"] = title
-            if logo_key:
-                entry["logoKey"] = logo_key
-            scored.append((avg, entry))
+        # Query all media
+        request_kw["ExpressionAttributeValues"] = {":et": {"S": "MEDIA"}}
+        result = dynamodb.query(**request_kw)
+        for item in result.get("Items", []):
+            t = _score_media(item)
+            if t:
+                scored.append(t)
+        while result.get("LastEvaluatedKey"):
+            request_kw["ExclusiveStartKey"] = result["LastEvaluatedKey"]
+            result = dynamodb.query(**request_kw)
+            for item in result.get("Items", []):
+                t = _score_media(item)
+                if t:
+                    scored.append(t)
 
         # Sort by avg desc, take top 14
-        scored.sort(key=lambda x: (-x[0], (x[1].get("title") or x[1].get("url", "")).lower()))
+        scored.sort(key=lambda x: (-x[0], (x[1].get("title") or x[1].get("url") or x[1].get("id", "")).lower()))
         out = [e for _, e in scored[:14]]
 
         if not out:
-            return [], "No sites with ratings. Sites need at least one star rating to appear."
+            return [], "No sites or media with ratings. Items need at least one star rating to appear."
 
         if not save_highest_rated_sites(out):
             return [], "Failed to save cache"
@@ -423,25 +492,36 @@ def generate_highest_rated_cache_from_stars():
 
 
 def normalize_highest_rated_sites(raw_list):
-    """Normalize list for highest rated. Dedupe by URL, preserve order. Include averageRating if present."""
+    """Normalize list for highest rated. Dedupe by url (sites) or id (media), preserve order."""
     seen = set()
     out = []
     for s in raw_list:
-        if isinstance(s, dict):
+        if not isinstance(s, dict):
+            continue
+        t = s.get("type", "site")
+        if t == "media":
+            mid = (s.get("id") or "").strip()
+            if not mid or mid in seen:
+                continue
+            seen.add(mid)
+            entry = {"type": "media", "id": mid, "description": (s.get("description") or "").strip()[:255]}
+            if s.get("title"):
+                entry["title"] = (s.get("title") or "").strip()
+            if s.get("thumbnailKey"):
+                entry["thumbnailKey"] = (s.get("thumbnailKey") or "").strip()
+            if s.get("averageRating") is not None:
+                entry["averageRating"] = round(float(s["averageRating"]), 1)
+            out.append(entry)
+        else:
             url = _normalize_url(s.get("url") or "")
+            if not url or url in seen:
+                continue
+            seen.add(url)
             desc = (s.get("description") or "").strip()[:255]
             title = (s.get("title") or "").strip()
             logo_key = (s.get("logoKey") or "").strip() or None
             avg = s.get("averageRating")
-        else:
-            url = _normalize_url(s)
-            desc = ""
-            title = ""
-            logo_key = None
-            avg = None
-        if url and url not in seen:
-            seen.add(url)
-            entry = {"url": url, "description": desc}
+            entry = {"type": "site", "url": url, "description": desc}
             if title:
                 entry["title"] = title
             if logo_key:
@@ -453,7 +533,7 @@ def normalize_highest_rated_sites(raw_list):
 
 
 def save_highest_rated_sites(sites):
-    """Save highest rated sites list to DynamoDB (manager or admin)."""
+    """Save highest rated sites/media list to DynamoDB (manager or admin)."""
     if not TABLE_NAME:
         return False
     try:
@@ -463,20 +543,31 @@ def save_highest_rated_sites(sites):
         now = datetime.utcnow().isoformat() + "Z"
         to_save = []
         for s in sites:
-            if isinstance(s, dict):
-                url = s.get("url") or ""
+            if not isinstance(s, dict):
+                continue
+            t = s.get("type", "site")
+            if t == "media":
+                mid = (s.get("id") or "").strip()
+                if not mid:
+                    continue
+                entry = {"type": "media", "id": mid, "description": (s.get("description") or "").strip()[:255]}
+                if s.get("title"):
+                    entry["title"] = (s.get("title") or "").strip()
+                if s.get("thumbnailKey"):
+                    entry["thumbnailKey"] = (s.get("thumbnailKey") or "").strip()
+                if s.get("averageRating") is not None:
+                    entry["averageRating"] = round(float(s["averageRating"]), 1)
+                to_save.append(entry)
+            else:
+                url = (s.get("url") or "").strip()
+                if not url:
+                    continue
+                url = _normalize_url(url) or url
                 desc = (s.get("description") or "").strip()[:255]
                 title = (s.get("title") or "").strip()
                 logo_key = (s.get("logoKey") or "").strip() or None
                 avg = s.get("averageRating")
-            else:
-                url = str(s)
-                desc = ""
-                title = ""
-                logo_key = None
-                avg = None
-            if url:
-                entry = {"url": url, "description": desc}
+                entry = {"type": "site", "url": url, "description": desc}
                 if title:
                     entry["title"] = title
                 if logo_key:
@@ -499,23 +590,61 @@ def save_highest_rated_sites(sites):
         return False
 
 
+def _add_highest_rated_urls(entries):
+    """Add logoUrl from logoKey (sites) or thumbnailKey (media). In-place."""
+    media_bucket = os.environ.get("MEDIA_BUCKET", "")
+    if not media_bucket:
+        return
+    for e in entries:
+        key = e.get("logoKey") or e.get("thumbnailKey")
+        if not key or not isinstance(key, str) or not key.strip():
+            continue
+        try:
+            import boto3
+            s3 = boto3.client("s3", region_name=os.environ.get("AWS_REGION", "us-east-1"))
+            e["logoUrl"] = s3.generate_presigned_url(
+                "get_object",
+                Params={"Bucket": media_bucket, "Key": key},
+                ExpiresIn=3600,
+            )
+        except Exception as ex:
+            logger.debug("Presigned URL failed for %s: %s", key[:50], ex)
+
+
 def fetch_highest_rated():
-    """Return list of sites from highest rated cache for public display."""
+    """Return list of items (sites + media) from highest rated cache for public display."""
     entries = get_highest_rated_sites()
     result = []
     for e in entries:
-        domain = _domain_from_url(e["url"])
-        item = {
-            "url": e["url"],
-            "domain": domain,
-            "status": "up",
-            "description": e.get("description", "") or "",
-            "title": e.get("title") or domain,
-        }
-        if e.get("logoKey"):
-            item["logoKey"] = e["logoKey"]
+        if e.get("type") == "media":
+            mid = e.get("id", "")
+            item = {
+                "type": "media",
+                "id": mid,
+                "link": f"/media/{mid}",
+                "domain": "Media",
+                "status": "up",
+                "description": e.get("description", "") or "",
+                "title": e.get("title") or "Media",
+            }
+            if e.get("thumbnailKey"):
+                item["thumbnailKey"] = e["thumbnailKey"]
+        else:
+            url = e.get("url", "")
+            domain = _domain_from_url(url)
+            item = {
+                "type": "site",
+                "url": url,
+                "link": url,
+                "domain": domain,
+                "status": "up",
+                "description": e.get("description", "") or "",
+                "title": e.get("title") or domain,
+            }
+            if e.get("logoKey"):
+                item["logoKey"] = e["logoKey"]
         if e.get("averageRating") is not None:
             item["averageRating"] = e["averageRating"]
         result.append(item)
-    _add_logo_urls(result)
+    _add_highest_rated_urls(result)
     return result
