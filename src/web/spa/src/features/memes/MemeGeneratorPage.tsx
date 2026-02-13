@@ -193,9 +193,13 @@ const MemeGeneratorPage: React.FC = () => {
         body: JSON.stringify({ contentType: "image/png" })
       });
       const uploadData = (await uploadResp.json()) as { uploadUrl?: string; key?: string };
+      // #region agent log
+      fetch('http://127.0.0.1:7243/ingest/51517f45-4cb4-45b6-9d26-950ab96994fd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'MemeGeneratorPage.tsx:uploadData',message:'uploadData after upload',data:{hasUploadUrl:!!uploadData?.uploadUrl,hasKey:!!uploadData?.key,key:uploadData?.key},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
       if (!uploadData.uploadUrl || !uploadData.key) {
         throw new Error((uploadData as { error?: string }).error || "Failed to get upload URL");
       }
+      const mediaKey = uploadData.key;
       await fetch(uploadData.uploadUrl, {
         method: "PUT",
         body: blob,
