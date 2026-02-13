@@ -40,13 +40,15 @@ interface NavItem {
   section: "discover" | "squash" | "memes" | "financial" | "recommended" | "admin";
   minRole: "guest" | "user" | "manager" | "superadmin";
   memesCreate?: boolean;
+  /** When true, show for any logged-in user regardless of role */
+  authOnly?: boolean;
 }
 
 const navItems: NavItem[] = [
   { label: "Websites", to: "/websites", section: "discover", minRole: "guest" },
   { label: "Media", to: "/media", section: "discover", minRole: "guest" },
   { label: "Internet Dashboard", to: "/internet-dashboard", section: "discover", minRole: "guest" },
-  { label: "Profile", to: "/profile", section: "discover", minRole: "user" },
+  { label: "Profile", to: "/profile", section: "discover", minRole: "user", authOnly: true },
   { label: "Squash", to: "/squash", section: "squash", minRole: "user" },
   { label: "Squash Admin", to: "/squash-admin", section: "squash", minRole: "manager" },
   { label: "Memes", to: "/memes", section: "memes", minRole: "guest" },
@@ -122,7 +124,9 @@ const AppLayout: React.FC = () => {
 
   const role = user?.role ?? "guest";
 
-  const visibleNavItems = navItems.filter((item) => hasRole(user ?? null, item.minRole));
+  const visibleNavItems = navItems.filter((item) =>
+    item.authOnly ? user !== null : hasRole(user ?? null, item.minRole)
+  );
   const discoverItems = visibleNavItems.filter((i) => i.section === "discover");
   const recommendedItems = visibleNavItems.filter((i) => i.section === "recommended");
   const squashItems = navItems

@@ -942,7 +942,7 @@ resource "aws_apigatewayv2_api" "main" {
   cors_configuration {
     allow_origins      = ["*"]
     allow_methods      = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
-    allow_headers      = ["Authorization", "Content-Type", "X-Amz-Date", "X-Api-Key", "X-Amz-Security-Token"]
+    allow_headers      = ["Authorization", "Content-Type", "X-Amz-Date", "X-Api-Key", "X-Amz-Security-Token", "X-Impersonate-User", "X-Impersonate-Role"]
     expose_headers     = []
     allow_credentials  = false
   }
