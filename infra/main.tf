@@ -773,10 +773,11 @@ resource "aws_lambda_function" "api" {
 
   environment {
     variables = {
-      TABLE_NAME             = aws_dynamodb_table.main.name
-      MEDIA_BUCKET           = aws_s3_bucket.media.id
-      COGNITO_USER_POOL_ID   = aws_cognito_user_pool.main.id
-      THUMB_FUNCTION_NAME    = aws_lambda_function.thumb.function_name
+      TABLE_NAME               = aws_dynamodb_table.main.name
+      MEDIA_BUCKET             = aws_s3_bucket.media.id
+      COGNITO_USER_POOL_ID     = aws_cognito_user_pool.main.id
+      THUMB_FUNCTION_NAME      = aws_lambda_function.thumb.function_name
+      ALPHA_VANTAGE_API_KEY    = var.alphaVantageApiKey
     }
   }
 }
@@ -1332,6 +1333,55 @@ resource "aws_apigatewayv2_route" "squashMatchesPut" {
 resource "aws_apigatewayv2_route" "squashMatchesDelete" {
   api_id             = aws_apigatewayv2_api.main.id
   route_key          = "DELETE /squash/matches"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+# Financial section (Financial custom group required)
+resource "aws_apigatewayv2_route" "financialWatchlistGet" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /financial/watchlist"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "financialWatchlistPut" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "PUT /financial/watchlist"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "financialQuoteGet" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /financial/quote"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "financialConfigGet" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /financial/config"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "adminFinancialDefaultSymbolsGet" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /admin/financial/default-symbols"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "adminFinancialDefaultSymbolsPut" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "PUT /admin/financial/default-symbols"
   target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
   authorization_type = "JWT"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id

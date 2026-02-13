@@ -242,6 +242,19 @@ def handler(event, context):
             return updateSquashMatch(event)
         if method == "DELETE" and path == "/squash/matches":
             return deleteSquashMatch(event)
+        # Financial section routes (Financial custom group required)
+        if method == "GET" and path == "/financial/watchlist":
+            return getFinancialWatchlist(event)
+        if method == "PUT" and path == "/financial/watchlist":
+            return putFinancialWatchlist(event)
+        if method == "GET" and path == "/financial/quote":
+            return getFinancialQuote(event)
+        if method == "GET" and path == "/financial/config":
+            return getFinancialConfig(event)
+        if method == "GET" and path == "/admin/financial/default-symbols":
+            return getFinancialDefaultSymbols(event)
+        if method == "PUT" and path == "/admin/financial/default-symbols":
+            return putFinancialDefaultSymbols(event)
         # Admin user/group management routes
         path_params = event.get("pathParameters") or {}
         if method == "GET" and path == "/admin/users":
@@ -316,6 +329,130 @@ def getInternetDashboard(event):
     except Exception as e:
         logger.exception("getInternetDashboard error: %s", e)
         return jsonResponse({"error": str(e), "sites": []}, 500)
+
+
+# ------------------------------------------------------------------------------
+# Financial section (Financial custom group required)
+# ------------------------------------------------------------------------------
+
+def getFinancialWatchlist(event):
+    """GET /financial/watchlist - Return current user's watchlist symbols."""
+    user, err = _requireFinancialAccess(event)
+    if err:
+        return err
+    try:
+        from api.financial import get_user_watchlist
+        symbols = get_user_watchlist(user["userId"])
+        return jsonResponse({"symbols": symbols})
+    except Exception as e:
+        logger.exception("getFinancialWatchlist error: %s", e)
+        return jsonResponse({"error": str(e), "symbols": []}, 500)
+
+
+def putFinancialWatchlist(event):
+    """PUT /financial/watchlist - Save current user's watchlist symbols."""
+    user, err = _requireFinancialAccess(event)
+    if err:
+        return err
+    try:
+        body = event.get("body")
+        if body and isinstance(body, str):
+            body = json.loads(body)
+        else:
+            body = body or {}
+        symbols = body.get("symbols")
+        if not isinstance(symbols, list):
+            return jsonResponse({"error": "symbols must be an array"}, 400)
+        from api.financial import save_user_watchlist
+        save_user_watchlist(user["userId"], symbols)
+        return jsonResponse({"symbols": [str(s).strip().upper() for s in symbols if str(s).strip()]})
+    except Exception as e:
+        logger.exception("putFinancialWatchlist error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def getFinancialQuote(event):
+    """GET /financial/quote?symbol=AAPL&source=yahoo - Fetch stock quote."""
+    user, err = _requireFinancialAccess(event)
+    if err:
+        return err
+    qs = event.get("queryStringParameters") or {}
+    symbol = (qs.get("symbol") or "").strip()
+    if not symbol:
+        return jsonResponse({"error": "symbol is required"}, 400)
+    source = (qs.get("source") or "yahoo").strip().lower()
+    if source not in ("yahoo", "alpha_vantage"):
+        source = "yahoo"
+    try:
+        from api.financial import fetch_quote
+        quote = fetch_quote(symbol, source)
+        if not quote:
+            return jsonResponse({"error": "Quote not found for symbol"}, 404)
+        return jsonResponse(quote)
+    except Exception as e:
+        logger.exception("getFinancialQuote error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def getFinancialConfig(event):
+    """GET /financial/config - Return default symbols and available sources (for new users)."""
+    user, err = _requireFinancialAccess(event)
+    if err:
+        return err
+    try:
+        from api.financial import get_financial_config, AVAILABLE_SOURCES
+        config = get_financial_config()
+        config["availableSources"] = AVAILABLE_SOURCES
+        return jsonResponse(config)
+    except Exception as e:
+        logger.exception("getFinancialConfig error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def getFinancialDefaultSymbols(event):
+    """GET /admin/financial/default-symbols - Return admin default symbols and source."""
+    _, err = _requireFinancialAdmin(event)
+    if err:
+        return err
+    try:
+        from api.financial import get_financial_config, AVAILABLE_SOURCES
+        config = get_financial_config()
+        return jsonResponse({
+            "symbols": config["symbols"],
+            "source": config["source"],
+            "availableSources": AVAILABLE_SOURCES,
+        })
+    except Exception as e:
+        logger.exception("getFinancialDefaultSymbols error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def putFinancialDefaultSymbols(event):
+    """PUT /admin/financial/default-symbols - Save admin default symbols and source."""
+    _, err = _requireFinancialAdmin(event)
+    if err:
+        return err
+    try:
+        body = event.get("body")
+        if body and isinstance(body, str):
+            body = json.loads(body)
+        else:
+            body = body or {}
+        symbols = body.get("symbols")
+        if not isinstance(symbols, list):
+            return jsonResponse({"error": "symbols must be an array"}, 400)
+        source = (body.get("source") or "yahoo").strip().lower()
+        if source not in ("yahoo", "alpha_vantage"):
+            source = "yahoo"
+        from api.financial import save_financial_config
+        save_financial_config(symbols, source)
+        return jsonResponse({
+            "symbols": [str(s).strip().upper() for s in symbols if str(s).strip()],
+            "source": source,
+        })
+    except Exception as e:
+        logger.exception("putFinancialDefaultSymbols error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
 
 
 def getInternetDashboardSites(event):
@@ -2465,6 +2602,26 @@ def _requireSquashAccess(event):
     return user, None
 
 
+def _requireFinancialAccess(event):
+    """Return (user, None) if user can access Financial, else (None, error_response)."""
+    user = getUserInfo(event)
+    if not user.get("userId"):
+        return None, jsonResponse({"error": "Unauthorized"}, 401)
+    if not _canAccessFinancial(user):
+        return None, jsonResponse({"error": "Forbidden: Financial access required"}, 403)
+    return user, None
+
+
+def _requireFinancialAdmin(event):
+    """Return (user, None) if user can admin Financial, else (None, error_response)."""
+    user = getUserInfo(event)
+    if not user.get("userId"):
+        return None, jsonResponse({"error": "Unauthorized"}, 401)
+    if not _canAccessFinancialAdmin(user):
+        return None, jsonResponse({"error": "Forbidden: Financial admin required"}, 403)
+    return user, None
+
+
 def _requireSquashModify(event):
     """Return (user, None) if user can modify Squash, else (None, error_response)."""
     user = getUserInfo(event)
@@ -3129,6 +3286,28 @@ def _canModifySquash(user):
         return False
     custom = _getUserCustomGroups(user["userId"])
     return "Squash" in custom
+
+
+def _canAccessFinancial(user):
+    """User can access Financial: SuperAdmin OR in Financial custom group."""
+    if not user.get("userId"):
+        return False
+    if "admin" in user.get("groups", []):
+        return True
+    custom = _getUserCustomGroups(user["userId"])
+    return "Financial" in custom
+
+
+def _canAccessFinancialAdmin(user):
+    """User can admin Financial: SuperAdmin OR (Manager AND in Financial group)."""
+    if not user.get("userId"):
+        return False
+    if "admin" in user.get("groups", []):
+        return True
+    if "manager" not in user.get("groups", []):
+        return False
+    custom = _getUserCustomGroups(user["userId"])
+    return "Financial" in custom
 
 
 def getUserGroups(event, username):

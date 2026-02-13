@@ -118,9 +118,28 @@ One item per user per site. Logged-in users write their own.
 
 - **Matches for a player:** Query `PK=SQUASH#PLAYER#\<playerId\>` where `SK begins_with MATCH#`.
 
+### 11. Financial user watchlist
+
+| PK                  | SK                   | Attributes                                      |
+|---------------------|----------------------|-------------------------------------------------|
+| USER#\<cognitoSub\> | FINANCIAL#WATCHLIST  | symbols (list of strings), updatedAt            |
+
+- **Get watchlist:** `GetItem(PK=USER#\<sub\>, SK=FINANCIAL#WATCHLIST)`.
+- **Save watchlist:** `PutItem` with symbols list.
+
+### 12. Financial config (admin defaults)
+
+| PK               | SK         | Attributes                                      |
+|------------------|------------|-------------------------------------------------|
+| FINANCIAL#CONFIG | DEFAULTS   | symbols (list), source (yahoo\|alpha_vantage), updatedAt |
+
+- **Get config:** `GetItem(PK=FINANCIAL#CONFIG, SK=DEFAULTS)`.
+- **Save config:** SuperAdmin or Manager in Financial group.
+
 ## Summary
 
 - **PK/SK:** Generic (USER#..., SITE#..., TAG#..., GROUP#..., SQUASH#PLAYER#..., SQUASH#MATCH#...).
 - **GSIs:** byEntity (list sites/groups/squash players/matches), byTag (sites by tag), byStars (ratings by 1–5), byGroup (users in custom group), bySquashDate (squash matches by date).
 - **Roles:** Admins create/update sites; any logged-in user creates/updates their own ratings and comments.
 - **Squash section:** Visible only to users in the Squash custom group or SuperAdmin. SuperAdmin and managers (when in Squash group) can add/edit/delete players and matches.
+- **Financial section:** Visible only to users in the Financial custom group or SuperAdmin. SuperAdmin and managers (when in Financial group) can manage default symbols and source. Stock quotes from Yahoo Finance or Alpha Vantage.

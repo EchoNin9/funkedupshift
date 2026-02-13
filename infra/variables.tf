@@ -95,3 +95,10 @@ variable "stagingSubdomain" {
   type        = string
   default     = "stage"
 }
+
+variable "alphaVantageApiKey" {
+  description = "Alpha Vantage API key for stock quotes (optional; Yahoo used if empty)."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
