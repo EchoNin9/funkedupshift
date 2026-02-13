@@ -53,6 +53,7 @@ const MemeBrowsePage: React.FC = () => {
   const canRate = canRateMemes(user);
   const canCreate = canCreateMemes(user);
   const canEditAny = canEditAnyMeme(user);
+  const showMyMemes = user && canCreateMemes(user);
   const canEditMeme = (m: MemeItem) => canEditAny || (canCreate && m.userId === user?.userId);
 
   const fetchWithAuth = useCallback(async (url: string, options?: RequestInit) => {
@@ -267,7 +268,6 @@ const MemeBrowsePage: React.FC = () => {
     }
   };
 
-  const showMyMemes = user && canCreateMemes(user);
   if (user && !canAccessMemes(user)) {
     return (
       <div className="space-y-6">
