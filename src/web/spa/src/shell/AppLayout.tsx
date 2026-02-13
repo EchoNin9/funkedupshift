@@ -2,7 +2,7 @@ import React from "react";
 import { Link, NavLink, Route, Routes, useNavigate } from "react-router-dom";
 import { Bars3Icon, ChevronDownIcon, ChevronRightIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { Dialog } from "@headlessui/react";
-import { useAuth, hasRole, canAccessSquash, canModifySquash, canAccessFinancial, canAccessFinancialAdmin, canAccessMemes } from "./AuthContext";
+import { useAuth, hasRole, canAccessSquash, canModifySquash, canAccessFinancial, canAccessFinancialAdmin, canAccessMemes, canCreateMemes } from "./AuthContext";
 import { useBranding } from "./BrandingContext";
 import HomePage from "../features/home/HomePage";
 import WebsitesPage from "../features/websites/WebsitesPage";
@@ -37,7 +37,7 @@ interface NavItem {
   to: string;
   section: "discover" | "squash" | "memes" | "financial" | "recommended" | "admin";
   minRole: "guest" | "user" | "manager" | "superadmin";
-  memesAccess?: boolean;
+  memesCreate?: boolean;
 }
 
 const navItems: NavItem[] = [
@@ -47,8 +47,8 @@ const navItems: NavItem[] = [
   { label: "Profile", to: "/profile", section: "discover", minRole: "user" },
   { label: "Squash", to: "/squash", section: "squash", minRole: "user" },
   { label: "Squash Admin", to: "/squash-admin", section: "squash", minRole: "manager" },
-  { label: "Memes", to: "/memes", section: "memes", minRole: "user", memesAccess: true },
-  { label: "Meme Generator", to: "/memes/create", section: "memes", minRole: "user", memesAccess: true },
+  { label: "Memes", to: "/memes", section: "memes", minRole: "guest" },
+  { label: "Meme Generator", to: "/memes/create", section: "memes", minRole: "user", memesCreate: true },
   { label: "Financial", to: "/financial", section: "financial", minRole: "user" },
   { label: "Financial Admin", to: "/admin/financial", section: "financial", minRole: "manager" },
   { label: "Highlights", to: "/recommended/highlights", section: "recommended", minRole: "guest" },
@@ -126,9 +126,13 @@ const AppLayout: React.FC = () => {
   const squashItems = navItems
     .filter((i) => i.section === "squash")
     .filter((i) => (i.to === "/squash" ? canAccessSquash(user) : canModifySquash(user)));
-  const memesItems = navItems
+  const   memesItems = navItems
     .filter((i) => i.section === "memes")
-    .filter((i) => hasRole(user ?? null, i.minRole) && (!i.memesAccess || canAccessMemes(user)));
+    .filter((i) => {
+      if (!hasRole(user ?? null, i.minRole)) return false;
+      if (i.memesCreate) return canCreateMemes(user);
+      return true;
+    });
   const financialItems = navItems
     .filter((i) => i.section === "financial")
     .filter((i) => hasRole(user ?? null, i.minRole))
@@ -615,7 +619,7 @@ const AppLayout: React.FC = () => {
                 Squash Admin
               </Link>
             )}
-            {canAccessMemes(user) && (
+            {(!user || canAccessMemes(user)) && (
               <Link to="/memes" className="hover:text-slate-300">
                 Memes
               </Link>

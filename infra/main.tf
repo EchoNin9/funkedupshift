@@ -1273,21 +1273,17 @@ resource "aws_apigatewayv2_route" "mediaCategoriesDelete" {
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
-# Memes section (Memes custom group or admin required)
+# Memes: GET /memes and GET /memes/tags are public (guests can view cache)
 resource "aws_apigatewayv2_route" "memesGet" {
-  api_id             = aws_apigatewayv2_api.main.id
-  route_key          = "GET /memes"
-  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
-  authorization_type = "JWT"
-  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+  api_id    = aws_apigatewayv2_api.main.id
+  route_key = "GET /memes"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
 }
 
 resource "aws_apigatewayv2_route" "memesTagsGet" {
-  api_id             = aws_apigatewayv2_api.main.id
-  route_key          = "GET /memes/tags"
-  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
-  authorization_type = "JWT"
-  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+  api_id    = aws_apigatewayv2_api.main.id
+  route_key = "GET /memes/tags"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
 }
 
 resource "aws_apigatewayv2_route" "memesPost" {

@@ -42,11 +42,28 @@ def _memes_user_event(path, method="GET", body=None):
     return _event(path, method, body, sub="memes-user-123", groups="user")
 
 
-def test_listMemes_requires_auth():
-    """GET /memes without auth returns 401."""
+@patch("api.memes.list_memes")
+def test_listMemes_guest_cache_returns_200(mock_list_memes):
+    """GET /memes without auth (cache-only) returns 200 for guests."""
+    from api.handler import handler
+    mock_list_memes.return_value = {"statusCode": 200, "body": '{"memes": []}'}
+    event = {
+        "rawPath": "/memes",
+        "queryStringParameters": {},
+        "requestContext": {"http": {"method": "GET", "path": "/memes"}},
+    }
+    result = handler(event, None)
+    assert result["statusCode"] == 200
+    body = json.loads(result["body"])
+    assert "memes" in body
+
+
+def test_listMemes_guest_mine_returns_401():
+    """GET /memes?mine=1 without auth returns 401."""
     from api.handler import handler
     event = {
         "rawPath": "/memes",
+        "queryStringParameters": {"mine": "1"},
         "requestContext": {"http": {"method": "GET", "path": "/memes"}},
     }
     result = handler(event, None)
@@ -54,10 +71,11 @@ def test_listMemes_requires_auth():
 
 
 @patch("api.handler._getUserCustomGroups", return_value=[])
-def test_listMemes_denied_without_memes_access(mock_custom_groups):
-    """GET /memes with user not in Memes group returns 403."""
+def test_listMemes_mine_denied_without_creator_access(mock_custom_groups):
+    """GET /memes?mine=1 with user not in Memes group returns 403."""
     from api.handler import handler
     event = _memes_user_event("/memes")
+    event["queryStringParameters"] = {"mine": "1"}
     result = handler(event, None)
     assert result["statusCode"] == 403
 
@@ -88,7 +106,7 @@ def test_listMemes_admin_can_access(mock_list_memes, mock_custom_groups):
     assert "memes" in body
 
 
-@patch("api.handler._getUserCustomGroups", return_value=["Memes"])
+@patch("api.memes._get_user_custom_groups", return_value=["Memes"])
 @patch("api.memes.TABLE_NAME", "test-table")
 @patch("api.memes.MEDIA_BUCKET", "test-bucket")
 def test_createMeme_requires_mediaKey(mock_custom_groups):
@@ -101,7 +119,7 @@ def test_createMeme_requires_mediaKey(mock_custom_groups):
     assert "mediakey" in body.get("error", "").lower()
 
 
-@patch("api.handler._getUserCustomGroups", return_value=["Memes"])
+@patch("api.memes._get_user_custom_groups", return_value=["Memes"])
 @patch("api.memes.create_meme")
 def test_createMeme_creates_meme(mock_create_meme, mock_custom_groups):
     """POST /memes with mediaKey creates meme."""

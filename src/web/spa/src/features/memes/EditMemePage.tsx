@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
-import { useAuth, hasRole, canAccessMemes } from "../../shell/AuthContext";
+import { useAuth, canCreateMemes, canEditAnyMeme } from "../../shell/AuthContext";
 import AddTagInput from "./AddTagInput";
 
 interface MemeItem {
@@ -40,6 +40,8 @@ const EditMemePage: React.FC = () => {
     return fetch(url, { ...options, headers: { ...options?.headers, Authorization: `Bearer ${token}` } });
   }, []);
 
+  const canEdit = !!(user && (canCreateMemes(user) || canEditAnyMeme(user)));
+
   useEffect(() => {
     const apiBase = getApiBaseUrl();
     if (!apiBase || !memeId) {
@@ -77,6 +79,11 @@ const EditMemePage: React.FC = () => {
     return () => { cancelled = true; };
   }, [memeId, fetchWithAuth]);
 
+  const initialIsPrivate = useRef<boolean | null>(null);
+  useEffect(() => {
+    if (item && initialIsPrivate.current === null) initialIsPrivate.current = item.isPrivate ?? false;
+  }, [item]);
+
   const handleSave = async () => {
     const apiBase = getApiBaseUrl();
     if (!apiBase || !item) return;
@@ -96,6 +103,15 @@ const EditMemePage: React.FC = () => {
         const errData = (await resp.json()) as { error?: string };
         throw new Error(errData.error || "Failed to save");
       }
+      const tagOnly = initialIsPrivate.current === (isPrivate ?? false);
+      try {
+        sessionStorage.setItem(
+          "memes_my_cache_invalidate",
+          JSON.stringify({ memeId: item.PK, tagOnly, tags })
+        );
+      } catch {
+        /* ignore */
+      }
       navigate(`/memes/${encodeURIComponent(item.PK)}`);
     } catch (e: any) {
       setError(e?.message ?? "Failed to save");
@@ -104,10 +120,7 @@ const EditMemePage: React.FC = () => {
     }
   };
 
-  const access = canAccessMemes(user);
-  const canEdit = !!user && (hasRole(user, "user") || hasRole(user, "manager") || hasRole(user, "superadmin"));
-
-  if (!user || !access) {
+  if (!user || !canEdit) {
     return (
       <div className="space-y-6">
         <Link to="/memes" className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-slate-200">
