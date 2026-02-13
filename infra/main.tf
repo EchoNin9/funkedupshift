@@ -942,7 +942,7 @@ resource "aws_apigatewayv2_api" "main" {
   cors_configuration {
     allow_origins      = ["*"]
     allow_methods      = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
-    allow_headers      = ["Authorization", "Content-Type", "X-Amz-Date", "X-Api-Key", "X-Amz-Security-Token"]
+    allow_headers      = ["Authorization", "Content-Type", "X-Amz-Date", "X-Api-Key", "X-Amz-Security-Token", "X-Impersonate-User", "X-Impersonate-Role"]
     expose_headers     = []
     allow_credentials  = false
   }
@@ -1078,6 +1078,31 @@ resource "aws_apigatewayv2_route" "sitesGenerateDescription" {
 resource "aws_apigatewayv2_route" "me" {
   api_id             = aws_apigatewayv2_api.main.id
   route_key          = "GET /me"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+# Self-service group membership (any logged-in user)
+resource "aws_apigatewayv2_route" "groupsList" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /groups"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "meGroupsJoin" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /me/groups"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "meGroupsLeave" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "DELETE /me/groups/{groupName}"
   target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
   authorization_type = "JWT"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
@@ -1273,11 +1298,19 @@ resource "aws_apigatewayv2_route" "mediaCategoriesDelete" {
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
-# Memes: GET /memes and GET /memes/tags are public (guests can view cache)
-resource "aws_apigatewayv2_route" "memesGet" {
+# Memes: GET /memes/cache is public (guests view cache); GET /memes requires JWT (logged-in search/mine)
+resource "aws_apigatewayv2_route" "memesCacheGet" {
   api_id    = aws_apigatewayv2_api.main.id
-  route_key = "GET /memes"
+  route_key = "GET /memes/cache"
   target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+}
+
+resource "aws_apigatewayv2_route" "memesGet" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /memes"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
 resource "aws_apigatewayv2_route" "memesTagsGet" {
@@ -1415,7 +1448,19 @@ resource "aws_apigatewayv2_route" "squashMatchesDelete" {
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
-# Financial section (Financial custom group required)
+# Financial section: config and quote are public (guests view); watchlist requires JWT
+resource "aws_apigatewayv2_route" "financialConfigGet" {
+  api_id    = aws_apigatewayv2_api.main.id
+  route_key = "GET /financial/config"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+}
+
+resource "aws_apigatewayv2_route" "financialQuoteGet" {
+  api_id    = aws_apigatewayv2_api.main.id
+  route_key = "GET /financial/quote"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+}
+
 resource "aws_apigatewayv2_route" "financialWatchlistGet" {
   api_id             = aws_apigatewayv2_api.main.id
   route_key          = "GET /financial/watchlist"
@@ -1427,22 +1472,6 @@ resource "aws_apigatewayv2_route" "financialWatchlistGet" {
 resource "aws_apigatewayv2_route" "financialWatchlistPut" {
   api_id             = aws_apigatewayv2_api.main.id
   route_key          = "PUT /financial/watchlist"
-  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
-  authorization_type = "JWT"
-  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
-}
-
-resource "aws_apigatewayv2_route" "financialQuoteGet" {
-  api_id             = aws_apigatewayv2_api.main.id
-  route_key          = "GET /financial/quote"
-  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
-  authorization_type = "JWT"
-  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
-}
-
-resource "aws_apigatewayv2_route" "financialConfigGet" {
-  api_id             = aws_apigatewayv2_api.main.id
-  route_key          = "GET /financial/config"
   target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
   authorization_type = "JWT"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
@@ -1532,6 +1561,39 @@ resource "aws_apigatewayv2_route" "adminGroupsPut" {
 resource "aws_apigatewayv2_route" "adminGroupsDelete" {
   api_id             = aws_apigatewayv2_api.main.id
   route_key          = "DELETE /admin/groups/{name}"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+# Admin roles (SuperAdmin only)
+resource "aws_apigatewayv2_route" "adminRolesGet" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /admin/roles"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "adminRolesPost" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /admin/roles"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "adminRolesPut" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "PUT /admin/roles/{name}"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "adminRolesDelete" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "DELETE /admin/roles/{name}"
   target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
   authorization_type = "JWT"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id

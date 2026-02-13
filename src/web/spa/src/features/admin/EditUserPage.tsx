@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 import { useAuth, hasRole } from "../../shell/AuthContext";
+import { fetchWithAuth } from "../../utils/api";
 
 const ROLE_DISPLAY: Record<string, string> = {
   admin: "SuperAdmin",
@@ -103,12 +104,9 @@ const EditUserPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
       const [groupsResp, allGroupsResp] = await Promise.all([
-        fetch(`${apiBase}/admin/users/${encodeURIComponent(username)}/groups`, {
-          headers: { Authorization: `Bearer ${token}` }
-        }),
-        fetch(`${apiBase}/admin/groups`, { headers: { Authorization: `Bearer ${token}` } })
+        fetchWithAuth(`${apiBase}/admin/users/${encodeURIComponent(username)}/groups`),
+        fetchWithAuth(`${apiBase}/admin/groups`)
       ]);
       if (!groupsResp.ok) {
         const d = await groupsResp.json().catch(() => ({}));
@@ -201,22 +199,28 @@ const EditUserPage: React.FC = () => {
     setIsSubmitting(true);
     setSaveError(null);
     try {
-      const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
-      const opts = { headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` } };
       const enc = encodeURIComponent;
 
       const promises: Promise<Response>[] = [];
       toAddCognito.forEach((g) =>
-        promises.push(fetch(`${apiBase}/admin/users/${enc(username)}/groups`, { method: "POST", ...opts, body: JSON.stringify({ groupName: g }) }))
+        promises.push(fetchWithAuth(`${apiBase}/admin/users/${enc(username)}/groups`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ groupName: g })
+        }))
       );
       toRemoveCognito.forEach((g) =>
-        promises.push(fetch(`${apiBase}/admin/users/${enc(username)}/groups/${enc(g)}`, { method: "DELETE", headers: opts.headers }))
+        promises.push(fetchWithAuth(`${apiBase}/admin/users/${enc(username)}/groups/${enc(g)}`, { method: "DELETE" }))
       );
       toAddCustom.forEach((g) =>
-        promises.push(fetch(`${apiBase}/admin/users/${enc(username)}/groups`, { method: "POST", ...opts, body: JSON.stringify({ groupName: g }) }))
+        promises.push(fetchWithAuth(`${apiBase}/admin/users/${enc(username)}/groups`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ groupName: g })
+        }))
       );
       toRemoveCustom.forEach((g) =>
-        promises.push(fetch(`${apiBase}/admin/users/${enc(username)}/groups/${enc(g)}`, { method: "DELETE", headers: opts.headers }))
+        promises.push(fetchWithAuth(`${apiBase}/admin/users/${enc(username)}/groups/${enc(g)}`, { method: "DELETE" }))
       );
 
       const results = await Promise.all(promises);
@@ -249,10 +253,8 @@ const EditUserPage: React.FC = () => {
     if (!w.auth?.getAccessToken) return;
     setDeleteInProgress(true);
     try {
-      const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
-      const resp = await fetch(`${apiBase}/admin/users/${encodeURIComponent(username)}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
+      const resp = await fetchWithAuth(`${apiBase}/admin/users/${encodeURIComponent(username)}`, {
+        method: "DELETE"
       });
       if (!resp.ok) {
         const d = await resp.json().catch(() => ({}));

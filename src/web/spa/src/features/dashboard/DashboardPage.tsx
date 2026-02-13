@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth, hasRole } from "../../shell/AuthContext";
+import { fetchWithAuthOptional } from "../../utils/api";
 
 const CACHE_KEY = "funkedupshift_internet_dashboard";
 const CACHE_TTL_MS = 5 * 60 * 1000;
@@ -69,7 +70,7 @@ const DashboardPage: React.FC = () => {
     setError(null);
 
     try {
-      const resp = await fetch(`${apiBase}/internet-dashboard`);
+      const resp = await fetchWithAuthOptional(`${apiBase}/internet-dashboard`);
       if (!resp.ok) {
         const txt = await resp.text();
         throw new Error(txt || `HTTP ${resp.status}`);

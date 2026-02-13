@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../shell/AuthContext";
+import { fetchWithAuth } from "../../utils/api";
 
 const ROLE_DISPLAY: Record<string, string> = {
   admin: "SuperAdmin",
@@ -74,8 +75,19 @@ interface ProfileData {
   };
 }
 
+interface GroupInfo {
+  name: string;
+  description?: string;
+  permissions?: string[];
+}
+
 const ProfilePage: React.FC = () => {
-  const { user } = useAuth();
+  const { user, refreshAuth } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const initialTab = tabParam === "groups" ? "groups" : "profile";
+  const [activeTab, setActiveTab] = useState<"profile" | "groups">(initialTab);
+
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [description, setDescription] = useState("");
   const [timezoneOffset, setTimezoneOffset] = useState(getStoredTz);
@@ -86,14 +98,25 @@ const ProfilePage: React.FC = () => {
   const [isAvatarUrlLoading, setIsAvatarUrlLoading] = useState(false);
   const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
 
+  // Groups tab state
+  const [availableGroups, setAvailableGroups] = useState<GroupInfo[]>([]);
+  const [groupsLoading, setGroupsLoading] = useState(false);
+  const [groupsMessage, setGroupsMessage] = useState<{ text: string; error: boolean } | null>(null);
+  const [togglingGroup, setTogglingGroup] = useState<string | null>(null);
+
   const apiBase = getApiBaseUrl();
 
-  const fetchWithAuth = async (url: string, options?: RequestInit) => {
-    const w = window as any;
-    if (!w.auth?.getAccessToken) throw new Error("Not signed in");
-    const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
-    const headers = { ...options?.headers, Authorization: `Bearer ${token}` };
-    return fetch(url, { ...options, headers });
+  useEffect(() => {
+    if (tabParam === "groups") setActiveTab("groups");
+    else setActiveTab("profile");
+  }, [tabParam]);
+
+  const setTab = (tab: "profile" | "groups") => {
+    setActiveTab(tab);
+    const next = new URLSearchParams(searchParams);
+    if (tab === "groups") next.set("tab", "groups");
+    else next.delete("tab");
+    setSearchParams(next);
   };
 
   useEffect(() => {
@@ -122,6 +145,67 @@ const ProfilePage: React.FC = () => {
       cancelled = true;
     };
   }, [user, apiBase]);
+
+  const loadGroups = React.useCallback(async () => {
+    if (!apiBase) return;
+    setGroupsLoading(true);
+    setGroupsMessage(null);
+    try {
+      const r = await fetchWithAuth(`${apiBase}/groups`);
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}));
+        throw new Error((d as { error?: string }).error || "Failed to load groups");
+      }
+      const data = (await r.json()) as { groups?: GroupInfo[] };
+      setAvailableGroups(data.groups ?? []);
+    } catch (e: unknown) {
+      setGroupsMessage({ text: `Failed: ${(e as Error)?.message ?? "Unknown"}`, error: true });
+    } finally {
+      setGroupsLoading(false);
+    }
+  }, [apiBase]);
+
+  useEffect(() => {
+    if (activeTab === "groups" && user && apiBase) loadGroups();
+  }, [activeTab, user, apiBase, loadGroups]);
+
+  const handleGroupToggle = async (groupName: string, isMember: boolean) => {
+    if (!apiBase) return;
+    setTogglingGroup(groupName);
+    setGroupsMessage(null);
+    try {
+      if (isMember) {
+        const r = await fetchWithAuth(`${apiBase}/me/groups/${encodeURIComponent(groupName)}`, { method: "DELETE" });
+        if (!r.ok) {
+          const d = await r.json().catch(() => ({}));
+          throw new Error((d as { error?: string }).error || "Failed to leave");
+        }
+        setProfile((p) =>
+          p ? { ...p, customGroups: (p.customGroups ?? []).filter((g) => g !== groupName) } : null
+        );
+        setGroupsMessage({ text: `Left ${groupName}.`, error: false });
+      } else {
+        const r = await fetchWithAuth(`${apiBase}/me/groups`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ groupName })
+        });
+        if (!r.ok) {
+          const d = await r.json().catch(() => ({}));
+          throw new Error((d as { error?: string }).error || "Failed to join");
+        }
+        setProfile((p) =>
+          p ? { ...p, customGroups: [...(p.customGroups ?? []), groupName] } : null
+        );
+        setGroupsMessage({ text: `Joined ${groupName}.`, error: false });
+      }
+      await refreshAuth();
+    } catch (e: unknown) {
+      setGroupsMessage({ text: `Error: ${(e as Error)?.message ?? "Unknown"}`, error: true });
+    } finally {
+      setTogglingGroup(null);
+    }
+  };
 
   const handleSave = async () => {
     if (!apiBase) return;
@@ -291,6 +375,74 @@ const ProfilePage: React.FC = () => {
         <h1 className="text-2xl font-semibold tracking-tight text-slate-50">My Profile</h1>
       </header>
 
+      <div className="flex gap-2 border-b border-slate-800 pb-2">
+        <button
+          type="button"
+          onClick={() => setTab("profile")}
+          className={`px-4 py-2 rounded-md text-sm font-medium ${activeTab === "profile" ? "bg-slate-800 text-slate-100" : "text-slate-400 hover:text-slate-200"}`}
+        >
+          Profile
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab("groups")}
+          className={`px-4 py-2 rounded-md text-sm font-medium ${activeTab === "groups" ? "bg-slate-800 text-slate-100" : "text-slate-400 hover:text-slate-200"}`}
+        >
+          Custom groups
+        </button>
+      </div>
+
+      {activeTab === "groups" && (
+        <div className="space-y-4">
+          <p className="text-sm text-slate-400">Add or remove yourself from custom groups. Changes take effect immediately.</p>
+          {groupsMessage && (
+            <div
+              className={`rounded-md px-3 py-2 text-sm ${
+                groupsMessage.error ? "border-red-500/60 bg-red-500/10 text-red-200" : "border-green-500/40 bg-green-500/10 text-green-200"
+              }`}
+            >
+              {groupsMessage.text}
+            </div>
+          )}
+          {groupsLoading ? (
+            <p className="text-sm text-slate-500">Loading groups…</p>
+          ) : availableGroups.length === 0 ? (
+            <p className="text-sm text-slate-500">No custom groups available. Admins can create groups in Membership.</p>
+          ) : (
+            <ul className="space-y-2">
+              {availableGroups.map((g) => {
+                const isMember = (profile?.customGroups ?? []).includes(g.name);
+                return (
+                  <li
+                    key={g.name}
+                    className="flex items-center justify-between rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2"
+                  >
+                    <div>
+                      <span className="font-medium text-slate-200">{g.name}</span>
+                      {g.description && <span className="text-slate-500 ml-2 text-sm">{g.description}</span>}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleGroupToggle(g.name, isMember)}
+                      disabled={togglingGroup === g.name}
+                      className={`rounded-md px-3 py-1.5 text-xs font-medium ${
+                        isMember
+                          ? "border border-amber-500/60 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20"
+                          : "border border-emerald-500/60 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20"
+                      } disabled:opacity-50`}
+                    >
+                      {togglingGroup === g.name ? "…" : isMember ? "Leave" : "Join"}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      )}
+
+      {activeTab === "profile" && (
+        <>
       <div className="space-y-2">
         <label className="block text-xs font-medium text-slate-400">Last login timezone</label>
         <select
@@ -464,6 +616,8 @@ const ProfilePage: React.FC = () => {
             </div>
           </section>
         </div>
+      )}
+        </>
       )}
     </div>
   );

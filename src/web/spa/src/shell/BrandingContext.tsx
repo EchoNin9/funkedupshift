@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { fetchWithAuthOptional } from "../utils/api";
 
 interface LogoMeta {
   url: string;
@@ -27,7 +28,7 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     let cancelled = false;
     (async () => {
       try {
-        const resp = await fetch(`${apiBase}/branding/logo`);
+        const resp = await fetchWithAuthOptional(`${apiBase}/branding/logo`);
         if (!resp.ok) return;
         const contentType = resp.headers.get("Content-Type") || "";
         if (!contentType.includes("application/json")) return;

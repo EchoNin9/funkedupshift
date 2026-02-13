@@ -130,6 +130,102 @@ def getUserInfo(event):
     }
 
 
+def _resolveImpersonation(event, real_user):
+    """If superadmin and X-Impersonate-* header set, return impersonated user dict. Else return None."""
+    if "admin" not in real_user.get("groups", []):
+        return None
+    headers = event.get("headers") or {}
+    headers_lower = {k.lower(): v for k, v in headers.items()}
+    impersonate_user = (headers_lower.get("x-impersonate-user") or "").strip()
+    impersonate_role = (headers_lower.get("x-impersonate-role") or "").strip()
+    if not impersonate_user and not impersonate_role:
+        return None
+    if impersonate_user and impersonate_role:
+        return None  # Only one at a time
+    if impersonate_user:
+        try:
+            import boto3
+            cognito = boto3.client("cognito-idp")
+            user_resp = cognito.admin_get_user(
+                UserPoolId=COGNITO_USER_POOL_ID,
+                Username=impersonate_user,
+            )
+            attrs = {a["Name"]: a["Value"] for a in user_resp.get("UserAttributes", [])}
+            sub = attrs.get("sub", "")
+            email = attrs.get("email", impersonate_user)
+            if not sub:
+                return None
+            grp_resp = cognito.admin_list_groups_for_user(
+                UserPoolId=COGNITO_USER_POOL_ID,
+                Username=impersonate_user,
+            )
+            cognito_groups = [g.get("GroupName", "") for g in grp_resp.get("Groups", []) if g.get("GroupName")]
+            if "admin" in cognito_groups:
+                return None  # Cannot impersonate superadmin
+            custom_groups = _getUserCustomGroups(sub)
+            return {
+                "userId": sub,
+                "email": email,
+                "groups": cognito_groups,
+                "groupsDisplay": [ROLE_DISPLAY_MAP.get(g, g) for g in cognito_groups],
+                "customGroups": custom_groups,
+                "impersonated": True,
+                "impersonatedAs": f"user:{email}",
+            }
+        except Exception as e:
+            logger.warning("impersonate user error: %s", e)
+            return None
+    if impersonate_role:
+        if not TABLE_NAME:
+            return None
+        try:
+            import boto3
+            dynamodb = boto3.client("dynamodb")
+            resp = dynamodb.get_item(
+                TableName=TABLE_NAME,
+                Key={"PK": {"S": f"ROLE#{impersonate_role}"}, "SK": {"S": "METADATA"}},
+            )
+            if "Item" not in resp:
+                return None
+            item = resp["Item"]
+            cognito_groups = [v.get("S", "") for v in item.get("cognitoGroups", {}).get("L", [])]
+            custom_groups = [v.get("S", "") for v in item.get("customGroups", {}).get("L", [])]
+            return {
+                "userId": f"role:{impersonate_role}",
+                "email": f"(role: {impersonate_role})",
+                "groups": cognito_groups,
+                "groupsDisplay": [ROLE_DISPLAY_MAP.get(g, g) for g in cognito_groups],
+                "customGroups": custom_groups,
+                "impersonated": True,
+                "impersonatedAs": f"role:{impersonate_role}",
+            }
+        except Exception as e:
+            logger.warning("impersonate role error: %s", e)
+            return None
+    return None
+
+
+def getEffectiveUserInfo(event):
+    """Get user info, applying impersonation when superadmin and X-Impersonate-* header is set."""
+    user = getUserInfo(event)
+    if not user.get("userId"):
+        return user
+    headers = event.get("headers") or {}
+    headers_lower = {k.lower(): v for k, v in headers.items()}
+    has_impersonation_header = bool(
+        (headers_lower.get("x-impersonate-user") or "").strip()
+        or (headers_lower.get("x-impersonate-role") or "").strip()
+    )
+    impersonated = _resolveImpersonation(event, user)
+    if impersonated:
+        return impersonated
+    if has_impersonation_header and "admin" in user.get("groups", []):
+        user["impersonationRejected"] = True
+    user_id = user.get("userId", "")
+    user["customGroups"] = _getUserCustomGroups(user_id)
+    return user
+
+
 def handler(event, context):
     """Route request by path; return JSON with CORS headers."""
     try:
@@ -177,6 +273,15 @@ def handler(event, context):
             return deleteSite(event)
         if method == "GET" and path == "/me":
             return getMe(event)
+        if method == "GET" and path == "/groups":
+            return listGroupsForSelfJoin(event)
+        if method == "POST" and path == "/me/groups":
+            return joinGroupSelf(event)
+        if method == "DELETE" and path.startswith("/me/groups/"):
+            path_params = event.get("pathParameters") or {}
+            group_name = path_params.get("groupName") or path.split("/me/groups/")[-1].strip("/")
+            if group_name:
+                return leaveGroupSelf(event, group_name)
         if method == "GET" and path == "/profile":
             return getProfile(event)
         if method == "PUT" and path == "/profile":
@@ -225,7 +330,9 @@ def handler(event, context):
             return updateMediaCategory(event)
         if method == "DELETE" and path == "/media-categories":
             return deleteMediaCategory(event)
-        # Memes section routes (Memes custom group or admin required)
+        # Memes section routes
+        if method == "GET" and path == "/memes/cache":
+            return listMemesCache(event)
         if method == "GET" and path == "/memes":
             return listMemes(event)
         if method == "GET" and path == "/memes/tags":
@@ -314,6 +421,18 @@ def handler(event, context):
             name = path_params.get("name") or path.split("/admin/groups/")[-1].strip("/")
             if name:
                 return deleteAdminGroup(event, name)
+        if method == "GET" and path == "/admin/roles":
+            return listAdminRoles(event)
+        if method == "POST" and path == "/admin/roles":
+            return createAdminRole(event)
+        if method == "PUT" and path.startswith("/admin/roles/"):
+            name = path_params.get("name") or path.split("/admin/roles/")[-1].strip("/")
+            if name:
+                return updateAdminRole(event, name)
+        if method == "DELETE" and path.startswith("/admin/roles/"):
+            name = path_params.get("name") or path.split("/admin/roles/")[-1].strip("/")
+            if name:
+                return deleteAdminRole(event, name)
         if method == "GET" and path == "/admin/internet-dashboard/sites":
             return getInternetDashboardSites(event)
         if method == "PUT" and path == "/admin/internet-dashboard/sites":
@@ -357,8 +476,8 @@ def getInternetDashboard(event):
 # ------------------------------------------------------------------------------
 
 def getFinancialWatchlist(event):
-    """GET /financial/watchlist - Return current user's watchlist symbols."""
-    user, err = _requireFinancialAccess(event)
+    """GET /financial/watchlist - Return current user's watchlist symbols (logged-in users only)."""
+    user, err = _requireAuth(event)
     if err:
         return err
     try:
@@ -371,8 +490,8 @@ def getFinancialWatchlist(event):
 
 
 def putFinancialWatchlist(event):
-    """PUT /financial/watchlist - Save current user's watchlist symbols."""
-    user, err = _requireFinancialAccess(event)
+    """PUT /financial/watchlist - Save current user's watchlist symbols (logged-in users only)."""
+    user, err = _requireAuth(event)
     if err:
         return err
     try:
@@ -393,10 +512,7 @@ def putFinancialWatchlist(event):
 
 
 def getFinancialQuote(event):
-    """GET /financial/quote?symbol=AAPL&source=yahoo - Fetch stock quote."""
-    user, err = _requireFinancialAccess(event)
-    if err:
-        return err
+    """GET /financial/quote?symbol=AAPL&source=yahoo - Fetch stock quote (public for guests)."""
     qs = event.get("queryStringParameters") or {}
     symbol = (qs.get("symbol") or "").strip()
     if not symbol:
@@ -416,10 +532,7 @@ def getFinancialQuote(event):
 
 
 def getFinancialConfig(event):
-    """GET /financial/config - Return default symbols and available sources (for new users)."""
-    user, err = _requireFinancialAccess(event)
-    if err:
-        return err
+    """GET /financial/config - Return default symbols and available sources (public for guests)."""
     try:
         from api.financial import get_financial_config, AVAILABLE_SOURCES
         config = get_financial_config()
@@ -431,8 +544,8 @@ def getFinancialConfig(event):
 
 
 def getFinancialDefaultSymbols(event):
-    """GET /admin/financial/default-symbols - Return admin default symbols and source."""
-    _, err = _requireFinancialAdmin(event)
+    """GET /admin/financial/default-symbols - Return admin default symbols and source (SuperAdmin only)."""
+    _, err = _requireAdmin(event)
     if err:
         return err
     try:
@@ -449,8 +562,8 @@ def getFinancialDefaultSymbols(event):
 
 
 def putFinancialDefaultSymbols(event):
-    """PUT /admin/financial/default-symbols - Save admin default symbols and source."""
-    _, err = _requireFinancialAdmin(event)
+    """PUT /admin/financial/default-symbols - Save admin default symbols and source (SuperAdmin only)."""
+    _, err = _requireAdmin(event)
     if err:
         return err
     try:
@@ -755,7 +868,7 @@ def listSites(event, forceAll=False):
 
         # Limit: forceAll (GET /sites/all with JWT) = admin only, no limit; else limit 100
         if forceAll:
-            user = getUserInfo(event)
+            user = getEffectiveUserInfo(event)
             if not user.get("userId"):
                 return jsonResponse({"error": "Unauthorized"}, 401)
             if "admin" not in user.get("groups", []):
@@ -1214,46 +1327,19 @@ def importLogoFromUrl(event):
 
 
 def getMe(event):
-    """Return current user info (requires auth)."""
-    # #region agent log
-    import json
-    import os
-    try:
-        with open('/Users/adam/Github/EchoNin9/funkedupshift/.cursor/debug.log', 'a') as f:
-            f.write(json.dumps({"id":"log_getme_entry","timestamp":int(__import__('time').time()*1000),"location":"handler.py:683","message":"getMe called","data":{"userId":event.get("requestContext",{}).get("authorizer",{}).get("jwt",{}).get("claims",{}).get("sub","")},"runId":"run1","hypothesisId":"A"}) + '\n')
-    except: pass
-    # #endregion
-    user = getUserInfo(event)
+    """Return current user info (requires auth). Supports impersonation via X-Impersonate-User or X-Impersonate-Role."""
+    user = getEffectiveUserInfo(event)
     if not user.get("userId"):
         return jsonResponse({"error": "Unauthorized"}, 401)
-    # #region agent log
-    try:
-        with open('/Users/adam/Github/EchoNin9/funkedupshift/.cursor/debug.log', 'a') as f:
-            f.write(json.dumps({"id":"log_getme_before_custom","timestamp":int(__import__('time').time()*1000),"location":"handler.py:689","message":"getMe before customGroups","data":{"userId":user.get("userId"),"groups":user.get("groups",[]),"hasCustomGroups":False},"runId":"run1","hypothesisId":"A"}) + '\n')
-    except: pass
-    # #endregion
-    user_id = user.get("userId", "")
-    custom_groups = _getUserCustomGroups(user_id)
-    # #region agent log
-    try:
-        with open('/Users/adam/Github/EchoNin9/funkedupshift/.cursor/debug.log', 'a') as f:
-            f.write(json.dumps({"id":"log_getme_after_custom","timestamp":int(__import__('time').time()*1000),"location":"handler.py:692","message":"getMe after customGroups","data":{"userId":user_id,"customGroups":custom_groups,"squashInGroups":"Squash" in custom_groups},"runId":"run1","hypothesisId":"A"}) + '\n')
-    except: pass
-    # #endregion
-    user["customGroups"] = custom_groups
-    # #region agent log
-    try:
-        with open('/Users/adam/Github/EchoNin9/funkedupshift/.cursor/debug.log', 'a') as f:
-            f.write(json.dumps({"id":"log_getme_response","timestamp":int(__import__('time').time()*1000),"location":"handler.py:695","message":"getMe response","data":{"userId":user.get("userId"),"groups":user.get("groups",[]),"customGroups":user.get("customGroups",[])},"runId":"run1","hypothesisId":"A"}) + '\n')
-    except: pass
-    # #endregion
-    _recordLastLogin(event, user.get("userId", ""))
+    real_user_id = getEffectiveUserInfo(event).get("userId", "")
+    if real_user_id and not user.get("impersonated"):
+        _recordLastLogin(event, real_user_id)
     return jsonResponse(user)
 
 
 def getProfile(event):
     """GET /profile - Return current user's full profile (auth required)."""
-    user = getUserInfo(event)
+    user = getEffectiveUserInfo(event)
     if not user.get("userId"):
         return jsonResponse({"error": "Unauthorized"}, 401)
     user_id = user.get("userId", "")
@@ -1313,7 +1399,7 @@ def getProfile(event):
 
 def updateProfile(event):
     """PUT /profile - Update current user's profile (description, avatarKey)."""
-    user = getUserInfo(event)
+    user = getEffectiveUserInfo(event)
     if not user.get("userId"):
         return jsonResponse({"error": "Unauthorized"}, 401)
     if not TABLE_NAME:
@@ -1363,9 +1449,104 @@ def updateProfile(event):
         return jsonResponse({"error": str(e)}, 500)
 
 
+def listGroupsForSelfJoin(event):
+    """GET /groups - List custom groups for self-join (any logged-in user)."""
+    user, err = _requireAuth(event)
+    if err:
+        return err
+    if not TABLE_NAME:
+        return jsonResponse({"groups": [], "error": "TABLE_NAME not set"}, 200)
+    try:
+        import boto3
+        dynamodb = boto3.client("dynamodb")
+        result = dynamodb.query(
+            TableName=TABLE_NAME,
+            IndexName="byEntity",
+            KeyConditionExpression="entityType = :et",
+            ExpressionAttributeValues={":et": {"S": "GROUP"}},
+        )
+        groups = []
+        for item in result.get("Items", []):
+            g = _dynamoItemToDict(item)
+            g["name"] = g.get("name") or g.get("PK", "").replace("GROUP#", "")
+            groups.append(g)
+        groups.sort(key=lambda x: (x.get("name") or "").lower())
+        return jsonResponse({"groups": groups})
+    except Exception as e:
+        logger.exception("listGroupsForSelfJoin error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def joinGroupSelf(event):
+    """POST /me/groups - Add current user to custom group (self-service)."""
+    user, err = _requireAuth(event)
+    if err:
+        return err
+    if not TABLE_NAME:
+        return jsonResponse({"error": "TABLE_NAME not set"}, 500)
+    try:
+        import boto3
+        import re
+        from datetime import datetime
+        body = json.loads(event.get("body", "{}"))
+        group_name = (body.get("groupName") or "").strip()
+        if not group_name:
+            return jsonResponse({"error": "groupName is required"}, 400)
+        if not re.match(r"^[a-zA-Z0-9_-]+$", group_name):
+            return jsonResponse({"error": "groupName must be alphanumeric, underscore, or hyphen"}, 400)
+        user_id = user.get("userId", "")
+        dynamodb = boto3.client("dynamodb")
+        group_check = dynamodb.get_item(
+            TableName=TABLE_NAME,
+            Key={"PK": {"S": f"GROUP#{group_name}"}, "SK": {"S": "METADATA"}},
+        )
+        if "Item" not in group_check:
+            return jsonResponse({"error": f"Custom group '{group_name}' not found"}, 404)
+        now = datetime.utcnow().isoformat() + "Z"
+        dynamodb.put_item(
+            TableName=TABLE_NAME,
+            Item={
+                "PK": {"S": f"USER#{user_id}"},
+                "SK": {"S": f"MEMBERSHIP#{group_name}"},
+                "groupName": {"S": group_name},
+                "userId": {"S": user_id},
+                "addedAt": {"S": now},
+                "addedBy": {"S": user_id},
+            },
+        )
+        return jsonResponse({"groupName": group_name, "added": True}, 200)
+    except Exception as e:
+        logger.exception("joinGroupSelf error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def leaveGroupSelf(event, group_name):
+    """DELETE /me/groups/{groupName} - Remove current user from custom group (self-service)."""
+    user, err = _requireAuth(event)
+    if err:
+        return err
+    if not TABLE_NAME:
+        return jsonResponse({"error": "TABLE_NAME not set"}, 500)
+    try:
+        import boto3
+        user_id = user.get("userId", "")
+        dynamodb = boto3.client("dynamodb")
+        dynamodb.delete_item(
+            TableName=TABLE_NAME,
+            Key={
+                "PK": {"S": f"USER#{user_id}"},
+                "SK": {"S": f"MEMBERSHIP#{group_name}"},
+            },
+        )
+        return jsonResponse({"groupName": group_name, "removed": True}, 200)
+    except Exception as e:
+        logger.exception("leaveGroupSelf error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
 def getProfileAvatarUpload(event):
     """POST /profile/avatar-upload - Presigned PUT URL for profile avatar (any logged-in user)."""
-    user = getUserInfo(event)
+    user = getEffectiveUserInfo(event)
     if not user.get("userId"):
         return jsonResponse({"error": "Unauthorized"}, 401)
     if not MEDIA_BUCKET:
@@ -1402,7 +1583,7 @@ def getProfileAvatarUpload(event):
 
 def importProfileAvatarFromUrl(event):
     """Download image from URL, validate dimensions (min 48x48), upload to S3 (any logged-in user)."""
-    user = getUserInfo(event)
+    user = getEffectiveUserInfo(event)
     if not user.get("userId"):
         return jsonResponse({"error": "Unauthorized"}, 401)
     if not MEDIA_BUCKET:
@@ -1472,7 +1653,7 @@ def importProfileAvatarFromUrl(event):
 
 def deleteProfileAvatar(event):
     """DELETE /profile/avatar - Remove avatar from profile (any logged-in user)."""
-    user = getUserInfo(event)
+    user = getEffectiveUserInfo(event)
     if not user.get("userId"):
         return jsonResponse({"error": "Unauthorized"}, 401)
     if not TABLE_NAME or not MEDIA_BUCKET:
@@ -1546,7 +1727,7 @@ def getBrandingLogo(event):
 
 def postBrandingLogoUpload(event):
     """POST /branding/logo - Admin-only: presigned PUT URL + persist logo metadata."""
-    user = getUserInfo(event)
+    user = getEffectiveUserInfo(event)
     if not user.get("userId"):
         return jsonResponse({"error": "Unauthorized"}, 401)
     if "admin" not in user.get("groups", []):
@@ -1615,7 +1796,7 @@ def postBrandingLogoUpload(event):
 
 def getStar(event):
     """GET /stars?siteId=SITE#id - Return current user's star rating for a site (auth required)."""
-    user = getUserInfo(event)
+    user = getEffectiveUserInfo(event)
     user_id = user.get("userId")
     if not user_id:
         return jsonResponse({"error": "Unauthorized"}, 401)
@@ -1643,7 +1824,7 @@ def getStar(event):
 
 def setStar(event):
     """Set a 1-5 star rating for a site for the current user."""
-    user = getUserInfo(event)
+    user = getEffectiveUserInfo(event)
     user_id = user.get("userId")
     if not user_id:
         return jsonResponse({"error": "Unauthorized"}, 401)
@@ -1756,7 +1937,7 @@ def setStar(event):
 
 def _requireAdmin(event):
     """Return (user, None) if admin, else (None, error_response)."""
-    user = getUserInfo(event)
+    user = getEffectiveUserInfo(event)
     if not user.get("userId"):
         return None, jsonResponse({"error": "Unauthorized"}, 401)
     if "admin" not in user.get("groups", []):
@@ -1771,7 +1952,7 @@ def _requireSuperAdmin(event):
 
 def _requireManagerOrAdmin(event):
     """Return (user, None) if admin or manager, else (None, error_response)."""
-    user = getUserInfo(event)
+    user = getEffectiveUserInfo(event)
     if not user.get("userId"):
         return None, jsonResponse({"error": "Unauthorized"}, 401)
     groups = user.get("groups", [])
@@ -2032,7 +2213,7 @@ def listMedia(event, forceAll=False):
             return jsonResponse({"media": m})
 
         if forceAll:
-            user = getUserInfo(event)
+            user = getEffectiveUserInfo(event)
             if not user.get("userId"):
                 return jsonResponse({"error": "Unauthorized"}, 401)
             if "admin" not in user.get("groups", []):
@@ -2396,7 +2577,7 @@ def postMediaRegenerateThumbnail(event):
 
 def setMediaStar(event):
     """Set 1-5 star rating for media (auth required)."""
-    user = getUserInfo(event)
+    user = getEffectiveUserInfo(event)
     user_id = user.get("userId")
     if not user_id:
         return jsonResponse({"error": "Unauthorized"}, 401)
@@ -2610,21 +2791,30 @@ def deleteMediaCategory(event):
 
 
 # ------------------------------------------------------------------------------
-# Memes section (Memes custom group or admin required)
+# Memes section
 # ------------------------------------------------------------------------------
 
+def listMemesCache(event):
+    """GET /memes/cache - Public cache-only view for guests. No auth required."""
+    user = getEffectiveUserInfo(event)
+    qs = event.get("queryStringParameters") or {}
+    single_id = (qs.get("id") or "").strip()
+    search_param = bool((qs.get("q") or "").strip() or (qs.get("tagIds") or "").strip())
+    mine_param = (qs.get("mine") or "").strip().lower() in ("1", "true", "yes")
+    if search_param or mine_param:
+        return jsonResponse({"error": "Unauthorized"}, 401)
+    from api.memes import list_memes
+    return list_memes(event, user or {}, jsonResponse)
+
+
 def listMemes(event):
-    """GET /memes - List memes. Guests: cache-only. Logged-in: cache + search. Mine: user+memes only."""
-    user = getUserInfo(event)
+    """GET /memes - List memes (JWT required). Cache, search, mine for logged-in users."""
+    user, err = _requireAuth(event)
+    if err:
+        return err
     qs = event.get("queryStringParameters") or {}
     mine_param = (qs.get("mine") or "").strip().lower() in ("1", "true", "yes")
     search_param = bool((qs.get("q") or "").strip() or (qs.get("tagIds") or "").strip())
-
-    if not user.get("userId"):
-        if mine_param or search_param:
-            return jsonResponse({"error": "Unauthorized"}, 401)
-        from api.memes import list_memes
-        return list_memes(event, user, jsonResponse)
 
     if mine_param:
         from api.memes import can_create_memes
@@ -2646,7 +2836,7 @@ def listMemeTags(event):
 
 def _requireAuth(event):
     """Return (user, None) if logged in, else (None, error_response)."""
-    user = getUserInfo(event)
+    user = getEffectiveUserInfo(event)
     if not user.get("userId"):
         return None, jsonResponse({"error": "Unauthorized"}, 401)
     return user, None
@@ -2756,7 +2946,7 @@ def setMemeStar(event):
 
 def _requireSquashAccess(event):
     """Return (user, None) if user can view Squash, else (None, error_response)."""
-    user = getUserInfo(event)
+    user = getEffectiveUserInfo(event)
     if not user.get("userId"):
         return None, jsonResponse({"error": "Unauthorized"}, 401)
     if not _canAccessSquash(user):
@@ -2766,7 +2956,7 @@ def _requireSquashAccess(event):
 
 def _requireFinancialAccess(event):
     """Return (user, None) if user can access Financial, else (None, error_response)."""
-    user = getUserInfo(event)
+    user = getEffectiveUserInfo(event)
     if not user.get("userId"):
         return None, jsonResponse({"error": "Unauthorized"}, 401)
     if not _canAccessFinancial(user):
@@ -2776,7 +2966,7 @@ def _requireFinancialAccess(event):
 
 def _requireFinancialAdmin(event):
     """Return (user, None) if user can admin Financial, else (None, error_response)."""
-    user = getUserInfo(event)
+    user = getEffectiveUserInfo(event)
     if not user.get("userId"):
         return None, jsonResponse({"error": "Unauthorized"}, 401)
     if not _canAccessFinancialAdmin(user):
@@ -2796,7 +2986,7 @@ def _canAccessMemes(user):
 
 def _requireMemesAccess(event):
     """Return (user, None) if user can access Memes, else (None, error_response)."""
-    user = getUserInfo(event)
+    user = getEffectiveUserInfo(event)
     if not user.get("userId"):
         return None, jsonResponse({"error": "Unauthorized"}, 401)
     if not _canAccessMemes(user):
@@ -2806,7 +2996,7 @@ def _requireMemesAccess(event):
 
 def _requireSquashModify(event):
     """Return (user, None) if user can modify Squash, else (None, error_response)."""
-    user = getUserInfo(event)
+    user = getEffectiveUserInfo(event)
     if not user.get("userId"):
         return None, jsonResponse({"error": "Unauthorized"}, 401)
     if not _canModifySquash(user):
@@ -3471,25 +3661,15 @@ def _canModifySquash(user):
 
 
 def _canAccessFinancial(user):
-    """User can access Financial: SuperAdmin OR in Financial custom group."""
-    if not user.get("userId"):
-        return False
-    if "admin" in user.get("groups", []):
-        return True
-    custom = _getUserCustomGroups(user["userId"])
-    return "Financial" in custom
+    """Financial view is public (guests, users, managers, superadmins). Kept for backward compat."""
+    return True
 
 
 def _canAccessFinancialAdmin(user):
-    """User can admin Financial: SuperAdmin OR (Manager AND in Financial group)."""
+    """User can admin Financial: SuperAdmin only."""
     if not user.get("userId"):
         return False
-    if "admin" in user.get("groups", []):
-        return True
-    if "manager" not in user.get("groups", []):
-        return False
-    custom = _getUserCustomGroups(user["userId"])
-    return "Financial" in custom
+    return "admin" in user.get("groups", [])
 
 
 def getUserGroups(event, username):
@@ -3834,4 +4014,145 @@ def deleteAdminGroup(event, name):
         return jsonResponse({"name": name, "deleted": True}, 200)
     except Exception as e:
         logger.exception("deleteAdminGroup error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
+# ------------------------------------------------------------------------------
+# Admin roles (SuperAdmin only): named combinations of cognito + custom groups
+# ------------------------------------------------------------------------------
+
+def listAdminRoles(event):
+    """GET /admin/roles - List defined roles (SuperAdmin only)."""
+    _, err = _requireSuperAdmin(event)
+    if err:
+        return err
+    if not TABLE_NAME:
+        return jsonResponse({"roles": [], "error": "TABLE_NAME not set"}, 200)
+    try:
+        import boto3
+        dynamodb = boto3.client("dynamodb")
+        result = dynamodb.query(
+            TableName=TABLE_NAME,
+            IndexName="byEntity",
+            KeyConditionExpression="entityType = :et",
+            ExpressionAttributeValues={":et": {"S": "ROLE"}},
+        )
+        roles = []
+        for item in result.get("Items", []):
+            r = _dynamoItemToDict(item)
+            r["name"] = r.get("name") or r.get("PK", "").replace("ROLE#", "")
+            roles.append(r)
+        roles.sort(key=lambda x: (x.get("name") or "").lower())
+        return jsonResponse({"roles": roles})
+    except Exception as e:
+        logger.exception("listAdminRoles error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def createAdminRole(event):
+    """POST /admin/roles - Create a named role (SuperAdmin only)."""
+    _, err = _requireSuperAdmin(event)
+    if err:
+        return err
+    if not TABLE_NAME:
+        return jsonResponse({"error": "TABLE_NAME not set"}, 500)
+    try:
+        import boto3
+        import re
+        from datetime import datetime
+        body = json.loads(event.get("body", "{}"))
+        name = (body.get("name") or "").strip()
+        if not name:
+            return jsonResponse({"error": "name is required"}, 400)
+        if not re.match(r"^[a-zA-Z0-9_-]+$", name):
+            return jsonResponse({"error": "name must be alphanumeric, underscore, or hyphen"}, 400)
+        cognito_groups = body.get("cognitoGroups", [])
+        custom_groups = body.get("customGroups", [])
+        if not isinstance(cognito_groups, list):
+            cognito_groups = [cognito_groups] if cognito_groups else []
+        if not isinstance(custom_groups, list):
+            custom_groups = [custom_groups] if custom_groups else []
+        cognito_groups = [str(g).strip() for g in cognito_groups if str(g).strip()]
+        custom_groups = [str(g).strip() for g in custom_groups if str(g).strip()]
+        now = datetime.utcnow().isoformat() + "Z"
+        pk = f"ROLE#{name}"
+        dynamodb = boto3.client("dynamodb")
+        dynamodb.put_item(
+            TableName=TABLE_NAME,
+            Item={
+                "PK": {"S": pk},
+                "SK": {"S": "METADATA"},
+                "name": {"S": name},
+                "cognitoGroups": {"L": [{"S": g} for g in cognito_groups]},
+                "customGroups": {"L": [{"S": g} for g in custom_groups]},
+                "entityType": {"S": "ROLE"},
+                "entitySk": {"S": pk},
+                "createdAt": {"S": now},
+                "updatedAt": {"S": now},
+            },
+        )
+        return jsonResponse({"name": name, "cognitoGroups": cognito_groups, "customGroups": custom_groups}, 201)
+    except Exception as e:
+        logger.exception("createAdminRole error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def updateAdminRole(event, name):
+    """PUT /admin/roles/{name} - Update a role (SuperAdmin only)."""
+    _, err = _requireSuperAdmin(event)
+    if err:
+        return err
+    if not TABLE_NAME:
+        return jsonResponse({"error": "TABLE_NAME not set"}, 500)
+    try:
+        import boto3
+        from datetime import datetime
+        body = json.loads(event.get("body", "{}"))
+        cognito_groups = body.get("cognitoGroups")
+        custom_groups = body.get("customGroups")
+        now = datetime.utcnow().isoformat() + "Z"
+        pk = f"ROLE#{name}"
+        update_expr = ["updatedAt = :now"]
+        values = {":now": {"S": now}}
+        if cognito_groups is not None:
+            cg = cognito_groups if isinstance(cognito_groups, list) else []
+            cg = [str(g).strip() for g in cg if str(g).strip()]
+            update_expr.append("cognitoGroups = :cg")
+            values[":cg"] = {"L": [{"S": g} for g in cg]}
+        if custom_groups is not None:
+            cug = custom_groups if isinstance(custom_groups, list) else []
+            cug = [str(g).strip() for g in cug if str(g).strip()]
+            update_expr.append("customGroups = :cug")
+            values[":cug"] = {"L": [{"S": g} for g in cug]}
+        dynamodb = boto3.client("dynamodb")
+        dynamodb.update_item(
+            TableName=TABLE_NAME,
+            Key={"PK": {"S": pk}, "SK": {"S": "METADATA"}},
+            UpdateExpression="SET " + ", ".join(update_expr),
+            ExpressionAttributeValues=values,
+        )
+        return jsonResponse({"name": name, "updated": True}, 200)
+    except Exception as e:
+        logger.exception("updateAdminRole error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def deleteAdminRole(event, name):
+    """DELETE /admin/roles/{name} - Delete a role (SuperAdmin only)."""
+    _, err = _requireSuperAdmin(event)
+    if err:
+        return err
+    if not TABLE_NAME:
+        return jsonResponse({"error": "TABLE_NAME not set"}, 500)
+    try:
+        import boto3
+        dynamodb = boto3.client("dynamodb")
+        pk = f"ROLE#{name}"
+        dynamodb.delete_item(
+            TableName=TABLE_NAME,
+            Key={"PK": {"S": pk}, "SK": {"S": "METADATA"}},
+        )
+        return jsonResponse({"name": name, "deleted": True}, 200)
+    except Exception as e:
+        logger.exception("deleteAdminRole error")
         return jsonResponse({"error": str(e)}, 500)

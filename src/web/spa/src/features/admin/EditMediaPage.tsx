@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 import { useAuth, hasRole } from "../../shell/AuthContext";
+import { fetchWithAuth } from "../../utils/api";
 
 function getApiBaseUrl(): string | null {
   if (typeof window === "undefined") return null;
@@ -58,20 +59,15 @@ const EditMediaPage: React.FC = () => {
     }
     let cancelled = false;
     (async () => {
-      const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
-      if (!token || cancelled) return;
-      const mediaResp = await fetch(`${apiBase}/media?id=${encodeURIComponent(mediaId)}`);
+      try {
+        const mediaResp = await fetchWithAuth(`${apiBase}/media?id=${encodeURIComponent(mediaId)}`);
       if (mediaResp.status === 404 || !mediaResp.ok) {
         if (!cancelled) setError("Media not found.");
-        setLoading(false);
         return;
       }
       const mediaData = (await mediaResp.json()) as { media?: Record<string, unknown> | Record<string, unknown>[] };
       const item = Array.isArray(mediaData.media) ? mediaData.media[0] : mediaData.media;
-      if (cancelled || !item) {
-        setLoading(false);
-        return;
-      }
+      if (cancelled || !item) return;
       const rec = item as Record<string, unknown>;
       setTitle((rec.title as string) ?? "");
       setDescription((rec.description as string) ?? "");
@@ -79,12 +75,16 @@ const EditMediaPage: React.FC = () => {
       setThumbnailUrl((rec.thumbnailUrl as string) || null);
       setMediaType((rec.mediaType as string) || "image");
       setSelectedCategoryIds(Array.isArray(rec.categoryIds) ? (rec.categoryIds as string[]) : []);
-      const catResp = await fetch(`${apiBase}/media-categories`, { headers: { Authorization: `Bearer ${token}` } });
+      const catResp = await fetchWithAuth(`${apiBase}/media-categories`);
       if (catResp.ok && !cancelled) {
         const catData = (await catResp.json()) as { categories?: { PK?: string; id?: string; name?: string }[] };
         setCategories((catData.categories ?? []).map((c) => ({ id: c.PK || c.id || "", name: c.name || c.PK || "" })));
       }
-      if (!cancelled) setLoading(false);
+      } catch (e: unknown) {
+        if (!cancelled) setError((e as Error)?.message ?? "Failed to load.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     })();
     return () => {
       cancelled = true;
@@ -124,7 +124,7 @@ const EditMediaPage: React.FC = () => {
     setMessage(null);
     try {
       const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
-      const resp = await fetch(`${apiBase}/media`, {
+      const resp = await fetchWithAuth(`${apiBase}/media`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
@@ -160,7 +160,7 @@ const EditMediaPage: React.FC = () => {
     setMessage(null);
     try {
       const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
-      const uploadResp = await fetch(`${apiBase}/media/thumbnail-upload`, {
+      const uploadResp = await fetchWithAuth(`${apiBase}/media/thumbnail-upload`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ mediaId, contentType: file.type || "image/png" })
@@ -173,13 +173,13 @@ const EditMediaPage: React.FC = () => {
         body: file
       });
       if (!putResp.ok) throw new Error("File upload failed");
-      const updateResp = await fetch(`${apiBase}/media`, {
+      const updateResp = await fetchWithAuth(`${apiBase}/media`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ id: mediaId, thumbnailKey: key })
       });
       if (!updateResp.ok) throw new Error(await updateResp.text());
-      const refreshResp = await fetch(`${apiBase}/media?id=${encodeURIComponent(mediaId)}`);
+      const refreshResp = await fetchWithAuth(`${apiBase}/media?id=${encodeURIComponent(mediaId)}`);
       if (refreshResp.ok) {
         const d = (await refreshResp.json()) as { media?: { thumbnailUrl?: string } };
         const m = Array.isArray(d.media) ? d.media[0] : d.media;
@@ -206,7 +206,7 @@ const EditMediaPage: React.FC = () => {
     setMessage(null);
     try {
       const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
-      const resp = await fetch(`${apiBase}/media`, {
+      const resp = await fetchWithAuth(`${apiBase}/media`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ id: mediaId, deleteThumbnail: true })
@@ -232,7 +232,7 @@ const EditMediaPage: React.FC = () => {
     setMessage(null);
     try {
       const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
-      const resp = await fetch(`${apiBase}/media/regenerate-thumbnail`, {
+      const resp = await fetchWithAuth(`${apiBase}/media/regenerate-thumbnail`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ mediaId })
@@ -242,7 +242,7 @@ const EditMediaPage: React.FC = () => {
       const pollForThumbnail = async (attempt: number) => {
         if (attempt > 6) return;
         await new Promise((r) => setTimeout(r, 10000));
-        const refresh = await fetch(`${apiBase}/media?id=${encodeURIComponent(mediaId)}`);
+        const refresh = await fetchWithAuth(`${apiBase}/media?id=${encodeURIComponent(mediaId)}`);
         if (refresh.ok) {
           const d = (await refresh.json()) as { media?: { thumbnailUrl?: string } };
           const m = Array.isArray(d.media) ? d.media[0] : d.media;
@@ -273,7 +273,7 @@ const EditMediaPage: React.FC = () => {
     setError(null);
     try {
       const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
-      const resp = await fetch(`${apiBase}/media?id=${encodeURIComponent(mediaId)}`, {
+      const resp = await fetchWithAuth(`${apiBase}/media?id=${encodeURIComponent(mediaId)}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` }
       });

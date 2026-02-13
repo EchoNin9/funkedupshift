@@ -53,18 +53,19 @@ def test_getFinancialWatchlist_requires_auth():
     assert result["statusCode"] == 401
 
 
-@patch("api.handler._getUserCustomGroups", return_value=[])
-def test_getFinancialWatchlist_denied_without_financial_access(mock_custom_groups):
-    """GET /financial/watchlist with user not in Financial group returns 403."""
+@patch("api.financial.get_user_watchlist", return_value=["AAPL", "GOOGL"])
+def test_getFinancialWatchlist_user_can_access(mock_watchlist):
+    """GET /financial/watchlist as any logged-in user can access."""
     from api.handler import handler
     event = _event("/financial/watchlist")
     result = handler(event, None)
-    assert result["statusCode"] == 403
+    assert result["statusCode"] == 200
+    body = json.loads(result["body"])
+    assert body["symbols"] == ["AAPL", "GOOGL"]
 
 
-@patch("api.handler._getUserCustomGroups", return_value=[])
 @patch("api.financial.get_user_watchlist", return_value=["AAPL", "GOOGL"])
-def test_getFinancialWatchlist_admin_can_access(mock_watchlist, mock_custom_groups):
+def test_getFinancialWatchlist_admin_can_access(mock_watchlist):
     """GET /financial/watchlist as SuperAdmin can access."""
     from api.handler import handler
     event = _admin_event("/financial/watchlist")
@@ -74,41 +75,25 @@ def test_getFinancialWatchlist_admin_can_access(mock_watchlist, mock_custom_grou
     assert body["symbols"] == ["AAPL", "GOOGL"]
 
 
-@patch("api.handler._getUserCustomGroups", return_value=["Financial"])
-def test_getFinancialWatchlist_financial_group_can_access(mock_custom_groups):
-    """GET /financial/watchlist as user in Financial group can access."""
+@patch("api.financial.save_user_watchlist", return_value=True)
+def test_putFinancialWatchlist_saves_symbols(mock_save):
+    """PUT /financial/watchlist saves user watchlist (any logged-in user)."""
     from api.handler import handler
-    with patch("api.financial.get_user_watchlist", return_value=[]):
-        event = _event("/financial/watchlist")
-        result = handler(event, None)
-    assert result["statusCode"] == 200
-    body = json.loads(result["body"])
-    assert "symbols" in body
-
-
-@patch("api.handler._getUserCustomGroups", return_value=["Financial"])
-def test_putFinancialWatchlist_saves_symbols(mock_custom_groups):
-    """PUT /financial/watchlist saves user watchlist."""
-    from api.handler import handler
-    with patch("api.financial.save_user_watchlist", return_value=True):
-        event = _event("/financial/watchlist", method="PUT", body={"symbols": ["AAPL", "MSFT"]})
-        result = handler(event, None)
+    event = _event("/financial/watchlist", method="PUT", body={"symbols": ["AAPL", "MSFT"]})
+    result = handler(event, None)
     assert result["statusCode"] == 200
     body = json.loads(result["body"])
     assert body["symbols"] == ["AAPL", "MSFT"]
 
 
-@patch("api.handler._getUserCustomGroups", return_value=["Financial"])
-def test_getFinancialQuote_requires_symbol(mock_custom_groups):
-    """GET /financial/quote without symbol returns 400."""
+def test_getFinancialQuote_requires_symbol():
+    """GET /financial/quote without symbol returns 400 (public endpoint)."""
     from api.handler import handler
-    event = _event("/financial/quote")
-    event["queryStringParameters"] = {}
+    event = {"rawPath": "/financial/quote", "queryStringParameters": {}, "requestContext": {"http": {"method": "GET", "path": "/financial/quote"}}}
     result = handler(event, None)
     assert result["statusCode"] == 400
 
 
-@patch("api.handler._getUserCustomGroups", return_value=["Financial"])
 @patch("api.financial.fetch_quote", return_value={
     "symbol": "AAPL",
     "price": 150.25,
@@ -116,11 +101,10 @@ def test_getFinancialQuote_requires_symbol(mock_custom_groups):
     "changePercent": 1.69,
     "source": "yahoo",
 })
-def test_getFinancialQuote_returns_quote(mock_fetch, mock_custom_groups):
-    """GET /financial/quote returns quote data."""
+def test_getFinancialQuote_returns_quote(mock_fetch):
+    """GET /financial/quote returns quote data (public, no auth required)."""
     from api.handler import handler
-    event = _event("/financial/quote")
-    event["queryStringParameters"] = {"symbol": "AAPL"}
+    event = {"rawPath": "/financial/quote", "queryStringParameters": {"symbol": "AAPL"}, "requestContext": {"http": {"method": "GET", "path": "/financial/quote"}}}
     result = handler(event, None)
     assert result["statusCode"] == 200
     body = json.loads(result["body"])
@@ -128,8 +112,19 @@ def test_getFinancialQuote_returns_quote(mock_fetch, mock_custom_groups):
     assert body["price"] == 150.25
 
 
-@patch("api.handler._getUserCustomGroups", return_value=[])
-def test_getFinancialDefaultSymbols_requires_admin(mock_custom_groups):
+def test_getFinancialConfig_public_no_auth():
+    """GET /financial/config returns default symbols without auth (public for guests)."""
+    from api.handler import handler
+    with patch("api.financial.get_financial_config", return_value={"symbols": ["AAPL", "MSFT"], "source": "yahoo"}):
+        event = {"rawPath": "/financial/config", "requestContext": {"http": {"method": "GET", "path": "/financial/config"}}}
+        result = handler(event, None)
+    assert result["statusCode"] == 200
+    body = json.loads(result["body"])
+    assert body["symbols"] == ["AAPL", "MSFT"]
+    assert "availableSources" in body
+
+
+def test_getFinancialDefaultSymbols_requires_admin():
     """GET /admin/financial/default-symbols as regular user returns 403."""
     from api.handler import handler
     event = _event("/admin/financial/default-symbols")
@@ -137,9 +132,8 @@ def test_getFinancialDefaultSymbols_requires_admin(mock_custom_groups):
     assert result["statusCode"] == 403
 
 
-@patch("api.handler._getUserCustomGroups", return_value=[])
 @patch("api.financial.get_financial_config", return_value={"symbols": ["AAPL"], "source": "yahoo"})
-def test_getFinancialDefaultSymbols_admin_can_access(mock_config, mock_custom_groups):
+def test_getFinancialDefaultSymbols_admin_can_access(mock_config):
     """GET /admin/financial/default-symbols as SuperAdmin can access."""
     from api.handler import handler
     event = _admin_event("/admin/financial/default-symbols")
@@ -150,17 +144,28 @@ def test_getFinancialDefaultSymbols_admin_can_access(mock_config, mock_custom_gr
     assert body["source"] == "yahoo"
 
 
-@patch("api.handler._getUserCustomGroups", return_value=["Financial"])
-def test_putFinancialDefaultSymbols_manager_in_financial_can_save(mock_custom_groups):
-    """PUT /admin/financial/default-symbols as Manager in Financial group can save."""
+def test_putFinancialDefaultSymbols_manager_denied():
+    """PUT /admin/financial/default-symbols as Manager returns 403 (SuperAdmin only)."""
     from api.handler import handler
-    with patch("api.financial.save_financial_config", return_value=True):
-        event = _manager_financial_event(
-            "/admin/financial/default-symbols",
-            method="PUT",
-            body={"symbols": ["AAPL", "GOOGL"], "source": "yahoo"}
-        )
-        result = handler(event, None)
+    event = _manager_financial_event(
+        "/admin/financial/default-symbols",
+        method="PUT",
+        body={"symbols": ["AAPL", "GOOGL"], "source": "yahoo"}
+    )
+    result = handler(event, None)
+    assert result["statusCode"] == 403
+
+
+@patch("api.financial.save_financial_config", return_value=True)
+def test_putFinancialDefaultSymbols_superadmin_can_save(mock_save):
+    """PUT /admin/financial/default-symbols as SuperAdmin can save."""
+    from api.handler import handler
+    event = _admin_event(
+        "/admin/financial/default-symbols",
+        method="PUT",
+        body={"symbols": ["AAPL", "GOOGL"], "source": "yahoo"}
+    )
+    result = handler(event, None)
     assert result["statusCode"] == 200
     body = json.loads(result["body"])
     assert body["symbols"] == ["AAPL", "GOOGL"]

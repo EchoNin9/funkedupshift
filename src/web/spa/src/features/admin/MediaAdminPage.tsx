@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 import { useAuth, hasRole } from "../../shell/AuthContext";
+import { fetchWithAuth } from "../../utils/api";
 
 function getApiBaseUrl(): string | null {
   if (typeof window === "undefined") return null;
@@ -82,12 +83,9 @@ const MediaAdminPage: React.FC = () => {
     if (!canAccess) return;
     const apiBase = getApiBaseUrl();
     if (!apiBase) return;
-    const w = window as any;
-    if (!w.auth?.getAccessToken) return;
     (async () => {
-      const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
-      if (!token) return;
-      const resp = await fetch(`${apiBase}/media-categories`, { headers: { Authorization: `Bearer ${token}` } });
+      try {
+        const resp = await fetchWithAuth(`${apiBase}/media-categories`);
       if (!resp.ok) return;
       const data = (await resp.json()) as { categories?: { PK?: string; id?: string; name?: string; description?: string }[] };
       const list = (data.categories ?? []).map((c) => ({
@@ -96,6 +94,9 @@ const MediaAdminPage: React.FC = () => {
         description: c.description
       }));
       setCategories(list);
+      } catch {
+        /* ignore */
+      }
     })();
   }, [canAccess]);
 
@@ -167,8 +168,7 @@ const MediaAdminPage: React.FC = () => {
     setCategoriesLoading(true);
     setCategoriesError(null);
     try {
-      const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
-      const resp = await fetch(`${apiBase}/media-categories`, { headers: { Authorization: `Bearer ${token}` } });
+      const resp = await fetchWithAuth(`${apiBase}/media-categories`);
       if (!resp.ok) throw new Error(await resp.text());
       const data = (await resp.json()) as { categories?: { PK?: string; id?: string; name?: string; description?: string }[] };
       const list = (data.categories ?? []).map((c) => ({
@@ -210,10 +210,9 @@ const MediaAdminPage: React.FC = () => {
     setError(null);
     setMessage(null);
     try {
-      const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
-      const uploadResp = await fetch(`${apiBase}/media/upload`, {
+      const uploadResp = await fetchWithAuth(`${apiBase}/media/upload`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           mediaId,
           mediaType,
@@ -222,9 +221,9 @@ const MediaAdminPage: React.FC = () => {
       });
       if (!uploadResp.ok) throw new Error("Upload request failed");
       const { uploadUrl: putUrl, key } = (await uploadResp.json()) as { uploadUrl: string; key: string };
-      const createResp = await fetch(`${apiBase}/media`, {
+      const createResp = await fetchWithAuth(`${apiBase}/media`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id: mediaId,
           mediaKey: key,
@@ -242,9 +241,9 @@ const MediaAdminPage: React.FC = () => {
       });
       if (!putResp.ok) throw new Error("File upload failed");
       if (mediaType === "video" && thumbnailFile) {
-        const thumbResp = await fetch(`${apiBase}/media/thumbnail-upload`, {
+        const thumbResp = await fetchWithAuth(`${apiBase}/media/thumbnail-upload`, {
           method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ mediaId, contentType: thumbnailFile.type || "image/jpeg" })
         });
         if (thumbResp.ok) {
@@ -255,9 +254,9 @@ const MediaAdminPage: React.FC = () => {
             body: thumbnailFile
           });
           if (thumbPutResp.ok) {
-            const updateResp = await fetch(`${apiBase}/media`, {
+            const updateResp = await fetchWithAuth(`${apiBase}/media`, {
               method: "PUT",
-              headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+              headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ id: mediaId, thumbnailKey: thumbKey })
             });
             if (!updateResp.ok) {
@@ -305,10 +304,9 @@ const MediaAdminPage: React.FC = () => {
     setIsUpdating(true);
     setUpdateError(null);
     try {
-      const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
-      const resp = await fetch(`${apiBase}/media-categories`, {
+      const resp = await fetchWithAuth(`${apiBase}/media-categories`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id: editingId,
           name: editName.trim(),
@@ -337,10 +335,8 @@ const MediaAdminPage: React.FC = () => {
     if (!w.auth?.getAccessToken) return;
     setDeletingId(id);
     try {
-      const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
-      const resp = await fetch(`${apiBase}/media-categories?id=${encodeURIComponent(id)}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` }
+      const resp = await fetchWithAuth(`${apiBase}/media-categories?id=${encodeURIComponent(id)}`, {
+        method: "DELETE"
       });
       if (!resp.ok) throw new Error(await resp.text());
       setCategories((prev) => prev.filter((cat) => cat.id !== id));
@@ -364,10 +360,9 @@ const MediaAdminPage: React.FC = () => {
     setCatMessage(null);
     setCategoriesError(null);
     try {
-      const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
-      const resp = await fetch(`${apiBase}/media-categories`, {
+      const resp = await fetchWithAuth(`${apiBase}/media-categories`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, description: newDescription.trim() })
       });
       if (!resp.ok) throw new Error(await resp.text());

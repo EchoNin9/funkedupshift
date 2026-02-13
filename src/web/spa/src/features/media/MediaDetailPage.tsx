@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeftIcon, PencilSquareIcon } from "@heroicons/react/24/outline";
 import { useAuth, hasRole } from "../../shell/AuthContext";
+import { fetchWithAuth, fetchWithAuthOptional } from "../../utils/api";
 
 interface MediaCategory {
   id: string;
@@ -48,7 +49,7 @@ const MediaDetailPage: React.FC = () => {
       setIsLoading(true);
       setError(null);
       try {
-        const resp = await fetch(`${apiBase}/media?id=${encodeURIComponent(mediaId)}`);
+        const resp = await fetchWithAuthOptional(`${apiBase}/media?id=${encodeURIComponent(mediaId)}`);
         if (resp.status === 404) {
           if (!cancelled) setItem(null);
           return;
@@ -76,15 +77,14 @@ const MediaDetailPage: React.FC = () => {
   const handleRate = async (rating: number) => {
     const apiBase = getApiBaseUrl();
     if (!apiBase || !item) return;
-    const w = window as any;
-    if (!w.auth?.getAccessToken) return;
-    const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
-    if (!token) return;
-    await fetch(`${apiBase}/media/stars`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ mediaId: item.PK, rating })
-    }).then(() => setUserRating(rating)).catch(() => {});
+    try {
+      await fetchWithAuth(`${apiBase}/media/stars`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mediaId: item.PK, rating })
+      });
+      setUserRating(rating);
+    } catch {}
   };
 
   if (isLoading) {

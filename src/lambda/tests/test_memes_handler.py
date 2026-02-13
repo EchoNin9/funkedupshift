@@ -43,14 +43,14 @@ def _memes_user_event(path, method="GET", body=None):
 
 
 @patch("api.memes.list_memes")
-def test_listMemes_guest_cache_returns_200(mock_list_memes):
-    """GET /memes without auth (cache-only) returns 200 for guests."""
+def test_listMemesCache_guest_returns_200(mock_list_memes):
+    """GET /memes/cache without auth returns 200 for guests."""
     from api.handler import handler
     mock_list_memes.return_value = {"statusCode": 200, "body": '{"memes": []}'}
     event = {
-        "rawPath": "/memes",
+        "rawPath": "/memes/cache",
         "queryStringParameters": {},
-        "requestContext": {"http": {"method": "GET", "path": "/memes"}},
+        "requestContext": {"http": {"method": "GET", "path": "/memes/cache"}},
     }
     result = handler(event, None)
     assert result["statusCode"] == 200
@@ -58,19 +58,31 @@ def test_listMemes_guest_cache_returns_200(mock_list_memes):
     assert "memes" in body
 
 
-def test_listMemes_guest_mine_returns_401():
-    """GET /memes?mine=1 without auth returns 401."""
+def test_listMemesCache_guest_search_returns_401():
+    """GET /memes/cache?q=foo without auth returns 401."""
+    from api.handler import handler
+    event = {
+        "rawPath": "/memes/cache",
+        "queryStringParameters": {"q": "foo"},
+        "requestContext": {"http": {"method": "GET", "path": "/memes/cache"}},
+    }
+    result = handler(event, None)
+    assert result["statusCode"] == 401
+
+
+def test_listMemes_guest_returns_401():
+    """GET /memes without auth returns 401 (JWT required)."""
     from api.handler import handler
     event = {
         "rawPath": "/memes",
-        "queryStringParameters": {"mine": "1"},
+        "queryStringParameters": {},
         "requestContext": {"http": {"method": "GET", "path": "/memes"}},
     }
     result = handler(event, None)
     assert result["statusCode"] == 401
 
 
-@patch("api.handler._getUserCustomGroups", return_value=[])
+@patch("api.memes._get_user_custom_groups", return_value=[])
 def test_listMemes_mine_denied_without_creator_access(mock_custom_groups):
     """GET /memes?mine=1 with user not in Memes group returns 403."""
     from api.handler import handler

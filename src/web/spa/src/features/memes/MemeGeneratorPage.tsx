@@ -1,8 +1,9 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 import { useAuth, canCreateMemes } from "../../shell/AuthContext";
 import AddTagInput from "./AddTagInput";
+import { fetchWithAuth } from "../../utils/api";
 
 const FONTS = ["Impact", "Arial Black", "Comic Sans MS", "Georgia", "Verdana", "Times New Roman", "Courier New"];
 const FIXED_ZONES = [
@@ -50,14 +51,6 @@ const MemeGeneratorPage: React.FC = () => {
   const [generatingTitle, setGeneratingTitle] = useState(false);
   const [tags, setTags] = useState<string[]>([]);
   const [allTags, setAllTags] = useState<string[]>([]);
-
-  const fetchWithAuth = useCallback(async (url: string, options?: RequestInit) => {
-    const w = window as any;
-    if (!w.auth?.getAccessToken) throw new Error("Not signed in");
-    const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
-    if (!token) throw new Error("Not signed in");
-    return fetch(url, { ...options, headers: { ...options?.headers, Authorization: `Bearer ${token}` } });
-  }, []);
 
   const addTextBox = (zoneId: string) => {
     if (textBoxes.some((t) => t.zoneId === zoneId)) return;
@@ -181,7 +174,7 @@ const MemeGeneratorPage: React.FC = () => {
       })
       .catch(() => {});
     return () => { cancelled = true; };
-  }, [fetchWithAuth]);
+  }, []);
 
   const handleSubmit = async () => {
     if (!imageSrc) {

@@ -2,12 +2,15 @@ import React, { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 import { useAuth, hasRole } from "../../shell/AuthContext";
+import { fetchWithAuth } from "../../utils/api";
 
 const ROLE_DISPLAY: Record<string, string> = {
   admin: "SuperAdmin",
   manager: "Manager",
   user: "User"
 };
+
+const COGNITO_SYSTEM_GROUPS = ["admin", "manager", "user"];
 
 const TZ_OPTIONS = [
   { value: -8, label: "UTC-8" },
@@ -61,23 +64,31 @@ interface Group {
   permissions?: string[];
 }
 
+interface Role {
+  name: string;
+  cognitoGroups?: string[];
+  customGroups?: string[];
+}
+
 const MembershipPage: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get("tab");
-  const initialTab = tabParam === "groups" ? "groups" : "users";
-  const [activeTab, setActiveTab] = useState<"users" | "groups">(initialTab);
+  const initialTab = tabParam === "groups" ? "groups" : tabParam === "roles" ? "roles" : "users";
+  const [activeTab, setActiveTab] = useState<"users" | "groups" | "roles">(initialTab);
 
   useEffect(() => {
     if (tabParam === "groups") setActiveTab("groups");
+    else if (tabParam === "roles") setActiveTab("roles");
     else setActiveTab("users");
   }, [tabParam]);
 
-  const setTab = (tab: "users" | "groups") => {
+  const setTab = (tab: "users" | "groups" | "roles") => {
     setActiveTab(tab);
     const next = new URLSearchParams(searchParams);
     if (tab === "groups") next.set("tab", "groups");
+    else if (tab === "roles") next.set("tab", "roles");
     else next.delete("tab");
     setSearchParams(next);
   };
@@ -105,7 +116,24 @@ const MembershipPage: React.FC = () => {
   const [updateError, setUpdateError] = useState<string | null>(null);
   const [deletingName, setDeletingName] = useState<string | null>(null);
 
+  // Roles tab state (SuperAdmin only)
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [rolesLoading, setRolesLoading] = useState(true);
+  const [rolesError, setRolesError] = useState<string | null>(null);
+  const [newRoleName, setNewRoleName] = useState("");
+  const [newRoleCognito, setNewRoleCognito] = useState<string[]>([]);
+  const [newRoleCustom, setNewRoleCustom] = useState<string[]>([]);
+  const [isRoleSubmitting, setIsRoleSubmitting] = useState(false);
+  const [roleMessage, setRoleMessage] = useState<string | null>(null);
+  const [editingRole, setEditingRole] = useState<string | null>(null);
+  const [editRoleCognito, setEditRoleCognito] = useState<string[]>([]);
+  const [editRoleCustom, setEditRoleCustom] = useState<string[]>([]);
+  const [isRoleUpdating, setIsRoleUpdating] = useState(false);
+  const [roleUpdateError, setRoleUpdateError] = useState<string | null>(null);
+  const [deletingRole, setDeletingRole] = useState<string | null>(null);
+
   const canAccess = hasRole(user ?? null, "manager");
+  const isSuperAdmin = user?.role === "superadmin";
 
   const loadUsers = async (nextToken?: string) => {
     const apiBase = getApiBaseUrl();
@@ -123,10 +151,9 @@ const MembershipPage: React.FC = () => {
     setUsersLoading(true);
     setUsersError(null);
     try {
-      const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
       let url = `${apiBase}/admin/users`;
       if (nextToken) url += `?paginationToken=${encodeURIComponent(nextToken)}`;
-      const resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      const resp = await fetchWithAuth(url);
       if (!resp.ok) {
         const data = await resp.json().catch(() => ({}));
         throw new Error((data as { error?: string }).error || "Failed to load users");
@@ -144,13 +171,8 @@ const MembershipPage: React.FC = () => {
   const loadUserGroups = async (u: User): Promise<{ cognitoGroups: string[]; customGroups: string[] }> => {
     const apiBase = getApiBaseUrl();
     if (!apiBase) return { cognitoGroups: [], customGroups: [] };
-    const w = window as any;
-    if (!w.auth?.getAccessToken) return { cognitoGroups: [], customGroups: [] };
     try {
-      const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
-      const resp = await fetch(`${apiBase}/admin/users/${encodeURIComponent(u.username)}/groups`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const resp = await fetchWithAuth(`${apiBase}/admin/users/${encodeURIComponent(u.username)}/groups`);
       if (!resp.ok) return { cognitoGroups: [], customGroups: [] };
       const d = (await resp.json()) as { cognitoGroups?: string[]; customGroups?: string[] };
       return {
@@ -178,8 +200,7 @@ const MembershipPage: React.FC = () => {
     setGroupsLoading(true);
     setGroupsError(null);
     try {
-      const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
-      const resp = await fetch(`${apiBase}/admin/groups`, { headers: { Authorization: `Bearer ${token}` } });
+      const resp = await fetchWithAuth(`${apiBase}/admin/groups`);
       if (!resp.ok) throw new Error(await resp.text());
       const data = (await resp.json()) as { groups?: { name?: string; PK?: string; description?: string; permissions?: string[] }[] };
       const list = (data.groups ?? []).map((g) => ({
@@ -206,8 +227,42 @@ const MembershipPage: React.FC = () => {
   }, [canAccess, activeTab]);
 
   useEffect(() => {
-    if (canAccess && activeTab === "groups") loadGroups();
+    if (canAccess && (activeTab === "groups" || activeTab === "roles")) loadGroups();
   }, [canAccess, activeTab]);
+
+  const loadRoles = async () => {
+    const apiBase = getApiBaseUrl();
+    if (!apiBase) {
+      setRolesError("API URL not set.");
+      setRolesLoading(false);
+      return;
+    }
+    const w = window as any;
+    if (!w.auth?.getAccessToken) {
+      setRolesError("Sign in required.");
+      setRolesLoading(false);
+      return;
+    }
+    setRolesLoading(true);
+    setRolesError(null);
+    try {
+      const resp = await fetchWithAuth(`${apiBase}/admin/roles`);
+      if (!resp.ok) {
+        const d = await resp.json().catch(() => ({}));
+        throw new Error((d as { error?: string }).error || "Failed to load roles");
+      }
+      const data = (await resp.json()) as { roles?: Role[] };
+      setRoles(data.roles ?? []);
+    } catch (e: any) {
+      setRolesError(e?.message ?? "Failed to load roles");
+    } finally {
+      setRolesLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isSuperAdmin && activeTab === "roles") loadRoles();
+  }, [isSuperAdmin, activeTab]);
 
   const handleRowClick = (u: User) => {
     navigate(
@@ -267,10 +322,9 @@ const MembershipPage: React.FC = () => {
     setMessage(null);
     setGroupsError(null);
     try {
-      const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
-      const resp = await fetch(`${apiBase}/admin/groups`, {
+      const resp = await fetchWithAuth(`${apiBase}/admin/groups`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, description: newDescription.trim(), permissions })
       });
       if (!resp.ok) {
@@ -303,10 +357,9 @@ const MembershipPage: React.FC = () => {
     setIsUpdating(true);
     setUpdateError(null);
     try {
-      const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
-      const resp = await fetch(`${apiBase}/admin/groups/${encodeURIComponent(editingName)}`, {
+      const resp = await fetchWithAuth(`${apiBase}/admin/groups/${encodeURIComponent(editingName)}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ description: editDescription, permissions })
       });
       if (!resp.ok) {
@@ -334,10 +387,8 @@ const MembershipPage: React.FC = () => {
     if (!w.auth?.getAccessToken) return;
     setDeletingName(name);
     try {
-      const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
-      const resp = await fetch(`${apiBase}/admin/groups/${encodeURIComponent(name)}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` }
+      const resp = await fetchWithAuth(`${apiBase}/admin/groups/${encodeURIComponent(name)}`, {
+        method: "DELETE"
       });
       if (!resp.ok) {
         const d = await resp.json().catch(() => ({}));
@@ -356,6 +407,117 @@ const MembershipPage: React.FC = () => {
     const v = parseInt(e.target.value, 10);
     setTzOffset(v);
     sessionStorage.setItem("funkedupshift_lastlogin_tz", String(v));
+  };
+
+  const toggleCognito = (g: string, list: string[], setter: (v: string[]) => void) => {
+    if (list.includes(g)) setter(list.filter((x) => x !== g));
+    else setter([...list, g]);
+  };
+  const toggleCustom = (g: string, list: string[], setter: (v: string[]) => void) => {
+    if (list.includes(g)) setter(list.filter((x) => x !== g));
+    else setter([...list, g]);
+  };
+
+  const handleCreateRole = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const name = newRoleName.trim();
+    if (!name) return;
+    const apiBase = getApiBaseUrl();
+    if (!apiBase) return;
+    const w = window as any;
+    if (!w.auth?.getAccessToken) return;
+    setIsRoleSubmitting(true);
+    setRoleMessage(null);
+    setRolesError(null);
+    try {
+      const resp = await fetchWithAuth(`${apiBase}/admin/roles`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, cognitoGroups: newRoleCognito, customGroups: newRoleCustom })
+      });
+      if (!resp.ok) {
+        const d = await resp.json().catch(() => ({}));
+        throw new Error((d as { error?: string }).error || "Failed to create role");
+      }
+      setNewRoleName("");
+      setNewRoleCognito([]);
+      setNewRoleCustom([]);
+      setRoleMessage("Role created.");
+      loadRoles();
+    } catch (e: any) {
+      setRolesError(e?.message ?? "Failed to create role");
+    } finally {
+      setIsRoleSubmitting(false);
+    }
+  };
+
+  const startEditRole = (r: Role) => {
+    setEditingRole(r.name);
+    setEditRoleCognito(r.cognitoGroups ?? []);
+    setEditRoleCustom(r.customGroups ?? []);
+    setRoleUpdateError(null);
+  };
+  const cancelEditRole = () => {
+    setEditingRole(null);
+    setEditRoleCognito([]);
+    setEditRoleCustom([]);
+    setRoleUpdateError(null);
+  };
+
+  const handleUpdateRole = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingRole) return;
+    const apiBase = getApiBaseUrl();
+    if (!apiBase) return;
+    const w = window as any;
+    if (!w.auth?.getAccessToken) return;
+    setIsRoleUpdating(true);
+    setRoleUpdateError(null);
+    try {
+      const resp = await fetchWithAuth(`${apiBase}/admin/roles/${encodeURIComponent(editingRole)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cognitoGroups: editRoleCognito, customGroups: editRoleCustom })
+      });
+      if (!resp.ok) {
+        const d = await resp.json().catch(() => ({}));
+        throw new Error((d as { error?: string }).error || "Failed to update role");
+      }
+      setRoles((prev) =>
+        prev.map((r) =>
+          r.name === editingRole ? { ...r, cognitoGroups: editRoleCognito, customGroups: editRoleCustom } : r
+        )
+      );
+      cancelEditRole();
+    } catch (e: any) {
+      setRoleUpdateError(e?.message ?? "Failed to update role");
+    } finally {
+      setIsRoleUpdating(false);
+    }
+  };
+
+  const handleDeleteRole = async (name: string) => {
+    if (!window.confirm(`Delete role "${name}"?`)) return;
+    const apiBase = getApiBaseUrl();
+    if (!apiBase) return;
+    const w = window as any;
+    if (!w.auth?.getAccessToken) return;
+    setDeletingRole(name);
+    try {
+      const resp = await fetchWithAuth(`${apiBase}/admin/roles/${encodeURIComponent(name)}`, {
+        method: "DELETE"
+      });
+      if (!resp.ok) {
+        const d = await resp.json().catch(() => ({}));
+        throw new Error((d as { error?: string }).error || "Failed to delete role");
+      }
+      setRoles((prev) => prev.filter((r) => r.name !== name));
+      if (editingRole === name) cancelEditRole();
+    } catch (e: any) {
+      setRolesError(e?.message ?? "Failed to delete role");
+    } finally {
+      setDeletingRole(null);
+    }
   };
 
   if (!canAccess) {
@@ -394,6 +556,15 @@ const MembershipPage: React.FC = () => {
         >
           Groups
         </button>
+        {isSuperAdmin && (
+          <button
+            type="button"
+            onClick={() => setTab("roles")}
+            className={`px-4 py-2 rounded-md text-sm font-medium ${activeTab === "roles" ? "bg-slate-800 text-slate-100" : "text-slate-400 hover:text-slate-200"}`}
+          >
+            Roles
+          </button>
+        )}
       </div>
 
       {activeTab === "users" && (
@@ -594,6 +765,174 @@ const MembershipPage: React.FC = () => {
                             className="rounded-md border border-red-500/60 px-2 py-1 text-xs font-medium text-red-400 hover:bg-red-500/20 disabled:opacity-50"
                           >
                             {deletingName === g.name ? "Deleting…" : "Delete"}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </>
+      )}
+
+      {activeTab === "roles" && isSuperAdmin && (
+        <>
+          <form className="space-y-3 max-w-md" onSubmit={handleCreateRole}>
+            <h2 className="text-sm font-medium text-slate-300">Create role</h2>
+            <p className="text-xs text-slate-500">Define a named role by selecting Cognito groups and custom groups. Use for impersonation.</p>
+            <input
+              type="text"
+              value={newRoleName}
+              onChange={(e) => setNewRoleName(e.target.value)}
+              placeholder="Role name (e.g. Squash Manager)"
+              required
+              className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-500 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange"
+            />
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1">Cognito groups</label>
+              <div className="flex flex-wrap gap-2">
+                {COGNITO_SYSTEM_GROUPS.map((g) => (
+                  <button
+                    key={g}
+                    type="button"
+                    onClick={() => toggleCognito(g, newRoleCognito, setNewRoleCognito)}
+                    className={`rounded-md px-2 py-1 text-xs font-medium ${
+                      newRoleCognito.includes(g) ? "bg-blue-500/30 text-blue-200" : "border border-slate-600 text-slate-400 hover:bg-slate-800"
+                    }`}
+                  >
+                    {ROLE_DISPLAY[g] || g}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1">Custom groups</label>
+              <div className="flex flex-wrap gap-2">
+                {groups.map((g) => (
+                  <button
+                    key={g.name}
+                    type="button"
+                    onClick={() => toggleCustom(g.name, newRoleCustom, setNewRoleCustom)}
+                    className={`rounded-md px-2 py-1 text-xs font-medium ${
+                      newRoleCustom.includes(g.name) ? "bg-emerald-500/30 text-emerald-200" : "border border-slate-600 text-slate-400 hover:bg-slate-800"
+                    }`}
+                  >
+                    {g.name}
+                  </button>
+                ))}
+                {groups.length === 0 && <span className="text-xs text-slate-500">Create groups first.</span>}
+              </div>
+            </div>
+            <button
+              type="submit"
+              disabled={isRoleSubmitting || !newRoleName.trim()}
+              className="inline-flex items-center justify-center rounded-md bg-brand-orange px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-orange-500 disabled:opacity-50"
+            >
+              {isRoleSubmitting ? "Creating…" : "Create"}
+            </button>
+            {roleMessage && (
+              <div className="rounded-md border border-emerald-500/60 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">{roleMessage}</div>
+            )}
+            {rolesError && (
+              <div className="rounded-md border border-red-500/60 bg-red-500/10 px-3 py-2 text-sm text-red-200">{rolesError}</div>
+            )}
+          </form>
+
+          <section>
+            <h2 className="text-sm font-medium text-slate-300 mb-2">Defined roles</h2>
+            {rolesLoading ? (
+              <p className="text-sm text-slate-500">Loading…</p>
+            ) : roles.length === 0 ? (
+              <p className="text-sm text-slate-500">No roles yet. Create one above.</p>
+            ) : (
+              <ul className="space-y-2">
+                {roles.map((r) => (
+                  <li key={r.name} className="rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm">
+                    {editingRole === r.name ? (
+                      <form onSubmit={handleUpdateRole} className="space-y-2">
+                        <span className="font-medium text-slate-200">{r.name}</span>
+                        <div>
+                          <label className="block text-xs text-slate-500 mb-1">Cognito groups</label>
+                          <div className="flex flex-wrap gap-2">
+                            {COGNITO_SYSTEM_GROUPS.map((g) => (
+                              <button
+                                key={g}
+                                type="button"
+                                onClick={() => toggleCognito(g, editRoleCognito, setEditRoleCognito)}
+                                className={`rounded-md px-2 py-1 text-xs ${editRoleCognito.includes(g) ? "bg-blue-500/30 text-blue-200" : "border border-slate-600 text-slate-400"}`}
+                              >
+                                {ROLE_DISPLAY[g] || g}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-slate-500 mb-1">Custom groups</label>
+                          <div className="flex flex-wrap gap-2">
+                            {groups.map((g) => (
+                              <button
+                                key={g.name}
+                                type="button"
+                                onClick={() => toggleCustom(g.name, editRoleCustom, setEditRoleCustom)}
+                                className={`rounded-md px-2 py-1 text-xs ${editRoleCustom.includes(g.name) ? "bg-emerald-500/30 text-emerald-200" : "border border-slate-600 text-slate-400"}`}
+                              >
+                                {g.name}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            type="submit"
+                            disabled={isRoleUpdating}
+                            className="rounded-md bg-brand-orange px-3 py-1.5 text-xs font-medium text-slate-950 hover:bg-orange-500 disabled:opacity-50"
+                          >
+                            {isRoleUpdating ? "Saving…" : "Save"}
+                          </button>
+                          <button type="button" onClick={cancelEditRole} className="rounded-md border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800">
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteRole(r.name)}
+                            disabled={deletingRole === r.name}
+                            className="rounded-md border border-red-500/60 px-3 py-1.5 text-xs text-red-400 hover:bg-red-500/20 disabled:opacity-50"
+                          >
+                            {deletingRole === r.name ? "Deleting…" : "Delete"}
+                          </button>
+                        </div>
+                        {roleUpdateError && <p className="text-xs text-red-400">{roleUpdateError}</p>}
+                      </form>
+                    ) : (
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <div className="flex-1 min-w-0">
+                          <span className="font-medium text-slate-200">{r.name}</span>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {(r.cognitoGroups ?? []).map((g) => (
+                              <span key={`c-${g}`} className="inline-block px-2 py-0.5 rounded text-xs bg-blue-500/20 text-blue-200">
+                                {ROLE_DISPLAY[g] || g}
+                              </span>
+                            ))}
+                            {(r.customGroups ?? []).map((g) => (
+                              <span key={`x-${g}`} className="inline-block px-2 py-0.5 rounded text-xs bg-emerald-500/20 text-emerald-200">
+                                {g}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="flex gap-2 shrink-0">
+                          <button type="button" onClick={() => startEditRole(r)} className="rounded-md border border-slate-700 px-2 py-1 text-xs text-slate-300 hover:bg-slate-800">
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteRole(r.name)}
+                            disabled={deletingRole === r.name}
+                            className="rounded-md border border-red-500/60 px-2 py-1 text-xs text-red-400 hover:bg-red-500/20 disabled:opacity-50"
+                          >
+                            {deletingRole === r.name ? "Deleting…" : "Delete"}
                           </button>
                         </div>
                       </div>

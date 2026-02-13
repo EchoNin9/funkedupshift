@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 import { useAuth, hasRole } from "../../shell/AuthContext";
+import { fetchWithAuth } from "../../utils/api";
 
 function getApiBaseUrl(): string | null {
   if (typeof window === "undefined") return null;
@@ -83,9 +84,8 @@ const WebsitesAdminPage: React.FC = () => {
     const w = window as any;
     if (!w.auth?.getAccessToken) return;
     (async () => {
-      const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
-      if (!token) return;
-      const resp = await fetch(`${apiBase}/categories`, { headers: { Authorization: `Bearer ${token}` } });
+      if (!(await new Promise((r) => w.auth.getAccessToken(r)))) return;
+      const resp = await fetchWithAuth(`${apiBase}/categories`);
       if (!resp.ok) return;
       const data = (await resp.json()) as { categories?: { PK?: string; id?: string; name?: string; description?: string }[] };
       const list = (data.categories ?? []).map((c) => ({
@@ -166,8 +166,7 @@ const WebsitesAdminPage: React.FC = () => {
     setCategoriesLoading(true);
     setCategoriesError(null);
     try {
-      const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
-      const resp = await fetch(`${apiBase}/categories`, { headers: { Authorization: `Bearer ${token}` } });
+      const resp = await fetchWithAuth(`${apiBase}/categories`);
       if (!resp.ok) throw new Error(await resp.text());
       const data = (await resp.json()) as { categories?: { PK?: string; id?: string; name?: string; description?: string }[] };
       const list = (data.categories ?? []).map((c) => ({
@@ -206,10 +205,9 @@ const WebsitesAdminPage: React.FC = () => {
     setIsGeneratingDesc(true);
     setError(null);
     try {
-      const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
-      const resp = await fetch(`${apiBase}/sites/generate-description`, {
+      const resp = await fetchWithAuth(`${apiBase}/sites/generate-description`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: u })
       });
       if (!resp.ok) throw new Error(await resp.text());
@@ -245,12 +243,11 @@ const WebsitesAdminPage: React.FC = () => {
     setError(null);
     setMessage(null);
     try {
-      const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
       let logoKey: string | null = null;
       if (logoImageUrl.trim()) {
-        const importResp = await fetch(`${apiBase}/sites/logo-from-url`, {
+        const importResp = await fetchWithAuth(`${apiBase}/sites/logo-from-url`, {
           method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ siteId: "new", imageUrl: logoImageUrl.trim() })
         });
         if (!importResp.ok) {
@@ -260,9 +257,9 @@ const WebsitesAdminPage: React.FC = () => {
         const importData = (await importResp.json()) as { key?: string };
         if (importData.key) logoKey = importData.key;
       } else if (logoFile) {
-        const uploadResp = await fetch(`${apiBase}/sites/logo-upload`, {
+        const uploadResp = await fetchWithAuth(`${apiBase}/sites/logo-upload`, {
           method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ siteId: "new", contentType: logoFile.type || "image/png" })
         });
         if (!uploadResp.ok) throw new Error("Logo upload request failed");
@@ -283,9 +280,9 @@ const WebsitesAdminPage: React.FC = () => {
       };
       if (descriptionAiGenerated) payload.descriptionAiGenerated = true;
       if (logoKey) payload.logoKey = logoKey;
-      const createResp = await fetch(`${apiBase}/sites`, {
+      const createResp = await fetchWithAuth(`${apiBase}/sites`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
       if (!createResp.ok) throw new Error(await createResp.text());
@@ -330,10 +327,9 @@ const WebsitesAdminPage: React.FC = () => {
     setIsUpdating(true);
     setUpdateError(null);
     try {
-      const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
-      const resp = await fetch(`${apiBase}/categories`, {
+      const resp = await fetchWithAuth(`${apiBase}/categories`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id: editingId,
           name: editName.trim(),
@@ -362,10 +358,8 @@ const WebsitesAdminPage: React.FC = () => {
     if (!w.auth?.getAccessToken) return;
     setDeletingId(id);
     try {
-      const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
-      const resp = await fetch(`${apiBase}/categories?id=${encodeURIComponent(id)}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` }
+      const resp = await fetchWithAuth(`${apiBase}/categories?id=${encodeURIComponent(id)}`, {
+        method: "DELETE"
       });
       if (!resp.ok) throw new Error(await resp.text());
       setCategories((prev) => prev.filter((cat) => cat.id !== id));
@@ -389,10 +383,9 @@ const WebsitesAdminPage: React.FC = () => {
     setCatMessage(null);
     setCategoriesError(null);
     try {
-      const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
-      const resp = await fetch(`${apiBase}/categories`, {
+      const resp = await fetchWithAuth(`${apiBase}/categories`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, description: newDescription.trim() })
       });
       if (!resp.ok) throw new Error(await resp.text());

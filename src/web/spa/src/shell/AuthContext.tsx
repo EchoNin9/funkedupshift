@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { useImpersonation } from "./ImpersonationContext";
 
 export type UserRole = "superadmin" | "manager" | "user" | "guest";
 
@@ -8,6 +9,8 @@ export interface AuthUser {
   groups: string[];
   role: UserRole;
   customGroups?: string[];
+  impersonated?: boolean;
+  impersonatedAs?: string;
 }
 
 interface AuthContextValue {
@@ -35,6 +38,7 @@ function getApiBaseUrl(): string | null {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const { getImpersonationHeaders } = useImpersonation();
 
   const bootstrap = React.useCallback(async () => {
       const apiBase = getApiBaseUrl();
@@ -72,7 +76,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       const resp = await fetch(`${apiBase}/me`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}`, ...getImpersonationHeaders() }
       });
       if (!resp.ok) {
         setUser(null);
@@ -90,14 +94,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email: String(data.email || ""),
         groups,
         role,
-        customGroups
+        customGroups,
+        impersonated: !!data.impersonated,
+        impersonatedAs: data.impersonatedAs
       });
     } catch {
       setUser(null);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [getImpersonationHeaders]);
 
   useEffect(() => {
     bootstrap();
@@ -150,17 +156,21 @@ export function canModifySquash(user: AuthUser | null): boolean {
   return (user.customGroups ?? []).includes("Squash");
 }
 
-export function canAccessFinancial(user: AuthUser | null): boolean {
-  if (!user?.userId) return false;
-  if (user.role === "superadmin") return true;
-  return (user.customGroups ?? []).includes("Financial");
+/** Everyone (including guests) can view Financial with default symbols. */
+export function canAccessFinancial(_user: AuthUser | null): boolean {
+  return true;
 }
 
+/** Logged-in users (user, manager, superadmin) can save their watchlist. Guests cannot. */
+export function canSaveFinancialWatchlist(user: AuthUser | null): boolean {
+  if (!user?.userId) return false;
+  return user.role === "user" || user.role === "manager" || user.role === "superadmin";
+}
+
+/** SuperAdmin only: manage default symbols and financial config. */
 export function canAccessFinancialAdmin(user: AuthUser | null): boolean {
   if (!user?.userId) return false;
-  if (user.role === "superadmin") return true;
-  if (user.role !== "manager") return false;
-  return (user.customGroups ?? []).includes("Financial");
+  return user.role === "superadmin";
 }
 
 /** User can view Memes browse (cache + search): SuperAdmin OR in Memes custom group. */

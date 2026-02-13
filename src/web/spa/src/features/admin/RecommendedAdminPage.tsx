@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { ArrowLeftIcon, Bars3Icon } from "@heroicons/react/24/outline";
 import { StarIcon } from "@heroicons/react/24/solid";
 import { useAuth, hasRole } from "../../shell/AuthContext";
+import { fetchWithAuth } from "../../utils/api";
 
 function getApiBaseUrl(): string | null {
   if (typeof window === "undefined") return null;
@@ -107,14 +108,6 @@ const ListTab: React.FC<ListTabProps> = ({ config }) => {
     sitesRef.current = sites;
   }, [sites]);
 
-  const fetchWithAuth = useCallback(async (url: string, options?: RequestInit) => {
-    const w = window as any;
-    if (!w.auth?.getAccessToken) throw new Error("Not signed in");
-    const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
-    if (!token) throw new Error("Not signed in");
-    const headers = { ...options?.headers, Authorization: `Bearer ${token}` };
-    return fetch(url, { ...options, headers });
-  }, []);
 
   const loadSites = useCallback(async () => {
     const apiBase = getApiBaseUrl();

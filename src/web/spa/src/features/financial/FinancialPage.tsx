@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { useAuth, canAccessFinancial, canAccessFinancialAdmin } from "../../shell/AuthContext";
+import { useAuth, canSaveFinancialWatchlist, canAccessFinancialAdmin } from "../../shell/AuthContext";
+import { fetchWithAuth, fetchWithAuthOptional } from "../../utils/api";
 
 function getApiBaseUrl(): string | null {
   if (typeof window === "undefined") return null;
@@ -16,9 +17,11 @@ interface Quote {
   source: string;
 }
 
+const GUEST_SYMBOLS_KEY = "funkedupshift_financial_guest_symbols";
+
 const FinancialPage: React.FC = () => {
   const { user } = useAuth();
-  const access = canAccessFinancial(user);
+  const canSave = canSaveFinancialWatchlist(user);
   const canAdmin = canAccessFinancialAdmin(user);
 
   const [symbols, setSymbols] = useState<string[]>([]);
@@ -31,41 +34,46 @@ const FinancialPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
-  const fetchWithAuth = useCallback(async (url: string, options?: RequestInit) => {
-    const w = window as any;
-    if (!w.auth?.getAccessToken) throw new Error("Not signed in");
-    const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
-    if (!token) throw new Error("Not signed in");
-    const headers = { ...options?.headers, Authorization: `Bearer ${token}` };
-    return fetch(url, { ...options, headers });
-  }, []);
-
   const loadWatchlist = useCallback(async () => {
     const apiBase = getApiBaseUrl();
     if (!apiBase) return;
     setLoading(true);
     setError(null);
     try {
-      const [watchResp, configResp] = await Promise.all([
-        fetchWithAuth(`${apiBase}/financial/watchlist`),
-        fetchWithAuth(`${apiBase}/financial/config`)
-      ]);
+      const configResp = await fetchWithAuthOptional(`${apiBase}/financial/config`);
       const cfg = configResp.ok
         ? ((await configResp.json()) as { symbols?: string[]; source?: string; availableSources?: string[] })
         : { symbols: [] as string[], source: "yahoo", availableSources: ["yahoo"] as string[] };
-      if (watchResp.ok) {
-        const w = (await watchResp.json()) as { symbols?: string[] };
-        const syms = w.symbols ?? [];
-        setSymbols(syms.length > 0 ? syms : (cfg.symbols ?? []));
-        setSource(cfg.source ?? "yahoo");
-        setAvailableSources(cfg.availableSources ?? ["yahoo"]);
+      const defaultSymbols = cfg.symbols ?? [];
+      setSource(cfg.source ?? "yahoo");
+      setAvailableSources(cfg.availableSources ?? ["yahoo"]);
+
+      if (canSave && user?.userId) {
+        const watchResp = await fetchWithAuth(`${apiBase}/financial/watchlist`);
+        if (watchResp.ok) {
+          const w = (await watchResp.json()) as { symbols?: string[] };
+          const syms = w.symbols ?? [];
+          setSymbols(syms.length > 0 ? syms : defaultSymbols);
+        } else {
+          setSymbols(defaultSymbols);
+        }
+      } else {
+        const guestSyms = (() => {
+          try {
+            const raw = sessionStorage.getItem(GUEST_SYMBOLS_KEY);
+            return raw ? (JSON.parse(raw) as string[]) : [];
+          } catch {
+            return [];
+          }
+        })();
+        setSymbols(guestSyms.length > 0 ? guestSyms : defaultSymbols);
       }
     } catch (e: any) {
       setError(e?.message ?? "Failed to load watchlist");
     } finally {
       setLoading(false);
     }
-  }, [fetchWithAuth]);
+  }, [canSave, user?.userId]);
 
   const fetchQuotes = useCallback(async () => {
     const apiBase = getApiBaseUrl();
@@ -73,7 +81,7 @@ const FinancialPage: React.FC = () => {
     const next: Record<string, Quote | null> = {};
     for (const sym of symbols) {
       try {
-        const resp = await fetchWithAuth(
+        const resp = await fetchWithAuthOptional(
           `${apiBase}/financial/quote?symbol=${encodeURIComponent(sym)}&source=${encodeURIComponent(source)}`
         );
         if (resp.ok) {
@@ -87,26 +95,46 @@ const FinancialPage: React.FC = () => {
       }
     }
     setQuotes(next);
-  }, [symbols, source, fetchWithAuth]);
+  }, [symbols, source]);
 
   useEffect(() => {
-    if (access) loadWatchlist();
-  }, [access, loadWatchlist]);
+    loadWatchlist();
+  }, [loadWatchlist]);
 
   useEffect(() => {
-    if (access && symbols.length > 0) fetchQuotes();
+    if (symbols.length > 0) fetchQuotes();
     else setQuotes({});
-  }, [access, symbols, source, fetchQuotes]);
+  }, [symbols, source, fetchQuotes]);
 
   const handleAddSymbol = () => {
     const s = newSymbol.trim().toUpperCase();
     if (!s || symbols.includes(s)) return;
-    setSymbols((prev) => [...prev, s]);
+    setSymbols((prev) => {
+      const next = [...prev, s];
+      if (!canSave) {
+        try {
+          sessionStorage.setItem(GUEST_SYMBOLS_KEY, JSON.stringify(next));
+        } catch {
+          /* ignore */
+        }
+      }
+      return next;
+    });
     setNewSymbol("");
   };
 
   const handleRemoveSymbol = (s: string) => {
-    setSymbols((prev) => prev.filter((x) => x !== s));
+    setSymbols((prev) => {
+      const next = prev.filter((x) => x !== s);
+      if (!canSave) {
+        try {
+          sessionStorage.setItem(GUEST_SYMBOLS_KEY, JSON.stringify(next));
+        } catch {
+          /* ignore */
+        }
+      }
+      return next;
+    });
     setQuotes((prev) => {
       const next = { ...prev };
       delete next[s];
@@ -137,17 +165,6 @@ const FinancialPage: React.FC = () => {
       setSaving(false);
     }
   };
-
-  if (!access) {
-    return (
-      <div className="space-y-4">
-        <h1 className="text-xl font-semibold text-slate-100">Financial</h1>
-        <div className="rounded-md bg-amber-900/30 border border-amber-800/50 px-4 py-3 text-sm text-amber-200">
-          You do not have access to the Financial section. Join the Financial custom group or contact an admin.
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">
@@ -255,7 +272,7 @@ const FinancialPage: React.FC = () => {
             </div>
           )}
 
-          {symbols.length > 0 && (
+          {canSave && symbols.length > 0 && (
             <button
               type="button"
               onClick={handleSaveWatchlist}
@@ -264,6 +281,12 @@ const FinancialPage: React.FC = () => {
             >
               {saving ? "Saving…" : "Save watchlist"}
             </button>
+          )}
+
+          {!canSave && (
+            <p className="text-sm text-slate-500">
+              Sign in to save your watchlist. Guest symbols are temporary and expire when you close the browser.
+            </p>
           )}
 
           {symbols.length === 0 && (

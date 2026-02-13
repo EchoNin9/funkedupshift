@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useAuth, canModifySquash } from "../../shell/AuthContext";
 import DateInput from "./DateInput";
+import { fetchWithAuth } from "../../utils/api";
 
 function getApiBaseUrl(): string | null {
   if (typeof window === "undefined") return null;
@@ -90,14 +91,6 @@ const SquashAdminPage: React.FC = () => {
 
   const canModify = canModifySquash(user);
 
-  const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
-    const w = window as any;
-    if (!w.auth?.getAccessToken) throw new Error("Not signed in");
-    const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
-    if (!token) throw new Error("Not signed in");
-    const headers = { ...options.headers, Authorization: `Bearer ${token}` };
-    return fetch(url, { ...options, headers });
-  };
 
   const getPlayerName = (id: string) => {
     const p = allPlayers.find((x) => x.id === id || x.PK === id);
