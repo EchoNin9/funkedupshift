@@ -203,17 +203,17 @@ def list_memes(event, user, json_response):
             if not meme_ids:
                 return json_response({"memes": []})
 
-            memes = []
-            for mid in meme_ids:
-                r = dynamodb.get_item(
-                    TableName=TABLE_NAME,
-                    Key={"PK": {"S": mid}, "SK": {"S": "METADATA"}},
-                )
-                if "Item" in r:
-                    m = _dynamo_item_to_meme(r["Item"])
+            keys = [{"PK": {"S": mid}, "SK": {"S": "METADATA"}} for mid in meme_ids]
+            id_to_meme = {}
+            for i in range(0, len(keys), 100):
+                batch = keys[i : i + 100]
+                batch_resp = dynamodb.batch_get_item(RequestItems={TABLE_NAME: {"Keys": batch}})
+                for item in batch_resp.get("Responses", {}).get(TABLE_NAME, []):
+                    m = _dynamo_item_to_meme(item)
                     if m.get("isPrivate") and m.get("userId") != user.get("userId") and "admin" not in user.get("groups", []):
                         continue
-                    memes.append(m)
+                    id_to_meme[m.get("PK", "")] = m
+            memes = [id_to_meme[mid] for mid in meme_ids if mid in id_to_meme]
             _add_meme_urls(memes, region=region)
             return json_response({"memes": memes})
 

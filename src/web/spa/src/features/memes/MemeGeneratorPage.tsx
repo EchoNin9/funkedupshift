@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 import { useAuth, canAccessMemes } from "../../shell/AuthContext";
+import AddTagInput from "./AddTagInput";
 
 const FONTS = ["Impact", "Arial Black", "Comic Sans MS", "Georgia", "Verdana", "Times New Roman", "Courier New"];
 const FIXED_ZONES = [
@@ -47,6 +48,8 @@ const MemeGeneratorPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [generatingTitle, setGeneratingTitle] = useState(false);
+  const [tags, setTags] = useState<string[]>([]);
+  const [allTags, setAllTags] = useState<string[]>([]);
 
   const fetchWithAuth = useCallback(async (url: string, options?: RequestInit) => {
     const w = window as any;
@@ -166,6 +169,20 @@ const MemeGeneratorPage: React.FC = () => {
 
   useEffect(() => drawCanvas(), [drawCanvas]);
 
+  useEffect(() => {
+    const apiBase = getApiBaseUrl();
+    if (!apiBase) return;
+    let cancelled = false;
+    fetchWithAuth(`${apiBase}/memes/tags`)
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("Failed to load tags"))))
+      .then((data: { tags?: string[] }) => {
+        if (cancelled) return;
+        setAllTags((data.tags ?? []).sort((a, b) => a.localeCompare(b)));
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [fetchWithAuth]);
+
   const handleSubmit = async () => {
     if (!imageSrc) {
       setError("Add an image first");
@@ -212,7 +229,7 @@ const MemeGeneratorPage: React.FC = () => {
           isPrivate: isPrivate,
           textBoxes,
           sizeMode,
-          tags: []
+          tags
         })
       });
       if (!createResp.ok) {
@@ -415,6 +432,15 @@ const MemeGeneratorPage: React.FC = () => {
                 placeholder="Optional description"
                 rows={3}
                 className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1">Tags</label>
+              <AddTagInput
+                tags={tags}
+                onTagsChange={setTags}
+                allTags={allTags}
+                placeholder="Type to suggest or create tag, Tab to autocomplete"
               />
             </div>
             <label className="flex items-center gap-2 text-sm text-slate-300">

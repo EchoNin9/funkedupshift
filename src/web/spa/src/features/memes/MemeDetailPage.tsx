@@ -155,13 +155,23 @@ const MemeDetailPage: React.FC = () => {
         )}
       </header>
 
-      <div className="rounded-xl border border-slate-800 bg-slate-950/60 overflow-hidden">
-        {imgUrl && (
-          <img
-            src={imgUrl}
-            alt={title}
-            className="w-full max-w-2xl mx-auto block"
-          />
+      <div className="rounded-xl border border-slate-800 bg-slate-950/60 overflow-hidden min-h-[200px] flex items-center justify-center p-4">
+        {imgUrl ? (
+          <>
+            <img
+              src={imgUrl}
+              alt={title}
+              className="w-full max-w-2xl mx-auto block object-contain max-h-[70vh]"
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).style.display = "none";
+                const next = (e.currentTarget as HTMLImageElement).nextElementSibling;
+                if (next) (next as HTMLElement).classList.remove("hidden");
+              }}
+            />
+            <div className="hidden py-12 text-slate-500" aria-hidden>Image failed to load</div>
+          </>
+        ) : (
+          <div className="py-12 text-slate-500">No image</div>
         )}
       </div>
 

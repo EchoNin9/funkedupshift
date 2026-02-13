@@ -1,7 +1,8 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 import { useAuth, hasRole, canAccessMemes } from "../../shell/AuthContext";
+import AddTagInput from "./AddTagInput";
 
 interface MemeItem {
   PK: string;
@@ -24,14 +25,11 @@ const EditMemePage: React.FC = () => {
   const { user } = useAuth();
   const [item, setItem] = useState<MemeItem | null>(null);
   const [tags, setTags] = useState<string[]>([]);
-  const [tagInput, setTagInput] = useState("");
   const [isPrivate, setIsPrivate] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [allTags, setAllTags] = useState<string[]>([]);
-  const [tagDropdownOpen, setTagDropdownOpen] = useState(false);
-  const tagDropdownRef = useRef<HTMLDivElement>(null);
   const memeId = id ? decodeURIComponent(id) : "";
 
   const fetchWithAuth = useCallback(async (url: string, options?: RequestInit) => {
@@ -78,34 +76,6 @@ const EditMemePage: React.FC = () => {
     load();
     return () => { cancelled = true; };
   }, [memeId, fetchWithAuth]);
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (tagDropdownRef.current && !tagDropdownRef.current.contains(e.target as Node)) {
-        setTagDropdownOpen(false);
-      }
-    }
-    if (tagDropdownOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-      return () => document.removeEventListener("mousedown", handleClickOutside);
-    }
-  }, [tagDropdownOpen]);
-
-  const filteredTagOptions = useMemo(() => {
-    return allTags.filter(
-      (t) =>
-        !tags.includes(t) &&
-        (!tagInput.trim() || t.toLowerCase().includes(tagInput.toLowerCase()))
-    );
-  }, [allTags, tags, tagInput]);
-
-  const addTag = (tag: string) => {
-    const t = tag.trim();
-    if (t && !tags.includes(t)) setTags([...tags, t]);
-    setTagInput("");
-  };
-
-  const removeTag = (t: string) => setTags(tags.filter((x) => x !== t));
 
   const handleSave = async () => {
     const apiBase = getApiBaseUrl();
@@ -188,62 +158,14 @@ const EditMemePage: React.FC = () => {
       </header>
 
       <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 space-y-4 max-w-xl">
-        <div ref={tagDropdownRef} className="relative">
+        <div>
           <label className="block text-xs font-medium text-slate-400 mb-1">Tags</label>
-          <input
-            type="text"
-            value={tagInput}
-            onChange={(e) => setTagInput(e.target.value)}
-            onFocus={() => setTagDropdownOpen(true)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                const t = tagInput.trim();
-                if (t && allTags.includes(t)) addTag(t);
-              }
-            }}
-            placeholder="Search and select tags (existing only)"
-            className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-500"
-            autoComplete="off"
+          <AddTagInput
+            tags={tags}
+            onTagsChange={setTags}
+            allTags={allTags}
+            placeholder="Type to suggest or create tag, Tab to autocomplete"
           />
-          {tagDropdownOpen && (
-            <div className="absolute left-0 top-full z-10 mt-1 w-full max-h-48 overflow-auto rounded-md border border-slate-700 bg-slate-900 shadow-lg">
-              {filteredTagOptions.length > 0 ? (
-                filteredTagOptions.map((tag) => (
-                  <button
-                    key={tag}
-                    type="button"
-                    onClick={() => addTag(tag)}
-                    className="block w-full text-left px-3 py-2 text-sm text-slate-200 hover:bg-slate-800"
-                  >
-                    {tag}
-                  </button>
-                ))
-              ) : (
-                <div className="px-3 py-2 text-xs text-slate-500">No matching tags (only existing tags)</div>
-              )}
-            </div>
-          )}
-          {tags.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-1">
-              {tags.map((t) => (
-                <span
-                  key={t}
-                  className="inline-flex items-center gap-1 rounded-full bg-slate-800 px-2 py-0.5 text-xs text-slate-300"
-                >
-                  {t}
-                  <button
-                    type="button"
-                    onClick={() => removeTag(t)}
-                    className="hover:text-slate-100"
-                    aria-label={`Remove ${t}`}
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
-            </div>
-          )}
         </div>
 
         <label className="flex items-center gap-2 text-sm text-slate-300">

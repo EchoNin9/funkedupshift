@@ -13,9 +13,10 @@ interface MemeItem {
   tags?: string[];
   isPrivate?: boolean;
   userId?: string;
+  createdAt?: string;
 }
 
-type SortKey = "avgDesc" | "avgAsc" | "alphaAsc" | "alphaDesc";
+type SortKey = "newest" | "oldest" | "avgDesc" | "avgAsc" | "alphaAsc" | "alphaDesc";
 
 function getApiBaseUrl(): string | null {
   if (typeof window === "undefined") return null;
@@ -38,7 +39,7 @@ const MemeBrowsePage: React.FC = () => {
   });
   const [tagDropdownOpen, setTagDropdownOpen] = useState(false);
   const [tagSearch, setTagSearch] = useState("");
-  const [sort, setSort] = useState<SortKey>("avgDesc");
+  const [sort, setSort] = useState<SortKey>("newest");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const tagDropdownRef = useRef<HTMLDivElement>(null);
@@ -149,6 +150,18 @@ const MemeBrowsePage: React.FC = () => {
       const titleB = (b.title || b.PK || "").toLowerCase();
       const avgA = typeof a.averageRating === "number" ? a.averageRating : 0;
       const avgB = typeof b.averageRating === "number" ? b.averageRating : 0;
+      const createdA = a.createdAt || "";
+      const createdB = b.createdAt || "";
+      if (sort === "newest") {
+        const cmp = createdB.localeCompare(createdA);
+        if (cmp !== 0) return cmp;
+        return titleA.localeCompare(titleB);
+      }
+      if (sort === "oldest") {
+        const cmp = createdA.localeCompare(createdB);
+        if (cmp !== 0) return cmp;
+        return titleA.localeCompare(titleB);
+      }
       if (sort === "avgDesc") {
         if (avgB !== avgA) return avgB - avgA;
         return titleA.localeCompare(titleB);
@@ -314,6 +327,8 @@ const MemeBrowsePage: React.FC = () => {
               onChange={(e) => setSort(e.target.value as SortKey)}
               className="rounded-md border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-slate-50 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange"
             >
+              <option value="newest">Newest first</option>
+              <option value="oldest">Oldest first</option>
               <option value="avgDesc">Avg stars (high first)</option>
               <option value="avgAsc">Avg stars (low first)</option>
               <option value="alphaAsc">Title A–Z</option>
