@@ -25,6 +25,7 @@ interface TextBox {
 }
 
 const CANVAS_SIZE = 500;
+const MAX_OUTPUT_DIM = 2048;
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 function getApiBaseUrl(): string | null {
@@ -145,25 +146,35 @@ const MemeGeneratorPage: React.FC = () => {
         const w = canvas.width;
         const h = canvas.height;
         ctx.clearRect(0, 0, w, h);
+        // Image drawing bounds (used for text positioning)
+        let imgX = 0, imgY = 0, imgW = w, imgH = h;
+
         if (sizeMode === "resize") {
-          const scale = Math.min(w / img.width, h / img.height);
-          const dw = img.width * scale;
-          const dh = img.height * scale;
-          const dx = (w - dw) / 2;
-          const dy = (h - dh) / 2;
-          ctx.drawImage(img, dx, dy, dw, dh);
-        } else {
+          // Resize to fit: stretch image to fill the entire box
           ctx.drawImage(img, 0, 0, w, h);
+        } else {
+          // Original: preserve aspect ratio, longest side touches box border
+          const scale = Math.min(w / img.width, h / img.height);
+          imgW = img.width * scale;
+          imgH = img.height * scale;
+          imgX = (w - imgW) / 2;
+          imgY = (h - imgH) / 2;
+          ctx.drawImage(img, imgX, imgY, imgW, imgH);
         }
+
+        // Draw text relative to image bounds so preview matches saved output
+        const textScale = sizeMode === "original"
+          ? Math.min(imgW, imgH) / CANVAS_SIZE
+          : 1;
         textBoxesRef.current.forEach((tb) => {
           const zone = FIXED_ZONES.find((z) => z.id === tb.zoneId);
           if (!zone || !tb.text) return;
-          ctx.font = `${tb.size}px ${tb.font}`;
+          ctx.font = `${Math.round(tb.size * textScale)}px ${tb.font}`;
           ctx.fillStyle = tb.color;
           ctx.textAlign = zone.align;
           ctx.textBaseline = zone.y < 0.5 ? "top" : "bottom";
-          const x = zone.x * w;
-          const y = zone.y * h;
+          const x = imgX + zone.x * imgW;
+          const y = imgY + zone.y * imgH;
           ctx.fillText(tb.text, x, y);
         });
         resolve();
@@ -199,8 +210,6 @@ const MemeGeneratorPage: React.FC = () => {
       setError("Add an image first");
       return;
     }
-    const canvas = canvasRef.current;
-    if (!canvas) return;
     const apiBase = getApiBaseUrl();
     if (!apiBase) {
       setError("API not configured");
@@ -209,14 +218,55 @@ const MemeGeneratorPage: React.FC = () => {
     setIsSubmitting(true);
     setError(null);
     try {
-      await drawCanvas();
-      await new Promise((r) => requestAnimationFrame(r));
-      const blob = await new Promise<Blob | null>((resolve) => {
-        canvas.toBlob((b) => resolve(b), "image/png", 0.95);
-      });
-      if (!blob) {
-        throw new Error("Failed to export canvas");
+      let blob: Blob | null;
+
+      if (sizeMode === "original") {
+        // Export at the image's original aspect ratio
+        const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+          const i = new Image();
+          i.crossOrigin = "anonymous";
+          i.onload = () => resolve(i);
+          i.onerror = () => reject(new Error("Failed to load image"));
+          i.src = imageSrc!;
+        });
+        const dimScale = Math.min(1, MAX_OUTPUT_DIM / Math.max(img.width, img.height));
+        const outW = Math.round(img.width * dimScale);
+        const outH = Math.round(img.height * dimScale);
+
+        const exportCanvas = document.createElement("canvas");
+        exportCanvas.width = outW;
+        exportCanvas.height = outH;
+        const ctx = exportCanvas.getContext("2d")!;
+        ctx.drawImage(img, 0, 0, outW, outH);
+
+        // Draw text overlays scaled proportionally
+        const textScale = Math.min(outW, outH) / CANVAS_SIZE;
+        textBoxesRef.current.forEach((tb) => {
+          const zone = FIXED_ZONES.find((z) => z.id === tb.zoneId);
+          if (!zone || !tb.text) return;
+          ctx.font = `${Math.round(tb.size * textScale)}px ${tb.font}`;
+          ctx.fillStyle = tb.color;
+          ctx.textAlign = zone.align;
+          ctx.textBaseline = zone.y < 0.5 ? "top" : "bottom";
+          ctx.fillText(tb.text, zone.x * outW, zone.y * outH);
+        });
+
+        blob = await new Promise<Blob | null>((resolve) => {
+          exportCanvas.toBlob((b) => resolve(b), "image/png", 0.95);
+        });
+      } else {
+        // Resize to fit: export the square canvas as-is
+        const canvas = canvasRef.current;
+        if (!canvas) throw new Error("Canvas not available");
+        await drawCanvas();
+        await new Promise((r) => requestAnimationFrame(r));
+        blob = await new Promise<Blob | null>((resolve) => {
+          canvas.toBlob((b) => resolve(b), "image/png", 0.95);
+        });
       }
+
+      if (!blob) throw new Error("Failed to export canvas");
+
       const uploadResp = await fetchWithAuth(`${apiBase}/memes/upload`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -331,14 +381,30 @@ const MemeGeneratorPage: React.FC = () => {
               <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-xs font-medium text-slate-400">Preview</label>
-                  <select
-                    value={sizeMode}
-                    onChange={(e) => setSizeMode(e.target.value as "original" | "resize")}
-                    className="rounded border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-slate-300"
-                  >
-                    <option value="resize">Resize to fit</option>
-                    <option value="original">Original</option>
-                  </select>
+                  <div className="flex rounded-md border border-slate-700 overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => setSizeMode("resize")}
+                      className={`px-3 py-1 text-xs transition-colors ${
+                        sizeMode === "resize"
+                          ? "bg-brand-orange text-slate-950 font-medium"
+                          : "bg-slate-950 text-slate-400 hover:text-slate-200"
+                      }`}
+                    >
+                      Resize to fit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSizeMode("original")}
+                      className={`px-3 py-1 text-xs transition-colors ${
+                        sizeMode === "original"
+                          ? "bg-brand-orange text-slate-950 font-medium"
+                          : "bg-slate-950 text-slate-400 hover:text-slate-200"
+                      }`}
+                    >
+                      Original
+                    </button>
+                  </div>
                 </div>
                 <canvas
                   ref={canvasRef}
