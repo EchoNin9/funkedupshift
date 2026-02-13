@@ -290,7 +290,7 @@ def fetch_our_properties():
 
 
 # -----------------------------------------------------------------------------
-# Highest Rated: top 14 sites by stars rating (cached, same pattern as highlights)
+# Highest Rated: top 12 sites/media by stars rating (cached, same pattern as highlights)
 # -----------------------------------------------------------------------------
 
 def get_highest_rated_sites():
@@ -429,7 +429,7 @@ def _score_media(item):
 
 def generate_highest_rated_cache_from_stars():
     """
-    Generate highest rated cache from top 14 items (sites + media) by stars rating.
+    Generate highest rated cache from top 12 items (sites + media) by stars rating.
     Returns (items_list, error). If error, items_list may be partial/empty.
     """
     if not TABLE_NAME:
@@ -475,9 +475,9 @@ def generate_highest_rated_cache_from_stars():
                 if t:
                     scored.append(t)
 
-        # Sort by avg desc, take top 14
+        # Sort by avg desc, take top 12
         scored.sort(key=lambda x: (-x[0], (x[1].get("title") or x[1].get("url") or x[1].get("id", "")).lower()))
-        out = [e for _, e in scored[:14]]
+        out = [e for _, e in scored[:12]]
 
         if not out:
             return [], "No sites or media with ratings. Items need at least one star rating to appear."

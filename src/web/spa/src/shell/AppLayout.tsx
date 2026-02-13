@@ -2,7 +2,7 @@ import React from "react";
 import { Link, NavLink, Route, Routes, useNavigate } from "react-router-dom";
 import { Bars3Icon, ChevronDownIcon, ChevronRightIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { Dialog } from "@headlessui/react";
-import { useAuth, hasRole, canAccessSquash, canModifySquash } from "./AuthContext";
+import { useAuth, hasRole, canAccessSquash, canModifySquash, canAccessFinancial, canAccessFinancialAdmin, canAccessMemes } from "./AuthContext";
 import { useBranding } from "./BrandingContext";
 import HomePage from "../features/home/HomePage";
 import WebsitesPage from "../features/websites/WebsitesPage";
@@ -25,12 +25,19 @@ import AuthPage from "../features/auth/AuthPage";
 import ProfilePage from "../features/profile/ProfilePage";
 import SquashPage from "../features/squash/SquashPage";
 import SquashAdminPage from "../features/squash/SquashAdminPage";
+import FinancialPage from "../features/financial/FinancialPage";
+import FinancialAdminPage from "../features/financial/admin/FinancialAdminPage";
+import MemeBrowsePage from "../features/memes/MemeBrowsePage";
+import MemeGeneratorPage from "../features/memes/MemeGeneratorPage";
+import MemeDetailPage from "../features/memes/MemeDetailPage";
+import EditMemePage from "../features/memes/EditMemePage";
 
 interface NavItem {
   label: string;
   to: string;
-  section: "discover" | "squash" | "recommended" | "admin";
+  section: "discover" | "squash" | "memes" | "financial" | "recommended" | "admin";
   minRole: "guest" | "user" | "manager" | "superadmin";
+  memesAccess?: boolean;
 }
 
 const navItems: NavItem[] = [
@@ -40,6 +47,10 @@ const navItems: NavItem[] = [
   { label: "Profile", to: "/profile", section: "discover", minRole: "user" },
   { label: "Squash", to: "/squash", section: "squash", minRole: "user" },
   { label: "Squash Admin", to: "/squash-admin", section: "squash", minRole: "manager" },
+  { label: "Memes", to: "/memes", section: "memes", minRole: "user", memesAccess: true },
+  { label: "Meme Generator", to: "/memes/create", section: "memes", minRole: "user", memesAccess: true },
+  { label: "Financial", to: "/financial", section: "financial", minRole: "user" },
+  { label: "Financial Admin", to: "/admin/financial", section: "financial", minRole: "manager" },
   { label: "Highlights", to: "/recommended/highlights", section: "recommended", minRole: "guest" },
   { label: "Highest Rated", to: "/recommended/highest-rated", section: "recommended", minRole: "guest" },
   { label: "Recommended", to: "/admin/recommended", section: "admin", minRole: "manager" },
@@ -56,6 +67,8 @@ function getDefaultSectionState(): Record<string, boolean> {
   return {
     discover: true,
     squash: false,
+    memes: false,
+    financial: false,
     recommended: true,
     admin: false
   };
@@ -113,6 +126,13 @@ const AppLayout: React.FC = () => {
   const squashItems = navItems
     .filter((i) => i.section === "squash")
     .filter((i) => (i.to === "/squash" ? canAccessSquash(user) : canModifySquash(user)));
+  const memesItems = navItems
+    .filter((i) => i.section === "memes")
+    .filter((i) => hasRole(user ?? null, i.minRole) && (!i.memesAccess || canAccessMemes(user)));
+  const financialItems = navItems
+    .filter((i) => i.section === "financial")
+    .filter((i) => hasRole(user ?? null, i.minRole))
+    .filter((i) => (i.to === "/financial" ? true : canAccessFinancialAdmin(user)));
   const adminItems = visibleNavItems.filter((i) => i.section === "admin");
 
   const navLinkClass = ({ isActive }: { isActive: boolean }) =>
@@ -209,6 +229,58 @@ const AppLayout: React.FC = () => {
               )}
             </div>
 
+            {squashItems.length > 0 && (
+              <div>
+                <button
+                  type="button"
+                  onClick={() => toggleSection("squash")}
+                  className="flex w-full items-center justify-between rounded-md px-3 py-2 text-xs font-semibold text-slate-500 uppercase mb-2 hover:bg-slate-800/70 hover:text-slate-300"
+                >
+                  Squash
+                  {(sectionOpen["squash"] ?? false) ? (
+                    <ChevronDownIcon className="h-4 w-4 shrink-0" />
+                  ) : (
+                    <ChevronRightIcon className="h-4 w-4 shrink-0" />
+                  )}
+                </button>
+                {(sectionOpen["squash"] ?? false) && (
+                  <div className="space-y-1">
+                    {squashItems.map((item) => (
+                      <NavLink key={item.to} to={item.to} className={navLinkClass}>
+                        {item.label}
+                      </NavLink>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {memesItems.length > 0 && (
+              <div>
+                <button
+                  type="button"
+                  onClick={() => toggleSection("memes")}
+                  className="flex w-full items-center justify-between rounded-md px-3 py-2 text-xs font-semibold text-slate-500 uppercase mb-2 hover:bg-slate-800/70 hover:text-slate-300"
+                >
+                  Memes
+                  {(sectionOpen["memes"] ?? false) ? (
+                    <ChevronDownIcon className="h-4 w-4 shrink-0" />
+                  ) : (
+                    <ChevronRightIcon className="h-4 w-4 shrink-0" />
+                  )}
+                </button>
+                {(sectionOpen["memes"] ?? false) && (
+                  <div className="space-y-1">
+                    {memesItems.map((item) => (
+                      <NavLink key={item.to} to={item.to} className={navLinkClass}>
+                        {item.label}
+                      </NavLink>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {recommendedItems.length > 0 && (
               <div>
                 <button
@@ -235,23 +307,23 @@ const AppLayout: React.FC = () => {
               </div>
             )}
 
-            {squashItems.length > 0 && (
+            {financialItems.length > 0 && (
               <div>
                 <button
                   type="button"
-                  onClick={() => toggleSection("squash")}
+                  onClick={() => toggleSection("financial")}
                   className="flex w-full items-center justify-between rounded-md px-3 py-2 text-xs font-semibold text-slate-500 uppercase mb-2 hover:bg-slate-800/70 hover:text-slate-300"
                 >
-                  Squash
-                  {(sectionOpen["squash"] ?? false) ? (
+                  Financial
+                  {(sectionOpen["financial"] ?? false) ? (
                     <ChevronDownIcon className="h-4 w-4 shrink-0" />
                   ) : (
                     <ChevronRightIcon className="h-4 w-4 shrink-0" />
                   )}
                 </button>
-                {(sectionOpen["squash"] ?? false) && (
+                {(sectionOpen["financial"] ?? false) && (
                   <div className="space-y-1">
-                    {squashItems.map((item) => (
+                    {financialItems.map((item) => (
                       <NavLink key={item.to} to={item.to} className={navLinkClass}>
                         {item.label}
                       </NavLink>
@@ -398,6 +470,37 @@ const AppLayout: React.FC = () => {
                 </div>
               )}
 
+              {financialItems.length > 0 && (
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => toggleSection("financial")}
+                    className="flex w-full items-center justify-between rounded-md px-3 py-2 text-xs font-semibold text-slate-500 uppercase mb-2 hover:bg-slate-800/70 hover:text-slate-300"
+                  >
+                    Financial
+                    {(sectionOpen["financial"] ?? false) ? (
+                      <ChevronDownIcon className="h-4 w-4 shrink-0" />
+                    ) : (
+                      <ChevronRightIcon className="h-4 w-4 shrink-0" />
+                    )}
+                  </button>
+                  {(sectionOpen["financial"] ?? false) && (
+                    <div className="space-y-1">
+                      {financialItems.map((item) => (
+                        <NavLink
+                          key={item.to}
+                          to={item.to}
+                          className={navLinkClass}
+                          onClick={() => setMobileOpen(false)}
+                        >
+                          {item.label}
+                        </NavLink>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {adminItems.length > 0 && (
                 <div>
                   <button
@@ -446,6 +549,12 @@ const AppLayout: React.FC = () => {
               <Route path="/recommended/highest-rated" element={<HighestRatedPage />} />
               <Route path="/squash" element={<SquashPage />} />
               <Route path="/squash-admin" element={<SquashAdminPage />} />
+              <Route path="/memes" element={<MemeBrowsePage />} />
+              <Route path="/memes/create" element={<MemeGeneratorPage />} />
+              <Route path="/memes/:id/edit" element={<EditMemePage />} />
+              <Route path="/memes/:id" element={<MemeDetailPage />} />
+              <Route path="/financial" element={<FinancialPage />} />
+              <Route path="/admin/financial" element={<FinancialAdminPage />} />
               <Route path="/admin/branding" element={<BrandingPage />} />
               <Route path="/admin/internet-dashboard" element={<InternetDashboardAdminPage />} />
               <Route path="/admin/recommended" element={<RecommendedAdminPage />} />
@@ -504,6 +613,21 @@ const AppLayout: React.FC = () => {
             {canModifySquash(user) && (
               <Link to="/squash-admin" className="hover:text-slate-300">
                 Squash Admin
+              </Link>
+            )}
+            {canAccessMemes(user) && (
+              <Link to="/memes" className="hover:text-slate-300">
+                Memes
+              </Link>
+            )}
+            {canAccessFinancial(user) && (
+              <Link to="/financial" className="hover:text-slate-300">
+                Financial
+              </Link>
+            )}
+            {canAccessFinancialAdmin(user) && (
+              <Link to="/admin/financial" className="hover:text-slate-300">
+                Financial Admin
               </Link>
             )}
           </nav>
