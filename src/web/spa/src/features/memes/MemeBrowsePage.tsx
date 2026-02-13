@@ -162,7 +162,8 @@ const MemeBrowsePage: React.FC = () => {
           params.set("tagIds", selectedTags.join(","));
           params.set("tagMode", tagMode);
         }
-        const resp = await fetchWithAuth(`${apiBase}/memes?${params.toString()}`);
+        const basePath = user ? "/memes" : "/memes/cache";
+        const resp = await fetchWithAuth(`${apiBase}${basePath}?${params.toString()}`);
         if (!resp.ok) {
           const txt = await resp.text();
           throw new Error(`HTTP ${resp.status}: ${txt}`);
@@ -192,7 +193,7 @@ const MemeBrowsePage: React.FC = () => {
     }
     load();
     return () => { cancelled = true; };
-  }, [tab, search, selectedTags, tagMode, fetchWithAuth, invalidateMyCache, showMyMemes]);
+  }, [tab, search, selectedTags, tagMode, fetchWithAuth, invalidateMyCache, showMyMemes, user]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {

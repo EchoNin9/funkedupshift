@@ -225,7 +225,9 @@ def handler(event, context):
             return updateMediaCategory(event)
         if method == "DELETE" and path == "/media-categories":
             return deleteMediaCategory(event)
-        # Memes section routes (Memes custom group or admin required)
+        # Memes section routes
+        if method == "GET" and path == "/memes/cache":
+            return listMemesCache(event)
         if method == "GET" and path == "/memes":
             return listMemes(event)
         if method == "GET" and path == "/memes/tags":
@@ -2610,21 +2612,30 @@ def deleteMediaCategory(event):
 
 
 # ------------------------------------------------------------------------------
-# Memes section (Memes custom group or admin required)
+# Memes section
 # ------------------------------------------------------------------------------
 
-def listMemes(event):
-    """GET /memes - List memes. Guests: cache-only. Logged-in: cache + search. Mine: user+memes only."""
+def listMemesCache(event):
+    """GET /memes/cache - Public cache-only view for guests. No auth required."""
     user = getUserInfo(event)
+    qs = event.get("queryStringParameters") or {}
+    single_id = (qs.get("id") or "").strip()
+    search_param = bool((qs.get("q") or "").strip() or (qs.get("tagIds") or "").strip())
+    mine_param = (qs.get("mine") or "").strip().lower() in ("1", "true", "yes")
+    if search_param or mine_param:
+        return jsonResponse({"error": "Unauthorized"}, 401)
+    from api.memes import list_memes
+    return list_memes(event, user or {}, jsonResponse)
+
+
+def listMemes(event):
+    """GET /memes - List memes (JWT required). Cache, search, mine for logged-in users."""
+    user, err = _requireAuth(event)
+    if err:
+        return err
     qs = event.get("queryStringParameters") or {}
     mine_param = (qs.get("mine") or "").strip().lower() in ("1", "true", "yes")
     search_param = bool((qs.get("q") or "").strip() or (qs.get("tagIds") or "").strip())
-
-    if not user.get("userId"):
-        if mine_param or search_param:
-            return jsonResponse({"error": "Unauthorized"}, 401)
-        from api.memes import list_memes
-        return list_memes(event, user, jsonResponse)
 
     if mine_param:
         from api.memes import can_create_memes

@@ -51,7 +51,8 @@ const MemeDetailPage: React.FC = () => {
       setIsLoading(true);
       setError(null);
       try {
-        const resp = await fetchWithAuth(`${apiBase}/memes?id=${encodeURIComponent(memeId)}`);
+        const basePath = user ? "/memes" : "/memes/cache";
+        const resp = await fetchWithAuth(`${apiBase}${basePath}?id=${encodeURIComponent(memeId)}`);
         if (resp.status === 404) {
           if (!cancelled) setItem(null);
           return;
@@ -71,7 +72,7 @@ const MemeDetailPage: React.FC = () => {
     }
     load();
     return () => { cancelled = true; };
-  }, [memeId, fetchWithAuth]);
+  }, [memeId, fetchWithAuth, user]);
 
   const handleRate = async (rating: number) => {
     const apiBase = getApiBaseUrl();
