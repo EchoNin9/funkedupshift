@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
-import { useAuth, canAccessFinancialAdmin } from "../../shell/AuthContext";
+import { useAuth, canAccessFinancialAdmin } from "../../../shell/AuthContext";
 
 type TabId = "overview" | "members";
 
