@@ -2854,10 +2854,13 @@ def _requireMemesRateAccess(event):
 
 
 def _requireMemesCreateAccess(event):
-    """Return (user, None) if user can create memes (user+Memes or admin), else (None, error_response)."""
+    """Return (user, None) if user can create memes (user+Memes or admin), else (None, error_response).
+    When impersonating, superadmin can create on behalf of the impersonated user."""
     user, err = _requireAuth(event)
     if err:
         return None, err
+    if user.get("impersonated"):
+        return user, None
     from api.memes import can_create_memes
     if not can_create_memes(user):
         return None, jsonResponse({"error": "Forbidden: Memes creator access required (user + Memes group)"}, 403)

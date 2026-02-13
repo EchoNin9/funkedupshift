@@ -166,7 +166,7 @@ const MemeGeneratorPage: React.FC = () => {
     const apiBase = getApiBaseUrl();
     if (!apiBase) return;
     let cancelled = false;
-    fetchWithAuth(`${apiBase}/memes/tags`)
+    fetch(`${apiBase}/memes/tags`)
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error("Failed to load tags"))))
       .then((data: { tags?: string[] }) => {
         if (cancelled) return;
@@ -243,7 +243,7 @@ const MemeGeneratorPage: React.FC = () => {
     }
   };
 
-  const canCreate = canCreateMemes(user);
+  const canCreate = canCreateMemes(user) || !!user?.impersonated;
   if (!user) {
     return (
       <div className="space-y-6">
