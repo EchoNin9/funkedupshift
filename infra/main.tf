@@ -1273,6 +1273,87 @@ resource "aws_apigatewayv2_route" "mediaCategoriesDelete" {
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
+# Memes section (Memes custom group or admin required)
+resource "aws_apigatewayv2_route" "memesGet" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /memes"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "memesTagsGet" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /memes/tags"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "memesPost" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /memes"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "memesPut" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "PUT /memes"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "memesDelete" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "DELETE /memes"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "memesUploadPost" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /memes/upload"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "memesValidateUrlPost" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /memes/validate-url"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "memesImportFromUrlPost" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /memes/import-from-url"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "memesGenerateTitlePost" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /memes/generate-title"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "memesStarsPost" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /memes/stars"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
 # Squash doubles section
 resource "aws_apigatewayv2_route" "squashPlayersGet" {
   api_id             = aws_apigatewayv2_api.main.id
