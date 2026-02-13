@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth, canAccessFinancial, canAccessFinancialAdmin } from "../../shell/AuthContext";
+import { fetchWithAuth } from "../../utils/api";
 
 function getApiBaseUrl(): string | null {
   if (typeof window === "undefined") return null;
@@ -30,15 +31,6 @@ const FinancialPage: React.FC = () => {
   const [newSymbol, setNewSymbol] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-
-  const fetchWithAuth = useCallback(async (url: string, options?: RequestInit) => {
-    const w = window as any;
-    if (!w.auth?.getAccessToken) throw new Error("Not signed in");
-    const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
-    if (!token) throw new Error("Not signed in");
-    const headers = { ...options?.headers, Authorization: `Bearer ${token}` };
-    return fetch(url, { ...options, headers });
-  }, []);
 
   const loadWatchlist = useCallback(async () => {
     const apiBase = getApiBaseUrl();

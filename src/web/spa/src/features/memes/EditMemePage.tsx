@@ -1,8 +1,9 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 import { useAuth, canCreateMemes, canEditAnyMeme } from "../../shell/AuthContext";
 import AddTagInput from "./AddTagInput";
+import { fetchWithAuth } from "../../utils/api";
 
 interface MemeItem {
   PK: string;
@@ -31,14 +32,6 @@ const EditMemePage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [allTags, setAllTags] = useState<string[]>([]);
   const memeId = id ? decodeURIComponent(id) : "";
-
-  const fetchWithAuth = useCallback(async (url: string, options?: RequestInit) => {
-    const w = window as any;
-    if (!w.auth?.getAccessToken) throw new Error("Not signed in");
-    const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
-    if (!token) throw new Error("Not signed in");
-    return fetch(url, { ...options, headers: { ...options?.headers, Authorization: `Bearer ${token}` } });
-  }, []);
 
   const canEdit = !!(user && (canCreateMemes(user) || canEditAnyMeme(user)));
 
@@ -77,7 +70,7 @@ const EditMemePage: React.FC = () => {
     }
     load();
     return () => { cancelled = true; };
-  }, [memeId, fetchWithAuth]);
+  }, [memeId]);
 
   const initialIsPrivate = useRef<boolean | null>(null);
   useEffect(() => {

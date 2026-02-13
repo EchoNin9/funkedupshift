@@ -3,6 +3,7 @@ import { Dialog } from "@headlessui/react";
 import { UserCircleIcon } from "@heroicons/react/24/outline";
 import { useImpersonation } from "./ImpersonationContext";
 import { useAuth } from "./AuthContext";
+import { fetchWithAuth } from "../utils/api";
 
 function getApiBaseUrl(): string | null {
   if (typeof window === "undefined") return null;
@@ -40,17 +41,10 @@ const ImpersonationSelector: React.FC = () => {
     setLoading(true);
     setError(null);
     const load = async () => {
-      const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
-      if (!token) {
-        setError("Not signed in");
-        setLoading(false);
-        return;
-      }
-      const headers = { Authorization: `Bearer ${token}` };
       try {
         const [usersResp, rolesResp] = await Promise.all([
-          fetch(`${apiBase}/admin/users?limit=100`, { headers }),
-          fetch(`${apiBase}/admin/roles`, { headers })
+          fetchWithAuth(`${apiBase}/admin/users?limit=100`),
+          fetchWithAuth(`${apiBase}/admin/roles`)
         ]);
         const usersData = usersResp.ok ? await usersResp.json() : null;
         const rolesData = rolesResp.ok ? await rolesResp.json() : null;

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeftIcon, PencilSquareIcon } from "@heroicons/react/24/outline";
 import { useAuth, hasRole } from "../../shell/AuthContext";
+import { fetchWithAuth, fetchWithAuthOptional } from "../../utils/api";
 
 interface SiteCategory {
   id: string;
@@ -51,7 +52,7 @@ const SiteDetailPage: React.FC = () => {
       try {
         const params = new URLSearchParams();
         params.set("id", decodeURIComponent(id));
-        const resp = await fetch(`${apiBase}/sites?${params.toString()}`);
+        const resp = await fetchWithAuthOptional(`${apiBase}/sites?${params.toString()}`);
         if (resp.status === 404) {
           if (!cancelled) setSite(null);
           return;
@@ -79,22 +80,16 @@ const SiteDetailPage: React.FC = () => {
     if (!user || !site?.PK) return;
     const apiBase = getApiBaseUrl();
     if (!apiBase) return;
-    const w = window as any;
-    if (!w.auth || typeof w.auth.getAccessToken !== "function") return;
     let cancelled = false;
     (async () => {
-      const token: string | null = await new Promise((resolve) => {
-        w.auth.getAccessToken((t: string | null) => resolve(t));
-      });
-      if (!token || cancelled) return;
-      const resp = await fetch(`${apiBase}/stars?siteId=${encodeURIComponent(site.PK)}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (cancelled) return;
-      if (resp.ok) {
-        const data = (await resp.json()) as { rating?: number };
-        setUserRating(typeof data.rating === "number" ? data.rating : null);
-      }
+      try {
+        const resp = await fetchWithAuth(`${apiBase}/stars?siteId=${encodeURIComponent(site.PK)}`);
+        if (cancelled) return;
+        if (resp.ok) {
+          const data = (await resp.json()) as { rating?: number };
+          setUserRating(typeof data.rating === "number" ? data.rating : null);
+        }
+      } catch {}
     })();
     return () => {
       cancelled = true;
@@ -104,20 +99,14 @@ const SiteDetailPage: React.FC = () => {
   const handleRate = async (siteId: string, rating: number) => {
     const apiBase = getApiBaseUrl();
     if (!apiBase) return;
-    const w = window as any;
-    if (!w.auth || typeof w.auth.getAccessToken !== "function") return;
-    const token: string | null = await new Promise((resolve) => {
-      w.auth.getAccessToken((t: string | null) => resolve(t));
-    });
-    if (!token) return;
-    await fetch(`${apiBase}/stars`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify({ siteId, rating })
-    }).then(() => setUserRating(rating)).catch(() => {});
+    try {
+      await fetchWithAuth(`${apiBase}/stars`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ siteId, rating })
+      });
+      setUserRating(rating);
+    } catch {}
   };
 
   if (isLoading) {

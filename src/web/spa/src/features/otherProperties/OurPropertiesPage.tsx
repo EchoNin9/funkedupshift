@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Dialog } from "@headlessui/react";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import { useAuth, hasRole } from "../../shell/AuthContext";
+import { fetchWithAuthOptional } from "../../utils/api";
 
 interface OurPropertiesSite {
   url: string;
@@ -43,7 +44,7 @@ const OurPropertiesPage: React.FC = () => {
     setError(null);
 
     try {
-      const resp = await fetch(`${apiBase}/recommended/highlights`);
+      const resp = await fetchWithAuthOptional(`${apiBase}/recommended/highlights`);
       const txt = await resp.text();
       if (!resp.ok) {
         throw new Error(txt || `HTTP ${resp.status}`);

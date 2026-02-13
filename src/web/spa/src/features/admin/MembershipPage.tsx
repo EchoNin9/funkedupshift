@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 import { useAuth, hasRole } from "../../shell/AuthContext";
+import { fetchWithAuth } from "../../utils/api";
 
 const ROLE_DISPLAY: Record<string, string> = {
   admin: "SuperAdmin",
@@ -150,10 +151,9 @@ const MembershipPage: React.FC = () => {
     setUsersLoading(true);
     setUsersError(null);
     try {
-      const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
       let url = `${apiBase}/admin/users`;
       if (nextToken) url += `?paginationToken=${encodeURIComponent(nextToken)}`;
-      const resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      const resp = await fetchWithAuth(url);
       if (!resp.ok) {
         const data = await resp.json().catch(() => ({}));
         throw new Error((data as { error?: string }).error || "Failed to load users");
@@ -171,13 +171,8 @@ const MembershipPage: React.FC = () => {
   const loadUserGroups = async (u: User): Promise<{ cognitoGroups: string[]; customGroups: string[] }> => {
     const apiBase = getApiBaseUrl();
     if (!apiBase) return { cognitoGroups: [], customGroups: [] };
-    const w = window as any;
-    if (!w.auth?.getAccessToken) return { cognitoGroups: [], customGroups: [] };
     try {
-      const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
-      const resp = await fetch(`${apiBase}/admin/users/${encodeURIComponent(u.username)}/groups`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const resp = await fetchWithAuth(`${apiBase}/admin/users/${encodeURIComponent(u.username)}/groups`);
       if (!resp.ok) return { cognitoGroups: [], customGroups: [] };
       const d = (await resp.json()) as { cognitoGroups?: string[]; customGroups?: string[] };
       return {
@@ -205,8 +200,7 @@ const MembershipPage: React.FC = () => {
     setGroupsLoading(true);
     setGroupsError(null);
     try {
-      const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
-      const resp = await fetch(`${apiBase}/admin/groups`, { headers: { Authorization: `Bearer ${token}` } });
+      const resp = await fetchWithAuth(`${apiBase}/admin/groups`);
       if (!resp.ok) throw new Error(await resp.text());
       const data = (await resp.json()) as { groups?: { name?: string; PK?: string; description?: string; permissions?: string[] }[] };
       const list = (data.groups ?? []).map((g) => ({
@@ -252,8 +246,7 @@ const MembershipPage: React.FC = () => {
     setRolesLoading(true);
     setRolesError(null);
     try {
-      const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
-      const resp = await fetch(`${apiBase}/admin/roles`, { headers: { Authorization: `Bearer ${token}` } });
+      const resp = await fetchWithAuth(`${apiBase}/admin/roles`);
       if (!resp.ok) {
         const d = await resp.json().catch(() => ({}));
         throw new Error((d as { error?: string }).error || "Failed to load roles");
@@ -329,10 +322,9 @@ const MembershipPage: React.FC = () => {
     setMessage(null);
     setGroupsError(null);
     try {
-      const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
-      const resp = await fetch(`${apiBase}/admin/groups`, {
+      const resp = await fetchWithAuth(`${apiBase}/admin/groups`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, description: newDescription.trim(), permissions })
       });
       if (!resp.ok) {
@@ -365,10 +357,9 @@ const MembershipPage: React.FC = () => {
     setIsUpdating(true);
     setUpdateError(null);
     try {
-      const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
-      const resp = await fetch(`${apiBase}/admin/groups/${encodeURIComponent(editingName)}`, {
+      const resp = await fetchWithAuth(`${apiBase}/admin/groups/${encodeURIComponent(editingName)}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ description: editDescription, permissions })
       });
       if (!resp.ok) {
@@ -396,10 +387,8 @@ const MembershipPage: React.FC = () => {
     if (!w.auth?.getAccessToken) return;
     setDeletingName(name);
     try {
-      const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
-      const resp = await fetch(`${apiBase}/admin/groups/${encodeURIComponent(name)}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` }
+      const resp = await fetchWithAuth(`${apiBase}/admin/groups/${encodeURIComponent(name)}`, {
+        method: "DELETE"
       });
       if (!resp.ok) {
         const d = await resp.json().catch(() => ({}));
@@ -441,10 +430,9 @@ const MembershipPage: React.FC = () => {
     setRoleMessage(null);
     setRolesError(null);
     try {
-      const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
-      const resp = await fetch(`${apiBase}/admin/roles`, {
+      const resp = await fetchWithAuth(`${apiBase}/admin/roles`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, cognitoGroups: newRoleCognito, customGroups: newRoleCustom })
       });
       if (!resp.ok) {
@@ -486,10 +474,9 @@ const MembershipPage: React.FC = () => {
     setIsRoleUpdating(true);
     setRoleUpdateError(null);
     try {
-      const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
-      const resp = await fetch(`${apiBase}/admin/roles/${encodeURIComponent(editingRole)}`, {
+      const resp = await fetchWithAuth(`${apiBase}/admin/roles/${encodeURIComponent(editingRole)}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ cognitoGroups: editRoleCognito, customGroups: editRoleCustom })
       });
       if (!resp.ok) {
@@ -517,10 +504,8 @@ const MembershipPage: React.FC = () => {
     if (!w.auth?.getAccessToken) return;
     setDeletingRole(name);
     try {
-      const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
-      const resp = await fetch(`${apiBase}/admin/roles/${encodeURIComponent(name)}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` }
+      const resp = await fetchWithAuth(`${apiBase}/admin/roles/${encodeURIComponent(name)}`, {
+        method: "DELETE"
       });
       if (!resp.ok) {
         const d = await resp.json().catch(() => ({}));

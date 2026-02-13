@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useAuth, hasRole } from "../../shell/AuthContext";
+import { fetchWithAuth } from "../../utils/api";
 import { useBranding } from "../../shell/BrandingContext";
 
 function getApiBaseUrl(): string | null {
@@ -83,19 +84,9 @@ const BrandingPage: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      const token: string | null = await new Promise((resolve) => {
-        w.auth.getAccessToken((t: string | null) => resolve(t));
-      });
-      if (!token) {
-        throw new Error("Missing access token.");
-      }
-
-      const metaResp = await fetch(`${apiBase}/branding/logo`, {
+      const metaResp = await fetchWithAuth(`${apiBase}/branding/logo`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ contentType, alt })
       });
       if (!metaResp.ok) {

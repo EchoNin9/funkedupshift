@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeftIcon, PencilSquareIcon } from "@heroicons/react/24/outline";
 import { useAuth, canAccessMemes, canRateMemes, canCreateMemes, canEditAnyMeme } from "../../shell/AuthContext";
+import { fetchWithAuthOptional } from "../../utils/api";
 
 interface MemeItem {
   PK: string;
@@ -31,14 +32,6 @@ const MemeDetailPage: React.FC = () => {
   const canEdit = !!item && (canEditAnyMeme(user) || (canCreateMemes(user) && item.userId === user?.userId));
   const memeId = id ? decodeURIComponent(id) : "";
 
-  const fetchWithAuth = React.useCallback(async (url: string) => {
-    const w = window as any;
-    if (!w.auth?.getAccessToken) return fetch(url);
-    const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
-    if (!token) return fetch(url);
-    return fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-  }, []);
-
   useEffect(() => {
     const apiBase = getApiBaseUrl();
     if (!apiBase || !memeId) {
@@ -52,7 +45,7 @@ const MemeDetailPage: React.FC = () => {
       setError(null);
       try {
         const basePath = user ? "/memes" : "/memes/cache";
-        const resp = await fetchWithAuth(`${apiBase}${basePath}?id=${encodeURIComponent(memeId)}`);
+        const resp = await fetchWithAuthOptional(`${apiBase}${basePath}?id=${encodeURIComponent(memeId)}`);
         if (resp.status === 404) {
           if (!cancelled) setItem(null);
           return;
@@ -72,17 +65,15 @@ const MemeDetailPage: React.FC = () => {
     }
     load();
     return () => { cancelled = true; };
-  }, [memeId, fetchWithAuth, user]);
+  }, [memeId, user]);
 
   const handleRate = async (rating: number) => {
     const apiBase = getApiBaseUrl();
     if (!apiBase || !item) return;
     try {
-      const w = window as any;
-      const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
-      const resp = await fetch(`${apiBase}/memes/stars`, {
+      const resp = await fetchWithAuthOptional(`${apiBase}/memes/stars`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ memeId: item.PK, rating })
       });
       if (resp.ok) {

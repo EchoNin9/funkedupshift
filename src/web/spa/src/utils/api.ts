@@ -15,7 +15,7 @@ export function getImpersonationHeaders(): Record<string, string> {
 
 /**
  * Fetch with auth token and impersonation headers.
- * Use this for API calls that should respect impersonation.
+ * Throws if not signed in. Use for endpoints that require auth.
  */
 export async function fetchWithAuth(
   url: string,
@@ -24,6 +24,26 @@ export async function fetchWithAuth(
   const w = window as any;
   if (!w.auth?.getAccessToken) throw new Error("Not signed in");
   const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
+  const headers: Record<string, string> = {
+    ...(options?.headers as Record<string, string>),
+    Authorization: `Bearer ${token}`,
+    ...getImpersonationHeaders()
+  };
+  return fetch(url, { ...options, headers });
+}
+
+/**
+ * Fetch with auth and impersonation when signed in, else plain fetch.
+ * Use for endpoints that work for both guests and authenticated users.
+ */
+export async function fetchWithAuthOptional(
+  url: string,
+  options?: RequestInit
+): Promise<Response> {
+  const w = window as any;
+  if (!w.auth?.getAccessToken) return fetch(url, options);
+  const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
+  if (!token) return fetch(url, options);
   const headers: Record<string, string> = {
     ...(options?.headers as Record<string, string>),
     Authorization: `Bearer ${token}`,

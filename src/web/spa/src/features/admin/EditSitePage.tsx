@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 import { useAuth, hasRole } from "../../shell/AuthContext";
+import { fetchWithAuth } from "../../utils/api";
 
 function getApiBaseUrl(): string | null {
   if (typeof window === "undefined") return null;
@@ -67,20 +68,15 @@ const EditSitePage: React.FC = () => {
     }
     let cancelled = false;
     (async () => {
-      const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
-      if (!token || cancelled) return;
-      const siteResp = await fetch(`${apiBase}/sites?id=${encodeURIComponent(siteId)}`);
+      try {
+        const siteResp = await fetchWithAuth(`${apiBase}/sites?id=${encodeURIComponent(siteId)}`);
       if (siteResp.status === 404 || !siteResp.ok) {
         if (!cancelled) setError("Site not found.");
-        setLoading(false);
         return;
       }
       const siteData = (await siteResp.json()) as { site?: Record<string, unknown> };
       const site = siteData.site;
-      if (cancelled || !site) {
-        setLoading(false);
-        return;
-      }
+      if (cancelled || !site) return;
       setUrl((site.url as string) ?? "");
       setTitle((site.title as string) ?? "");
       setDescription((site.description as string) ?? "");
@@ -90,12 +86,16 @@ const EditSitePage: React.FC = () => {
       setScrapedContent((site.scrapedContent as string) ?? "");
       setLogoUrl((site.logoUrl as string) || null);
       setSelectedCategoryIds(Array.isArray(site.categoryIds) ? (site.categoryIds as string[]) : []);
-      const catResp = await fetch(`${apiBase}/categories`, { headers: { Authorization: `Bearer ${token}` } });
+      const catResp = await fetchWithAuth(`${apiBase}/categories`);
       if (catResp.ok && !cancelled) {
         const catData = (await catResp.json()) as { categories?: { PK?: string; id?: string; name?: string }[] };
         setCategories((catData.categories ?? []).map((c) => ({ id: c.PK || c.id || "", name: c.name || c.PK || "" })));
       }
-      if (!cancelled) setLoading(false);
+      } catch (e: unknown) {
+        if (!cancelled) setError((e as Error)?.message ?? "Failed to load.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     })();
     return () => {
       cancelled = true;
@@ -170,10 +170,9 @@ const EditSitePage: React.FC = () => {
     setIsGeneratingDesc(true);
     setError(null);
     try {
-      const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
-      const resp = await fetch(`${apiBase}/sites/generate-description`, {
+      const resp = await fetchWithAuth(`${apiBase}/sites/generate-description`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: u })
       });
       if (!resp.ok) throw new Error(await resp.text());
@@ -205,12 +204,11 @@ const EditSitePage: React.FC = () => {
     setError(null);
     setMessage(null);
     try {
-      const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
       let logoKey: string | null = null;
       if (logoFile) {
-        const uploadResp = await fetch(`${apiBase}/sites/logo-upload`, {
+        const uploadResp = await fetchWithAuth(`${apiBase}/sites/logo-upload`, {
           method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ siteId, contentType: logoFile.type || "image/png" })
         });
         if (!uploadResp.ok) throw new Error("Logo upload request failed");
@@ -223,9 +221,9 @@ const EditSitePage: React.FC = () => {
         if (!putResp.ok) throw new Error("Logo upload failed");
         logoKey = key;
       } else if (logoImageUrl.trim()) {
-        const importResp = await fetch(`${apiBase}/sites/logo-from-url`, {
+        const importResp = await fetchWithAuth(`${apiBase}/sites/logo-from-url`, {
           method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ siteId, imageUrl: logoImageUrl.trim() })
         });
         if (!importResp.ok) {
@@ -247,9 +245,9 @@ const EditSitePage: React.FC = () => {
       };
       if (deleteLogo) payload.deleteLogo = true;
       else if (logoKey) payload.logoKey = logoKey;
-      const resp = await fetch(`${apiBase}/sites`, {
+      const resp = await fetchWithAuth(`${apiBase}/sites`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
       if (!resp.ok) throw new Error(await resp.text());
@@ -276,10 +274,9 @@ const EditSitePage: React.FC = () => {
     setIsDeleting(true);
     setError(null);
     try {
-      const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
-      const resp = await fetch(`${apiBase}/sites`, {
+      const resp = await fetchWithAuth(`${apiBase}/sites`, {
         method: "DELETE",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: siteId })
       });
       if (!resp.ok) throw new Error(await resp.text());

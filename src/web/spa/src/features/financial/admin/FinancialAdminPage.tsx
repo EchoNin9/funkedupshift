@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 import { useAuth, canAccessFinancialAdmin } from "../../../shell/AuthContext";
+import { fetchWithAuth } from "../../../utils/api";
 
 function getApiBaseUrl(): string | null {
   if (typeof window === "undefined") return null;
@@ -40,14 +41,6 @@ const FinancialAdminPage: React.FC = () => {
     setSearchParams(params, { replace: true });
   };
 
-  const fetchWithAuth = useCallback(async (url: string, options?: RequestInit) => {
-    const w = window as any;
-    if (!w.auth?.getAccessToken) throw new Error("Not signed in");
-    const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
-    if (!token) throw new Error("Not signed in");
-    const headers = { ...options?.headers, Authorization: `Bearer ${token}` };
-    return fetch(url, { ...options, headers });
-  }, []);
 
   const loadDefaultSymbols = useCallback(async () => {
     const apiBase = getApiBaseUrl();
@@ -65,7 +58,7 @@ const FinancialAdminPage: React.FC = () => {
     } finally {
       setSymbolsLoading(false);
     }
-  }, [fetchWithAuth]);
+  }, []);
 
   useEffect(() => {
     if (activeTab === "symbols") loadDefaultSymbols();

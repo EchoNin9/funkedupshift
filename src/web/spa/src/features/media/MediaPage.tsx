@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { PencilSquareIcon } from "@heroicons/react/24/outline";
 import { useAuth, hasRole } from "../../shell/AuthContext";
+import { fetchWithAuthOptional } from "../../utils/api";
 
 interface MediaCategory {
   id: string;
@@ -58,7 +59,7 @@ const MediaPage: React.FC = () => {
     const apiBase = getApiBaseUrl();
     if (!apiBase) return;
     let cancelled = false;
-    fetch(`${apiBase}/media-categories`)
+    fetchWithAuthOptional(`${apiBase}/media-categories`)
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error("Failed to load categories"))))
       .then((data: { categories?: { PK?: string; id?: string; name?: string }[] }) => {
         if (cancelled) return;
@@ -138,7 +139,7 @@ const MediaPage: React.FC = () => {
           params.set("categoryIds", selectedCategoryIds.join(","));
           params.set("categoryMode", categoryMode);
         }
-        const resp = await fetch(`${apiBase}/media?${params.toString()}`);
+        const resp = await fetchWithAuthOptional(`${apiBase}/media?${params.toString()}`);
         if (!resp.ok) {
           const txt = await resp.text();
           throw new Error(`HTTP ${resp.status}: ${txt}`);
@@ -205,7 +206,7 @@ const MediaPage: React.FC = () => {
       w.auth.getAccessToken((t: string | null) => resolve(t));
     });
     if (!token) return;
-    await fetch(`${apiBase}/media/stars`, {
+    await fetchWithAuthOptional(`${apiBase}/media/stars`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

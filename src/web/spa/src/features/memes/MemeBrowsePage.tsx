@@ -1,7 +1,8 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { PencilSquareIcon } from "@heroicons/react/24/outline";
 import { useAuth, canAccessMemes, canRateMemes, canCreateMemes, canEditAnyMeme } from "../../shell/AuthContext";
+import { fetchWithAuthOptional } from "../../utils/api";
 
 interface MemeItem {
   PK: string;
@@ -56,15 +57,6 @@ const MemeBrowsePage: React.FC = () => {
   const showMyMemes = user && canCreateMemes(user);
   const canEditMeme = (m: MemeItem) => canEditAny || (canCreate && m.userId === user?.userId);
 
-  const fetchWithAuth = useCallback(async (url: string, options?: RequestInit) => {
-    const w = window as any;
-    if (!w.auth?.getAccessToken) return fetch(url, options);
-    const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
-    if (!token) return fetch(url, options);
-    const headers = { ...options?.headers, Authorization: `Bearer ${token}` };
-    return fetch(url, { ...options, headers });
-  }, []);
-
   const hasActiveSearch = search.trim().length > 0 || selectedTags.length > 0;
 
   useEffect(() => {
@@ -99,7 +91,7 @@ const MemeBrowsePage: React.FC = () => {
     const apiBase = getApiBaseUrl();
     if (!apiBase) return;
     let cancelled = false;
-    fetchWithAuth(`${apiBase}/memes/tags`)
+    fetchWithAuthOptional(`${apiBase}/memes/tags`)
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error("Failed to load tags"))))
       .then((data: { tags?: string[] }) => {
         if (cancelled) return;
@@ -107,7 +99,7 @@ const MemeBrowsePage: React.FC = () => {
       })
       .catch(() => {});
     return () => { cancelled = true; };
-  }, [fetchWithAuth]);
+  }, []);
 
   useEffect(() => {
     const next = new URLSearchParams();
@@ -163,7 +155,7 @@ const MemeBrowsePage: React.FC = () => {
           params.set("tagMode", tagMode);
         }
         const basePath = user ? "/memes" : "/memes/cache";
-        const resp = await fetchWithAuth(`${apiBase}${basePath}?${params.toString()}`);
+        const resp = await fetchWithAuthOptional(`${apiBase}${basePath}?${params.toString()}`);
         if (!resp.ok) {
           const txt = await resp.text();
           throw new Error(`HTTP ${resp.status}: ${txt}`);
@@ -193,7 +185,7 @@ const MemeBrowsePage: React.FC = () => {
     }
     load();
     return () => { cancelled = true; };
-  }, [tab, search, selectedTags, tagMode, fetchWithAuth, invalidateMyCache, showMyMemes, user]);
+  }, [tab, search, selectedTags, tagMode, invalidateMyCache, showMyMemes, user]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -253,7 +245,7 @@ const MemeBrowsePage: React.FC = () => {
     const apiBase = getApiBaseUrl();
     if (!apiBase) return;
     try {
-      await fetchWithAuth(`${apiBase}/memes/stars`, {
+      await fetchWithAuthOptional(`${apiBase}/memes/stars`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ memeId, rating })

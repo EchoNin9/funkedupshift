@@ -4,6 +4,7 @@ import { Dialog } from "@headlessui/react";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import { StarIcon } from "@heroicons/react/24/solid";
 import { useAuth, hasRole } from "../../shell/AuthContext";
+import { fetchWithAuthOptional } from "../../utils/api";
 
 interface HighestRatedItem {
   type: "site" | "media";
@@ -47,7 +48,7 @@ const HighestRatedPage: React.FC = () => {
     setError(null);
 
     try {
-      const resp = await fetch(`${apiBase}/recommended/highest-rated`);
+      const resp = await fetchWithAuthOptional(`${apiBase}/recommended/highest-rated`);
       const txt = await resp.text();
       if (!resp.ok) {
         throw new Error(txt || `HTTP ${resp.status}`);

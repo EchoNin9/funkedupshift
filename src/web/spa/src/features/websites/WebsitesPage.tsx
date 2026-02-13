@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../shell/AuthContext";
+import { fetchWithAuthOptional } from "../../utils/api";
 
 interface SiteCategory {
   id: string;
@@ -57,7 +58,7 @@ const WebsitesPage: React.FC = () => {
     const apiBase = getApiBaseUrl();
     if (!apiBase) return;
     let cancelled = false;
-    fetch(`${apiBase}/categories`)
+    fetchWithAuthOptional(`${apiBase}/categories`)
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error("Failed to load categories"))))
       .then((data: { categories?: { PK?: string; id?: string; name?: string }[] }) => {
         if (cancelled) return;
@@ -137,7 +138,7 @@ const WebsitesPage: React.FC = () => {
           params.set("categoryIds", selectedCategoryIds.join(","));
           params.set("categoryMode", categoryMode);
         }
-        const resp = await fetch(`${apiBase}/sites?${params.toString()}`);
+        const resp = await fetchWithAuthOptional(`${apiBase}/sites?${params.toString()}`);
         if (!resp.ok) {
           const txt = await resp.text();
           throw new Error(`HTTP ${resp.status}: ${txt}`);
@@ -204,7 +205,7 @@ const WebsitesPage: React.FC = () => {
       w.auth.getAccessToken((t: string | null) => resolve(t));
     });
     if (!token) return;
-    await fetch(`${apiBase}/stars`, {
+    await fetchWithAuthOptional(`${apiBase}/stars`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
