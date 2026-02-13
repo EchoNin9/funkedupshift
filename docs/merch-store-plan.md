@@ -45,7 +45,7 @@ Add a low-friction merchandise store module where users browse assets, select pr
 | ---------------------- | ---------------- | ------------------- | ----------------------------------------------------------------------------------------------------------- |
 | Merch asset            | MERCH#ASSET#id   | METADATA            | assetKey (S3), title, entityType, entitySk, createdAt, updatedAt, uploadedBy                                |
 | Merch product template | MERCH#PRODUCT#id | METADATA            | type (shirt/hoodie/hat/mug), basePriceCents, fulfillmentSku (Printful/Printify variant ID), entityType, entitySk |
-| Merch order            | MERCH#ORDER#id   | METADATA            | userId, items (list), totalCents, stripeSessionId, status, shippingAddress, createdAt                       |
+| Merch order            | MERCH#ORDER#id   | METADATA            | userId, items (list), totalCents, stripeSessionId, status, fulfillmentStatus, trackingUrl, shippingAddress, createdAt |
 | User orders index      | USER#id          | MERCH#ORDER#orderId | For "my orders" query                                                                                       |
 
 **GSI:** Add `byEntity` query for `entityType=MERCH_ASSET` and `entityType=MERCH_PRODUCT` if not already covered by existing GSI.
@@ -69,6 +69,7 @@ Emulate top performers (Custom Ink, VistaPrint, Zazzle per Baymard):
 3. **Add to cart** – stay on page (no forced navigation to cart)
 4. **Cart** – slide-out or `/merch/cart` with clear line items, pricing, edit/remove
 5. **Checkout** – auth gate here; then Stripe Checkout redirect
+6. **Order history** – logged-in users see "My Orders" with current order status and full order history
 
 ### 7. Frontend Structure
 
@@ -77,7 +78,8 @@ src/web/spa/src/features/merch/
 ├── MerchStorePage.tsx       # Browse assets, product configurator
 ├── MerchCartPage.tsx        # Cart view (optional; could be slide-out)
 ├── MerchCheckoutPage.tsx    # Auth gate + redirect to Stripe
-├── MerchSuccessPage.tsx     # Post-payment confirmation
+├── MerchSuccessPage.tsx     # Post-payment confirmation (shows current order status)
+├── MerchOrderHistoryPage.tsx # Order history + current order status (auth required)
 ├── MerchContext.tsx         # Cart state (localStorage + React context)
 └── admin/
     └── MerchAdminPage.tsx   # Single page with tabs
@@ -97,7 +99,8 @@ src/web/spa/src/features/merch/
 | GET     | /merch/products         | none       | List product templates (public) |
 | POST    | /merch/checkout/session | required   | Create Stripe Checkout Session  |
 | POST    | /merch/webhook          | Stripe sig | Handle payment completion       |
-| GET     | /merch/orders           | required   | List current user's orders      |
+| GET     | /merch/orders           | required   | List current user's orders (order history) |
+| GET     | /merch/orders/:id       | required   | Get single order with current status      |
 | POST    | /merch/assets/upload    | manager+   | Presigned URL for asset upload  |
 | POST    | /merch/assets           | manager+   | Create asset record             |
 | PUT     | /merch/assets           | manager+   | Update asset                    |
@@ -112,26 +115,32 @@ src/web/spa/src/features/merch/
 - **Discover section:** Add "Store" as the **first** nav item in the discover list
 - **Footer:** Add Store link
 
-### 10. Header Cart / Store Link
+### 10. Current Order Status & Order History
+
+- **Current order status:** After checkout, success page shows the new order with status (e.g. "Processing", "Shipped"). Single order detail (`GET /merch/orders/:id`) returns `status`, `fulfillmentStatus`, `trackingUrl`.
+- **Order history:** `/merch/orders` page (auth required) lists all user orders, newest first. Each row shows order date, items summary, total, and current status. Click to expand or navigate to order detail.
+- **Discover nav:** Add "My Orders" link for logged-in users (in discover section or under Store).
+
+### 11. Header Cart / Store Link
 
 - **Empty cart:** Show "Store" link (text or icon) in header next to Sign in / user info
 - **Non-empty cart:** Show cart icon (e.g. `ShoppingBagIcon`) with badge showing item count; click → `/merch/cart`
 - Implement via `MerchContext` providing `cartItemCount`; consume in `AppLayout` header
 
-### 11. Terraform / Infrastructure
+### 12. Terraform / Infrastructure
 
 - Lambda: Add `stripe` Python package to `requirements.txt` (or new `lambda/merch` layer)
 - Env vars: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PUBLISHABLE_KEY` (frontend via config)
 - API Gateway: Add routes for `/merch/*` and `/merch/webhook` (webhook may need public access, no Cognito authorizer)
 - Webhook: Use raw body for Stripe signature verification (API Gateway must pass through body)
 
-### 12. Security and Compliance
+### 13. Security and Compliance
 
 - **PCI:** Stripe Checkout is hosted – no card data touches your app; PCI scope minimized
 - **Webhook:** Verify `Stripe-Signature` header; never trust webhook payload without verification
 - **Pricing:** Compute server-side; never trust client-supplied prices
 
-### 13. Fulfillment Integration (Phase 2)
+### 14. Fulfillment Integration (Phase 2)
 
 - After Stripe webhook confirms payment: call **Printful** or **Printify** API to create order
 - Pass: asset image URL (from s3-media), product variant ID, size, quantity, shipping address
@@ -192,5 +201,6 @@ flowchart TB
 3. **Store page** – asset grid, product configurator, add to cart
 4. **Stripe Checkout** – create session, webhook, order creation
 5. **MerchAdminPage** – Assets tab (upload), Products tab, Orders tab
-6. **Home page promo and nav** – Store in discover, header, footer
-7. **Fulfillment** – Printful (or Printify) order creation from webhook
+6. **Order history & current status** – MerchOrderHistoryPage, GET /merch/orders/:id, success page status
+7. **Home page promo and nav** – Store in discover, header, footer, My Orders link
+8. **Fulfillment** – Printful (or Printify) order creation from webhook

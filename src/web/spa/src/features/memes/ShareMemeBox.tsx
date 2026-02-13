@@ -5,6 +5,8 @@ interface ShareMemeBoxProps {
   memeId: string;
   title?: string;
   className?: string;
+  /** Direct media/image URL – shown as "Copy URL" when provided */
+  mediaUrl?: string;
 }
 
 function getShareUrl(path: string): string {
@@ -13,8 +15,9 @@ function getShareUrl(path: string): string {
   return `${base}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
-const ShareMemeBox: React.FC<ShareMemeBoxProps> = ({ memeId, title = "", className = "" }) => {
+const ShareMemeBox: React.FC<ShareMemeBoxProps> = ({ memeId, title = "", className = "", mediaUrl }) => {
   const [copied, setCopied] = useState(false);
+  const [copiedUrl, setCopiedUrl] = useState(false);
   const shareUrl = getShareUrl(`/memes/${encodeURIComponent(memeId)}`);
   const encodedUrl = encodeURIComponent(shareUrl);
   const encodedTitle = encodeURIComponent(title || "Meme");
@@ -29,8 +32,22 @@ const ShareMemeBox: React.FC<ShareMemeBoxProps> = ({ memeId, title = "", classNa
     }
   };
 
+  const handleCopyMediaUrl = async () => {
+    if (!mediaUrl) return;
+    try {
+      await navigator.clipboard.writeText(mediaUrl);
+      setCopiedUrl(true);
+      setTimeout(() => setCopiedUrl(false), 2000);
+    } catch {
+      /* fallback */
+    }
+  };
+
   const shareLinks = [
     { label: "Copy link", icon: copied ? "✓" : null, onClick: handleCopyLink, href: null },
+    ...(mediaUrl
+      ? [{ label: "Copy URL", icon: copiedUrl ? "✓" : null, onClick: handleCopyMediaUrl, href: null }]
+      : []),
     {
       label: "Instagram",
       href: "https://www.instagram.com/",
