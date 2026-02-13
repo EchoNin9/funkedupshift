@@ -164,6 +164,14 @@ const EditMemePage: React.FC = () => {
             tags={tags}
             onTagsChange={setTags}
             allTags={allTags}
+            fetchTags={async (q) => {
+              const apiBase = getApiBaseUrl();
+              if (!apiBase) return [];
+              const r = await fetchWithAuth(`${apiBase}/memes/tags?q=${encodeURIComponent(q)}`);
+              if (!r.ok) return [];
+              const d = (await r.json()) as { tags?: string[] };
+              return d.tags ?? [];
+            }}
             placeholder="Type to suggest or create tag, Tab to autocomplete"
           />
         </div>

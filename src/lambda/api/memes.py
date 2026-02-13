@@ -433,10 +433,11 @@ def update_meme(event, user, json_response):
             set_parts.append("isPrivate = :priv")
             values[":priv"] = {"BOOL": bool(body.get("isPrivate"))}
         if "tags" in body:
-            tags = [str(t).strip() for t in (body.get("tags") or []) if str(t).strip()]
-            set_parts.append("tags = :tags")
-            values[":tags"] = {"L": [{"S": t} for t in tags]}
-            _ensure_tags_in_registry(dynamodb, tags)
+            tags_val = [str(t).strip() for t in (body.get("tags") or []) if str(t).strip()]
+            set_parts.append("#tags = :tags")
+            names["#tags"] = "tags"
+            values[":tags"] = {"L": [{"S": t} for t in tags_val]}
+            _ensure_tags_in_registry(dynamodb, tags_val)
 
         update_expr = "SET " + ", ".join(set_parts)
         update_kw = {

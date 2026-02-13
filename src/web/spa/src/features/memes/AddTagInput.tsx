@@ -4,24 +4,29 @@ interface AddTagInputProps {
   tags: string[];
   onTagsChange: (tags: string[]) => void;
   allTags: string[];
+  /** Optional: fetch tags from API as user types for immediate server-side suggestions */
+  fetchTags?: (query: string) => Promise<string[]>;
   placeholder?: string;
   className?: string;
 }
 
 /**
- * Tag input with autocomplete: typing suggests tags, Tab to autocomplete,
+ * Tag input with autocomplete: typing suggests tags immediately, Tab to autocomplete,
  * Enter/Tab adds first suggestion or creates new tag from current input.
  */
 const AddTagInput: React.FC<AddTagInputProps> = ({
   tags,
   onTagsChange,
   allTags,
+  fetchTags,
   placeholder = "Type to suggest or create tag, Tab to autocomplete",
   className = ""
 }) => {
   const [input, setInput] = useState("");
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [highlightIndex, setHighlightIndex] = useState(0);
+  const [liveSuggestions, setLiveSuggestions] = useState<string[] | null>(null);
+  const fetchAbortRef = useRef<AbortController | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -35,13 +40,44 @@ const AddTagInput: React.FC<AddTagInputProps> = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    if (!fetchTags) {
+      setLiveSuggestions(null);
+      return;
+    }
+    const q = input.trim();
+    if (q.length === 0) {
+      setLiveSuggestions(null);
+      return;
+    }
+    if (fetchAbortRef.current) fetchAbortRef.current.abort();
+    const ctrl = new AbortController();
+    fetchAbortRef.current = ctrl;
+    const id = setTimeout(() => {
+      fetchTags(q)
+        .then((list) => {
+          if (!ctrl.signal.aborted) setLiveSuggestions(list);
+        })
+        .catch(() => {
+          if (!ctrl.signal.aborted) setLiveSuggestions(null);
+        });
+    }, 80);
+    return () => {
+      clearTimeout(id);
+      ctrl.abort();
+    };
+  }, [input, fetchTags]);
+
   const suggestions = useMemo(() => {
     const q = input.trim().toLowerCase();
+    if (fetchTags && liveSuggestions !== null) {
+      return liveSuggestions.filter((t) => !tags.includes(t));
+    }
     if (!q) return allTags.filter((t) => !tags.includes(t));
     return allTags.filter(
       (t) => !tags.includes(t) && t.toLowerCase().includes(q)
     );
-  }, [allTags, tags, input]);
+  }, [allTags, tags, input, fetchTags, liveSuggestions]);
 
   const addTag = (tag: string) => {
     const t = tag.trim();

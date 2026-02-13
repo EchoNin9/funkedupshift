@@ -185,18 +185,21 @@ const MemeDetailPage: React.FC = () => {
         {item.description && (
           <p className="text-sm text-slate-300">{item.description}</p>
         )}
-        {item.tags && item.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1">
-            {item.tags.map((tag) => (
+        <div className="flex flex-wrap items-center gap-1">
+          <span className="text-xs text-slate-500">Tags:</span>
+          {item.tags && item.tags.length > 0 ? (
+            item.tags.map((tag) => (
               <span
                 key={tag}
                 className="rounded-full bg-slate-800 px-2 py-0.5 text-xs text-slate-300"
               >
                 {tag}
               </span>
-            ))}
-          </div>
-        )}
+            ))
+          ) : (
+            <span className="text-xs text-slate-500">—</span>
+          )}
+        </div>
         {user && (
           <div className="pt-2">
             <label className="inline-flex items-center gap-2 text-sm text-slate-400">
