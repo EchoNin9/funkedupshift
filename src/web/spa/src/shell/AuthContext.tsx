@@ -156,17 +156,21 @@ export function canModifySquash(user: AuthUser | null): boolean {
   return (user.customGroups ?? []).includes("Squash");
 }
 
-export function canAccessFinancial(user: AuthUser | null): boolean {
-  if (!user?.userId) return false;
-  if (user.role === "superadmin") return true;
-  return (user.customGroups ?? []).includes("Financial");
+/** Everyone (including guests) can view Financial with default symbols. */
+export function canAccessFinancial(_user: AuthUser | null): boolean {
+  return true;
 }
 
+/** Logged-in users (user, manager, superadmin) can save their watchlist. Guests cannot. */
+export function canSaveFinancialWatchlist(user: AuthUser | null): boolean {
+  if (!user?.userId) return false;
+  return user.role === "user" || user.role === "manager" || user.role === "superadmin";
+}
+
+/** SuperAdmin only: manage default symbols and financial config. */
 export function canAccessFinancialAdmin(user: AuthUser | null): boolean {
   if (!user?.userId) return false;
-  if (user.role === "superadmin") return true;
-  if (user.role !== "manager") return false;
-  return (user.customGroups ?? []).includes("Financial");
+  return user.role === "superadmin";
 }
 
 /** User can view Memes browse (cache + search): SuperAdmin OR in Memes custom group. */

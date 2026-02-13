@@ -144,8 +144,8 @@ One item per user per site. Logged-in users write their own.
 |------------------|------------|-------------------------------------------------|
 | FINANCIAL#CONFIG | DEFAULTS   | symbols (list), source (yahoo\|alpha_vantage), updatedAt |
 
-- **Get config:** `GetItem(PK=FINANCIAL#CONFIG, SK=DEFAULTS)`.
-- **Save config:** SuperAdmin or Manager in Financial group.
+- **Get config:** `GetItem(PK=FINANCIAL#CONFIG, SK=DEFAULTS)` (public for guests).
+- **Save config:** SuperAdmin only.
 
 ## Summary
 
@@ -153,4 +153,4 @@ One item per user per site. Logged-in users write their own.
 - **GSIs:** byEntity (list sites/groups/squash players/matches), byTag (sites by tag), byStars (ratings by 1–5), byGroup (users in custom group), bySquashDate (squash matches by date).
 - **Roles:** Admins create/update sites; any logged-in user creates/updates their own ratings and comments.
 - **Squash section:** Visible only to users in the Squash custom group or SuperAdmin. SuperAdmin and managers (when in Squash group) can add/edit/delete players and matches.
-- **Financial section:** Visible only to users in the Financial custom group or SuperAdmin. SuperAdmin and managers (when in Financial group) can manage default symbols and source. Stock quotes from Yahoo Finance or Alpha Vantage.
+- **Financial section:** Visible to everyone (guests see default symbols, can add custom symbols in session only). Logged-in users (user, manager, superadmin) can save their watchlist. SuperAdmin only can manage default symbols and source. Stock quotes from Yahoo Finance or Alpha Vantage.

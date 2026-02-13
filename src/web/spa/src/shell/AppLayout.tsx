@@ -53,8 +53,8 @@ const navItems: NavItem[] = [
   { label: "Squash Admin", to: "/squash-admin", section: "squash", minRole: "manager" },
   { label: "Memes", to: "/memes", section: "memes", minRole: "guest" },
   { label: "Meme Generator", to: "/memes/create", section: "memes", minRole: "user", memesCreate: true },
-  { label: "Financial", to: "/financial", section: "financial", minRole: "user" },
-  { label: "Financial Admin", to: "/admin/financial", section: "financial", minRole: "manager" },
+  { label: "Financial", to: "/financial", section: "financial", minRole: "guest" },
+  { label: "Financial Admin", to: "/admin/financial", section: "financial", minRole: "superadmin" },
   { label: "Highlights", to: "/recommended/highlights", section: "recommended", minRole: "guest" },
   { label: "Highest Rated", to: "/recommended/highest-rated", section: "recommended", minRole: "guest" },
   { label: "Recommended", to: "/admin/recommended", section: "admin", minRole: "manager" },
@@ -142,7 +142,7 @@ const AppLayout: React.FC = () => {
   const financialItems = navItems
     .filter((i) => i.section === "financial")
     .filter((i) => hasRole(user ?? null, i.minRole))
-    .filter((i) => (i.to === "/financial" ? true : canAccessFinancialAdmin(user)));
+    .filter((i) => (i.to === "/financial" ? canAccessFinancial(user) : canAccessFinancialAdmin(user)));
   const adminItems = visibleNavItems.filter((i) => i.section === "admin");
 
   const navLinkClass = ({ isActive }: { isActive: boolean }) =>

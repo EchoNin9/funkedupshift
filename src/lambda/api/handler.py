@@ -476,8 +476,8 @@ def getInternetDashboard(event):
 # ------------------------------------------------------------------------------
 
 def getFinancialWatchlist(event):
-    """GET /financial/watchlist - Return current user's watchlist symbols."""
-    user, err = _requireFinancialAccess(event)
+    """GET /financial/watchlist - Return current user's watchlist symbols (logged-in users only)."""
+    user, err = _requireAuth(event)
     if err:
         return err
     try:
@@ -490,8 +490,8 @@ def getFinancialWatchlist(event):
 
 
 def putFinancialWatchlist(event):
-    """PUT /financial/watchlist - Save current user's watchlist symbols."""
-    user, err = _requireFinancialAccess(event)
+    """PUT /financial/watchlist - Save current user's watchlist symbols (logged-in users only)."""
+    user, err = _requireAuth(event)
     if err:
         return err
     try:
@@ -512,10 +512,7 @@ def putFinancialWatchlist(event):
 
 
 def getFinancialQuote(event):
-    """GET /financial/quote?symbol=AAPL&source=yahoo - Fetch stock quote."""
-    user, err = _requireFinancialAccess(event)
-    if err:
-        return err
+    """GET /financial/quote?symbol=AAPL&source=yahoo - Fetch stock quote (public for guests)."""
     qs = event.get("queryStringParameters") or {}
     symbol = (qs.get("symbol") or "").strip()
     if not symbol:
@@ -535,10 +532,7 @@ def getFinancialQuote(event):
 
 
 def getFinancialConfig(event):
-    """GET /financial/config - Return default symbols and available sources (for new users)."""
-    user, err = _requireFinancialAccess(event)
-    if err:
-        return err
+    """GET /financial/config - Return default symbols and available sources (public for guests)."""
     try:
         from api.financial import get_financial_config, AVAILABLE_SOURCES
         config = get_financial_config()
@@ -550,8 +544,8 @@ def getFinancialConfig(event):
 
 
 def getFinancialDefaultSymbols(event):
-    """GET /admin/financial/default-symbols - Return admin default symbols and source."""
-    _, err = _requireFinancialAdmin(event)
+    """GET /admin/financial/default-symbols - Return admin default symbols and source (SuperAdmin only)."""
+    _, err = _requireAdmin(event)
     if err:
         return err
     try:
@@ -568,8 +562,8 @@ def getFinancialDefaultSymbols(event):
 
 
 def putFinancialDefaultSymbols(event):
-    """PUT /admin/financial/default-symbols - Save admin default symbols and source."""
-    _, err = _requireFinancialAdmin(event)
+    """PUT /admin/financial/default-symbols - Save admin default symbols and source (SuperAdmin only)."""
+    _, err = _requireAdmin(event)
     if err:
         return err
     try:
@@ -3667,25 +3661,15 @@ def _canModifySquash(user):
 
 
 def _canAccessFinancial(user):
-    """User can access Financial: SuperAdmin OR in Financial custom group."""
-    if not user.get("userId"):
-        return False
-    if "admin" in user.get("groups", []):
-        return True
-    custom = _getUserCustomGroups(user["userId"])
-    return "Financial" in custom
+    """Financial view is public (guests, users, managers, superadmins). Kept for backward compat."""
+    return True
 
 
 def _canAccessFinancialAdmin(user):
-    """User can admin Financial: SuperAdmin OR (Manager AND in Financial group)."""
+    """User can admin Financial: SuperAdmin only."""
     if not user.get("userId"):
         return False
-    if "admin" in user.get("groups", []):
-        return True
-    if "manager" not in user.get("groups", []):
-        return False
-    custom = _getUserCustomGroups(user["userId"])
-    return "Financial" in custom
+    return "admin" in user.get("groups", [])
 
 
 def getUserGroups(event, username):

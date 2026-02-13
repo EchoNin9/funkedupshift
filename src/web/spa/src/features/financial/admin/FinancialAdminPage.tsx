@@ -106,7 +106,7 @@ const FinancialAdminPage: React.FC = () => {
       <div className="space-y-4">
         <h1 className="text-2xl font-semibold tracking-tight text-slate-50">Financial Admin</h1>
         <p className="text-sm text-slate-400">
-          SuperAdmin or Manager with Financial group membership is required.
+          SuperAdmin access is required.
         </p>
       </div>
     );
@@ -261,11 +261,7 @@ const FinancialAdminPage: React.FC = () => {
       {activeTab === "members" && (
         <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-6 text-sm text-slate-400">
           <p className="mb-2">
-            Manage Financial group membership via{" "}
-            <Link to="/admin/membership?tab=groups" className="text-brand-orange hover:text-orange-400">
-              Membership
-            </Link>
-            . Create the &quot;Financial&quot; custom group and add users there.
+            Financial access is RBAC-based: guests view default symbols (session-only custom symbols); logged-in users can save their watchlist. No custom group required.
           </p>
         </div>
       )}

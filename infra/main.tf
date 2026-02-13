@@ -1448,7 +1448,19 @@ resource "aws_apigatewayv2_route" "squashMatchesDelete" {
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
-# Financial section (Financial custom group required)
+# Financial section: config and quote are public (guests view); watchlist requires JWT
+resource "aws_apigatewayv2_route" "financialConfigGet" {
+  api_id    = aws_apigatewayv2_api.main.id
+  route_key = "GET /financial/config"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+}
+
+resource "aws_apigatewayv2_route" "financialQuoteGet" {
+  api_id    = aws_apigatewayv2_api.main.id
+  route_key = "GET /financial/quote"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+}
+
 resource "aws_apigatewayv2_route" "financialWatchlistGet" {
   api_id             = aws_apigatewayv2_api.main.id
   route_key          = "GET /financial/watchlist"
@@ -1460,22 +1472,6 @@ resource "aws_apigatewayv2_route" "financialWatchlistGet" {
 resource "aws_apigatewayv2_route" "financialWatchlistPut" {
   api_id             = aws_apigatewayv2_api.main.id
   route_key          = "PUT /financial/watchlist"
-  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
-  authorization_type = "JWT"
-  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
-}
-
-resource "aws_apigatewayv2_route" "financialQuoteGet" {
-  api_id             = aws_apigatewayv2_api.main.id
-  route_key          = "GET /financial/quote"
-  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
-  authorization_type = "JWT"
-  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
-}
-
-resource "aws_apigatewayv2_route" "financialConfigGet" {
-  api_id             = aws_apigatewayv2_api.main.id
-  route_key          = "GET /financial/config"
   target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
   authorization_type = "JWT"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
