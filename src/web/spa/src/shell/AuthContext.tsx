@@ -150,3 +150,16 @@ export function canModifySquash(user: AuthUser | null): boolean {
   return (user.customGroups ?? []).includes("Squash");
 }
 
+export function canAccessFinancial(user: AuthUser | null): boolean {
+  if (!user?.userId) return false;
+  if (user.role === "superadmin") return true;
+  return (user.customGroups ?? []).includes("Financial");
+}
+
+export function canAccessFinancialAdmin(user: AuthUser | null): boolean {
+  if (!user?.userId) return false;
+  if (user.role === "superadmin") return true;
+  if (user.role !== "manager") return false;
+  return (user.customGroups ?? []).includes("Financial");
+}
+
