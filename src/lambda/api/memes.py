@@ -61,13 +61,8 @@ def can_access_memes(user):
 
 
 def can_rate_memes(user):
-    """User can rate memes: logged in + in Memes custom group (any Cognito role)."""
-    if not user or not user.get("userId"):
-        return False
-    if "admin" in user.get("groups", []):
-        return True
-    custom = _get_user_custom_groups(user["userId"])
-    return "Memes" in custom
+    """Any logged-in user can rate memes."""
+    return bool(user and user.get("userId"))
 
 
 def can_create_memes(user):

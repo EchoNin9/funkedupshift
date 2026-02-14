@@ -323,7 +323,7 @@ const MemeBrowsePage: React.FC = () => {
             ? "Your memes, newest first. Filter by tags below."
             : user
               ? "Browse and rate memes. Latest 20 shown by default."
-              : "Cached memes. Sign in to rate or create."}
+              : "The latest user created memes. Sign in to rate or create."}
         </p>
       </header>
 

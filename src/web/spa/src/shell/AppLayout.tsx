@@ -451,6 +451,37 @@ const AppLayout: React.FC = () => {
                 </div>
               )}
 
+              {memesItems.length > 0 && (
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => toggleSection("memes")}
+                    className="flex w-full items-center justify-between rounded-md px-3 py-2 text-xs font-semibold text-slate-500 uppercase mb-2 hover:bg-slate-800/70 hover:text-slate-300"
+                  >
+                    Memes
+                    {(sectionOpen["memes"] ?? false) ? (
+                      <ChevronDownIcon className="h-4 w-4 shrink-0" />
+                    ) : (
+                      <ChevronRightIcon className="h-4 w-4 shrink-0" />
+                    )}
+                  </button>
+                  {(sectionOpen["memes"] ?? false) && (
+                    <div className="space-y-1">
+                      {memesItems.map((item) => (
+                        <NavLink
+                          key={item.to}
+                          to={item.to}
+                          className={navLinkClass}
+                          onClick={() => setMobileOpen(false)}
+                        >
+                          {item.label}
+                        </NavLink>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {squashItems.length > 0 && (
                 <div>
                   <button

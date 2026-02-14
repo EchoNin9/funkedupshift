@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
-import { ArrowLeftIcon, PencilSquareIcon } from "@heroicons/react/24/outline";
+import { Link, useParams, useNavigate } from "react-router-dom";
+import { ArrowLeftIcon, PencilSquareIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { useAuth, canAccessMemes, canRateMemes, canCreateMemes, canEditAnyMeme, hasRole } from "../../shell/AuthContext";
 import ShareMemeBox from "./ShareMemeBox";
 import { fetchWithAuthOptional } from "../../utils/api";
@@ -26,11 +26,15 @@ function getApiBaseUrl(): string | null {
 const MemeDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [item, setItem] = useState<MemeItem | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const canEdit = !!item && (canEditAnyMeme(user) || (canCreateMemes(user) && item.userId === user?.userId));
+  const canDelete = !!item && hasRole(user, "superadmin");
   const memeId = id ? decodeURIComponent(id) : "";
 
   useEffect(() => {
@@ -86,6 +90,35 @@ const MemeDetailPage: React.FC = () => {
     }
   };
 
+  const handleDelete = async () => {
+    const apiBase = getApiBaseUrl();
+    if (!apiBase || !item) return;
+    setIsDeleting(true);
+    setError(null);
+    try {
+      const resp = await fetchWithAuthOptional(`${apiBase}/memes`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: item.PK })
+      });
+      if (!resp.ok) {
+        const data = (await resp.json()) as { error?: string };
+        throw new Error(data.error || "Failed to delete meme");
+      }
+      try {
+        sessionStorage.setItem("memes_my_cache_invalidate", JSON.stringify({ tagOnly: false }));
+      } catch {
+        /* ignore */
+      }
+      navigate("/memes");
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to delete meme");
+      setConfirmDelete(false);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const access = !user || canAccessMemes(user);
   if (user && !canAccessMemes(user)) {
     return (
@@ -137,15 +170,48 @@ const MemeDetailPage: React.FC = () => {
           <ArrowLeftIcon className="h-4 w-4" />
           Back to Memes
         </Link>
-        {canEdit && (
-          <Link
-            to={`/memes/${encodeURIComponent(item.PK)}/edit`}
-            className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-slate-200"
-          >
-            <PencilSquareIcon className="h-4 w-4" />
-            Edit
-          </Link>
-        )}
+        <div className="flex items-center gap-3">
+          {canEdit && (
+            <Link
+              to={`/memes/${encodeURIComponent(item.PK)}/edit`}
+              className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-slate-200"
+            >
+              <PencilSquareIcon className="h-4 w-4" />
+              Edit
+            </Link>
+          )}
+          {canDelete && !confirmDelete && (
+            <button
+              type="button"
+              onClick={() => setConfirmDelete(true)}
+              className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-red-400"
+            >
+              <TrashIcon className="h-4 w-4" />
+              Delete
+            </button>
+          )}
+          {canDelete && confirmDelete && (
+            <span className="inline-flex items-center gap-2 text-sm">
+              <span className="text-red-400">Delete this meme?</span>
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="rounded-md bg-red-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-red-500 disabled:opacity-50"
+              >
+                {isDeleting ? "Deleting…" : "Confirm"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmDelete(false)}
+                disabled={isDeleting}
+                className="text-xs text-slate-500 hover:text-slate-300"
+              >
+                Cancel
+              </button>
+            </span>
+          )}
+        </div>
       </header>
 
       <div className="rounded-xl border border-slate-800 bg-slate-950/60 overflow-hidden min-h-[200px] flex items-center justify-center p-4">
