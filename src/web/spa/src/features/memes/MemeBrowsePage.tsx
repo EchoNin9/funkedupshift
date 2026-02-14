@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { PencilSquareIcon } from "@heroicons/react/24/outline";
+import { PencilSquareIcon, LinkIcon } from "@heroicons/react/24/outline";
 import { useAuth, canAccessMemes, canRateMemes, canCreateMemes, canEditAnyMeme } from "../../shell/AuthContext";
+import ShareMemePopover from "./ShareMemePopover";
 import { fetchWithAuthOptional } from "../../utils/api";
 
 interface MemeItem {
@@ -511,7 +512,17 @@ const MemeBrowsePage: React.FC = () => {
                         ))}
                       </div>
                     )}
-                    <div className="pt-1 flex items-center gap-3">
+                    <div className="pt-1 flex items-center gap-3 flex-wrap">
+                      <ShareMemePopover
+                        memeId={m.PK}
+                        title={title}
+                        trigger={
+                          <>
+                            <LinkIcon className="h-3.5 w-3.5" />
+                            Share
+                          </>
+                        }
+                      />
                       {canEditMeme(m) && (
                         <Link
                           to={`/memes/${encodeURIComponent(m.PK)}/edit`}
