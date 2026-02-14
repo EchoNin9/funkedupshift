@@ -180,11 +180,9 @@ export function canAccessMemes(user: AuthUser | null): boolean {
   return (user.customGroups ?? []).includes("Memes");
 }
 
-/** User can rate memes: logged in + Memes group (any Cognito role). */
+/** Any logged-in user can rate memes. */
 export function canRateMemes(user: AuthUser | null): boolean {
-  if (!user?.userId) return false;
-  if (user.role === "superadmin") return true;
-  return (user.customGroups ?? []).includes("Memes");
+  return !!user?.userId;
 }
 
 /** User can create memes and edit/delete own: Cognito user/manager + Memes group. */
