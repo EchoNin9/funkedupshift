@@ -237,18 +237,25 @@ const VehiclesExpensesPage: React.FC = () => {
     try {
       const XLSX = await import("xlsx");
       const data = await file.arrayBuffer();
-      const wb = XLSX.read(data, { type: "array" });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json<string[]>(ws, { header: 1 }) as (string | number)[][];
+      const wb = XLSX.read(data, { type: "array", raw: true });
+      const sheetName = wb.SheetNames[0];
+      if (!sheetName) throw new Error("Excel file has no sheets");
+      const ws = wb.Sheets[sheetName];
+      if (!ws) throw new Error("Could not read first sheet");
+      const rows = XLSX.utils.sheet_to_json<string[]>(ws, { header: 1, raw: true, defval: "" }) as (string | number)[][];
+      if (!rows.length) throw new Error("Excel sheet is empty");
+      const date1904 = !!(wb.Workbook?.WBProps as { date1904?: boolean } | undefined)?.date1904;
+      const excelEpoch = date1904 ? 24107 : 25569;
       const imports: { vehicleName: string; entries: { date: string; fuelPrice: number; fuelLitres: number; odometerKm: number }[] }[] = [];
       const colMap: Record<string, number> = {};
       const headerRow = rows[0] as (string | number)[];
       for (let i = 0; i < headerRow.length; i++) {
-        const h = String(headerRow[i] || "").toLowerCase();
+        const h = String(headerRow[i] ?? "").toLowerCase().trim();
+        if (!h) continue;
         if (h.includes("date")) colMap.date = i;
         else if (h.includes("litre") || h.includes("liter") || h.includes("volume")) colMap.fuelLitres = i;
-        else if (h.includes("price") || h.includes("cost") || h.includes("fuel")) colMap.fuelPrice = i;
-        else if (h.includes("odometer") || h.includes("mileage") || h.includes("km")) colMap.odometerKm = i;
+        else if (h.includes("price") || h.includes("cost") || (h.includes("fuel") && !h.includes("litre"))) colMap.fuelPrice = i;
+        else if (h.includes("odometer") || h.includes("mileage") || (h.includes("km") && !h.includes("l/100"))) colMap.odometerKm = i;
         else if (h.includes("vehicle")) colMap.vehicle = i;
       }
       const dateCol = colMap.date ?? 0;
@@ -259,28 +266,33 @@ const VehiclesExpensesPage: React.FC = () => {
       const byVehicle: Record<string, { date: string; fuelPrice: number; fuelLitres: number; odometerKm: number }[]> = {};
       for (let r = 1; r < rows.length; r++) {
         const row = rows[r] as (string | number)[];
+        if (!Array.isArray(row)) continue;
         const dateVal = row[dateCol];
         const priceVal = row[priceCol];
         const litresVal = row[litresCol];
         const odoVal = row[odoCol];
         const vehicleVal = row[vehicleCol];
         if (dateVal == null && priceVal == null && litresVal == null && odoVal == null) continue;
+        if (dateVal === "" && priceVal === "" && litresVal === "" && odoVal === "") continue;
         let dateStr = "";
-        if (typeof dateVal === "number") {
-          const d = new Date((dateVal - 25569) * 86400 * 1000);
+        if (typeof dateVal === "number" && !isNaN(dateVal) && dateVal > 0) {
+          const d = new Date((dateVal - excelEpoch) * 86400 * 1000);
           dateStr = d.toISOString().slice(0, 10);
         } else {
-          dateStr = String(dateVal || "").slice(0, 10);
+          dateStr = String(dateVal ?? "").trim().slice(0, 10);
         }
-        const price = typeof priceVal === "number" ? priceVal : parseFloat(String(priceVal || 0)) || 0;
-        const litres = typeof litresVal === "number" ? litresVal : parseFloat(String(litresVal || 0)) || 0;
-        const odo = typeof odoVal === "number" ? odoVal : parseFloat(String(odoVal || 0)) || 0;
-        const vehicleName = String(vehicleVal || "Vehicle").trim() || "Vehicle";
+        const price = typeof priceVal === "number" && !isNaN(priceVal) ? priceVal : parseFloat(String(priceVal ?? "").replace(/,/g, "")) || 0;
+        const litres = typeof litresVal === "number" && !isNaN(litresVal) ? litresVal : parseFloat(String(litresVal ?? "").replace(/,/g, "")) || 0;
+        const odo = typeof odoVal === "number" && !isNaN(odoVal) ? odoVal : parseFloat(String(odoVal ?? "").replace(/,/g, "")) || 0;
+        const vehicleName = String(vehicleVal ?? "").trim() || "Vehicle";
         if (!byVehicle[vehicleName]) byVehicle[vehicleName] = [];
         byVehicle[vehicleName].push({ date: dateStr, fuelPrice: price, fuelLitres: litres, odometerKm: odo });
       }
       for (const [vName, entries] of Object.entries(byVehicle)) {
-        imports.push({ vehicleName: vName, entries });
+        if (entries.length > 0) imports.push({ vehicleName: vName, entries });
+      }
+      if (imports.length === 0) {
+        throw new Error("No valid data rows found. Ensure columns: Date, Fuel Price, Fuel Litres, Odometer (km), Vehicle.");
       }
       const apiBase = getApiBaseUrl();
       if (!apiBase) throw new Error("API URL not set");
@@ -291,7 +303,10 @@ const VehiclesExpensesPage: React.FC = () => {
       });
       if (!resp.ok) {
         const d = await resp.json().catch(() => ({}));
-        throw new Error((d as { error?: string }).error || "Import failed");
+        const errMsg = (d as { error?: string }).error;
+        const errList = (d as { errors?: string[] }).errors;
+        const msg = errMsg || (errList?.length ? errList.join("; ") : null) || `Import failed (${resp.status})`;
+        throw new Error(msg);
       }
       const result = (await resp.json()) as { created?: number; errors?: string[] };
       setImportMessage(`Imported ${result.created ?? 0} entries.${(result.errors ?? []).length ? ` Errors: ${result.errors!.join("; ")}` : ""}`);
