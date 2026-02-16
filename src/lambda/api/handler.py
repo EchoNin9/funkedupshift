@@ -383,6 +383,37 @@ def handler(event, context):
             return getFinancialDefaultSymbols(event)
         if method == "PUT" and path == "/admin/financial/default-symbols":
             return putFinancialDefaultSymbols(event)
+        # Vehicles expenses routes (expenses group required)
+        if method == "GET" and path == "/vehicles-expenses":
+            return listVehiclesExpenses(event)
+        if method == "POST" and path == "/vehicles-expenses":
+            return createVehicleExpense(event)
+        if method == "POST" and path == "/vehicles-expenses/import":
+            return importVehiclesExpenses(event)
+        ve_path_params = event.get("pathParameters") or {}
+        ve_parts = [p for p in path.split("/") if p]
+        if len(ve_parts) >= 2 and ve_parts[0] == "vehicles-expenses" and ve_parts[1] != "import":
+            vehicle_id = ve_path_params.get("vehicleId") or ve_path_params.get("id") or ve_parts[1]
+            if len(ve_parts) == 2:
+                if method == "GET":
+                    return getVehicleExpense(event, vehicle_id)
+                if method == "PUT":
+                    return updateVehicleExpense(event, vehicle_id)
+                if method == "DELETE":
+                    return deleteVehicleExpense(event, vehicle_id)
+            if len(ve_parts) == 3 and ve_parts[2] == "fuel":
+                if method == "GET":
+                    return listFuelEntries(event, vehicle_id)
+                if method == "POST":
+                    return createFuelEntry(event, vehicle_id)
+            if len(ve_parts) == 4 and ve_parts[2] == "fuel":
+                fillup_id = ve_path_params.get("fillupId") or ve_path_params.get("id") or ve_parts[3]
+                if method == "GET":
+                    return getFuelEntry(event, vehicle_id, fillup_id)
+                if method == "PUT":
+                    return updateFuelEntry(event, vehicle_id, fillup_id)
+                if method == "DELETE":
+                    return deleteFuelEntry(event, vehicle_id, fillup_id)
         # Admin user/group management routes
         path_params = event.get("pathParameters") or {}
         if method == "GET" and path == "/admin/users":
@@ -586,6 +617,221 @@ def putFinancialDefaultSymbols(event):
         })
     except Exception as e:
         logger.exception("putFinancialDefaultSymbols error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def _requireExpensesGroup(event):
+    """Return (user, None) if user has expenses group or is admin, else (None, error_response)."""
+    user, err = _requireAuth(event)
+    if err:
+        return None, err
+    groups = user.get("groups", [])
+    custom_groups = user.get("customGroups", []) or []
+    if "admin" in groups or "expenses" in custom_groups:
+        return user, None
+    return None, jsonResponse({"error": "Forbidden: expenses group membership required"}, 403)
+
+
+def listVehiclesExpenses(event):
+    """GET /vehicles-expenses - List current user's vehicles (expenses group required)."""
+    user, err = _requireExpensesGroup(event)
+    if err:
+        return err
+    try:
+        from api.vehicles_expenses import list_vehicles
+        vehicles = list_vehicles(user["userId"])
+        return jsonResponse({"vehicles": vehicles})
+    except Exception as e:
+        logger.exception("listVehiclesExpenses error: %s", e)
+        return jsonResponse({"error": str(e), "vehicles": []}, 500)
+
+
+def createVehicleExpense(event):
+    """POST /vehicles-expenses - Create vehicle (expenses group required)."""
+    user, err = _requireExpensesGroup(event)
+    if err:
+        return err
+    try:
+        body = event.get("body")
+        if body and isinstance(body, str):
+            body = json.loads(body)
+        else:
+            body = body or {}
+        from api.vehicles_expenses import create_vehicle
+        vehicle = create_vehicle(user["userId"], body)
+        if not vehicle:
+            return jsonResponse({"error": "Failed to create vehicle"}, 500)
+        return jsonResponse(vehicle, 201)
+    except json.JSONDecodeError:
+        return jsonResponse({"error": "Invalid JSON body"}, 400)
+    except Exception as e:
+        logger.exception("createVehicleExpense error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def getVehicleExpense(event, vehicle_id):
+    """GET /vehicles-expenses/{id} - Get vehicle (expenses group required)."""
+    user, err = _requireExpensesGroup(event)
+    if err:
+        return err
+    try:
+        from api.vehicles_expenses import get_vehicle
+        vehicle = get_vehicle(user["userId"], vehicle_id)
+        if not vehicle:
+            return jsonResponse({"error": "Vehicle not found"}, 404)
+        return jsonResponse(vehicle)
+    except Exception as e:
+        logger.exception("getVehicleExpense error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def updateVehicleExpense(event, vehicle_id):
+    """PUT /vehicles-expenses/{id} - Update vehicle (expenses group required)."""
+    user, err = _requireExpensesGroup(event)
+    if err:
+        return err
+    try:
+        body = event.get("body")
+        if body and isinstance(body, str):
+            body = json.loads(body)
+        else:
+            body = body or {}
+        from api.vehicles_expenses import update_vehicle
+        vehicle = update_vehicle(user["userId"], vehicle_id, body)
+        if not vehicle:
+            return jsonResponse({"error": "Vehicle not found or update failed"}, 404)
+        return jsonResponse(vehicle)
+    except json.JSONDecodeError:
+        return jsonResponse({"error": "Invalid JSON body"}, 400)
+    except Exception as e:
+        logger.exception("updateVehicleExpense error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def deleteVehicleExpense(event, vehicle_id):
+    """DELETE /vehicles-expenses/{id} - Delete vehicle (expenses group required)."""
+    user, err = _requireExpensesGroup(event)
+    if err:
+        return err
+    try:
+        from api.vehicles_expenses import delete_vehicle
+        if not delete_vehicle(user["userId"], vehicle_id):
+            return jsonResponse({"error": "Vehicle not found or delete failed"}, 404)
+        return jsonResponse({"ok": True}, 200)
+    except Exception as e:
+        logger.exception("deleteVehicleExpense error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def listFuelEntries(event, vehicle_id):
+    """GET /vehicles-expenses/{vehicleId}/fuel - List fuel entries (newest first)."""
+    user, err = _requireExpensesGroup(event)
+    if err:
+        return err
+    try:
+        from api.vehicles_expenses import list_fuel_entries
+        entries = list_fuel_entries(user["userId"], vehicle_id)
+        return jsonResponse({"entries": entries})
+    except Exception as e:
+        logger.exception("listFuelEntries error: %s", e)
+        return jsonResponse({"error": str(e), "entries": []}, 500)
+
+
+def createFuelEntry(event, vehicle_id):
+    """POST /vehicles-expenses/{vehicleId}/fuel - Create fuel entry."""
+    user, err = _requireExpensesGroup(event)
+    if err:
+        return err
+    try:
+        body = event.get("body")
+        if body and isinstance(body, str):
+            body = json.loads(body)
+        else:
+            body = body or {}
+        from api.vehicles_expenses import create_fuel_entry
+        entry = create_fuel_entry(user["userId"], vehicle_id, body)
+        if not entry:
+            return jsonResponse({"error": "Vehicle not found or failed to create entry"}, 404)
+        return jsonResponse(entry, 201)
+    except json.JSONDecodeError:
+        return jsonResponse({"error": "Invalid JSON body"}, 400)
+    except Exception as e:
+        logger.exception("createFuelEntry error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def getFuelEntry(event, vehicle_id, fillup_id):
+    """GET /vehicles-expenses/{vehicleId}/fuel/{fillupId} - Get fuel entry."""
+    user, err = _requireExpensesGroup(event)
+    if err:
+        return err
+    try:
+        from api.vehicles_expenses import get_fuel_entry
+        entry = get_fuel_entry(user["userId"], vehicle_id, fillup_id)
+        if not entry:
+            return jsonResponse({"error": "Fuel entry not found"}, 404)
+        return jsonResponse(entry)
+    except Exception as e:
+        logger.exception("getFuelEntry error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def updateFuelEntry(event, vehicle_id, fillup_id):
+    """PUT /vehicles-expenses/{vehicleId}/fuel/{fillupId} - Update fuel entry."""
+    user, err = _requireExpensesGroup(event)
+    if err:
+        return err
+    try:
+        body = event.get("body")
+        if body and isinstance(body, str):
+            body = json.loads(body)
+        else:
+            body = body or {}
+        from api.vehicles_expenses import update_fuel_entry
+        entry = update_fuel_entry(user["userId"], vehicle_id, fillup_id, body)
+        if not entry:
+            return jsonResponse({"error": "Fuel entry not found or update failed"}, 404)
+        return jsonResponse(entry)
+    except json.JSONDecodeError:
+        return jsonResponse({"error": "Invalid JSON body"}, 400)
+    except Exception as e:
+        logger.exception("updateFuelEntry error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def deleteFuelEntry(event, vehicle_id, fillup_id):
+    """DELETE /vehicles-expenses/{vehicleId}/fuel/{fillupId} - Delete fuel entry."""
+    user, err = _requireExpensesGroup(event)
+    if err:
+        return err
+    try:
+        from api.vehicles_expenses import delete_fuel_entry
+        if not delete_fuel_entry(user["userId"], vehicle_id, fillup_id):
+            return jsonResponse({"error": "Fuel entry not found or delete failed"}, 404)
+        return jsonResponse({"ok": True}, 200)
+    except Exception as e:
+        logger.exception("deleteFuelEntry error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def importVehiclesExpenses(event):
+    """POST /vehicles-expenses/import - Import fuel entries from Excel data."""
+    user, err = _requireExpensesGroup(event)
+    if err:
+        return err
+    try:
+        body = event.get("body")
+        if body and isinstance(body, str):
+            body = json.loads(body)
+        else:
+            body = body or {}
+        from api.vehicles_expenses import import_fuel_entries
+        result = import_fuel_entries(user["userId"], body)
+        return jsonResponse(result)
+    except json.JSONDecodeError:
+        return jsonResponse({"error": "Invalid JSON body"}, 400)
+    except Exception as e:
+        logger.exception("importVehiclesExpenses error: %s", e)
         return jsonResponse({"error": str(e)}, 500)
 
 

@@ -201,3 +201,10 @@ export function canEditAnyMeme(user: AuthUser | null): boolean {
   return (user.customGroups ?? []).includes("Memes");
 }
 
+/** User can access Vehicles Expenses: expenses custom group OR superadmin. Not visible to guests. */
+export function canAccessExpenses(user: AuthUser | null): boolean {
+  if (!user?.userId) return false;
+  if (user.role === "superadmin") return true;
+  return (user.customGroups ?? []).includes("expenses");
+}
+

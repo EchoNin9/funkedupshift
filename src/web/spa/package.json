@@ -6,15 +6,22 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build:mobile": "cp ../auth.js public/auth.js 2>/dev/null || true && npm run build && npx cap sync",
+    "build:mobile:prod": "node scripts/write-mobile-config.js && npm run build:mobile"
   },
   "dependencies": {
+    "@capacitor/android": "^8.1.0",
+    "@capacitor/cli": "^8.1.0",
+    "@capacitor/core": "^8.1.0",
+    "@capacitor/ios": "^8.1.0",
     "@headlessui/react": "^1.7.18",
     "@heroicons/react": "^2.1.5",
     "framer-motion": "^11.11.17",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-router-dom": "^6.22.3"
+    "react-router-dom": "^6.22.3",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/react": "^18.2.64",

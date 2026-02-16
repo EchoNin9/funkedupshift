@@ -1493,6 +1493,95 @@ resource "aws_apigatewayv2_route" "adminFinancialDefaultSymbolsPut" {
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
+# Vehicles expenses (expenses group required, JWT)
+resource "aws_apigatewayv2_route" "vehiclesExpensesList" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /vehicles-expenses"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "vehiclesExpensesCreate" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /vehicles-expenses"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "vehiclesExpensesGet" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /vehicles-expenses/{id}"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "vehiclesExpensesPut" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "PUT /vehicles-expenses/{id}"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "vehiclesExpensesDelete" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "DELETE /vehicles-expenses/{id}"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "vehiclesExpensesImport" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /vehicles-expenses/import"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "vehiclesExpensesFuelList" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /vehicles-expenses/{vehicleId}/fuel"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "vehiclesExpensesFuelCreate" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /vehicles-expenses/{vehicleId}/fuel"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "vehiclesExpensesFuelGet" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /vehicles-expenses/{vehicleId}/fuel/{fillupId}"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "vehiclesExpensesFuelPut" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "PUT /vehicles-expenses/{vehicleId}/fuel/{fillupId}"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "vehiclesExpensesFuelDelete" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "DELETE /vehicles-expenses/{vehicleId}/fuel/{fillupId}"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
 # Admin user & group management (SuperAdmin or Manager)
 resource "aws_apigatewayv2_route" "adminUsersGet" {
   api_id             = aws_apigatewayv2_api.main.id
