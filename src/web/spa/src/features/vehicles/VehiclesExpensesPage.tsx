@@ -78,6 +78,8 @@ const VehiclesExpensesPage: React.FC = () => {
   const [importing, setImporting] = useState(false);
   const [importMessage, setImportMessage] = useState<string | null>(null);
   const [showImportHelp, setShowImportHelp] = useState(false);
+  const [renamingVehicleId, setRenamingVehicleId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
 
   const loadVehicles = useCallback(async () => {
     const apiBase = getApiBaseUrl();
@@ -136,6 +138,13 @@ const VehiclesExpensesPage: React.FC = () => {
     if (selectedVehicleId) loadFuelEntries(selectedVehicleId);
     else setFuelEntries([]);
   }, [selectedVehicleId, loadFuelEntries]);
+
+  useEffect(() => {
+    if (renamingVehicleId && renamingVehicleId !== selectedVehicleId) {
+      setRenamingVehicleId(null);
+      setRenameValue("");
+    }
+  }, [selectedVehicleId, renamingVehicleId]);
 
   const handleAddVehicle = async () => {
     const name = newVehicleName.trim();
@@ -203,6 +212,69 @@ const VehiclesExpensesPage: React.FC = () => {
       loadFuelEntries(selectedVehicleId);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Failed to add fuel entry");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteVehicle = async (vehicleId: string) => {
+    const v = vehicles.find((x) => x.id === vehicleId);
+    const name = v?.name || "this vehicle";
+    if (!window.confirm(`Delete "${name}"? This will permanently remove the vehicle and all its fuel entries.`)) return;
+    const apiBase = getApiBaseUrl();
+    if (!apiBase) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const resp = await fetchWithAuth(
+        `${apiBase}/vehicles-expenses/${encodeURIComponent(vehicleId)}`,
+        { method: "DELETE" }
+      );
+      if (!resp.ok) {
+        const d = await resp.json().catch(() => ({}));
+        throw new Error((d as { error?: string }).error || "Failed to delete");
+      }
+      setVehicles((prev) => prev.filter((x) => x.id !== vehicleId));
+      if (selectedVehicleId === vehicleId) {
+        const remaining = vehicles.filter((x) => x.id !== vehicleId);
+        setSelectedVehicleId(remaining[0]?.id ?? null);
+      }
+      setFuelEntries([]);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed to delete vehicle");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleRenameVehicle = async (vehicleId: string, newName: string) => {
+    const name = newName.trim();
+    if (!name) return;
+    const apiBase = getApiBaseUrl();
+    if (!apiBase) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const resp = await fetchWithAuth(
+        `${apiBase}/vehicles-expenses/${encodeURIComponent(vehicleId)}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name }),
+        }
+      );
+      if (!resp.ok) {
+        const d = await resp.json().catch(() => ({}));
+        throw new Error((d as { error?: string }).error || "Failed to rename");
+      }
+      const updated = (await resp.json()) as Vehicle;
+      setVehicles((prev) =>
+        prev.map((v) => (v.id === vehicleId ? { ...v, name: updated.name } : v))
+      );
+      setRenamingVehicleId(null);
+      setRenameValue("");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed to rename vehicle");
     } finally {
       setSaving(false);
     }
@@ -433,6 +505,68 @@ const VehiclesExpensesPage: React.FC = () => {
       ) : selectedVehicleId ? (
         <>
           <div className="rounded-lg border border-slate-700 bg-slate-900/50 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+              <div className="flex items-center gap-2">
+                {renamingVehicleId === selectedVehicleId ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={renameValue}
+                      onChange={(e) => setRenameValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleRenameVehicle(selectedVehicleId, renameValue);
+                        if (e.key === "Escape") {
+                          setRenamingVehicleId(null);
+                          setRenameValue("");
+                        }
+                      }}
+                      placeholder="Vehicle name"
+                      className="rounded-md border border-slate-600 bg-slate-800 px-3 py-1.5 text-slate-100 placeholder-slate-500 w-48"
+                      autoFocus
+                    />
+                    <button
+                      onClick={() => handleRenameVehicle(selectedVehicleId, renameValue)}
+                      disabled={saving || !renameValue.trim()}
+                      className="text-sm text-primary-400 hover:text-primary-300"
+                    >
+                      Save
+                    </button>
+                    <button
+                      onClick={() => {
+                        setRenamingVehicleId(null);
+                        setRenameValue("");
+                      }}
+                      className="text-sm text-slate-400 hover:text-slate-200"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <h2 className="text-sm font-semibold text-slate-300">
+                      {vehicles.find((v) => v.id === selectedVehicleId)?.name || "Vehicle"}
+                    </h2>
+                    <button
+                      onClick={() => {
+                        setRenamingVehicleId(selectedVehicleId);
+                        setRenameValue(vehicles.find((v) => v.id === selectedVehicleId)?.name || "");
+                      }}
+                      disabled={saving}
+                      className="text-xs text-slate-400 hover:text-slate-200"
+                    >
+                      Rename
+                    </button>
+                  </>
+                )}
+              </div>
+              <button
+                onClick={() => handleDeleteVehicle(selectedVehicleId)}
+                disabled={saving}
+                className="text-sm text-red-400 hover:text-red-300"
+              >
+                Delete vehicle
+              </button>
+            </div>
             <h2 className="text-sm font-semibold text-slate-300 mb-3">Add fuel expense</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               <input
