@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeftIcon, Bars3Icon } from "@heroicons/react/24/outline";
+import { Bars3Icon } from "@heroicons/react/24/outline";
 import { useAuth, hasRole } from "../../shell/AuthContext";
+import { AdminPageHeader } from "./AdminPageHeader";
 import { fetchWithAuth } from "../../utils/api";
 
 function getApiBaseUrl(): string | null {
@@ -165,22 +166,17 @@ const InternetDashboardAdminPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <Link
-        to="/internet-dashboard"
-        className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-slate-200"
-      >
-        <ArrowLeftIcon className="h-4 w-4" />
-        Back to Internet Dashboard
-      </Link>
+      <AdminPageHeader
+        title="Internet Dashboard"
+        description="Edit the list of sites shown on the Internet Dashboard. Only SuperAdmin can change this."
+        actions={
+          <Link to="/internet-dashboard" className="btn-secondary text-sm !px-4 !py-2">
+            View dashboard
+          </Link>
+        }
+      />
 
-      <header className="space-y-2">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-50">Internet Dashboard</h1>
-        <p className="text-sm text-slate-400">
-          Edit the list of sites shown on the Internet Dashboard. Only SuperAdmin can change this.
-        </p>
-      </header>
-
-      <section className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 space-y-4 max-w-2xl">
+      <section className="card p-6 space-y-4 max-w-2xl">
         <div className="flex flex-wrap items-center gap-3">
           <h2 className="text-base font-semibold text-slate-200">Sites list ({sites.length})</h2>
           <div className="inline-flex rounded-md border border-slate-700 bg-slate-950 p-0.5">
@@ -225,13 +221,13 @@ const InternetDashboardAdminPage: React.FC = () => {
               value={newDomain}
               onChange={(e) => setNewDomain(e.target.value)}
               placeholder="example.com"
-              className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-500 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange"
+              className="input-field w-full"
             />
           </div>
           <button
             type="submit"
             disabled={isSaving || !newDomain.trim()}
-            className="rounded-md bg-brand-orange px-4 py-2 text-sm font-medium text-slate-950 hover:bg-orange-500 disabled:opacity-50"
+            className="btn-primary disabled:opacity-50"
           >
             Add
           </button>

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useAuth, hasRole } from "../../shell/AuthContext";
+import { AdminPageHeader } from "./AdminPageHeader";
 import { fetchWithAuth } from "../../utils/api";
 import { useBranding } from "../../shell/BrandingContext";
 
@@ -31,11 +32,8 @@ const BrandingPage: React.FC = () => {
 
   if (!isSuperAdmin) {
     return (
-      <div className="space-y-3">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-50">Branding</h1>
-        <p className="text-sm text-slate-400">
-          Only superadmin users can manage global branding assets.
-        </p>
+      <div className="space-y-6">
+        <AdminPageHeader title="Branding" description="Only superadmin users can manage global branding assets." />
       </div>
     );
   }
@@ -118,16 +116,13 @@ const BrandingPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-4">
-      <header className="space-y-2">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-50">Branding</h1>
-        <p className="text-sm text-slate-400">
-          Upload a new global logo for Funkedupshift. This logo is used in the navigation bar and other
-          shared surfaces.
-        </p>
-      </header>
+    <div className="space-y-6">
+      <AdminPageHeader
+        title="Branding"
+        description="Upload a new global logo. Used in the navigation bar and shared surfaces."
+      />
 
-      <form className="space-y-4 max-w-md" onSubmit={onSubmit}>
+      <form className="card p-6 space-y-4 max-w-md" onSubmit={onSubmit}>
         <div className="space-y-1 text-sm">
           <label className="block text-slate-200">Logo image</label>
           {logo && !previewUrl && (
@@ -159,7 +154,7 @@ const BrandingPage: React.FC = () => {
             type="text"
             value={alt}
             onChange={(e) => setAlt(e.target.value)}
-            className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-500 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange"
+            className="input-field"
           />
         </div>
 
@@ -176,7 +171,7 @@ const BrandingPage: React.FC = () => {
         <button
           type="submit"
           disabled={isSubmitting || !file}
-          className="inline-flex items-center justify-center rounded-md bg-brand-orange px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-orange-500 disabled:opacity-50"
+          className="btn-primary disabled:opacity-50"
         >
           {isSubmitting ? "Updating…" : "Update logo"}
         </button>

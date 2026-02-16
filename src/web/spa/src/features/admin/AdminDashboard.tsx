@@ -1,6 +1,7 @@
 import React, { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
+import { PlusIcon } from "@heroicons/react/24/outline";
 import { useAuth } from "../../shell/AuthContext";
 import { getVisibleAdminModules } from "../../config/modules";
 
@@ -56,16 +57,24 @@ export function AdminDashboard() {
       >
         {visibleModules.map((mod) => (
           <motion.div key={mod.path} variants={fadeUp}>
-            <Link
-              to={mod.path}
-              className="card block p-6 hover:border-primary-500/50 transition-colors group"
-            >
-              <mod.icon className="w-8 h-8 text-primary-500 mb-4 group-hover:scale-110 transition-transform" />
-              <h2 className="text-lg font-display font-bold text-secondary-100 mb-1">
-                {mod.label}
-              </h2>
-              <p className="text-sm text-secondary-400">{mod.description}</p>
-            </Link>
+            <div className="card p-6 hover:border-primary-500/50 transition-colors group">
+              <Link to={mod.path} className="block">
+                <mod.icon className="w-8 h-8 text-primary-500 mb-4 group-hover:scale-110 transition-transform" />
+                <h2 className="text-lg font-display font-bold text-secondary-100 mb-1">
+                  {mod.label}
+                </h2>
+                <p className="text-sm text-secondary-400">{mod.description}</p>
+              </Link>
+              {(mod.id === "websites" || mod.id === "media") && (
+                <Link
+                  to={mod.path + (mod.id === "websites" ? "?tab=add" : "?tab=add")}
+                  className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-primary-400 hover:text-primary-300 transition-colors"
+                >
+                  <PlusIcon className="w-4 h-4" />
+                  Add {mod.id === "websites" ? "Site" : "Media"}
+                </Link>
+              )}
+            </div>
           </motion.div>
         ))}
       </motion.div>
