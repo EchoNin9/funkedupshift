@@ -1,6 +1,6 @@
 import React from "react";
-import { Link, Route, Routes } from "react-router-dom";
-import { useAuth, hasRole, canAccessSquash, canModifySquash, canAccessFinancial, canAccessFinancialAdmin, canAccessMemes } from "./AuthContext";
+import { Link, Navigate, Route, Routes } from "react-router-dom";
+import { useAuth } from "./AuthContext";
 import { useBranding } from "./BrandingContext";
 import { Header } from "./Header";
 import HomePage from "../features/home/HomePage";
@@ -11,6 +11,7 @@ import MediaDetailPage from "../features/media/MediaDetailPage";
 import DashboardPage from "../features/dashboard/DashboardPage";
 import OurPropertiesPage from "../features/otherProperties/OurPropertiesPage";
 import HighestRatedPage from "../features/otherProperties/HighestRatedPage";
+import { AdminDashboard } from "../features/admin/AdminDashboard";
 import BrandingPage from "../features/admin/BrandingPage";
 import InternetDashboardAdminPage from "../features/admin/InternetDashboardAdminPage";
 import RecommendedAdminPage from "../features/admin/RecommendedAdminPage";
@@ -72,7 +73,8 @@ const AppLayout: React.FC = () => {
             <Route path="/admin/sites/edit/:id" element={<EditSitePage />} />
             <Route path="/admin/media" element={<MediaAdminPage />} />
             <Route path="/admin/media/edit/:id" element={<EditMediaPage />} />
-            <Route path="/admin/*" element={<div>Admin area</div>} />
+            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin/*" element={<Navigate to="/admin" replace />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/auth" element={<AuthPage />} />
             <Route path="*" element={<div>Not found</div>} />
@@ -82,65 +84,40 @@ const AppLayout: React.FC = () => {
 
       {/* Footer */}
       <footer className="border-t border-slate-800 bg-slate-950">
-        <div className="container-max py-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
-          <nav className="flex flex-wrap gap-3 justify-center sm:justify-start">
-            <Link to="/" className="hover:text-slate-300">
-              Home
-            </Link>
-            <Link to="/websites" className="hover:text-slate-300">
-              Websites
-            </Link>
-            <Link to="/media" className="hover:text-slate-300">
-              Media
-            </Link>
-            <Link to="/internet-dashboard" className="hover:text-slate-300">
-              Internet dashboard
-            </Link>
-            <Link to="/recommended/highlights" className="hover:text-slate-300">
-              Highlights
-            </Link>
-            <Link to="/recommended/highest-rated" className="hover:text-slate-300">
-              Highest rated
-            </Link>
-            {user && (
-              <Link to="/profile" className="hover:text-slate-300">
-                Profile
+        <div className="container-max py-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div>
+              <Link to="/" className="text-lg font-display font-bold text-gradient">
+                {siteName}
               </Link>
-            )}
-            {hasRole(user ?? null, "superadmin") && (
-              <Link to="/admin/branding" className="hover:text-slate-300">
-                Branding
-              </Link>
-            )}
-            {canAccessSquash(user) && (
-              <Link to="/squash" className="hover:text-slate-300">
-                Squash
-              </Link>
-            )}
-            {canModifySquash(user) && (
-              <Link to="/squash-admin" className="hover:text-slate-300">
-                Squash Admin
-              </Link>
-            )}
-            {(!user || canAccessMemes(user)) && (
-              <Link to="/memes" className="hover:text-slate-300">
-                Memes
-              </Link>
-            )}
-            {canAccessFinancial(user) && (
-              <Link to="/financial" className="hover:text-slate-300">
-                Financial
-              </Link>
-            )}
-            {canAccessFinancialAdmin(user) && (
-              <Link to="/admin/financial" className="hover:text-slate-300">
-                Financial Admin
-              </Link>
-            )}
-          </nav>
-          <div className="text-slate-600">
-            <span className="font-mono text-[11px]">{siteName.toLowerCase().replace(/\s+/g, "")}</span>{" "}
-            <span className="text-slate-700">·</span> <span>All data public, admin-managed curation</span>
+              <p className="mt-1 text-sm text-slate-500">
+                Shared internet intelligence. All data public, admin-managed curation.
+              </p>
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">
+                Navigate
+              </h3>
+              <nav className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-500">
+                <Link to="/" className="hover:text-slate-300 transition-colors">
+                  Home
+                </Link>
+                <Link to="/websites" className="hover:text-slate-300 transition-colors">
+                  Websites
+                </Link>
+                <Link to="/media" className="hover:text-slate-300 transition-colors">
+                  Media
+                </Link>
+                {user && (
+                  <Link to="/profile" className="hover:text-slate-300 transition-colors">
+                    Profile
+                  </Link>
+                )}
+              </nav>
+            </div>
+          </div>
+          <div className="mt-8 pt-6 border-t border-slate-800 text-center text-xs text-slate-600">
+            &copy; {new Date().getFullYear()} {siteName}. All data public.
           </div>
         </div>
       </footer>
