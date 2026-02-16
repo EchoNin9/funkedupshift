@@ -825,12 +825,33 @@ def importVehiclesExpenses(event):
             body = json.loads(body)
         else:
             body = body or {}
+        # #region agent log
+        try:
+            import os
+            log_path = os.path.join(os.path.dirname(__file__), "..", "..", "..", ".cursor", "debug.log")
+            log_path = os.path.abspath(log_path)
+            imp = body.get("imports", [])
+            with open(log_path, "a") as f:
+                f.write(json.dumps({"location": "handler.py:importVehiclesExpenses", "message": "import entry", "data": {"importCount": len(imp) if isinstance(imp, list) else 0, "userId": user.get("userId", "")[:8] + "..."}, "timestamp": __import__("time").time() * 1000, "hypothesisId": "H3"}) + "\n")
+        except Exception:
+            pass
+        # #endregion
         from api.vehicles_expenses import import_fuel_entries
         result = import_fuel_entries(user["userId"], body)
         return jsonResponse(result)
     except json.JSONDecodeError:
         return jsonResponse({"error": "Invalid JSON body"}, 400)
     except Exception as e:
+        # #region agent log
+        try:
+            import os
+            log_path = os.path.join(os.path.dirname(__file__), "..", "..", "..", ".cursor", "debug.log")
+            log_path = os.path.abspath(log_path)
+            with open(log_path, "a") as f:
+                f.write(json.dumps({"location": "handler.py:importVehiclesExpenses", "message": "import exception", "data": {"error": str(e), "errorType": type(e).__name__}, "timestamp": __import__("time").time() * 1000, "hypothesisId": "H4"}) + "\n")
+        except Exception:
+            pass
+        # #endregion
         logger.exception("importVehiclesExpenses error: %s", e)
         return jsonResponse({"error": str(e)}, 500)
 

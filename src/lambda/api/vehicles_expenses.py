@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 TABLE_NAME = os.environ.get("TABLE_NAME", "")
+AWS_REGION = os.environ.get("AWS_REGION", os.environ.get("AWS_DEFAULT_REGION", "us-east-1"))
 
 
 def _pk(user_id):
@@ -46,7 +47,7 @@ def list_vehicles(user_id):
         return []
     try:
         import boto3
-        dynamodb = boto3.client("dynamodb")
+        dynamodb = boto3.client("dynamodb", region_name=AWS_REGION)
         resp = dynamodb.query(
             TableName=TABLE_NAME,
             KeyConditionExpression="PK = :pk AND begins_with(SK, :sk)",
@@ -73,7 +74,7 @@ def get_vehicle(user_id, vehicle_id):
         return None
     try:
         import boto3
-        dynamodb = boto3.client("dynamodb")
+        dynamodb = boto3.client("dynamodb", region_name=AWS_REGION)
         resp = dynamodb.get_item(
             TableName=TABLE_NAME,
             Key={"PK": {"S": _pk(user_id)}, "SK": {"S": _sk(vehicle_id)}},
@@ -95,7 +96,7 @@ def create_vehicle(user_id, data):
     try:
         import boto3
         from datetime import datetime
-        dynamodb = boto3.client("dynamodb")
+        dynamodb = boto3.client("dynamodb", region_name=AWS_REGION)
         vehicle_id = str(uuid.uuid4())
         now = datetime.utcnow().isoformat() + "Z"
         item = _build_item(data, now, now)
@@ -127,7 +128,7 @@ def update_vehicle(user_id, vehicle_id, data):
     try:
         import boto3
         from datetime import datetime
-        dynamodb = boto3.client("dynamodb")
+        dynamodb = boto3.client("dynamodb", region_name=AWS_REGION)
         now = datetime.utcnow().isoformat() + "Z"
         merged = {**existing, **data, "updatedAt": now}
         item = _build_item(merged, existing.get("createdAt", now), now)
@@ -152,7 +153,7 @@ def delete_vehicle(user_id, vehicle_id):
         return False
     try:
         import boto3
-        dynamodb = boto3.client("dynamodb")
+        dynamodb = boto3.client("dynamodb", region_name=AWS_REGION)
         # Delete all fuel entries first
         fuel_items = list_fuel_entries(user_id, vehicle_id)
         for f in fuel_items:
@@ -181,7 +182,7 @@ def list_fuel_entries(user_id, vehicle_id):
         return []
     try:
         import boto3
-        dynamodb = boto3.client("dynamodb")
+        dynamodb = boto3.client("dynamodb", region_name=AWS_REGION)
         prefix = _fuel_sk(vehicle_id, "")
         resp = dynamodb.query(
             TableName=TABLE_NAME,
@@ -212,7 +213,7 @@ def get_fuel_entry(user_id, vehicle_id, fillup_id):
         return None
     try:
         import boto3
-        dynamodb = boto3.client("dynamodb")
+        dynamodb = boto3.client("dynamodb", region_name=AWS_REGION)
         resp = dynamodb.get_item(
             TableName=TABLE_NAME,
             Key={"PK": {"S": _pk(user_id)}, "SK": {"S": _fuel_sk(vehicle_id, fillup_id)}},
@@ -236,7 +237,7 @@ def create_fuel_entry(user_id, vehicle_id, data):
     try:
         import boto3
         from datetime import datetime
-        dynamodb = boto3.client("dynamodb")
+        dynamodb = boto3.client("dynamodb", region_name=AWS_REGION)
         fillup_id = str(uuid.uuid4())
         now = datetime.utcnow().isoformat() + "Z"
         item = _build_fuel_item(data, now, now)
@@ -268,7 +269,7 @@ def update_fuel_entry(user_id, vehicle_id, fillup_id, data):
     try:
         import boto3
         from datetime import datetime
-        dynamodb = boto3.client("dynamodb")
+        dynamodb = boto3.client("dynamodb", region_name=AWS_REGION)
         now = datetime.utcnow().isoformat() + "Z"
         merged = {**existing, **data, "updatedAt": now}
         item = _build_fuel_item(merged, existing.get("createdAt", now), now)
@@ -293,7 +294,7 @@ def delete_fuel_entry(user_id, vehicle_id, fillup_id):
         return False
     try:
         import boto3
-        dynamodb = boto3.client("dynamodb")
+        dynamodb = boto3.client("dynamodb", region_name=AWS_REGION)
         dynamodb.delete_item(
             TableName=TABLE_NAME,
             Key={"PK": {"S": _pk(user_id)}, "SK": {"S": _fuel_sk(vehicle_id, fillup_id)}},
@@ -320,7 +321,7 @@ def import_fuel_entries(user_id, payload):
     try:
         import boto3
         from datetime import datetime
-        dynamodb = boto3.client("dynamodb")
+        dynamodb = boto3.client("dynamodb", region_name=AWS_REGION)
         vehicles_by_name = {v["name"]: v["id"] for v in list_vehicles(user_id) if v.get("name")}
         for imp in imports:
             vehicle_name = (imp.get("vehicleName") or "").strip()
