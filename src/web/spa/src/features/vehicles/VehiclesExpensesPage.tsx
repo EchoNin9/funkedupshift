@@ -408,67 +408,48 @@ const VehiclesExpensesPage: React.FC = () => {
       }
       const apiBase = getApiBaseUrl();
       if (!apiBase) throw new Error("API URL not set");
-      const bodyStr = JSON.stringify({ imports });
-      // #region agent log
-      fetch("http://127.0.0.1:7243/ingest/51517f45-4cb4-45b6-9d26-950ab96994fd", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          location: "VehiclesExpensesPage.tsx:import-pre",
-          message: "Import request payload",
-          data: {
-            vehicleCount: imports.length,
-            entryCounts: imports.map((i) => i.entries.length),
-            bodyLength: bodyStr.length,
-            vehicleNames: imports.map((i) => i.vehicleName),
-          },
-          timestamp: Date.now(),
-          hypothesisId: "H1",
-        }),
-      }).catch(() => {});
-      // #endregion
-      const resp = await fetchWithAuth(`${apiBase}/vehicles-expenses/import`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: bodyStr,
-      });
-      const respText = await resp.text();
-      if (!resp.ok) {
-        // #region agent log
-        fetch("http://127.0.0.1:7243/ingest/51517f45-4cb4-45b6-9d26-950ab96994fd", {
+
+      const BATCH_SIZE = 50;
+      const chunks: { vehicleName: string; entries: { date: string; fuelPrice: number; fuelLitres: number; odometerKm: number }[] }[] = [];
+      for (const imp of imports) {
+        for (let i = 0; i < imp.entries.length; i += BATCH_SIZE) {
+          chunks.push({
+            vehicleName: imp.vehicleName,
+            entries: imp.entries.slice(i, i + BATCH_SIZE),
+          });
+        }
+      }
+
+      let totalCreated = 0;
+      const allErrors: string[] = [];
+      for (const chunk of chunks) {
+        const bodyStr = JSON.stringify({ imports: [chunk] });
+        const resp = await fetchWithAuth(`${apiBase}/vehicles-expenses/import`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            location: "VehiclesExpensesPage.tsx:import-error",
-            message: "Import API error response",
-            data: {
-              status: resp.status,
-              statusText: resp.statusText,
-              bodyRaw: respText,
-              bodyLength: respText.length,
-            },
-            timestamp: Date.now(),
-            hypothesisId: "H2",
-          }),
-        }).catch(() => {});
-        // #endregion
-        const d = (() => {
-          try {
-            return JSON.parse(respText) as { error?: string; errors?: string[] };
-          } catch {
-            return {};
-          }
-        })();
-        const errMsg = d.error;
-        const errList = d.errors;
-        const fallback = resp.status === 500 && respText
-          ? `Import failed (500): ${respText.slice(0, 300)}${respText.length > 300 ? "…" : ""}`
-          : `Import failed (${resp.status})`;
-        const msg = errMsg || (errList?.length ? errList.join("; ") : null) || fallback;
-        throw new Error(msg);
+          body: bodyStr,
+        });
+        const respText = await resp.text();
+        if (!resp.ok) {
+          const d = (() => {
+            try {
+              return JSON.parse(respText) as { error?: string; errors?: string[] };
+            } catch {
+              return {};
+            }
+          })();
+          const errMsg = d.error;
+          const errList = d.errors;
+          const fallback = resp.status === 500 && respText
+            ? `Import failed (500): ${respText.slice(0, 300)}${respText.length > 300 ? "…" : ""}`
+            : `Import failed (${resp.status})`;
+          throw new Error(errMsg || (errList?.length ? errList.join("; ") : null) || fallback);
+        }
+        const result = JSON.parse(respText) as { created?: number; errors?: string[] };
+        totalCreated += result.created ?? 0;
+        if ((result.errors ?? []).length) allErrors.push(...result.errors!);
       }
-      const result = JSON.parse(respText) as { created?: number; errors?: string[] };
-      setImportMessage(`Imported ${result.created ?? 0} entries.${(result.errors ?? []).length ? ` Errors: ${result.errors!.join("; ")}` : ""}`);
+      setImportMessage(`Imported ${totalCreated} entries.${allErrors.length ? ` Errors: ${allErrors.join("; ")}` : ""}`);
       loadVehicles();
       if (selectedVehicleId) loadFuelEntries(selectedVehicleId);
     } catch (e: unknown) {

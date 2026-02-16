@@ -229,7 +229,11 @@ def getEffectiveUserInfo(event):
 def handler(event, context):
     """Route request by path; return JSON with CORS headers."""
     try:
-        logger.info("event=%s", event)
+        # Avoid logging huge bodies (can cause memory/serialization issues with large imports)
+        body = event.get("body") or ""
+        body_len = len(body) if isinstance(body, str) else 0
+        log_event = {**event, "body": f"<{body_len} chars>"} if body_len > 2000 else event
+        logger.info("event=%s", log_event)
         
         # Extract path and method from API Gateway HTTP API v2 event
         path = event.get("rawPath", "")
