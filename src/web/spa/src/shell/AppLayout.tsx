@@ -2,7 +2,8 @@ import React from "react";
 import { Link, NavLink, Route, Routes, useNavigate } from "react-router-dom";
 import { Bars3Icon, ChevronDownIcon, ChevronRightIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { Dialog } from "@headlessui/react";
-import { useAuth, hasRole, canAccessSquash, canModifySquash, canAccessFinancial, canAccessFinancialAdmin, canAccessMemes, canCreateMemes } from "./AuthContext";
+import { useAuth, hasRole, canAccessSquash, canModifySquash, canAccessFinancial, canAccessFinancialAdmin, canAccessMemes } from "./AuthContext";
+import { getPublicModulesBySection, getVisibleAdminModules } from "../config/modules";
 import { useBranding } from "./BrandingContext";
 import ImpersonationBanner from "./ImpersonationBanner";
 import ImpersonationSelector from "./ImpersonationSelector";
@@ -33,37 +34,6 @@ import MemeBrowsePage from "../features/memes/MemeBrowsePage";
 import MemeGeneratorPage from "../features/memes/MemeGeneratorPage";
 import MemeDetailPage from "../features/memes/MemeDetailPage";
 import EditMemePage from "../features/memes/EditMemePage";
-
-interface NavItem {
-  label: string;
-  to: string;
-  section: "discover" | "squash" | "memes" | "financial" | "recommended" | "admin";
-  minRole: "guest" | "user" | "manager" | "superadmin";
-  memesCreate?: boolean;
-  /** When true, show for any logged-in user regardless of role */
-  authOnly?: boolean;
-}
-
-const navItems: NavItem[] = [
-  { label: "Websites", to: "/websites", section: "discover", minRole: "guest" },
-  { label: "Media", to: "/media", section: "discover", minRole: "guest" },
-  { label: "Internet Dashboard", to: "/internet-dashboard", section: "discover", minRole: "guest" },
-  { label: "Profile", to: "/profile", section: "discover", minRole: "user", authOnly: true },
-  { label: "Squash", to: "/squash", section: "squash", minRole: "user" },
-  { label: "Squash Admin", to: "/squash-admin", section: "squash", minRole: "manager" },
-  { label: "Memes", to: "/memes", section: "memes", minRole: "guest" },
-  { label: "Meme Generator", to: "/memes/create", section: "memes", minRole: "user", memesCreate: true },
-  { label: "Financial", to: "/financial", section: "financial", minRole: "guest" },
-  { label: "Financial Admin", to: "/admin/financial", section: "financial", minRole: "superadmin" },
-  { label: "Highlights", to: "/recommended/highlights", section: "recommended", minRole: "guest" },
-  { label: "Highest Rated", to: "/recommended/highest-rated", section: "recommended", minRole: "guest" },
-  { label: "Recommended", to: "/admin/recommended", section: "admin", minRole: "manager" },
-  { label: "Membership", to: "/admin/membership", section: "admin", minRole: "manager" },
-  { label: "Websites", to: "/admin/websites", section: "admin", minRole: "manager" },
-  { label: "Media", to: "/admin/media", section: "admin", minRole: "manager" },
-  { label: "Branding", to: "/admin/branding", section: "admin", minRole: "superadmin" },
-  { label: "Internet Dashboard", to: "/admin/internet-dashboard", section: "admin", minRole: "superadmin" }
-];
 
 const WINDOWSHADE_STORAGE_KEY = "funkedupshift_sectionOpen";
 
@@ -101,8 +71,12 @@ function saveSectionState(state: Record<string, boolean>) {
 
 const AppLayout: React.FC = () => {
   const { user, isLoading, signOut } = useAuth();
-  const { logo } = useBranding();
+  const { logo, siteName } = useBranding();
   const navigate = useNavigate();
+
+  React.useEffect(() => {
+    if (siteName) document.title = siteName;
+  }, [siteName]);
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [sectionOpen, setSectionOpen] = React.useState<Record<string, boolean>>(
     loadSectionState
@@ -122,28 +96,13 @@ const AppLayout: React.FC = () => {
     navigate("/");
   };
 
-  const role = user?.role ?? "guest";
-
-  const visibleNavItems = navItems.filter((item) =>
-    item.authOnly ? user !== null : hasRole(user ?? null, item.minRole)
-  );
-  const discoverItems = visibleNavItems.filter((i) => i.section === "discover");
-  const recommendedItems = visibleNavItems.filter((i) => i.section === "recommended");
-  const squashItems = navItems
-    .filter((i) => i.section === "squash")
-    .filter((i) => (i.to === "/squash" ? canAccessSquash(user) : canModifySquash(user)));
-  const   memesItems = navItems
-    .filter((i) => i.section === "memes")
-    .filter((i) => {
-      if (!hasRole(user ?? null, i.minRole)) return false;
-      if (i.memesCreate) return canCreateMemes(user);
-      return true;
-    });
-  const financialItems = navItems
-    .filter((i) => i.section === "financial")
-    .filter((i) => hasRole(user ?? null, i.minRole))
-    .filter((i) => (i.to === "/financial" ? canAccessFinancial(user) : canAccessFinancialAdmin(user)));
-  const adminItems = visibleNavItems.filter((i) => i.section === "admin");
+  const bySection = getPublicModulesBySection(user);
+  const discoverItems = bySection.discover ?? [];
+  const recommendedItems = bySection.recommended ?? [];
+  const squashItems = bySection.squash ?? [];
+  const memesItems = bySection.memes ?? [];
+  const financialItems = bySection.financial ?? [];
+  const adminItems = getVisibleAdminModules(user);
 
   const navLinkClass = ({ isActive }: { isActive: boolean }) =>
     [
@@ -177,7 +136,7 @@ const AppLayout: React.FC = () => {
                 <div className="h-8 w-8 rounded-md border border-slate-700 bg-gradient-to-br from-brand-orange to-brand-navy" />
               )}
               <span className="text-sm font-semibold tracking-[0.2em] uppercase text-slate-100">
-                Funked Up Shift
+                {siteName}
               </span>
             </Link>
           </div>
@@ -233,7 +192,7 @@ const AppLayout: React.FC = () => {
               {(sectionOpen["discover"] ?? true) && (
                 <div className="space-y-1">
                   {discoverItems.map((item) => (
-                    <NavLink key={item.to} to={item.to} className={navLinkClass}>
+                    <NavLink key={item.path} to={item.path} className={navLinkClass}>
                       {item.label}
                     </NavLink>
                   ))}
@@ -258,7 +217,7 @@ const AppLayout: React.FC = () => {
                 {(sectionOpen["squash"] ?? false) && (
                   <div className="space-y-1">
                     {squashItems.map((item) => (
-                      <NavLink key={item.to} to={item.to} className={navLinkClass}>
+                      <NavLink key={item.path} to={item.path} className={navLinkClass}>
                         {item.label}
                       </NavLink>
                     ))}
@@ -284,7 +243,7 @@ const AppLayout: React.FC = () => {
                 {(sectionOpen["memes"] ?? false) && (
                   <div className="space-y-1">
                     {memesItems.map((item) => (
-                      <NavLink key={item.to} to={item.to} className={navLinkClass}>
+                      <NavLink key={item.path} to={item.path} className={navLinkClass}>
                         {item.label}
                       </NavLink>
                     ))}
@@ -310,7 +269,7 @@ const AppLayout: React.FC = () => {
                 {(sectionOpen["recommended"] ?? true) && (
                   <div className="space-y-1">
                     {recommendedItems.map((item) => (
-                      <NavLink key={item.to} to={item.to} className={navLinkClass}>
+                      <NavLink key={item.path} to={item.path} className={navLinkClass}>
                         {item.label}
                       </NavLink>
                     ))}
@@ -336,7 +295,7 @@ const AppLayout: React.FC = () => {
                 {(sectionOpen["financial"] ?? false) && (
                   <div className="space-y-1">
                     {financialItems.map((item) => (
-                      <NavLink key={item.to} to={item.to} className={navLinkClass}>
+                      <NavLink key={item.path} to={item.path} className={navLinkClass}>
                         {item.label}
                       </NavLink>
                     ))}
@@ -362,7 +321,7 @@ const AppLayout: React.FC = () => {
                 {(sectionOpen["admin"] ?? false) && (
                   <div className="space-y-1">
                     {adminItems.map((item) => (
-                      <NavLink key={item.to} to={item.to} className={navLinkClass}>
+                      <NavLink key={item.path} to={item.path} className={navLinkClass}>
                         {item.label}
                       </NavLink>
                     ))}
@@ -379,7 +338,7 @@ const AppLayout: React.FC = () => {
           <Dialog.Panel className="fixed inset-y-0 left-0 w-72 bg-slate-950 border-r border-slate-800 p-4 flex flex-col">
             <div className="flex items-center justify-between mb-4">
               <Dialog.Title className="text-sm font-semibold tracking-[0.15em] uppercase text-slate-100">
-                Funked Up Shift
+                {siteName}
               </Dialog.Title>
               <button
                 type="button"
@@ -408,8 +367,8 @@ const AppLayout: React.FC = () => {
                   <div className="space-y-1">
                     {discoverItems.map((item) => (
                       <NavLink
-                        key={item.to}
-                        to={item.to}
+                        key={item.path}
+                        to={item.path}
                         className={navLinkClass}
                         onClick={() => setMobileOpen(false)}
                       >
@@ -438,8 +397,8 @@ const AppLayout: React.FC = () => {
                     <div className="space-y-1">
                       {recommendedItems.map((item) => (
                         <NavLink
-                          key={item.to}
-                          to={item.to}
+                          key={item.path}
+                          to={item.path}
                           className={navLinkClass}
                           onClick={() => setMobileOpen(false)}
                         >
@@ -469,8 +428,8 @@ const AppLayout: React.FC = () => {
                     <div className="space-y-1">
                       {memesItems.map((item) => (
                         <NavLink
-                          key={item.to}
-                          to={item.to}
+                          key={item.path}
+                          to={item.path}
                           className={navLinkClass}
                           onClick={() => setMobileOpen(false)}
                         >
@@ -500,8 +459,8 @@ const AppLayout: React.FC = () => {
                     <div className="space-y-1">
                       {squashItems.map((item) => (
                         <NavLink
-                          key={item.to}
-                          to={item.to}
+                          key={item.path}
+                          to={item.path}
                           className={navLinkClass}
                           onClick={() => setMobileOpen(false)}
                         >
@@ -531,8 +490,8 @@ const AppLayout: React.FC = () => {
                     <div className="space-y-1">
                       {financialItems.map((item) => (
                         <NavLink
-                          key={item.to}
-                          to={item.to}
+                          key={item.path}
+                          to={item.path}
                           className={navLinkClass}
                           onClick={() => setMobileOpen(false)}
                         >
@@ -562,8 +521,8 @@ const AppLayout: React.FC = () => {
                     <div className="space-y-1">
                       {adminItems.map((item) => (
                         <NavLink
-                          key={item.to}
-                          to={item.to}
+                          key={item.path}
+                          to={item.path}
                           className={navLinkClass}
                           onClick={() => setMobileOpen(false)}
                         >
@@ -675,7 +634,7 @@ const AppLayout: React.FC = () => {
             )}
           </nav>
           <div className="text-slate-600">
-            <span className="font-mono text-[11px]">funkedupshift</span>{" "}
+            <span className="font-mono text-[11px]">{siteName.toLowerCase().replace(/\s+/g, "")}</span>{" "}
             <span className="text-slate-700">·</span> <span>All data public, admin-managed curation</span>
           </div>
         </div>
