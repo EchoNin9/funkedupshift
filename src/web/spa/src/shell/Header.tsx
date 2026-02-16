@@ -1,15 +1,59 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
-import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
+import { Menu } from "@headlessui/react";
+import { Bars3Icon, ChevronDownIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { useAuth } from "./AuthContext";
 import { useBranding } from "./BrandingContext";
-import { useImpersonation } from "./ImpersonationContext";
-import { getVisiblePublicModules, getVisibleAdminModules } from "../config/modules";
+import { getPublicModulesBySection, getVisiblePublicModules, getVisibleAdminModules } from "../config/modules";
+import type { PublicModule } from "../config/modules";
 import ImpersonationBanner from "./ImpersonationBanner";
 import ImpersonationSelector from "./ImpersonationSelector";
 
+const SECTION_LABELS: Record<string, string> = {
+  discover: "Discover",
+  recommended: "Recommended",
+  memes: "Memes",
+  squash: "Squash",
+  financial: "Financial",
+};
+
+const NAV_SECTIONS = ["discover", "recommended", "memes", "squash", "financial"] as const;
+
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   `transition-colors duration-200 ${isActive ? "text-primary-400 font-semibold" : "text-slate-300 hover:text-white"}`;
+
+function NavSectionDropdown({ items, label }: { items: PublicModule[]; label: string }) {
+  const location = useLocation();
+  const isActive = items.some((m) => location.pathname === m.path || location.pathname.startsWith(m.path + "/"));
+  return (
+    <Menu as="div" className="relative">
+      <Menu.Button
+        className={`flex items-center gap-1 text-sm font-medium outline-none ${navLinkClass({ isActive })}`}
+      >
+        {label}
+        <ChevronDownIcon className="w-4 h-4" aria-hidden />
+      </Menu.Button>
+      <Menu.Items
+        className="absolute left-0 top-full mt-1 min-w-[180px] rounded-lg border border-slate-700 bg-slate-900 py-1 shadow-xl outline-none z-50"
+      >
+        {items.map((m) => (
+          <Menu.Item key={m.path}>
+            {({ active }) => (
+              <NavLink
+                to={m.path}
+                className={`block px-4 py-2 text-sm transition-colors ${
+                  active ? "bg-slate-800 text-white" : "text-slate-300"
+                } ${location.pathname === m.path ? "text-primary-400 font-medium" : ""}`}
+              >
+                {m.label}
+              </NavLink>
+            )}
+          </Menu.Item>
+        ))}
+      </Menu.Items>
+    </Menu>
+  );
+}
 
 export function Header() {
   const { user, isLoading, signOut } = useAuth();
@@ -19,9 +63,10 @@ export function Header() {
   const headerRef = useRef<HTMLElement>(null);
   const location = useLocation();
 
-  const publicItems = getVisiblePublicModules(user);
+  const bySection = getPublicModulesBySection(user);
   const adminItems = getVisibleAdminModules(user);
   const showAdminLink = adminItems.length > 0;
+  const publicItems = getVisiblePublicModules(user);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -81,11 +126,24 @@ export function Header() {
 
         {/* Desktop nav */}
         <div className="hidden md:flex items-center gap-4 lg:gap-6 text-sm font-medium">
-          {publicItems.map((item) => (
-            <NavLink key={item.path} to={item.path} className={navLinkClass}>
-              {item.label}
-            </NavLink>
-          ))}
+          {NAV_SECTIONS.map((section) => {
+            const items = (bySection[section] ?? []).filter((m) => m.id !== "profile");
+            if (items.length === 0) return null;
+            if (items.length === 1) {
+              return (
+                <NavLink key={items[0].path} to={items[0].path} className={navLinkClass}>
+                  {items[0].label}
+                </NavLink>
+              );
+            }
+            return (
+              <NavSectionDropdown
+                key={section}
+                items={items}
+                label={SECTION_LABELS[section] ?? section}
+              />
+            );
+          })}
           {showAdminLink && (
             <NavLink to="/admin" className={navLinkClass}>
               Admin

@@ -2,6 +2,7 @@ import React, { lazy, Suspense } from "react";
 import { Link, Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "./AuthContext";
 import { useBranding } from "./BrandingContext";
+import { AdminLayout } from "./AdminLayout";
 import { Header } from "./Header";
 
 /* Eager-loaded (above-the-fold) */
@@ -80,18 +81,20 @@ const AppLayout: React.FC = () => {
               <Route path="/memes/:id/edit" element={<EditMemePage />} />
               <Route path="/memes/:id" element={<MemeDetailPage />} />
               <Route path="/financial" element={<FinancialPage />} />
-              <Route path="/admin/financial" element={<FinancialAdminPage />} />
-              <Route path="/admin/branding" element={<BrandingPage />} />
-              <Route path="/admin/internet-dashboard" element={<InternetDashboardAdminPage />} />
-              <Route path="/admin/recommended" element={<RecommendedAdminPage />} />
-              <Route path="/admin/membership" element={<MembershipPage />} />
-              <Route path="/admin/users/edit" element={<EditUserPage />} />
-              <Route path="/admin/websites" element={<WebsitesAdminPage />} />
-              <Route path="/admin/sites/edit/:id" element={<EditSitePage />} />
-              <Route path="/admin/media" element={<MediaAdminPage />} />
-              <Route path="/admin/media/edit/:id" element={<EditMediaPage />} />
-              <Route path="/admin" element={<AdminDashboard />} />
-              <Route path="/admin/*" element={<Navigate to="/admin" replace />} />
+              <Route path="/admin" element={<AdminLayout />}>
+                <Route index element={<AdminDashboard />} />
+                <Route path="financial" element={<FinancialAdminPage />} />
+                <Route path="branding" element={<BrandingPage />} />
+                <Route path="internet-dashboard" element={<InternetDashboardAdminPage />} />
+                <Route path="recommended" element={<RecommendedAdminPage />} />
+                <Route path="membership" element={<MembershipPage />} />
+                <Route path="users/edit" element={<EditUserPage />} />
+                <Route path="websites" element={<WebsitesAdminPage />} />
+                <Route path="sites/edit/:id" element={<EditSitePage />} />
+                <Route path="media" element={<MediaAdminPage />} />
+                <Route path="media/edit/:id" element={<EditMediaPage />} />
+                <Route path="*" element={<Navigate to="/admin" replace />} />
+              </Route>
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/auth" element={<AuthPage />} />
               <Route path="*" element={<div>Not found</div>} />
