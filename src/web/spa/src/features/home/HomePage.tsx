@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
 import { ClipboardDocumentIcon } from "@heroicons/react/24/outline";
 import { useAuth, canAccessSquash, canAccessMemes } from "../../shell/AuthContext";
 
@@ -72,54 +73,62 @@ const HomePage: React.FC = () => {
 
   return (
     <div className="space-y-8">
-      <section className="relative overflow-hidden rounded-2xl border border-slate-800 bg-gradient-to-br from-brand-orange/20 via-brand-navy/10 to-brand-teal/20 px-6 py-10">
-        <div className="max-w-xl space-y-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-200">
+      <section className="card relative overflow-hidden px-6 py-10">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary-500/10 via-transparent to-brand-teal/10 pointer-events-none" />
+        <div className="relative max-w-xl space-y-4">
+          <motion.p
+            className="text-xs font-semibold uppercase tracking-[0.25em] text-secondary-300"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+          >
             Shared internet intelligence
-          </p>
-          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-50">
+          </motion.p>
+          <motion.h1
+            className="text-3xl sm:text-4xl font-display font-bold text-gradient tracking-tight"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+          >
             Discover, rate, and enrich the sites that matter.
-          </h1>
-          <p className="text-sm text-slate-100/80">
-            Funkedupshift is a living index of websites, media, and experiments – curated by admins, enriched
-            by everyone.
-          </p>
-          <div className="flex flex-wrap gap-3 pt-2">
-            <Link
-              to="/websites"
-              className="inline-flex items-center rounded-full border border-slate-500/60 px-4 py-2 text-sm font-semibold text-slate-100 hover:border-slate-300/80"
-            >
+          </motion.h1>
+          <motion.p
+            className="text-sm text-secondary-300"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+          >
+            A living index of websites, media, and experiments – curated by admins, enriched by everyone.
+          </motion.p>
+          <motion.div
+            className="flex flex-wrap gap-3 pt-2"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.4 }}
+          >
+            <Link to="/websites" className="btn-primary text-sm !px-4 !py-2">
               Browse websites
             </Link>
-            <Link
-              to="/media"
-              className="inline-flex items-center rounded-full border border-slate-500/60 px-4 py-2 text-sm font-semibold text-slate-100 hover:border-slate-300/80"
-            >
+            <Link to="/media" className="btn-secondary text-sm !px-4 !py-2">
               Explore media
             </Link>
             <Link
               to="/internet-dashboard"
-              className="inline-flex items-center rounded-full border border-slate-500/60 px-4 py-2 text-sm font-semibold text-slate-100 hover:border-slate-300/80"
+              className="btn-secondary text-sm !px-4 !py-2"
             >
               Internet Dashboard
             </Link>
             {showSquash && (
-              <Link
-                to="/squash"
-                className="inline-flex items-center rounded-full border border-slate-500/60 px-4 py-2 text-sm font-semibold text-slate-100 hover:border-slate-300/80"
-              >
+              <Link to="/squash" className="btn-secondary text-sm !px-4 !py-2">
                 Squash
               </Link>
             )}
             {showMemes && (
-              <Link
-                to="/memes"
-                className="inline-flex items-center rounded-full border border-slate-500/60 px-4 py-2 text-sm font-semibold text-slate-100 hover:border-slate-300/80"
-              >
+              <Link to="/memes" className="btn-secondary text-sm !px-4 !py-2">
                 Memes
               </Link>
             )}
-          </div>
+          </motion.div>
         </div>
         <div className="pointer-events-none absolute inset-y-0 right-0 w-1/2 opacity-60">
           <div className="absolute -inset-24 bg-[radial-gradient(circle_at_top,_#f97316_0,_transparent_55%),radial-gradient(circle_at_bottom,_#06d6a0_0,_transparent_55%)]" />
@@ -128,10 +137,10 @@ const HomePage: React.FC = () => {
 
       {/* ── Latest Memes Grid ── */}
       {memes.length > 0 && (
-        <section className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 space-y-3">
+        <section className="card p-4 space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400">Latest Memes</h2>
-            <Link to="/memes" className="text-xs text-brand-orange hover:text-orange-400">
+            <Link to="/memes" className="text-xs text-primary-400 hover:text-primary-300 transition-colors">
               View all &rarr;
             </Link>
           </div>
@@ -145,9 +154,12 @@ const HomePage: React.FC = () => {
               const title = m.title || "Untitled";
               const isCopied = copiedUrl === m.mediaUrl;
               return (
-                <div
+                <motion.div
                   key={m.PK}
-                  className="group rounded-lg border border-slate-800 bg-slate-900/60 overflow-hidden flex flex-col"
+                  className="card group overflow-hidden flex flex-col hover:border-primary-500/50 transition-colors"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
                 >
                   <Link
                     to={`/memes/${encodeURIComponent(m.PK)}`}
@@ -167,7 +179,7 @@ const HomePage: React.FC = () => {
                   <div className="p-2 space-y-1 flex-1 flex flex-col">
                     <Link
                       to={`/memes/${encodeURIComponent(m.PK)}`}
-                      className="block truncate text-xs font-medium text-slate-200 hover:text-brand-orange"
+                      className="block truncate text-xs font-medium text-slate-200 hover:text-primary-400 transition-colors"
                     >
                       {title}
                     </Link>
@@ -196,7 +208,7 @@ const HomePage: React.FC = () => {
                       )}
                     </div>
                   </div>
-                </div>
+                </motion.div>
               );
             })}
           </div>
@@ -204,24 +216,22 @@ const HomePage: React.FC = () => {
       )}
 
       <section className="grid gap-4 sm:grid-cols-3">
-        <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500 mb-2">Everyone</p>
-          <p className="text-sm text-slate-200">
-            Browse all sites and media without signing in. Ratings and metadata are public by design.
-          </p>
-        </div>
-        <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500 mb-2">Users</p>
-          <p className="text-sm text-slate-200">
-            Sign in to rate sites, add notes, and personalize your view of the internet.
-          </p>
-        </div>
-        <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500 mb-2">Admins</p>
-          <p className="text-sm text-slate-200">
-            Curate the corpus, manage categories and groups, and control branding from a single admin surface.
-          </p>
-        </div>
+        {[
+          { label: "Everyone", desc: "Browse all sites and media without signing in. Ratings and metadata are public by design." },
+          { label: "Users", desc: "Sign in to rate sites, add notes, and personalize your view of the internet." },
+          { label: "Admins", desc: "Curate the corpus, manage categories and groups, and control branding from a single admin surface." },
+        ].map((item, i) => (
+          <motion.div
+            key={item.label}
+            className="card p-4"
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.1 * i }}
+          >
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-secondary-500 mb-2">{item.label}</p>
+            <p className="text-sm text-secondary-200">{item.desc}</p>
+          </motion.div>
+        ))}
       </section>
     </div>
   );

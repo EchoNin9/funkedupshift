@@ -1,7 +1,11 @@
 import React, { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import { useAuth } from "../../shell/AuthContext";
 import { getVisibleAdminModules } from "../../config/modules";
+
+const stagger = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.06 } } };
+const fadeUp = { hidden: { opacity: 0, y: 15 }, show: { opacity: 1, y: 0, transition: { duration: 0.35 } } };
 
 export function AdminDashboard() {
   const { user, isLoading } = useAuth();
@@ -35,25 +39,36 @@ export function AdminDashboard() {
 
   return (
     <main className="container-max section-padding">
-      <h1 className="text-4xl sm:text-5xl font-display font-bold text-gradient mb-10">
+      <motion.h1
+        className="text-4xl sm:text-5xl font-display font-bold text-gradient mb-10"
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+      >
         Admin
-      </h1>
+      </motion.h1>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      <motion.div
+        variants={stagger}
+        initial="hidden"
+        animate="show"
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+      >
         {visibleModules.map((mod) => (
-          <Link
-            key={mod.path}
-            to={mod.path}
-            className="card block p-6 hover:border-primary-500/50 transition-colors group"
-          >
-            <mod.icon className="w-8 h-8 text-primary-500 mb-4 group-hover:scale-110 transition-transform" />
-            <h2 className="text-lg font-display font-bold text-secondary-100 mb-1">
-              {mod.label}
-            </h2>
-            <p className="text-sm text-secondary-400">{mod.description}</p>
-          </Link>
+          <motion.div key={mod.path} variants={fadeUp}>
+            <Link
+              to={mod.path}
+              className="card block p-6 hover:border-primary-500/50 transition-colors group"
+            >
+              <mod.icon className="w-8 h-8 text-primary-500 mb-4 group-hover:scale-110 transition-transform" />
+              <h2 className="text-lg font-display font-bold text-secondary-100 mb-1">
+                {mod.label}
+              </h2>
+              <p className="text-sm text-secondary-400">{mod.description}</p>
+            </Link>
+          </motion.div>
         ))}
-      </div>
+      </motion.div>
     </main>
   );
 }

@@ -1,5 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
 import { useAuth, hasRole } from "./AuthContext";
 
 export type UserRole = "guest" | "user" | "manager" | "superadmin";
@@ -35,7 +36,12 @@ export function EmptyState({
   const canEdit = hasRole(user ?? null, minRoleForAdmin);
 
   return (
-    <div className="text-center py-20 sm:py-28">
+    <motion.div
+      className="text-center py-20 sm:py-28"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+    >
       {/* Icon */}
       <div className="mx-auto w-24 h-24 rounded-2xl bg-gradient-to-br from-primary-500/20 to-primary-600/10 flex items-center justify-center mb-8">
         <svg
@@ -71,9 +77,14 @@ export function EmptyState({
       {/* Decorative dots */}
       <div className="flex justify-center gap-1.5 mt-12">
         {[0, 1, 2].map((i) => (
-          <div key={i} className="w-2 h-2 rounded-full bg-primary-500/30 animate-pulse-slow" />
+          <motion.div
+            key={i}
+            className="w-2 h-2 rounded-full bg-primary-500/30"
+            animate={{ opacity: [0.3, 1, 0.3] }}
+            transition={{ duration: 2, repeat: Infinity, delay: i * 0.3 }}
+          />
         ))}
       </div>
-    </div>
+    </motion.div>
   );
 }

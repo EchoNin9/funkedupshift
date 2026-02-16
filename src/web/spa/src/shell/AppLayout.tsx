@@ -1,36 +1,52 @@
-import React from "react";
+import React, { lazy, Suspense } from "react";
 import { Link, Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "./AuthContext";
 import { useBranding } from "./BrandingContext";
 import { Header } from "./Header";
+
+/* Eager-loaded (above-the-fold) */
 import HomePage from "../features/home/HomePage";
-import WebsitesPage from "../features/websites/WebsitesPage";
-import SiteDetailPage from "../features/websites/SiteDetailPage";
-import MediaPage from "../features/media/MediaPage";
-import MediaDetailPage from "../features/media/MediaDetailPage";
-import DashboardPage from "../features/dashboard/DashboardPage";
-import OurPropertiesPage from "../features/otherProperties/OurPropertiesPage";
-import HighestRatedPage from "../features/otherProperties/HighestRatedPage";
-import { AdminDashboard } from "../features/admin/AdminDashboard";
-import BrandingPage from "../features/admin/BrandingPage";
-import InternetDashboardAdminPage from "../features/admin/InternetDashboardAdminPage";
-import RecommendedAdminPage from "../features/admin/RecommendedAdminPage";
-import MembershipPage from "../features/admin/MembershipPage";
-import WebsitesAdminPage from "../features/admin/WebsitesAdminPage";
-import MediaAdminPage from "../features/admin/MediaAdminPage";
-import EditSitePage from "../features/admin/EditSitePage";
-import EditMediaPage from "../features/admin/EditMediaPage";
-import EditUserPage from "../features/admin/EditUserPage";
 import AuthPage from "../features/auth/AuthPage";
 import ProfilePage from "../features/profile/ProfilePage";
-import SquashPage from "../features/squash/SquashPage";
-import SquashAdminPage from "../features/squash/SquashAdminPage";
-import FinancialPage from "../features/financial/FinancialPage";
-import FinancialAdminPage from "../features/financial/admin/FinancialAdminPage";
-import MemeBrowsePage from "../features/memes/MemeBrowsePage";
-import MemeGeneratorPage from "../features/memes/MemeGeneratorPage";
-import MemeDetailPage from "../features/memes/MemeDetailPage";
-import EditMemePage from "../features/memes/EditMemePage";
+
+/* Lazy-loaded */
+const WebsitesPage = lazy(() => import("../features/websites/WebsitesPage"));
+const SiteDetailPage = lazy(() => import("../features/websites/SiteDetailPage"));
+const MediaPage = lazy(() => import("../features/media/MediaPage"));
+const MediaDetailPage = lazy(() => import("../features/media/MediaDetailPage"));
+const DashboardPage = lazy(() => import("../features/dashboard/DashboardPage"));
+const OurPropertiesPage = lazy(() => import("../features/otherProperties/OurPropertiesPage"));
+const HighestRatedPage = lazy(() => import("../features/otherProperties/HighestRatedPage"));
+const AdminDashboard = lazy(() =>
+  import("../features/admin/AdminDashboard").then((m) => ({ default: m.AdminDashboard }))
+);
+const BrandingPage = lazy(() => import("../features/admin/BrandingPage"));
+const InternetDashboardAdminPage = lazy(() => import("../features/admin/InternetDashboardAdminPage"));
+const RecommendedAdminPage = lazy(() => import("../features/admin/RecommendedAdminPage"));
+const MembershipPage = lazy(() => import("../features/admin/MembershipPage"));
+const WebsitesAdminPage = lazy(() => import("../features/admin/WebsitesAdminPage"));
+const MediaAdminPage = lazy(() => import("../features/admin/MediaAdminPage"));
+const EditSitePage = lazy(() => import("../features/admin/EditSitePage"));
+const EditMediaPage = lazy(() => import("../features/admin/EditMediaPage"));
+const EditUserPage = lazy(() => import("../features/admin/EditUserPage"));
+const SquashPage = lazy(() => import("../features/squash/SquashPage"));
+const SquashAdminPage = lazy(() => import("../features/squash/SquashAdminPage"));
+const FinancialPage = lazy(() => import("../features/financial/FinancialPage"));
+const FinancialAdminPage = lazy(() =>
+  import("../features/financial/admin/FinancialAdminPage")
+);
+const MemeBrowsePage = lazy(() => import("../features/memes/MemeBrowsePage"));
+const MemeGeneratorPage = lazy(() => import("../features/memes/MemeGeneratorPage"));
+const MemeDetailPage = lazy(() => import("../features/memes/MemeDetailPage"));
+const EditMemePage = lazy(() => import("../features/memes/EditMemePage"));
+
+function PageLoader() {
+  return (
+    <div className="container-max section-padding flex items-center justify-center min-h-[40vh]">
+      <div className="w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+}
 
 const AppLayout: React.FC = () => {
   const { user } = useAuth();
@@ -47,38 +63,40 @@ const AppLayout: React.FC = () => {
       {/* Main content */}
       <main className="flex-1 min-w-0">
         <div className="container-max py-6">
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/websites" element={<WebsitesPage />} />
-            <Route path="/websites/:id" element={<SiteDetailPage />} />
-            <Route path="/media" element={<MediaPage />} />
-            <Route path="/media/:id" element={<MediaDetailPage />} />
-            <Route path="/internet-dashboard" element={<DashboardPage />} />
-            <Route path="/recommended/highlights" element={<OurPropertiesPage />} />
-            <Route path="/recommended/highest-rated" element={<HighestRatedPage />} />
-            <Route path="/squash" element={<SquashPage />} />
-            <Route path="/squash-admin" element={<SquashAdminPage />} />
-            <Route path="/memes" element={<MemeBrowsePage />} />
-            <Route path="/memes/create" element={<MemeGeneratorPage />} />
-            <Route path="/memes/:id/edit" element={<EditMemePage />} />
-            <Route path="/memes/:id" element={<MemeDetailPage />} />
-            <Route path="/financial" element={<FinancialPage />} />
-            <Route path="/admin/financial" element={<FinancialAdminPage />} />
-            <Route path="/admin/branding" element={<BrandingPage />} />
-            <Route path="/admin/internet-dashboard" element={<InternetDashboardAdminPage />} />
-            <Route path="/admin/recommended" element={<RecommendedAdminPage />} />
-            <Route path="/admin/membership" element={<MembershipPage />} />
-            <Route path="/admin/users/edit" element={<EditUserPage />} />
-            <Route path="/admin/websites" element={<WebsitesAdminPage />} />
-            <Route path="/admin/sites/edit/:id" element={<EditSitePage />} />
-            <Route path="/admin/media" element={<MediaAdminPage />} />
-            <Route path="/admin/media/edit/:id" element={<EditMediaPage />} />
-            <Route path="/admin" element={<AdminDashboard />} />
-            <Route path="/admin/*" element={<Navigate to="/admin" replace />} />
-            <Route path="/profile" element={<ProfilePage />} />
-            <Route path="/auth" element={<AuthPage />} />
-            <Route path="*" element={<div>Not found</div>} />
-          </Routes>
+          <Suspense fallback={<PageLoader />}>
+            <Routes>
+              <Route path="/" element={<HomePage />} />
+              <Route path="/websites" element={<WebsitesPage />} />
+              <Route path="/websites/:id" element={<SiteDetailPage />} />
+              <Route path="/media" element={<MediaPage />} />
+              <Route path="/media/:id" element={<MediaDetailPage />} />
+              <Route path="/internet-dashboard" element={<DashboardPage />} />
+              <Route path="/recommended/highlights" element={<OurPropertiesPage />} />
+              <Route path="/recommended/highest-rated" element={<HighestRatedPage />} />
+              <Route path="/squash" element={<SquashPage />} />
+              <Route path="/squash-admin" element={<SquashAdminPage />} />
+              <Route path="/memes" element={<MemeBrowsePage />} />
+              <Route path="/memes/create" element={<MemeGeneratorPage />} />
+              <Route path="/memes/:id/edit" element={<EditMemePage />} />
+              <Route path="/memes/:id" element={<MemeDetailPage />} />
+              <Route path="/financial" element={<FinancialPage />} />
+              <Route path="/admin/financial" element={<FinancialAdminPage />} />
+              <Route path="/admin/branding" element={<BrandingPage />} />
+              <Route path="/admin/internet-dashboard" element={<InternetDashboardAdminPage />} />
+              <Route path="/admin/recommended" element={<RecommendedAdminPage />} />
+              <Route path="/admin/membership" element={<MembershipPage />} />
+              <Route path="/admin/users/edit" element={<EditUserPage />} />
+              <Route path="/admin/websites" element={<WebsitesAdminPage />} />
+              <Route path="/admin/sites/edit/:id" element={<EditSitePage />} />
+              <Route path="/admin/media" element={<MediaAdminPage />} />
+              <Route path="/admin/media/edit/:id" element={<EditMediaPage />} />
+              <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/admin/*" element={<Navigate to="/admin" replace />} />
+              <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/auth" element={<AuthPage />} />
+              <Route path="*" element={<div>Not found</div>} />
+            </Routes>
+          </Suspense>
         </div>
       </main>
 
