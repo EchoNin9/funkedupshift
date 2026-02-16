@@ -8,6 +8,8 @@ interface LogoMeta {
 
 interface BrandingContextValue {
   logo: LogoMeta | null;
+  /** Site name for header/footer. From API or fallback. Ready for multi-domain. */
+  siteName: string;
 }
 
 const BrandingContext = createContext<BrandingContextValue | undefined>(undefined);
@@ -18,24 +20,35 @@ function getApiBaseUrl(): string | null {
   return raw ? raw.replace(/\/$/, "") : null;
 }
 
+const DEFAULT_SITE_NAME = "Funked Up Shift";
+
 export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [logo, setLogo] = useState<LogoMeta | null>(null);
+  const [siteName, setSiteName] = useState<string>(DEFAULT_SITE_NAME);
 
   useEffect(() => {
     const apiBase = getApiBaseUrl();
     if (!apiBase) return;
 
     let cancelled = false;
+    const domain = typeof window !== "undefined" ? window.location.hostname : "";
+    const url = domain ? `${apiBase}/branding/logo?domain=${encodeURIComponent(domain)}` : `${apiBase}/branding/logo`;
+
     (async () => {
       try {
-        const resp = await fetchWithAuthOptional(`${apiBase}/branding/logo`);
+        const resp = await fetchWithAuthOptional(url);
         if (!resp.ok) return;
         const contentType = resp.headers.get("Content-Type") || "";
         if (!contentType.includes("application/json")) return;
         const data = await resp.json();
         if (cancelled) return;
         if (data && data.url) {
-          setLogo({ url: String(data.url), alt: String(data.alt || "Funkedupshift") });
+          setLogo({ url: String(data.url), alt: String(data.alt || DEFAULT_SITE_NAME) });
+        }
+        if (data?.siteName && typeof data.siteName === "string" && data.siteName.trim()) {
+          setSiteName(data.siteName.trim());
+        } else if (data?.alt && typeof data.alt === "string" && data.alt.trim()) {
+          setSiteName(data.alt.trim());
         }
       } catch {
         // Ignore; logo is optional (avoids Unexpected token '<' when response is HTML).
@@ -47,7 +60,7 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     };
   }, []);
 
-  return <BrandingContext.Provider value={{ logo }}>{children}</BrandingContext.Provider>;
+  return <BrandingContext.Provider value={{ logo, siteName }}>{children}</BrandingContext.Provider>;
 };
 
 export function useBranding(): BrandingContextValue {

@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 import { useAuth, canAccessFinancialAdmin } from "../../../shell/AuthContext";
+import { AdminPageHeader } from "../../admin/AdminPageHeader";
+import { AdminTabs } from "../../admin/AdminTabs";
 import { fetchWithAuth } from "../../../utils/api";
 
 function getApiBaseUrl(): string | null {
@@ -103,61 +104,33 @@ const FinancialAdminPage: React.FC = () => {
 
   if (!canAccess) {
     return (
-      <div className="space-y-4">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-50">Financial Admin</h1>
-        <p className="text-sm text-slate-400">
-          SuperAdmin access is required.
-        </p>
+      <div className="space-y-6">
+        <AdminPageHeader title="Financial Admin" description="SuperAdmin access is required." />
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <Link
-        to="/financial"
-        className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-slate-200"
-      >
-        <ArrowLeftIcon className="h-4 w-4" />
-        Back to Financial
-      </Link>
+      <AdminPageHeader
+        title="Financial Admin"
+        description="Manage Financial section settings, members, and data sources."
+        actions={
+          <Link to="/financial" className="btn-secondary text-sm !px-4 !py-2">
+            View Financial
+          </Link>
+        }
+      />
 
-      <header className="space-y-2">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-50">Financial Admin</h1>
-        <p className="text-sm text-slate-400">
-          Manage Financial section settings, members, and data sources.
-        </p>
-      </header>
-
-      <div className="flex gap-2 border-b border-slate-800 pb-2">
-        <button
-          type="button"
-          onClick={() => setTab("overview")}
-          className={`px-4 py-2 rounded-md text-sm font-medium ${
-            activeTab === "overview" ? "bg-slate-800 text-slate-100" : "text-slate-400 hover:text-slate-200"
-          }`}
-        >
-          Overview
-        </button>
-        <button
-          type="button"
-          onClick={() => setTab("symbols")}
-          className={`px-4 py-2 rounded-md text-sm font-medium ${
-            activeTab === "symbols" ? "bg-slate-800 text-slate-100" : "text-slate-400 hover:text-slate-200"
-          }`}
-        >
-          Tracked Symbols
-        </button>
-        <button
-          type="button"
-          onClick={() => setTab("members")}
-          className={`px-4 py-2 rounded-md text-sm font-medium ${
-            activeTab === "members" ? "bg-slate-800 text-slate-100" : "text-slate-400 hover:text-slate-200"
-          }`}
-        >
-          Members
-        </button>
-      </div>
+      <AdminTabs
+        tabs={[
+          { id: "overview", label: "Overview" },
+          { id: "symbols", label: "Tracked Symbols" },
+          { id: "members", label: "Members" },
+        ]}
+        activeId={activeTab}
+        onSelect={(id) => setTab(id as TabId)}
+      />
 
       {activeTab === "overview" && (
         <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-6 text-sm text-slate-400">

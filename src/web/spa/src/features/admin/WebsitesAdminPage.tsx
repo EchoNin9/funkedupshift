@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 import { useAuth, hasRole } from "../../shell/AuthContext";
+import { AdminPageHeader } from "./AdminPageHeader";
+import { AdminTabs } from "./AdminTabs";
 import { fetchWithAuth } from "../../utils/api";
 
 function getApiBaseUrl(): string | null {
@@ -411,35 +412,22 @@ const WebsitesAdminPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <Link to="/websites" className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-slate-200">
-        <ArrowLeftIcon className="h-4 w-4" />
-        Back to Websites
-      </Link>
+      <AdminPageHeader
+        title="Websites"
+        description="Add sites and manage website categories."
+      />
 
-      <header className="space-y-2">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-50">Websites</h1>
-        <p className="text-sm text-slate-400">Add sites and manage website categories.</p>
-      </header>
-
-      <div className="flex gap-2 border-b border-slate-800 pb-2">
-        <button
-          type="button"
-          onClick={() => setTab("add")}
-          className={`px-4 py-2 rounded-md text-sm font-medium ${activeTab === "add" ? "bg-slate-800 text-slate-100" : "text-slate-400 hover:text-slate-200"}`}
-        >
-          Add Site
-        </button>
-        <button
-          type="button"
-          onClick={() => setTab("categories")}
-          className={`px-4 py-2 rounded-md text-sm font-medium ${activeTab === "categories" ? "bg-slate-800 text-slate-100" : "text-slate-400 hover:text-slate-200"}`}
-        >
-          Website Categories
-        </button>
-      </div>
+      <AdminTabs
+        tabs={[
+          { id: "add", label: "Add Site" },
+          { id: "categories", label: "Website Categories" },
+        ]}
+        activeId={activeTab}
+        onSelect={(id) => setTab(id as "add" | "categories")}
+      />
 
       {activeTab === "add" && (
-        <form className="space-y-4 max-w-xl" onSubmit={handleSubmit}>
+        <form className="card p-6 space-y-4 max-w-xl" onSubmit={handleSubmit}>
           <div>
             <label className="block text-sm font-medium text-slate-200 mb-1">URL *</label>
             <input
@@ -448,7 +436,7 @@ const WebsitesAdminPage: React.FC = () => {
               onChange={(e) => setUrl(e.target.value)}
               placeholder="https://example.com"
               required
-              className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-500 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange"
+              className="input-field"
             />
           </div>
           <div>
@@ -458,7 +446,7 @@ const WebsitesAdminPage: React.FC = () => {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Display title"
-              className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-500 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange"
+              className="input-field"
             />
           </div>
           <div>
@@ -471,13 +459,13 @@ const WebsitesAdminPage: React.FC = () => {
               }}
               placeholder="Short description"
               rows={4}
-              className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-500 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange"
+              className="input-field resize-y"
             />
             <button
               type="button"
               onClick={handleGenerateDescription}
               disabled={isGeneratingDesc || !url.trim()}
-              className="mt-2 rounded-md border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-slate-700 disabled:opacity-50"
+              className="mt-2 btn-secondary text-sm !px-3 !py-1.5 disabled:opacity-50"
             >
               {isGeneratingDesc ? "Generating…" : "Generate AI description"}
             </button>
@@ -500,7 +488,7 @@ const WebsitesAdminPage: React.FC = () => {
                 if (e.target.value.trim()) setLogoFile(null);
               }}
               placeholder="https://example.com/logo.png"
-              className="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-500 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange"
+              className="input-field mt-1"
             />
             {logoPreview && (
               <div className="mt-2">
@@ -517,11 +505,12 @@ const WebsitesAdminPage: React.FC = () => {
               onChange={(e) => setCategorySearch(e.target.value)}
               onFocus={() => setCategoryDropdownOpen(true)}
               placeholder="Search and select…"
-              className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-500 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange"
+              className="input-field w-full"
+              autoComplete="off"
             />
             {categoryDropdownOpen && (
               <>
-                <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-48 overflow-auto rounded-md border border-slate-700 bg-slate-900 shadow-lg">
+                <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-48 overflow-auto scrollbar-thin rounded-md border border-slate-700 bg-slate-900 shadow-lg">
                   {filteredCategories.length ? (
                     filteredCategories.map((c) => (
                       <button
@@ -567,7 +556,7 @@ const WebsitesAdminPage: React.FC = () => {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="inline-flex items-center justify-center rounded-md bg-brand-orange px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-orange-500 disabled:opacity-50"
+            className="btn-primary disabled:opacity-50"
           >
             {isSubmitting ? "Adding…" : "Add Site"}
           </button>
@@ -582,7 +571,7 @@ const WebsitesAdminPage: React.FC = () => {
 
       {activeTab === "categories" && (
         <>
-          <form className="space-y-3 max-w-md" onSubmit={handleCreateCategory}>
+          <form className="card p-6 space-y-3 max-w-md" onSubmit={handleCreateCategory}>
             <div>
               <label className="block text-sm font-medium text-slate-200 mb-1">New category name</label>
               <input
@@ -590,7 +579,7 @@ const WebsitesAdminPage: React.FC = () => {
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 placeholder="e.g. Developer tools"
-                className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-500 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange"
+                className="input-field w-full"
               />
             </div>
             <div>
@@ -600,13 +589,13 @@ const WebsitesAdminPage: React.FC = () => {
                 value={newDescription}
                 onChange={(e) => setNewDescription(e.target.value)}
                 placeholder="Optional description"
-                className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-500 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange"
+                className="input-field w-full"
               />
             </div>
             <button
               type="submit"
               disabled={isCatSubmitting || !newName.trim()}
-              className="inline-flex items-center justify-center rounded-md bg-brand-orange px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-orange-500 disabled:opacity-50"
+              className="btn-primary disabled:opacity-50"
             >
               {isCatSubmitting ? "Creating…" : "Create category"}
             </button>
@@ -618,7 +607,7 @@ const WebsitesAdminPage: React.FC = () => {
             )}
           </form>
 
-          <section>
+          <section className="card p-6 mt-6">
             <h2 className="text-sm font-medium text-slate-300 mb-2">Existing categories</h2>
             {categoriesLoading ? (
               <p className="text-sm text-slate-500">Loading…</p>
@@ -636,7 +625,7 @@ const WebsitesAdminPage: React.FC = () => {
                           onChange={(e) => setEditName(e.target.value)}
                           placeholder="Name"
                           required
-                          className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-500 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange"
+                          className="input-field w-full"
                           autoFocus
                         />
                         <input
@@ -644,20 +633,20 @@ const WebsitesAdminPage: React.FC = () => {
                           value={editDescription}
                           onChange={(e) => setEditDescription(e.target.value)}
                           placeholder="Description (optional)"
-                          className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-500 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange"
+                          className="input-field w-full"
                         />
                         <div className="flex gap-2 flex-wrap">
                           <button
                             type="submit"
                             disabled={isUpdating || !editName.trim()}
-                            className="rounded-md bg-brand-orange px-3 py-1.5 text-xs font-medium text-slate-950 hover:bg-orange-500 disabled:opacity-50"
+                            className="btn-primary text-sm !px-3 !py-1.5 disabled:opacity-50"
                           >
                             {isUpdating ? "Saving…" : "Save"}
                           </button>
                           <button
                             type="button"
                             onClick={cancelEdit}
-                            className="rounded-md border border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-300 hover:bg-slate-800"
+                            className="btn-secondary text-sm !px-3 !py-1.5"
                           >
                             Cancel
                           </button>

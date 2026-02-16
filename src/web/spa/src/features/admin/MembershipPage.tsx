@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 import { useAuth, hasRole } from "../../shell/AuthContext";
+import { AdminPageHeader } from "./AdminPageHeader";
+import { AdminTabs } from "./AdminTabs";
 import { fetchWithAuth } from "../../utils/api";
 
 const ROLE_DISPLAY: Record<string, string> = {
@@ -522,50 +523,27 @@ const MembershipPage: React.FC = () => {
 
   if (!canAccess) {
     return (
-      <div className="space-y-4">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-50">Membership</h1>
-        <p className="text-sm text-slate-400">Manager or SuperAdmin access is required.</p>
+      <div className="space-y-6">
+        <AdminPageHeader title="Membership" description="Manager or SuperAdmin access is required." />
       </div>
     );
   }
 
+  const membershipTabs = [
+    { id: "users", label: "Users" },
+    { id: "groups", label: "Groups" },
+    ...(isSuperAdmin ? [{ id: "roles", label: "Roles" }] : []),
+  ];
+
   return (
     <div className="space-y-6">
-      <Link to="/" className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-slate-200">
-        <ArrowLeftIcon className="h-4 w-4" />
-        Back to Home
-      </Link>
+      <AdminPageHeader title="Membership" description="Manage users and groups." />
 
-      <header className="space-y-2">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-50">Membership</h1>
-        <p className="text-sm text-slate-400">Manage users and groups.</p>
-      </header>
-
-      <div className="flex gap-2 border-b border-slate-800 pb-2">
-        <button
-          type="button"
-          onClick={() => setTab("users")}
-          className={`px-4 py-2 rounded-md text-sm font-medium ${activeTab === "users" ? "bg-slate-800 text-slate-100" : "text-slate-400 hover:text-slate-200"}`}
-        >
-          Users
-        </button>
-        <button
-          type="button"
-          onClick={() => setTab("groups")}
-          className={`px-4 py-2 rounded-md text-sm font-medium ${activeTab === "groups" ? "bg-slate-800 text-slate-100" : "text-slate-400 hover:text-slate-200"}`}
-        >
-          Groups
-        </button>
-        {isSuperAdmin && (
-          <button
-            type="button"
-            onClick={() => setTab("roles")}
-            className={`px-4 py-2 rounded-md text-sm font-medium ${activeTab === "roles" ? "bg-slate-800 text-slate-100" : "text-slate-400 hover:text-slate-200"}`}
-          >
-            Roles
-          </button>
-        )}
-      </div>
+      <AdminTabs
+        tabs={membershipTabs}
+        activeId={activeTab}
+        onSelect={(id) => setTab(id as "users" | "groups" | "roles")}
+      />
 
       {activeTab === "users" && (
         <>

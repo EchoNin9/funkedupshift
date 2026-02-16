@@ -658,7 +658,7 @@ const SquashAdminPage: React.FC = () => {
                   className="block w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200 focus:border-brand-orange focus:outline-none"
                 />
                 {playerDropdownOpen && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-slate-900 border border-slate-700 rounded-md max-h-48 overflow-y-auto z-10">
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-slate-900 border border-slate-700 rounded-md max-h-48 overflow-y-auto scrollbar-thin z-10">
                     {filteredPlayerOptions.length ? (
                       filteredPlayerOptions.map((p) => (
                         <button

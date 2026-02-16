@@ -140,7 +140,7 @@ const AddTagInput: React.FC<AddTagInputProps> = ({
       />
       {dropdownOpen && (suggestions.length > 0 || input.trim()) && (
         <div
-          className="absolute left-0 top-full z-10 mt-1 w-full max-h-48 overflow-auto rounded-md border border-slate-700 bg-slate-900 shadow-lg"
+          className="absolute left-0 top-full z-10 mt-1 w-full max-h-48 overflow-auto scrollbar-thin rounded-md border border-slate-700 bg-slate-900 shadow-lg"
           role="listbox"
         >
           {suggestions.length > 0 ? (

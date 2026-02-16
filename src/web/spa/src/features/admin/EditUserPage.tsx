@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 import { useAuth, hasRole } from "../../shell/AuthContext";
+import { AdminPageHeader } from "./AdminPageHeader";
 import { fetchWithAuth } from "../../utils/api";
 
 const ROLE_DISPLAY: Record<string, string> = {
@@ -308,17 +308,16 @@ const EditUserPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <Link
-        to="/admin/membership"
-        className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-slate-200"
-      >
-        <ArrowLeftIcon className="h-4 w-4" />
-        Back to users
-      </Link>
-      <header className="space-y-2">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-50">Edit User</h1>
-        <p className="text-sm text-slate-400">Adjust system roles and custom groups.</p>
-        <div className="flex items-center gap-2 text-sm">
+      <AdminPageHeader
+        title="Edit User"
+        description="Adjust system roles and custom groups."
+        actions={
+          <Link to="/admin/membership" className="btn-secondary text-sm !px-4 !py-2">
+            Back to Membership
+          </Link>
+        }
+      />
+        <div className="flex items-center gap-2 text-sm mt-2">
           <label htmlFor="tz-select" className="text-slate-500">
             Last login timezone:
           </label>
@@ -326,7 +325,7 @@ const EditUserPage: React.FC = () => {
             id="tz-select"
             value={tzOffset}
             onChange={handleTzChange}
-            className="rounded border border-slate-700 bg-slate-950 px-2 py-1 text-slate-200 text-sm"
+            className="input-field max-w-[8rem] !py-2"
           >
             {TZ_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>
@@ -335,9 +334,8 @@ const EditUserPage: React.FC = () => {
             ))}
           </select>
         </div>
-      </header>
 
-      <form onSubmit={handleSave} className="space-y-6 max-w-2xl">
+      <form onSubmit={handleSave} className="card p-6 space-y-6 max-w-2xl">
         <div className="rounded-lg border border-slate-800 bg-slate-950/60 p-4">
           <h2 className="text-sm font-medium text-slate-300 mb-3">User info</h2>
           <table className="text-sm">
@@ -431,7 +429,7 @@ const EditUserPage: React.FC = () => {
                       onClick={() => setCustomDropdownOpen(false)}
                       aria-hidden="true"
                     />
-                    <div className="absolute top-full left-0 right-0 mt-1 max-h-48 overflow-y-auto rounded border border-slate-700 bg-slate-900 shadow-lg z-20">
+                    <div className="absolute top-full left-0 right-0 mt-1 max-h-48 overflow-y-auto scrollbar-thin rounded border border-slate-700 bg-slate-900 shadow-lg z-20">
                       {customGroupOptions.length === 0 ? (
                         <div className="px-3 py-2 text-sm text-slate-500">No matches</div>
                       ) : (

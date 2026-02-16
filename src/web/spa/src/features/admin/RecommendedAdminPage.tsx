@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { ArrowLeftIcon, Bars3Icon } from "@heroicons/react/24/outline";
+import { Bars3Icon } from "@heroicons/react/24/outline";
+import { AdminPageHeader } from "./AdminPageHeader";
+import { AdminTabs } from "./AdminTabs";
 import { StarIcon } from "@heroicons/react/24/solid";
 import { useAuth, hasRole } from "../../shell/AuthContext";
 import { fetchWithAuth } from "../../utils/api";
@@ -542,46 +544,29 @@ const RecommendedAdminPage: React.FC = () => {
 
   if (!canEdit) {
     return (
-      <div className="space-y-4">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-50">Recommended Admin</h1>
-        <p className="text-sm text-slate-400">
-          Only Manager or SuperAdmin users can edit the recommended caches.
-        </p>
+      <div className="space-y-6">
+        <AdminPageHeader title="Recommended Admin" description="Only Manager or SuperAdmin users can edit the recommended caches." />
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <Link
-        to="/recommended/highlights"
-        className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-slate-200"
-      >
-        <ArrowLeftIcon className="h-4 w-4" />
-        Back to Recommended
-      </Link>
+      <AdminPageHeader
+        title="Recommended Admin"
+        description="Manage highlighted and highest-rated site lists. Generate from categories or star ratings, or edit manually."
+        actions={
+          <Link to="/recommended/highlights" className="btn-secondary text-sm !px-4 !py-2">
+            View highlights
+          </Link>
+        }
+      />
 
-      <header className="space-y-2">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-50">Recommended Admin</h1>
-        <p className="text-sm text-slate-400">
-          Manage highlighted and highest-rated site lists. Generate from categories or star ratings, or edit manually.
-        </p>
-      </header>
-
-      <div className="flex gap-2 border-b border-slate-800 pb-2">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => setTab(t.id)}
-            className={`px-4 py-2 rounded-md text-sm font-medium ${
-              activeTab === t.id ? "bg-slate-800 text-slate-100" : "text-slate-400 hover:text-slate-200"
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <AdminTabs
+        tabs={TABS.map((t) => ({ id: t.id, label: t.label }))}
+        activeId={activeTab}
+        onSelect={(id) => setTab(id as TabId)}
+      />
 
       {activeTab === "highlights" && <ListTab config={TABS[0]} />}
       {activeTab === "highestRated" && <ListTab config={TABS[1]} />}

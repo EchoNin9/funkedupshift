@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 import { useAuth, hasRole } from "../../shell/AuthContext";
+import { AdminPageHeader } from "./AdminPageHeader";
 import { fetchWithAuth } from "../../utils/api";
 
 function getApiBaseUrl(): string | null {
@@ -290,20 +290,16 @@ const EditSitePage: React.FC = () => {
 
   if (!canAccess) {
     return (
-      <div className="space-y-4">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-50">Edit Site</h1>
-        <p className="text-sm text-slate-400">Manager or SuperAdmin access is required.</p>
+      <div className="space-y-6">
+        <AdminPageHeader title="Edit Site" description="Manager or SuperAdmin access is required." />
       </div>
     );
   }
 
   if (loading) {
     return (
-      <div className="space-y-4">
-        <Link to="/websites" className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-slate-200">
-          <ArrowLeftIcon className="h-4 w-4" />
-          Back to Websites
-        </Link>
+      <div className="space-y-6">
+        <AdminPageHeader title="Edit Site" />
         <p className="text-sm text-slate-400">Loading…</p>
       </div>
     );
@@ -311,11 +307,8 @@ const EditSitePage: React.FC = () => {
 
   if (error && !url && !title) {
     return (
-      <div className="space-y-4">
-        <Link to="/websites" className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-slate-200">
-          <ArrowLeftIcon className="h-4 w-4" />
-          Back to Websites
-        </Link>
+      <div className="space-y-6">
+        <AdminPageHeader title="Edit Site" />
         <div className="rounded-md border border-red-500/60 bg-red-500/10 px-3 py-2 text-sm text-red-200">{error}</div>
       </div>
     );
@@ -323,19 +316,20 @@ const EditSitePage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <Link
-        to={`/websites/${encodeURIComponent(siteId)}`}
-        className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-slate-200"
-      >
-        <ArrowLeftIcon className="h-4 w-4" />
-        Back to site
-      </Link>
-      <header className="space-y-2">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-50">Edit Site</h1>
-        <p className="text-sm text-slate-400">Update URL, title, description, logo, categories, and scraped content.</p>
-      </header>
+      <AdminPageHeader
+        title="Edit Site"
+        description="Update URL, title, description, logo, categories, and scraped content."
+        actions={
+          <Link
+            to={`/websites/${encodeURIComponent(siteId)}`}
+            className="btn-secondary text-sm !px-4 !py-2"
+          >
+            View site
+          </Link>
+        }
+      />
 
-      <form className="space-y-4 max-w-xl" onSubmit={handleSubmit}>
+      <form className="card p-6 space-y-4 max-w-xl" onSubmit={handleSubmit}>
         <div>
           <label className="block text-sm font-medium text-slate-200 mb-1">URL *</label>
           <input
@@ -343,7 +337,7 @@ const EditSitePage: React.FC = () => {
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             required
-            className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange"
+            className="input-field"
           />
         </div>
         <div>
@@ -352,7 +346,7 @@ const EditSitePage: React.FC = () => {
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange"
+            className="input-field"
           />
         </div>
         <div>
@@ -365,13 +359,13 @@ const EditSitePage: React.FC = () => {
             }}
             placeholder="Short description"
             rows={4}
-            className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-500 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange"
+            className="input-field resize-y"
           />
           <button
             type="button"
             onClick={handleGenerateDescription}
             disabled={isGeneratingDesc || !url.trim()}
-            className="mt-2 rounded-md border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-slate-700 disabled:opacity-50"
+            className="mt-2 btn-secondary text-sm !px-3 !py-1.5 disabled:opacity-50"
           >
             {isGeneratingDesc ? "Generating…" : "Generate AI description"}
           </button>
@@ -413,7 +407,7 @@ const EditSitePage: React.FC = () => {
               if (e.target.value.trim()) setLogoFile(null);
             }}
             placeholder="https://example.com/logo.png"
-            className="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-500 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange"
+            className="input-field mt-1"
           />
           {logoPreview && (
             <div className="mt-2">
@@ -430,10 +424,11 @@ const EditSitePage: React.FC = () => {
             onChange={(e) => setCategorySearch(e.target.value)}
             onFocus={() => setCategoryDropdownOpen(true)}
             placeholder="Search and select…"
-            className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange"
+            className="input-field w-full"
+            autoComplete="off"
           />
           {categoryDropdownOpen && (
-            <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-48 overflow-auto rounded-md border border-slate-700 bg-slate-900 shadow-lg">
+            <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-48 overflow-auto scrollbar-thin rounded-md border border-slate-700 bg-slate-900 shadow-lg">
               {filteredCategories.length ? (
                 filteredCategories.map((c) => (
                   <button
@@ -489,9 +484,9 @@ const EditSitePage: React.FC = () => {
               onChange={(e) => setTagsInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addTag())}
               placeholder="Add tag"
-              className="flex-1 rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange"
+              className="input-field flex-1"
             />
-            <button type="button" onClick={addTag} className="rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-200 hover:bg-slate-700">
+            <button type="button" onClick={addTag} className="btn-secondary text-sm !px-3 !py-2">
               Add
             </button>
           </div>
@@ -503,14 +498,14 @@ const EditSitePage: React.FC = () => {
             onChange={(e) => setScrapedContent(e.target.value)}
             rows={6}
             placeholder="Paste or edit scraped content (e.g. README, about page)"
-            className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm font-mono text-slate-50 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange"
+            className="input-field w-full font-mono resize-y"
           />
         </div>
         <div className="flex flex-wrap gap-3">
           <button
             type="submit"
             disabled={isSubmitting}
-            className="inline-flex items-center justify-center rounded-md bg-brand-orange px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-orange-500 disabled:opacity-50"
+            className="btn-primary disabled:opacity-50"
           >
             {isSubmitting ? "Saving…" : "Save changes"}
           </button>
@@ -518,7 +513,7 @@ const EditSitePage: React.FC = () => {
             type="button"
             onClick={handleDelete}
             disabled={isDeleting || isSubmitting}
-            className="rounded-md border border-red-500/60 px-4 py-2 text-sm font-medium text-red-400 hover:bg-red-500/20 disabled:opacity-50"
+            className="btn-secondary border-red-500/60 text-red-400 hover:bg-red-500/20 disabled:opacity-50"
           >
             {isDeleting ? "Deleting…" : "Delete entry"}
           </button>
