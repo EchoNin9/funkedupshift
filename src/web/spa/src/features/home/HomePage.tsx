@@ -73,7 +73,7 @@ const HomePage: React.FC = () => {
 
   return (
     <div className="space-y-8">
-      <section className="card relative overflow-hidden px-6 py-10">
+      <section className="card relative overflow-hidden px-4 py-8 sm:px-6 sm:py-10">
         <div className="absolute inset-0 bg-gradient-to-br from-primary-500/10 via-transparent to-brand-teal/10 pointer-events-none" />
         <div className="relative max-w-xl space-y-4">
           <motion.p

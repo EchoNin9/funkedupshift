@@ -431,7 +431,7 @@ const EditUserPage: React.FC = () => {
                       onClick={() => setCustomDropdownOpen(false)}
                       aria-hidden="true"
                     />
-                    <div className="absolute top-full left-0 right-0 mt-1 max-h-48 overflow-y-auto rounded border border-slate-700 bg-slate-900 shadow-lg z-20">
+                    <div className="absolute top-full left-0 right-0 mt-1 max-h-48 overflow-y-auto scrollbar-thin rounded border border-slate-700 bg-slate-900 shadow-lg z-20">
                       {customGroupOptions.length === 0 ? (
                         <div className="px-3 py-2 text-sm text-slate-500">No matches</div>
                       ) : (

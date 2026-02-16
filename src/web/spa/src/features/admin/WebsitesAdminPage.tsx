@@ -521,7 +521,7 @@ const WebsitesAdminPage: React.FC = () => {
             />
             {categoryDropdownOpen && (
               <>
-                <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-48 overflow-auto rounded-md border border-slate-700 bg-slate-900 shadow-lg">
+                <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-48 overflow-auto scrollbar-thin rounded-md border border-slate-700 bg-slate-900 shadow-lg">
                   {filteredCategories.length ? (
                     filteredCategories.map((c) => (
                       <button

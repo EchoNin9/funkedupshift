@@ -116,18 +116,18 @@ const AppLayout: React.FC = () => {
               <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">
                 Navigate
               </h3>
-              <nav className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-500">
-                <Link to="/" className="hover:text-slate-300 transition-colors">
+              <nav className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-slate-500">
+                <Link to="/" className="min-h-[44px] flex items-center hover:text-slate-300 transition-colors">
                   Home
                 </Link>
-                <Link to="/websites" className="hover:text-slate-300 transition-colors">
+                <Link to="/websites" className="min-h-[44px] flex items-center hover:text-slate-300 transition-colors">
                   Websites
                 </Link>
-                <Link to="/media" className="hover:text-slate-300 transition-colors">
+                <Link to="/media" className="min-h-[44px] flex items-center hover:text-slate-300 transition-colors">
                   Media
                 </Link>
                 {user && (
-                  <Link to="/profile" className="hover:text-slate-300 transition-colors">
+                  <Link to="/profile" className="min-h-[44px] flex items-center hover:text-slate-300 transition-colors">
                     Profile
                   </Link>
                 )}

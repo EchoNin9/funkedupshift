@@ -238,11 +238,11 @@ const MediaPage: React.FC = () => {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search media by title or description…"
-            className="flex-1 rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-500 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange"
+            className="input-field flex-1"
           />
           <button
             type="submit"
-            className="inline-flex items-center justify-center rounded-md bg-brand-orange px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-orange-500"
+            className="btn-primary min-h-[44px] !px-4 !py-2 text-sm"
           >
             Search
           </button>
@@ -260,12 +260,12 @@ const MediaPage: React.FC = () => {
               onChange={(e) => setCategorySearch(e.target.value)}
               onFocus={() => setCategoryDropdownOpen(true)}
               placeholder="Search and select categories…"
-              className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-500 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange"
+              className="input-field w-full"
               autoComplete="off"
             />
             {categoryDropdownOpen && (
               <div
-                className="absolute left-0 top-full z-10 mt-1 w-full max-h-48 overflow-auto rounded-md border border-slate-700 bg-slate-900 shadow-lg"
+                className="absolute left-0 top-full z-10 mt-1 w-full max-h-48 overflow-auto scrollbar-thin rounded-md border border-slate-700 bg-slate-900 shadow-lg"
                 role="listbox"
                 aria-label="Category options"
               >
@@ -280,7 +280,7 @@ const MediaPage: React.FC = () => {
                         setCategorySearch("");
                         // Keep dropdown open for multi-select (same as add media page)
                       }}
-                      className="block w-full px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-800"
+                      className="block w-full min-h-[44px] flex items-center px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-800"
                     >
                       {c.name}
                     </button>
@@ -489,7 +489,7 @@ const MediaPage: React.FC = () => {
             type="button"
             disabled={page <= 1}
             onClick={() => setPage((p) => Math.max(1, p - 1))}
-            className="rounded-md border border-slate-700 bg-slate-950 px-2 py-1 text-slate-200 disabled:opacity-40"
+            className="min-h-[44px] flex items-center rounded-md border border-slate-700 bg-slate-950 px-4 py-2 text-slate-200 disabled:opacity-40"
           >
             Prev
           </button>
@@ -500,7 +500,7 @@ const MediaPage: React.FC = () => {
             type="button"
             disabled={page >= totalPages}
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            className="rounded-md border border-slate-700 bg-slate-950 px-2 py-1 text-slate-200 disabled:opacity-40"
+            className="min-h-[44px] flex items-center rounded-md border border-slate-700 bg-slate-950 px-4 py-2 text-slate-200 disabled:opacity-40"
           >
             Next
           </button>

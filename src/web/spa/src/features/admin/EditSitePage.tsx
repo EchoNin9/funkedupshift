@@ -433,7 +433,7 @@ const EditSitePage: React.FC = () => {
             className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange"
           />
           {categoryDropdownOpen && (
-            <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-48 overflow-auto rounded-md border border-slate-700 bg-slate-900 shadow-lg">
+            <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-48 overflow-auto scrollbar-thin rounded-md border border-slate-700 bg-slate-900 shadow-lg">
               {filteredCategories.length ? (
                 filteredCategories.map((c) => (
                   <button

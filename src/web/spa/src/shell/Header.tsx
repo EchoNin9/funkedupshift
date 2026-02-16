@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { Link, NavLink } from "react-router-dom";
+import React, { useState, useEffect, useRef } from "react";
+import { Link, NavLink, useLocation } from "react-router-dom";
 import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
 import { useAuth } from "./AuthContext";
 import { useBranding } from "./BrandingContext";
@@ -16,6 +16,8 @@ export function Header() {
   const { logo, siteName } = useBranding();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const headerRef = useRef<HTMLElement>(null);
+  const location = useLocation();
 
   const publicItems = getVisiblePublicModules(user);
   const adminItems = getVisibleAdminModules(user);
@@ -26,6 +28,19 @@ export function Header() {
     window.addEventListener("scroll", onScroll);
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  useEffect(() => setMobileOpen(false), [location.pathname]);
+
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (headerRef.current && !headerRef.current.contains(e.target as Node)) {
+        setMobileOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [mobileOpen]);
 
   const handleSignOut = () => {
     signOut();
@@ -39,6 +54,7 @@ export function Header() {
 
   return (
     <header
+      ref={headerRef}
       className={`sticky top-0 z-50 transition-all duration-300 ${
         scrolled ? "bg-slate-950/95 backdrop-blur-sm shadow-lg" : "bg-slate-950"
       }`}
@@ -103,13 +119,13 @@ export function Header() {
           )}
         </div>
 
-        {/* Mobile hamburger */}
+        {/* Mobile hamburger - min 44px touch target */}
         <div className="flex md:hidden items-center gap-2">
           {user && <ImpersonationSelector />}
           <button
             type="button"
             onClick={() => setMobileOpen(!mobileOpen)}
-            className="p-2 text-slate-300 hover:text-white rounded-md hover:bg-slate-800"
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-300 hover:text-white rounded-md hover:bg-slate-800"
             aria-label={mobileOpen ? "Close menu" : "Open menu"}
           >
             {mobileOpen ? <XMarkIcon className="w-6 h-6" /> : <Bars3Icon className="w-6 h-6" />}
@@ -126,7 +142,7 @@ export function Header() {
                 key={item.path}
                 to={item.path}
                 className={({ isActive }) =>
-                  `block px-3 py-2.5 rounded-md transition-colors ${
+                  `block px-4 py-3 min-h-[44px] flex items-center rounded-md transition-colors ${
                     isActive
                       ? "bg-slate-800 text-primary-400 font-medium"
                       : "text-slate-300 hover:bg-slate-800 hover:text-white"
@@ -140,7 +156,7 @@ export function Header() {
             {user && (
               <button
                 onClick={handleSignOut}
-                className="block w-full text-left px-3 py-2.5 rounded-md text-red-400 hover:bg-slate-800 transition-colors font-medium"
+                className="block w-full text-left px-4 py-3 min-h-[44px] flex items-center rounded-md text-red-400 hover:bg-slate-800 transition-colors font-medium"
               >
                 Sign out
               </button>
@@ -148,7 +164,7 @@ export function Header() {
             {!user && !isLoading && (
               <Link
                 to="/auth"
-                className="block px-3 py-2.5 rounded-md text-primary-400 hover:bg-slate-800 font-medium"
+                className="block px-4 py-3 min-h-[44px] flex items-center rounded-md text-primary-400 hover:bg-slate-800 font-medium"
                 onClick={() => setMobileOpen(false)}
               >
                 Sign in
