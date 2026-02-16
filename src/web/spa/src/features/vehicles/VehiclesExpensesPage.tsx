@@ -26,6 +26,35 @@ interface FuelEntry {
   updatedAt?: string;
 }
 
+/** Parse CSV text into rows. Handles quoted fields. */
+function parseCSV(text: string): string[][] {
+  const lines = text.split(/\r?\n/).filter((l) => l.trim());
+  return lines.map((line) => {
+    const out: string[] = [];
+    let cur = "";
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (c === '"') {
+        inQuotes = !inQuotes;
+      } else if (c === "," && !inQuotes) {
+        out.push(cur.trim());
+        cur = "";
+      } else {
+        cur += c;
+      }
+    }
+    out.push(cur.trim());
+    return out;
+  });
+}
+
+/** Normalize vehicle name: trim, collapse empty to single default. */
+function normalizeVehicleName(s: string | undefined): string {
+  const t = String(s ?? "").trim();
+  return t || "Vehicle";
+}
+
 function formatDate(s: string | undefined): string {
   if (!s) return "—";
   try {
@@ -307,17 +336,28 @@ const VehiclesExpensesPage: React.FC = () => {
     setImportMessage(null);
     setError(null);
     try {
-      const XLSX = await import("xlsx");
-      const data = await file.arrayBuffer();
-      const wb = XLSX.read(data, { type: "array", raw: true });
-      const sheetName = wb.SheetNames[0];
-      if (!sheetName) throw new Error("Excel file has no sheets");
-      const ws = wb.Sheets[sheetName];
-      if (!ws) throw new Error("Could not read first sheet");
-      const rows = XLSX.utils.sheet_to_json<string[]>(ws, { header: 1, raw: true, defval: "" }) as (string | number)[][];
-      if (!rows.length) throw new Error("Excel sheet is empty");
-      const date1904 = !!(wb.Workbook?.WBProps as { date1904?: boolean } | undefined)?.date1904;
-      const excelEpoch = date1904 ? 24107 : 25569;
+      let rows: (string | number)[][];
+      let excelEpoch = 25569;
+
+      const isCsv = file.name.toLowerCase().endsWith(".csv") || file.type === "text/csv";
+      if (isCsv) {
+        const text = await file.text();
+        rows = parseCSV(text);
+        if (!rows.length) throw new Error("CSV file is empty");
+      } else {
+        const XLSX = await import("xlsx");
+        const data = await file.arrayBuffer();
+        const wb = XLSX.read(data, { type: "array", raw: true });
+        const sheetName = wb.SheetNames[0];
+        if (!sheetName) throw new Error("Excel file has no sheets");
+        const ws = wb.Sheets[sheetName];
+        if (!ws) throw new Error("Could not read first sheet");
+        rows = XLSX.utils.sheet_to_json<string[]>(ws, { header: 1, raw: true, defval: "" }) as (string | number)[][];
+        if (!rows.length) throw new Error("Excel sheet is empty");
+        const date1904 = !!(wb.Workbook?.WBProps as { date1904?: boolean } | undefined)?.date1904;
+        excelEpoch = date1904 ? 24107 : 25569;
+      }
+
       const imports: { vehicleName: string; entries: { date: string; fuelPrice: number; fuelLitres: number; odometerKm: number }[] }[] = [];
       const colMap: Record<string, number> = {};
       const headerRow = rows[0] as (string | number)[];
@@ -356,7 +396,7 @@ const VehiclesExpensesPage: React.FC = () => {
         const price = typeof priceVal === "number" && !isNaN(priceVal) ? priceVal : parseFloat(String(priceVal ?? "").replace(/,/g, "")) || 0;
         const litres = typeof litresVal === "number" && !isNaN(litresVal) ? litresVal : parseFloat(String(litresVal ?? "").replace(/,/g, "")) || 0;
         const odo = typeof odoVal === "number" && !isNaN(odoVal) ? odoVal : parseFloat(String(odoVal ?? "").replace(/,/g, "")) || 0;
-        const vehicleName = String(vehicleVal ?? "").trim() || "Vehicle";
+        const vehicleName = normalizeVehicleName(vehicleVal);
         if (!byVehicle[vehicleName]) byVehicle[vehicleName] = [];
         byVehicle[vehicleName].push({ date: dateStr, fuelPrice: price, fuelLitres: litres, odometerKm: odo });
       }
@@ -429,7 +469,7 @@ const VehiclesExpensesPage: React.FC = () => {
           <input
             ref={fileInputRef}
             type="file"
-            accept=".xlsx,.xls"
+            accept=".csv,.xlsx,.xls"
             className="hidden"
             onChange={handleImport}
           />
@@ -438,7 +478,7 @@ const VehiclesExpensesPage: React.FC = () => {
             disabled={importing}
             className="rounded-md border border-slate-600 bg-slate-800 px-4 py-2 text-sm text-slate-200 hover:bg-slate-700 disabled:opacity-50"
           >
-            {importing ? "Importing…" : "Import from Excel"}
+            {importing ? "Importing…" : "Import from CSV/Excel"}
           </button>
           <button
             type="button"
@@ -452,8 +492,8 @@ const VehiclesExpensesPage: React.FC = () => {
 
       {showImportHelp && (
         <div className="rounded-lg border border-slate-700 bg-slate-900/50 p-4 text-sm text-slate-300 space-y-2">
-          <p className="font-medium text-slate-200">Excel import format</p>
-          <p>Use columns: <strong>Date</strong> (YYYY-MM-DD), <strong>Fuel Price</strong> ($), <strong>Fuel Litres</strong>, <strong>Odometer (km)</strong>, <strong>Vehicle</strong>. First row = headers. See docs/vehicles-expenses-import.md for details.</p>
+          <p className="font-medium text-slate-200">CSV / Excel import format</p>
+          <p>Use columns: <strong>Date</strong> (YYYY-MM-DD), <strong>Fuel Price</strong> ($), <strong>Fuel Litres</strong>, <strong>Odometer (km)</strong>, <strong>Vehicle</strong>. First row = headers. CSV or Excel (.xlsx, .xls) supported.</p>
         </div>
       )}
 

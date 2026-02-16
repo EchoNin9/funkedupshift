@@ -1,15 +1,20 @@
-# Vehicles Expenses – Excel Import
+# Vehicles Expenses – CSV / Excel Import
 
 ## Overview
 
-You can import fuel expense entries from an Excel (.xlsx or .xls) file into the Vehicles Expenses module. Each row becomes a fuel entry linked to a vehicle.
+You can import fuel expense entries from a CSV or Excel (.xlsx, .xls) file into the Vehicles Expenses module. Each row becomes a fuel entry linked to a vehicle. **CSV is recommended** for simplicity.
 
 ## Required Access
 
 - You must be a member of the **expenses** custom group to use this feature.
 - All imported data is private to your account.
 
-## Excel Format
+## File Format
+
+### Supported Formats
+
+- **CSV** (.csv) – Recommended. Use comma-separated values with headers.
+- **Excel** (.xlsx, .xls) – Also supported.
 
 ### Column Layout
 
@@ -23,8 +28,8 @@ Use the following columns (order can vary; headers are auto-detected):
 | Odometer (km) | odometer, mileage, km | 123456 |
 | Vehicle | vehicle | My Car |
 
-- **Date**: Use `YYYY-MM-DD` (e.g. 2026-02-15) or an Excel date serial.
-- **Vehicle**: Matches an existing vehicle by name, or creates a new vehicle if it does not exist.
+- **Date**: Use `YYYY-MM-DD` (e.g. 2026-02-15). For Excel, date serials are also supported.
+- **Vehicle**: Matches an existing vehicle by name, or creates a new vehicle if it does not exist. Use a specific name (e.g. `CLK-500`). Empty values default to `Vehicle`.
 
 ### Example
 
@@ -44,9 +49,16 @@ Use the following columns (order can vary; headers are auto-detected):
 ## How to Import
 
 1. Open the **Vehicles Expenses** page.
-2. Click **Import from Excel**.
-3. Choose your .xlsx or .xls file.
+2. Click **Import from CSV/Excel**.
+3. Choose your .csv, .xlsx, or .xls file.
 4. Wait for the import to finish. A message shows how many entries were created and any errors.
+
+## Creating a CSV File
+
+1. In Excel or Google Sheets, create a sheet with the headers in the first row.
+2. Add one row per fuel fill-up.
+3. Save as **CSV (.csv)** – recommended for best compatibility.
+4. Use the import feature to upload the file.
 
 ## Creating an Excel File
 
