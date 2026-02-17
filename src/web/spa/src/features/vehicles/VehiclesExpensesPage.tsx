@@ -50,6 +50,17 @@ function parseCSV(text: string): string[][] {
   });
 }
 
+/** Strip currency symbols and parse number. Handles $65.00, €50, 65,50 (EU) etc. */
+function parseCurrency(val: string | number | undefined): number {
+  if (val == null || val === "") return 0;
+  if (typeof val === "number" && !isNaN(val)) return val;
+  let s = String(val).replace(/[$€£¥\s]/g, "");
+  if (s.includes(".")) s = s.replace(/,/g, "");
+  else s = s.replace(/,/g, ".");
+  const n = parseFloat(s);
+  return isNaN(n) ? 0 : n;
+}
+
 /** Normalize vehicle name: trim, collapse empty to single default. */
 function normalizeVehicleName(s: string | undefined): string {
   const t = String(s ?? "").trim();
@@ -417,7 +428,7 @@ const VehiclesExpensesPage: React.FC = () => {
         if (!h) continue;
         if (h.includes("date")) colMap.date = i;
         else if (h.includes("litre") || h.includes("liter") || h.includes("volume")) colMap.fuelLitres = i;
-        else if (h.includes("price") || h.includes("cost")) colMap.fuelPrice = i;
+        else if (h.includes("price") || h.includes("cost") || h.includes("amount")) colMap.fuelPrice = i;
         else if (h.includes("odometer") || h.includes("mileage") || (h.includes("km") && !h.includes("l/100"))) colMap.odometerKm = i;
         else if (h.includes("vehicle") || h === "car" || h.includes("car name")) colMap.vehicle = i;
       }
@@ -446,7 +457,7 @@ const VehiclesExpensesPage: React.FC = () => {
         } else {
           dateStr = String(dateVal ?? "").trim().slice(0, 10);
         }
-        const price = typeof priceVal === "number" && !isNaN(priceVal) ? priceVal : parseFloat(String(priceVal ?? "").replace(/,/g, "")) || 0;
+        const price = parseCurrency(priceVal);
         const litres = typeof litresVal === "number" && !isNaN(litresVal) ? litresVal : parseFloat(String(litresVal ?? "").replace(/,/g, "")) || 0;
         const odo = typeof odoVal === "number" && !isNaN(odoVal) ? odoVal : parseFloat(String(odoVal ?? "").replace(/,/g, "")) || 0;
         const vehicleName = normalizeVehicleName(vehicleVal);

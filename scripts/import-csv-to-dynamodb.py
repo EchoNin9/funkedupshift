@@ -13,6 +13,22 @@ os.environ.setdefault("AWS_REGION", "us-east-1")
 USER_ID = "44087408-3081-70b2-062c-74dc3b313c63"
 
 
+def _parse_currency(val: str) -> float:
+    """Strip currency symbols and parse number. Handles $65.00, €50, 65,50 (EU) etc."""
+    import re
+    s = re.sub(r"[$€£¥\s]", "", (val or "").strip())
+    if not s:
+        return 0.0
+    if "." in s:
+        s = s.replace(",", "")
+    else:
+        s = s.replace(",", ".")
+    try:
+        return float(s)
+    except ValueError:
+        return 0.0
+
+
 def _match_column(header: str, patterns: list) -> bool:
     """Return True if header (lowercased) matches any pattern (substring or exact)."""
     h = (header or "").lower().strip()
@@ -35,7 +51,7 @@ def _build_col_map(headers: list) -> dict:
             col_map["date"] = key
         elif _match_column(key, ["litre", "liter", "volume"]):
             col_map["fuelLitres"] = key
-        elif _match_column(key, ["price", "cost"]):
+        elif _match_column(key, ["price", "cost", "amount"]):
             col_map["fuelPrice"] = key
         elif _match_column(key, ["odometer", "mileage"]) or ("km" in key.lower() and "l/100" not in key.lower()):
             col_map["odometerKm"] = key
@@ -66,7 +82,7 @@ def parse_csv(path: str) -> list:
             if not date_val and not price_val and not litres_val and not odo_val:
                 continue
             try:
-                price = float(price_val.replace(",", "")) if price_val else 0
+                price = _parse_currency(price_val) if price_val else 0
                 litres = float(litres_val.replace(",", "")) if litres_val else 0
                 odo = float(odo_val.replace(",", "")) if odo_val else 0
             except ValueError:
