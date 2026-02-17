@@ -109,6 +109,13 @@ const VehiclesExpensesPage: React.FC = () => {
   const [showImportHelp, setShowImportHelp] = useState(false);
   const [renamingVehicleId, setRenamingVehicleId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
+  const [editingFuelId, setEditingFuelId] = useState<string | null>(null);
+  const [editFuelForm, setEditFuelForm] = useState({
+    date: "",
+    fuelPrice: "",
+    fuelLitres: "",
+    odometerKm: "",
+  });
 
   const loadVehicles = useCallback(async () => {
     const apiBase = getApiBaseUrl();
@@ -174,6 +181,10 @@ const VehiclesExpensesPage: React.FC = () => {
       setRenameValue("");
     }
   }, [selectedVehicleId, renamingVehicleId]);
+
+  useEffect(() => {
+    setEditingFuelId(null);
+  }, [selectedVehicleId]);
 
   const handleAddVehicle = async () => {
     const name = newVehicleName.trim();
@@ -309,6 +320,43 @@ const VehiclesExpensesPage: React.FC = () => {
     }
   };
 
+  const handleUpdateFuel = async (fillupId: string) => {
+    if (!selectedVehicleId) return;
+    const price = parseFloat(editFuelForm.fuelPrice);
+    const litres = parseFloat(editFuelForm.fuelLitres);
+    const odometer = parseFloat(editFuelForm.odometerKm);
+    if (isNaN(price) || isNaN(litres) || isNaN(odometer)) return;
+    const apiBase = getApiBaseUrl();
+    if (!apiBase) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const resp = await fetchWithAuth(
+        `${apiBase}/vehicles-expenses/${encodeURIComponent(selectedVehicleId)}/fuel/${encodeURIComponent(fillupId)}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            date: editFuelForm.date,
+            fuelPrice: price,
+            fuelLitres: litres,
+            odometerKm: odometer,
+          }),
+        }
+      );
+      if (!resp.ok) {
+        const d = await resp.json().catch(() => ({}));
+        throw new Error((d as { error?: string }).error || "Failed to update");
+      }
+      setEditingFuelId(null);
+      loadFuelEntries(selectedVehicleId);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed to update fuel entry");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleDeleteFuel = async (fillupId: string) => {
     if (!selectedVehicleId || !window.confirm("Delete this fuel entry?")) return;
     const apiBase = getApiBaseUrl();
@@ -321,6 +369,7 @@ const VehiclesExpensesPage: React.FC = () => {
         { method: "DELETE" }
       );
       if (!resp.ok) throw new Error("Failed to delete");
+      setEditingFuelId(null);
       loadFuelEntries(selectedVehicleId);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Failed to delete");
@@ -708,41 +757,133 @@ const VehiclesExpensesPage: React.FC = () => {
                     {fuelEntries.map((entry, idx) => {
                       const prev = fuelEntries[idx + 1] ?? null;
                       const { pricePerLitre, distanceKm, lPer100km, mpg } = calcFuelMetrics(entry, prev);
+                      const isEditing = editingFuelId === entry.id;
                       return (
                         <tr key={entry.id} className="hover:bg-slate-800/50">
-                          <td className="px-4 py-3 text-sm text-slate-200">{formatDate(entry.date)}</td>
-                          <td className="px-4 py-3 text-sm text-right text-slate-300">
-                            ${(entry.fuelPrice ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-right text-slate-300">
-                            {(entry.fuelLitres ?? 0).toLocaleString(undefined, { minimumFractionDigits: 3 })}L
-                          </td>
-                          <td className="px-4 py-3 text-sm text-right text-slate-300">
-                            {pricePerLitre != null
-                              ? `$${pricePerLitre.toLocaleString(undefined, { minimumFractionDigits: 4 })}/L`
-                              : "—"}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-right text-slate-300">
-                            {lPer100km != null ? lPer100km.toFixed(2) : "—"}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-right text-slate-300">
-                            {mpg != null ? mpg.toFixed(1) : "—"}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-right text-slate-300">
-                            {(entry.odometerKm ?? 0).toLocaleString()} km
-                          </td>
-                          <td className="px-4 py-3 text-sm text-right text-slate-300">
-                            {distanceKm > 0 ? `${distanceKm.toLocaleString()} km` : "—"}
-                          </td>
-                          <td className="px-4 py-3 text-right">
-                            <button
-                              onClick={() => handleDeleteFuel(entry.id)}
-                              disabled={saving}
-                              className="text-red-400 hover:text-red-300 text-sm"
-                            >
-                              Delete
-                            </button>
-                          </td>
+                          {isEditing ? (
+                            <>
+                              <td className="px-4 py-2">
+                                <input
+                                  type="date"
+                                  value={editFuelForm.date}
+                                  onChange={(e) => setEditFuelForm((f) => ({ ...f, date: e.target.value }))}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") handleUpdateFuel(entry.id);
+                                    if (e.key === "Escape") setEditingFuelId(null);
+                                  }}
+                                  className="rounded border border-slate-600 bg-slate-800 px-2 py-1 text-sm text-slate-100 w-36"
+                                />
+                              </td>
+                              <td className="px-4 py-2">
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  value={editFuelForm.fuelPrice}
+                                  onChange={(e) => setEditFuelForm((f) => ({ ...f, fuelPrice: e.target.value }))}
+                                  className="rounded border border-slate-600 bg-slate-800 px-2 py-1 text-sm text-slate-100 w-20 text-right"
+                                />
+                              </td>
+                              <td className="px-4 py-2">
+                                <input
+                                  type="number"
+                                  step="0.001"
+                                  value={editFuelForm.fuelLitres}
+                                  onChange={(e) => setEditFuelForm((f) => ({ ...f, fuelLitres: e.target.value }))}
+                                  className="rounded border border-slate-600 bg-slate-800 px-2 py-1 text-sm text-slate-100 w-20 text-right"
+                                />
+                              </td>
+                              <td className="px-4 py-2 text-sm text-slate-500">—</td>
+                              <td className="px-4 py-2 text-sm text-slate-500">—</td>
+                              <td className="px-4 py-2 text-sm text-slate-500">—</td>
+                              <td className="px-4 py-2">
+                                <input
+                                  type="number"
+                                  step="1"
+                                  value={editFuelForm.odometerKm}
+                                  onChange={(e) => setEditFuelForm((f) => ({ ...f, odometerKm: e.target.value }))}
+                                  placeholder="Odometer"
+                                  className="rounded border border-slate-600 bg-slate-800 px-2 py-1 text-sm text-slate-100 w-24 text-right"
+                                />
+                              </td>
+                              <td className="px-4 py-2 text-sm text-slate-500">—</td>
+                              <td className="px-4 py-2 text-right">
+                                <button
+                                  onClick={() => handleUpdateFuel(entry.id)}
+                                  disabled={saving || !editFuelForm.date || !editFuelForm.fuelPrice || !editFuelForm.fuelLitres || !editFuelForm.odometerKm}
+                                  className="text-primary-400 hover:text-primary-300 text-sm mr-2"
+                                >
+                                  Save
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setEditingFuelId(null);
+                                  }}
+                                  disabled={saving}
+                                  className="text-slate-400 hover:text-slate-200 text-sm mr-2"
+                                >
+                                  Cancel
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteFuel(entry.id)}
+                                  disabled={saving}
+                                  className="text-red-400 hover:text-red-300 text-sm"
+                                >
+                                  Delete
+                                </button>
+                              </td>
+                            </>
+                          ) : (
+                            <>
+                              <td className="px-4 py-3 text-sm text-slate-200">{formatDate(entry.date)}</td>
+                              <td className="px-4 py-3 text-sm text-right text-slate-300">
+                                ${(entry.fuelPrice ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                              </td>
+                              <td className="px-4 py-3 text-sm text-right text-slate-300">
+                                {(entry.fuelLitres ?? 0).toLocaleString(undefined, { minimumFractionDigits: 3 })}L
+                              </td>
+                              <td className="px-4 py-3 text-sm text-right text-slate-300">
+                                {pricePerLitre != null
+                                  ? `$${pricePerLitre.toLocaleString(undefined, { minimumFractionDigits: 4 })}/L`
+                                  : "—"}
+                              </td>
+                              <td className="px-4 py-3 text-sm text-right text-slate-300">
+                                {lPer100km != null ? lPer100km.toFixed(2) : "—"}
+                              </td>
+                              <td className="px-4 py-3 text-sm text-right text-slate-300">
+                                {mpg != null ? mpg.toFixed(1) : "—"}
+                              </td>
+                              <td className="px-4 py-3 text-sm text-right text-slate-300">
+                                {(entry.odometerKm ?? 0).toLocaleString()} km
+                              </td>
+                              <td className="px-4 py-3 text-sm text-right text-slate-300">
+                                {distanceKm > 0 ? `${distanceKm.toLocaleString()} km` : "—"}
+                              </td>
+                              <td className="px-4 py-3 text-right">
+                                <button
+                                  onClick={() => {
+                                    setEditingFuelId(entry.id);
+                                    setEditFuelForm({
+                                      date: entry.date ?? "",
+                                      fuelPrice: String(entry.fuelPrice ?? ""),
+                                      fuelLitres: String(entry.fuelLitres ?? ""),
+                                      odometerKm: String(entry.odometerKm ?? ""),
+                                    });
+                                  }}
+                                  disabled={saving}
+                                  className="text-slate-400 hover:text-slate-200 text-sm mr-2"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteFuel(entry.id)}
+                                  disabled={saving}
+                                  className="text-red-400 hover:text-red-300 text-sm"
+                                >
+                                  Delete
+                                </button>
+                              </td>
+                            </>
+                          )}
                         </tr>
                       );
                     })}
