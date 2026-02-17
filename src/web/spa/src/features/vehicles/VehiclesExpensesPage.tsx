@@ -361,6 +361,7 @@ const VehiclesExpensesPage: React.FC = () => {
       const imports: { vehicleName: string; entries: { date: string; fuelPrice: number; fuelLitres: number; odometerKm: number }[] }[] = [];
       const colMap: Record<string, number> = {};
       const headerRow = rows[0] as (string | number)[];
+      // Map columns by header content so columns can be in any order
       for (let i = 0; i < headerRow.length; i++) {
         const h = String(headerRow[i] ?? "").toLowerCase().trim();
         if (!h) continue;
@@ -368,13 +369,15 @@ const VehiclesExpensesPage: React.FC = () => {
         else if (h.includes("litre") || h.includes("liter") || h.includes("volume")) colMap.fuelLitres = i;
         else if (h.includes("price") || h.includes("cost") || (h.includes("fuel") && !h.includes("litre"))) colMap.fuelPrice = i;
         else if (h.includes("odometer") || h.includes("mileage") || (h.includes("km") && !h.includes("l/100"))) colMap.odometerKm = i;
-        else if (h.includes("vehicle")) colMap.vehicle = i;
+        else if (h.includes("vehicle") || h === "car" || h.includes("car name")) colMap.vehicle = i;
       }
       const dateCol = colMap.date ?? 0;
       const priceCol = colMap.fuelPrice ?? 1;
       const litresCol = colMap.fuelLitres ?? 2;
       const odoCol = colMap.odometerKm ?? 3;
-      const vehicleCol = colMap.vehicle ?? 4;
+      // Only read vehicle from a column we explicitly detected; otherwise use single default vehicle for all rows.
+      // Using a default index (e.g. 4) when Vehicle column is missing can read Odometer/Date and create one vehicle per row.
+      const vehicleCol = colMap.vehicle;
       const byVehicle: Record<string, { date: string; fuelPrice: number; fuelLitres: number; odometerKm: number }[]> = {};
       for (let r = 1; r < rows.length; r++) {
         const row = rows[r] as (string | number)[];
@@ -383,7 +386,7 @@ const VehiclesExpensesPage: React.FC = () => {
         const priceVal = row[priceCol];
         const litresVal = row[litresCol];
         const odoVal = row[odoCol];
-        const vehicleVal = row[vehicleCol];
+        const vehicleVal = vehicleCol !== undefined ? row[vehicleCol] : undefined;
         if (dateVal == null && priceVal == null && litresVal == null && odoVal == null) continue;
         if (dateVal === "" && priceVal === "" && litresVal === "" && odoVal === "") continue;
         let dateStr = "";
