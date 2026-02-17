@@ -252,6 +252,28 @@ def handler(event, context):
             return getBrandingLogo(event)
         if method == "POST" and path == "/branding/logo":
             return postBrandingLogoUpload(event)
+        if method == "GET" and path == "/branding/hero":
+            return getBrandingHero(event)
+        if method == "POST" and path == "/branding/hero":
+            return postBrandingHeroUpload(event)
+        if method == "PUT" and path == "/branding/hero":
+            return putBrandingHero(event)
+        if method == "GET" and path == "/branding/themes":
+            return getBrandingThemes(event)
+        if method == "POST" and path == "/branding/themes":
+            return postBrandingTheme(event)
+        if method == "GET" and path == "/branding/active-theme":
+            return getBrandingActiveTheme(event)
+        if method == "PUT" and path == "/branding/active-theme":
+            return putBrandingActiveTheme(event)
+        if method == "PUT" and path.startswith("/branding/themes/") and path != "/branding/themes/":
+            theme_id = (event.get("pathParameters") or {}).get("id") or path.split("/branding/themes/")[-1].strip("/")
+            if theme_id:
+                return putBrandingTheme(event, theme_id)
+        if method == "DELETE" and path.startswith("/branding/themes/") and path != "/branding/themes/":
+            theme_id = (event.get("pathParameters") or {}).get("id") or path.split("/branding/themes/")[-1].strip("/")
+            if theme_id:
+                return deleteBrandingTheme(event, theme_id)
         if method == "GET" and path == "/internet-dashboard":
             return getInternetDashboard(event)
         if method == "GET" and path == "/recommended/highlights":
@@ -2062,6 +2084,326 @@ def postBrandingLogoUpload(event):
         return jsonResponse({"uploadUrl": upload_url, "key": logo_key, "alt": alt})
     except Exception as e:
         logger.exception("postBrandingLogoUpload error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def _requireAdmin(event):
+    """Return (user, None) or (None, error_response)."""
+    user = getEffectiveUserInfo(event)
+    if not user.get("userId"):
+        return None, jsonResponse({"error": "Unauthorized"}, 401)
+    if "admin" not in user.get("groups", []):
+        return None, jsonResponse({"error": "Forbidden: admin role required"}, 403)
+    return user, None
+
+
+def getBrandingHero(event):
+    """GET /branding/hero - Public: hero image URL, opacity, tagline, headline, subtext."""
+    if not TABLE_NAME:
+        return jsonResponse({})
+    try:
+        import boto3
+        region = os.environ.get("AWS_REGION", "us-east-1")
+        dynamodb = boto3.client("dynamodb", region_name=region)
+        resp = dynamodb.get_item(
+            TableName=TABLE_NAME,
+            Key={"PK": {"S": "BRANDING"}, "SK": {"S": "HERO#DEFAULT"}},
+        )
+        out = {}
+        if "Item" in resp:
+            item = resp["Item"]
+            img_key = item.get("imageKey", {}).get("S")
+            if img_key and MEDIA_BUCKET:
+                s3 = boto3.client("s3", region_name=region)
+                out["imageUrl"] = s3.generate_presigned_url(
+                    "get_object",
+                    Params={"Bucket": MEDIA_BUCKET, "Key": img_key},
+                    ExpiresIn=3600,
+                )
+            op = item.get("opacity", {}).get("N")
+            if op is not None:
+                out["opacity"] = float(op)
+            for k in ("tagline", "headline", "subtext"):
+                v = item.get(k, {}).get("S")
+                if v is not None:
+                    out[k] = v
+        return jsonResponse(out)
+    except Exception as e:
+        logger.exception("getBrandingHero error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def postBrandingHeroUpload(event):
+    """POST /branding/hero - Admin: presigned PUT URL + persist hero image metadata."""
+    user, err = _requireAdmin(event)
+    if err:
+        return err
+    if not TABLE_NAME or not MEDIA_BUCKET:
+        return jsonResponse({"error": "Not configured"}, 500)
+    try:
+        import boto3
+        import json as json_mod
+        import uuid as uuid_mod
+        from datetime import datetime
+        body = json_mod.loads(event.get("body", "{}"))
+        content_type = (body.get("contentType") or "image/png").strip()
+        allowed = {"image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp"}
+        if content_type not in allowed:
+            return jsonResponse({"error": "contentType must be image/png, image/jpeg, image/gif, or image/webp"}, 400)
+        ext = "png"
+        if "jpeg" in content_type or "jpg" in content_type:
+            ext = "jpg"
+        elif "gif" in content_type:
+            ext = "gif"
+        elif "webp" in content_type:
+            ext = "webp"
+        region = os.environ.get("AWS_REGION", "us-east-1")
+        unique = str(uuid_mod.uuid4())
+        hero_key = f"branding/hero/{unique}.{ext}"
+        s3 = boto3.client("s3", region_name=region)
+        upload_url = s3.generate_presigned_url(
+            "put_object",
+            Params={"Bucket": MEDIA_BUCKET, "Key": hero_key, "ContentType": content_type},
+            ExpiresIn=300,
+        )
+        dynamodb = boto3.client("dynamodb", region_name=region)
+        now = datetime.utcnow().isoformat() + "Z"
+        dynamodb.put_item(
+            TableName=TABLE_NAME,
+            Item={
+                "PK": {"S": "BRANDING"},
+                "SK": {"S": "HERO#DEFAULT"},
+                "imageKey": {"S": hero_key},
+                "updatedAt": {"S": now},
+                "uploadedBy": {"S": user.get("userId", "")},
+                "entityType": {"S": "BRANDING"},
+                "entitySk": {"S": "HERO#DEFAULT"},
+            },
+        )
+        return jsonResponse({"uploadUrl": upload_url, "key": hero_key})
+    except Exception as e:
+        logger.exception("postBrandingHeroUpload error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def putBrandingHero(event):
+    """PUT /branding/hero - Admin: update opacity, tagline, headline, subtext."""
+    user, err = _requireAdmin(event)
+    if err:
+        return err
+    if not TABLE_NAME:
+        return jsonResponse({"error": "Not configured"}, 500)
+    try:
+        import boto3
+        import json as json_mod
+        from datetime import datetime
+        body = json_mod.loads(event.get("body", "{}"))
+        region = os.environ.get("AWS_REGION", "us-east-1")
+        dynamodb = boto3.client("dynamodb", region_name=region)
+        key = {"PK": {"S": "BRANDING"}, "SK": {"S": "HERO#DEFAULT"}}
+        resp = dynamodb.get_item(TableName=TABLE_NAME, Key=key)
+        item = dict(resp.get("Item") or {})
+        now = datetime.utcnow().isoformat() + "Z"
+        has_updates = False
+        for k in ("opacity", "tagline", "headline", "subtext"):
+            v = body.get(k)
+            if v is not None:
+                has_updates = True
+                if k == "opacity":
+                    item[k] = {"N": str(float(v))}
+                else:
+                    item[k] = {"S": str(v)}
+        if not has_updates:
+            return jsonResponse({"error": "No fields to update"}, 400)
+        item["PK"] = {"S": "BRANDING"}
+        item["SK"] = {"S": "HERO#DEFAULT"}
+        item["updatedAt"] = {"S": now}
+        item.setdefault("entityType", {"S": "BRANDING"})
+        item.setdefault("entitySk", {"S": "HERO#DEFAULT"})
+        dynamodb.put_item(TableName=TABLE_NAME, Item=item)
+        return jsonResponse({"ok": True})
+    except Exception as e:
+        logger.exception("putBrandingHero error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def getBrandingThemes(event):
+    """GET /branding/themes - List all themes."""
+    if not TABLE_NAME:
+        return jsonResponse({"themes": []})
+    try:
+        import boto3
+        region = os.environ.get("AWS_REGION", "us-east-1")
+        dynamodb = boto3.client("dynamodb", region_name=region)
+        resp = dynamodb.query(
+            TableName=TABLE_NAME,
+            KeyConditionExpression="PK = :pk AND begins_with(SK, :sk)",
+            ExpressionAttributeValues={":pk": {"S": "BRANDING"}, ":sk": {"S": "THEME#"}},
+        )
+        themes = []
+        for item in resp.get("Items", []):
+            sk = item.get("SK", {}).get("S", "")
+            theme_id = sk.replace("THEME#", "", 1) if sk.startswith("THEME#") else ""
+            if not theme_id:
+                continue
+            themes.append({
+                "id": theme_id,
+                "name": item.get("name", {}).get("S", theme_id),
+            })
+        return jsonResponse({"themes": themes})
+    except Exception as e:
+        logger.exception("getBrandingThemes error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def postBrandingTheme(event):
+    """POST /branding/themes - Admin: create theme."""
+    user, err = _requireAdmin(event)
+    if err:
+        return err
+    if not TABLE_NAME:
+        return jsonResponse({"error": "Not configured"}, 500)
+    try:
+        import boto3
+        import json as json_mod
+        import re
+        from datetime import datetime
+        body = json_mod.loads(event.get("body", "{}"))
+        name = (body.get("name") or "").strip()
+        if not name:
+            return jsonResponse({"error": "name is required"}, 400)
+        theme_id = re.sub(r"[^a-zA-Z0-9_-]", "", name.lower().replace(" ", "-")) or "default"
+        region = os.environ.get("AWS_REGION", "us-east-1")
+        dynamodb = boto3.client("dynamodb", region_name=region)
+        sk = f"THEME#{theme_id}"
+        dynamodb.put_item(
+            TableName=TABLE_NAME,
+            Item={
+                "PK": {"S": "BRANDING"},
+                "SK": {"S": sk},
+                "name": {"S": name},
+                "createdAt": {"S": datetime.utcnow().isoformat() + "Z"},
+                "entityType": {"S": "BRANDING"},
+                "entitySk": {"S": sk},
+            },
+        )
+        return jsonResponse({"id": theme_id, "name": name})
+    except Exception as e:
+        logger.exception("postBrandingTheme error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def putBrandingTheme(event, theme_id):
+    """PUT /branding/themes/{id} - Admin: update theme."""
+    user, err = _requireAdmin(event)
+    if err:
+        return err
+    if not TABLE_NAME:
+        return jsonResponse({"error": "Not configured"}, 500)
+    try:
+        import boto3
+        import json as json_mod
+        from datetime import datetime
+        body = json_mod.loads(event.get("body", "{}"))
+        name = (body.get("name") or "").strip()
+        if not name:
+            return jsonResponse({"error": "name is required"}, 400)
+        region = os.environ.get("AWS_REGION", "us-east-1")
+        dynamodb = boto3.client("dynamodb", region_name=region)
+        key = {"PK": {"S": "BRANDING"}, "SK": {"S": f"THEME#{theme_id}"}}
+        dynamodb.update_item(
+            TableName=TABLE_NAME,
+            Key=key,
+            UpdateExpression="SET #n = :n, updatedAt = :now",
+            ExpressionAttributeNames={"#n": "name"},
+            ExpressionAttributeValues={":n": {"S": name}, ":now": {"S": datetime.utcnow().isoformat() + "Z"}},
+        )
+        return jsonResponse({"id": theme_id, "name": name})
+    except Exception as e:
+        logger.exception("putBrandingTheme error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def deleteBrandingTheme(event, theme_id):
+    """DELETE /branding/themes/{id} - Admin: delete theme. Fails if in use."""
+    user, err = _requireAdmin(event)
+    if err:
+        return err
+    if not TABLE_NAME:
+        return jsonResponse({"error": "Not configured"}, 500)
+    try:
+        import boto3
+        region = os.environ.get("AWS_REGION", "us-east-1")
+        dynamodb = boto3.client("dynamodb", region_name=region)
+        active_resp = dynamodb.get_item(
+            TableName=TABLE_NAME,
+            Key={"PK": {"S": "BRANDING"}, "SK": {"S": "ACTIVE#DEFAULT"}},
+        )
+        active_id = None
+        if "Item" in active_resp:
+            active_id = active_resp["Item"].get("themeId", {}).get("S")
+        if active_id == theme_id:
+            return jsonResponse({"error": "Cannot delete the theme currently in use"}, 400)
+        dynamodb.delete_item(
+            TableName=TABLE_NAME,
+            Key={"PK": {"S": "BRANDING"}, "SK": {"S": f"THEME#{theme_id}"}},
+        )
+        return jsonResponse({"deleted": True})
+    except Exception as e:
+        logger.exception("deleteBrandingTheme error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def getBrandingActiveTheme(event):
+    """GET /branding/active-theme - Public: current theme id."""
+    if not TABLE_NAME:
+        return jsonResponse({"themeId": None})
+    try:
+        import boto3
+        region = os.environ.get("AWS_REGION", "us-east-1")
+        dynamodb = boto3.client("dynamodb", region_name=region)
+        resp = dynamodb.get_item(
+            TableName=TABLE_NAME,
+            Key={"PK": {"S": "BRANDING"}, "SK": {"S": "ACTIVE#DEFAULT"}},
+        )
+        theme_id = None
+        if "Item" in resp:
+            theme_id = resp["Item"].get("themeId", {}).get("S")
+        return jsonResponse({"themeId": theme_id})
+    except Exception as e:
+        logger.exception("getBrandingActiveTheme error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def putBrandingActiveTheme(event):
+    """PUT /branding/active-theme - Admin: set active theme."""
+    user, err = _requireAdmin(event)
+    if err:
+        return err
+    if not TABLE_NAME:
+        return jsonResponse({"error": "Not configured"}, 500)
+    try:
+        import boto3
+        import json as json_mod
+        from datetime import datetime
+        body = json_mod.loads(event.get("body", "{}"))
+        theme_id = (body.get("themeId") or "").strip() or None
+        region = os.environ.get("AWS_REGION", "us-east-1")
+        dynamodb = boto3.client("dynamodb", region_name=region)
+        dynamodb.put_item(
+            TableName=TABLE_NAME,
+            Item={
+                "PK": {"S": "BRANDING"},
+                "SK": {"S": "ACTIVE#DEFAULT"},
+                "themeId": {"S": theme_id or ""},
+                "updatedAt": {"S": datetime.utcnow().isoformat() + "Z"},
+                "entityType": {"S": "BRANDING"},
+                "entitySk": {"S": "ACTIVE#DEFAULT"},
+            },
+        )
+        return jsonResponse({"themeId": theme_id})
+    except Exception as e:
+        logger.exception("putBrandingActiveTheme error")
         return jsonResponse({"error": str(e)}, 500)
 
 

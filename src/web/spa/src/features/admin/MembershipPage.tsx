@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Bars3Icon, UserGroupIcon, Squares2X2Icon, KeyIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { useAuth, hasRole } from "../../shell/AuthContext";
 import { AdminPageHeader } from "./AdminPageHeader";
-import { AdminTabs } from "./AdminTabs";
 import { fetchWithAuth } from "../../utils/api";
 
 const ROLE_DISPLAY: Record<string, string> = {
@@ -135,6 +135,7 @@ const MembershipPage: React.FC = () => {
 
   const canAccess = hasRole(user ?? null, "manager");
   const isSuperAdmin = user?.role === "superadmin";
+  const [membershipSidebarOpen, setMembershipSidebarOpen] = useState(false);
 
   const loadUsers = async (nextToken?: string) => {
     const apiBase = getApiBaseUrl();
@@ -529,22 +530,86 @@ const MembershipPage: React.FC = () => {
     );
   }
 
-  const membershipTabs = [
-    { id: "users", label: "Users" },
-    { id: "groups", label: "Groups" },
-    ...(isSuperAdmin ? [{ id: "roles", label: "Roles" }] : []),
+  const membershipNavItems = [
+    { id: "users" as const, label: "Users", icon: UserGroupIcon },
+    { id: "groups" as const, label: "Groups", icon: Squares2X2Icon },
+    ...(isSuperAdmin ? [{ id: "roles" as const, label: "Roles", icon: KeyIcon }] : []),
   ];
 
+  const sidebarContent = (
+    <nav className="flex flex-col gap-0.5 py-2" aria-label="Custom groups navigation">
+      {membershipNavItems.map((item) => (
+        <button
+          key={item.id}
+          type="button"
+          onClick={() => {
+            setTab(item.id);
+            setMembershipSidebarOpen(false);
+          }}
+          className={`flex items-center gap-3 px-4 py-2.5 text-sm rounded-r-md transition-colors text-left w-full ${
+            activeTab === item.id
+              ? "bg-slate-800 text-primary-400 font-medium border-l-2 border-primary-500 -ml-px"
+              : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"
+          }`}
+        >
+          <item.icon className="w-5 h-5 shrink-0" />
+          {item.label}
+        </button>
+      ))}
+    </nav>
+  );
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <AdminPageHeader title="Membership" description="Manage users and groups." />
 
-      <AdminTabs
-        tabs={membershipTabs}
-        activeId={activeTab}
-        onSelect={(id) => setTab(id as "users" | "groups" | "roles")}
-      />
+      {/* Desktop: left sidebar + content */}
+      <div className="flex min-h-0 flex-1 gap-0">
+        <aside className="hidden md:flex md:w-52 md:flex-col md:shrink-0 border-r border-slate-800 bg-slate-950/50 rounded-lg pr-2">
+          {sidebarContent}
+        </aside>
 
+        {/* Mobile: hamburger + overlay sidebar */}
+        <div className="flex-1 min-w-0">
+          <div className="md:hidden flex items-center gap-2 mb-4">
+            <button
+              type="button"
+              onClick={() => setMembershipSidebarOpen(true)}
+              className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
+              aria-label="Open membership menu"
+            >
+              <Bars3Icon className="w-6 h-6" />
+            </button>
+            <span className="text-sm font-medium text-slate-400">
+              {membershipNavItems.find((i) => i.id === activeTab)?.label ?? "Menu"}
+            </span>
+          </div>
+          {membershipSidebarOpen && (
+            <>
+              <div
+                className="fixed inset-0 z-40 bg-slate-950/80 backdrop-blur-sm md:hidden"
+                aria-hidden
+                onClick={() => setMembershipSidebarOpen(false)}
+              />
+              <aside
+                className="fixed top-0 left-0 z-50 w-64 h-full bg-slate-950 border-r border-slate-800 md:hidden overflow-y-auto pt-16"
+                aria-label="Membership navigation"
+              >
+                <button
+                  type="button"
+                  onClick={() => setMembershipSidebarOpen(false)}
+                  className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white"
+                  aria-label="Close menu"
+                >
+                  <XMarkIcon className="w-6 h-6" />
+                </button>
+                {sidebarContent}
+              </aside>
+            </>
+          )}
+
+          {/* Main content */}
+          <div className="space-y-6">
       {activeTab === "users" && (
         <>
           <div className="flex items-center gap-2 text-sm">
@@ -922,6 +987,9 @@ const MembershipPage: React.FC = () => {
           </section>
         </>
       )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

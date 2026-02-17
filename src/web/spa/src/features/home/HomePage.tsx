@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ClipboardDocumentIcon } from "@heroicons/react/24/outline";
 import { useAuth, canAccessSquash, canAccessMemes } from "../../shell/AuthContext";
+import { useBranding } from "../../shell/BrandingContext";
 
 interface HomeMeme {
   PK: string;
@@ -24,6 +25,7 @@ const ROWS_TO_SHOW = 2;
 
 const HomePage: React.FC = () => {
   const { user } = useAuth();
+  const { heroTagline, heroHeadline, heroSubtext, heroImageUrl, heroOpacity } = useBranding();
   const showSquash = canAccessSquash(user);
   const showMemes = canAccessMemes(user);
   const [memes, setMemes] = useState<HomeMeme[]>([]);
@@ -75,6 +77,16 @@ const HomePage: React.FC = () => {
     <div className="space-y-8">
       <section className="card relative overflow-hidden px-4 py-8 sm:px-6 sm:py-10">
         <div className="absolute inset-0 bg-gradient-to-br from-primary-500/10 via-transparent to-brand-teal/10 pointer-events-none" />
+        {heroImageUrl && (
+          <div
+            className="absolute inset-0 bg-cover bg-center pointer-events-none"
+            style={{
+              backgroundImage: `url(${heroImageUrl})`,
+              opacity: heroOpacity,
+            }}
+          />
+        )}
+        <div className="absolute inset-0 bg-slate-950/60 pointer-events-none" />
         <div className="relative max-w-xl space-y-4">
           <motion.p
             className="text-xs font-semibold uppercase tracking-[0.25em] text-secondary-300"
@@ -82,7 +94,7 @@ const HomePage: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
           >
-            Shared internet intelligence
+            {heroTagline}
           </motion.p>
           <motion.h1
             className="text-3xl sm:text-4xl font-display font-bold text-gradient tracking-tight"
@@ -90,7 +102,7 @@ const HomePage: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
           >
-            Discover, rate, and enrich the sites that matter.
+            {heroHeadline}
           </motion.h1>
           <motion.p
             className="text-sm text-secondary-300"
@@ -98,7 +110,7 @@ const HomePage: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
           >
-            A living index of websites, media, and experiments – curated by admins, enriched by everyone.
+            {heroSubtext}
           </motion.p>
           <motion.div
             className="flex flex-wrap gap-3 pt-2"
