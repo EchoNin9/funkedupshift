@@ -1,7 +1,19 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { Menu } from "@headlessui/react";
-import { Bars3Icon, ChevronDownIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import {
+  Bars3Icon,
+  ChevronDownIcon,
+  XMarkIcon,
+  GlobeAltIcon,
+  SparklesIcon,
+  PhotoIcon,
+  TrophyIcon,
+  CurrencyDollarIcon,
+  TruckIcon,
+  Cog6ToothIcon,
+  UserGroupIcon,
+} from "@heroicons/react/24/outline";
 import { useAuth } from "./AuthContext";
 import { useBranding } from "./BrandingContext";
 import { getPublicModulesBySection, getVisiblePublicModules, getVisibleAdminModules } from "../config/modules";
@@ -18,31 +30,49 @@ const SECTION_LABELS: Record<string, string> = {
   vehicles: "Vehicles",
 };
 
+const SECTION_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  discover: GlobeAltIcon,
+  recommended: SparklesIcon,
+  memes: PhotoIcon,
+  squash: TrophyIcon,
+  financial: CurrencyDollarIcon,
+  vehicles: TruckIcon,
+};
+
 const NAV_SECTIONS = ["discover", "recommended", "memes", "squash", "financial", "vehicles"] as const;
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   `transition-colors duration-200 ${isActive ? "text-primary-400 font-semibold" : "text-slate-300 hover:text-white"}`;
 
-function NavSectionDropdown({ items, label }: { items: PublicModule[]; label: string }) {
+function NavSectionDropdown({
+  items,
+  label,
+  icon: Icon,
+}: {
+  items: PublicModule[];
+  label: string;
+  icon?: React.ComponentType<{ className?: string }>;
+}) {
   const location = useLocation();
   const isActive = items.some((m) => location.pathname === m.path || location.pathname.startsWith(m.path + "/"));
   return (
     <Menu as="div" className="relative">
       <Menu.Button
-        className={`flex items-center gap-1 text-sm font-medium outline-none ${navLinkClass({ isActive })}`}
+        className={`flex items-center gap-2 text-sm font-medium outline-none ${navLinkClass({ isActive })}`}
       >
+        {Icon && <Icon className="w-4 h-4 shrink-0" aria-hidden />}
         {label}
-        <ChevronDownIcon className="w-4 h-4" aria-hidden />
+        <ChevronDownIcon className="w-4 h-4 shrink-0" aria-hidden />
       </Menu.Button>
       <Menu.Items
-        className="absolute left-0 top-full mt-1 min-w-[180px] rounded-lg border border-slate-700 bg-slate-900 py-1 shadow-xl outline-none z-50"
+        className="absolute left-0 top-full mt-1 min-w-[200px] rounded-lg border border-slate-700 bg-slate-900 py-1 shadow-xl outline-none z-50"
       >
         {items.map((m) => (
           <Menu.Item key={m.path}>
             {({ active }) => (
               <NavLink
                 to={m.path}
-                className={`block px-4 py-2 text-sm transition-colors ${
+                className={`flex items-center gap-2 px-4 py-2.5 text-sm transition-colors ${
                   active ? "bg-slate-800 text-white" : "text-slate-300"
                 } ${location.pathname === m.path ? "text-primary-400 font-medium" : ""}`}
               >
@@ -125,14 +155,22 @@ export function Header() {
           </span>
         </Link>
 
-        {/* Desktop nav */}
-        <div className="hidden md:flex items-center gap-4 lg:gap-6 text-sm font-medium">
+        {/* Desktop nav - Webflow-style with icons and typography hierarchy */}
+        <div className="hidden md:flex items-center gap-1 lg:gap-2 text-sm font-medium">
           {NAV_SECTIONS.map((section) => {
             const items = (bySection[section] ?? []).filter((m) => m.id !== "profile");
             if (items.length === 0) return null;
+            const Icon = SECTION_ICONS[section];
             if (items.length === 1) {
               return (
-                <NavLink key={items[0].path} to={items[0].path} className={navLinkClass}>
+                <NavLink
+                  key={items[0].path}
+                  to={items[0].path}
+                  className={({ isActive }) =>
+                    `flex items-center gap-2 px-3 py-2 rounded-md transition-colors ${navLinkClass({ isActive })}`
+                  }
+                >
+                  {Icon && <Icon className="w-4 h-4 shrink-0" aria-hidden />}
                   {items[0].label}
                 </NavLink>
               );
@@ -142,11 +180,18 @@ export function Header() {
                 key={section}
                 items={items}
                 label={SECTION_LABELS[section] ?? section}
+                icon={Icon}
               />
             );
           })}
           {showAdminLink && (
-            <NavLink to="/admin" className={navLinkClass}>
+            <NavLink
+              to="/admin"
+              className={({ isActive }) =>
+                `flex items-center gap-2 px-3 py-2 rounded-md transition-colors ${navLinkClass({ isActive })}`
+              }
+            >
+              <Cog6ToothIcon className="w-4 h-4 shrink-0" aria-hidden />
               Admin
             </NavLink>
           )}

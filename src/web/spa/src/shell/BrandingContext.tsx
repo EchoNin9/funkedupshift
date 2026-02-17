@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { fetchWithAuthOptional } from "../utils/api";
 
 interface LogoMeta {
@@ -6,10 +6,20 @@ interface LogoMeta {
   alt: string;
 }
 
+export const DEFAULT_HERO_TAGLINE = "Shared internet intelligence";
+export const DEFAULT_HERO_HEADLINE = "Discover, rate, and enrich the sites that matter.";
+export const DEFAULT_HERO_SUBTEXT =
+  "A living index of websites, media, and experiments – curated by admins, enriched by everyone.";
+
 interface BrandingContextValue {
   logo: LogoMeta | null;
-  /** Site name for header/footer. From API or fallback. Ready for multi-domain. */
   siteName: string;
+  heroTagline: string;
+  heroHeadline: string;
+  heroSubtext: string;
+  heroImageUrl: string | null;
+  heroOpacity: number;
+  refreshBranding: () => Promise<void>;
 }
 
 const BrandingContext = createContext<BrandingContextValue | undefined>(undefined);
@@ -25,42 +35,86 @@ const DEFAULT_SITE_NAME = "Funked Up Shift";
 export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [logo, setLogo] = useState<LogoMeta | null>(null);
   const [siteName, setSiteName] = useState<string>(DEFAULT_SITE_NAME);
+  const [heroTagline, setHeroTagline] = useState<string>(DEFAULT_HERO_TAGLINE);
+  const [heroHeadline, setHeroHeadline] = useState<string>(DEFAULT_HERO_HEADLINE);
+  const [heroSubtext, setHeroSubtext] = useState<string>(DEFAULT_HERO_SUBTEXT);
+  const [heroImageUrl, setHeroImageUrl] = useState<string | null>(null);
+  const [heroOpacity, setHeroOpacity] = useState<number>(0.4);
 
-  useEffect(() => {
+  const fetchBranding = useCallback(async () => {
     const apiBase = getApiBaseUrl();
     if (!apiBase) return;
 
-    let cancelled = false;
     const domain = typeof window !== "undefined" ? window.location.hostname : "";
-    const url = domain ? `${apiBase}/branding/logo?domain=${encodeURIComponent(domain)}` : `${apiBase}/branding/logo`;
+    const logoUrl = domain ? `${apiBase}/branding/logo?domain=${encodeURIComponent(domain)}` : `${apiBase}/branding/logo`;
 
-    (async () => {
-      try {
-        const resp = await fetchWithAuthOptional(url);
-        if (!resp.ok) return;
-        const contentType = resp.headers.get("Content-Type") || "";
-        if (!contentType.includes("application/json")) return;
-        const data = await resp.json();
-        if (cancelled) return;
-        if (data && data.url) {
-          setLogo({ url: String(data.url), alt: String(data.alt || DEFAULT_SITE_NAME) });
+    try {
+      const [logoResp, heroResp] = await Promise.all([
+        fetchWithAuthOptional(logoUrl),
+        fetchWithAuthOptional(`${apiBase}/branding/hero`),
+      ]);
+
+      if (logoResp.ok) {
+        const contentType = logoResp.headers.get("Content-Type") || "";
+        if (contentType.includes("application/json")) {
+          const data = await logoResp.json();
+          if (data && data.url) {
+            setLogo({ url: String(data.url), alt: String(data.alt || DEFAULT_SITE_NAME) });
+          }
+          if (data?.siteName && typeof data.siteName === "string" && data.siteName.trim()) {
+            setSiteName(data.siteName.trim());
+          } else if (data?.alt && typeof data.alt === "string" && data.alt.trim()) {
+            setSiteName(data.alt.trim());
+          }
         }
-        if (data?.siteName && typeof data.siteName === "string" && data.siteName.trim()) {
-          setSiteName(data.siteName.trim());
-        } else if (data?.alt && typeof data.alt === "string" && data.alt.trim()) {
-          setSiteName(data.alt.trim());
-        }
-      } catch {
-        // Ignore; logo is optional (avoids Unexpected token '<' when response is HTML).
       }
-    })();
 
+      if (heroResp.ok) {
+        const contentType = heroResp.headers.get("Content-Type") || "";
+        if (contentType.includes("application/json")) {
+          const data = await heroResp.json();
+          if (data?.tagline != null) setHeroTagline(String(data.tagline));
+          if (data?.headline != null) setHeroHeadline(String(data.headline));
+          if (data?.subtext != null) setHeroSubtext(String(data.subtext));
+          if (data?.imageUrl != null) setHeroImageUrl(String(data.imageUrl));
+          if (typeof data?.opacity === "number") setHeroOpacity(data.opacity);
+        }
+      }
+    } catch {
+      // Ignore; branding is optional
+    }
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchBranding().then(() => {
+      if (cancelled) return;
+    });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [fetchBranding]);
 
-  return <BrandingContext.Provider value={{ logo, siteName }}>{children}</BrandingContext.Provider>;
+  const refreshBranding = useCallback(async () => {
+    await fetchBranding();
+  }, [fetchBranding]);
+
+  return (
+    <BrandingContext.Provider
+      value={{
+        logo,
+        siteName,
+        heroTagline,
+        heroHeadline,
+        heroSubtext,
+        heroImageUrl,
+        heroOpacity,
+        refreshBranding,
+      }}
+    >
+      {children}
+    </BrandingContext.Provider>
+  );
 };
 
 export function useBranding(): BrandingContextValue {

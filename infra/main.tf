@@ -988,6 +988,81 @@ resource "aws_apigatewayv2_route" "brandingLogoPost" {
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
+# Branding: hero (public)
+resource "aws_apigatewayv2_route" "brandingHeroGet" {
+  api_id    = aws_apigatewayv2_api.main.id
+  route_key = "GET /branding/hero"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+}
+
+# Branding: hero image upload (admin)
+resource "aws_apigatewayv2_route" "brandingHeroPost" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /branding/hero"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+# Branding: hero texts/opacity (admin)
+resource "aws_apigatewayv2_route" "brandingHeroPut" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "PUT /branding/hero"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+# Branding: themes list (public)
+resource "aws_apigatewayv2_route" "brandingThemesGet" {
+  api_id    = aws_apigatewayv2_api.main.id
+  route_key = "GET /branding/themes"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+}
+
+# Branding: create theme (admin)
+resource "aws_apigatewayv2_route" "brandingThemesPost" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /branding/themes"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+# Branding: active theme (public)
+resource "aws_apigatewayv2_route" "brandingActiveThemeGet" {
+  api_id    = aws_apigatewayv2_api.main.id
+  route_key = "GET /branding/active-theme"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+}
+
+# Branding: set active theme (admin)
+resource "aws_apigatewayv2_route" "brandingActiveThemePut" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "PUT /branding/active-theme"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+# Branding: update theme (admin)
+resource "aws_apigatewayv2_route" "brandingThemePut" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "PUT /branding/themes/{id}"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+# Branding: delete theme (admin)
+resource "aws_apigatewayv2_route" "brandingThemeDelete" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "DELETE /branding/themes/{id}"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
 resource "aws_apigatewayv2_route" "internetDashboard" {
   api_id    = aws_apigatewayv2_api.main.id
   route_key = "GET /internet-dashboard"
