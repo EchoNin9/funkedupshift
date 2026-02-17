@@ -6,6 +6,7 @@ import {
   canAccessFinancial,
   canAccessFinancialAdmin,
   canCreateMemes,
+  canAccessMemes,
   canAccessExpenses,
 } from "../shell/AuthContext";
 import {
@@ -17,6 +18,7 @@ import {
   CurrencyDollarIcon,
   Cog6ToothIcon,
   UserGroupIcon,
+  TruckIcon,
 } from "@heroicons/react/24/outline";
 
 /** Public nav modules (sidebar/header links). */
@@ -96,4 +98,81 @@ export function getPublicModulesBySection(user: AuthUser | null): Record<string,
 export function getVisibleAdminModules(user: AuthUser | null): AdminModule[] {
   if (!user) return [];
   return ADMIN_MODULES.filter((m) => hasRole(user, m.minRole));
+}
+
+/** Link for sidebar flyouts. */
+export interface ModuleLink {
+  path: string;
+  label: string;
+}
+
+/** Admin Home sidebar modules (Branding, Membership, Websites, etc.) – excludes Squash/Financial which live under Modules. */
+const ADMIN_HOME_IDS = ["branding", "membership", "websites", "media", "internet-dashboard", "recommended"] as const;
+
+/** Admin modules for the Admin Home sidebar section, in display order. */
+export function getAdminHomeModules(user: AuthUser | null): AdminModule[] {
+  const visible = getVisibleAdminModules(user);
+  const order = ADMIN_HOME_IDS;
+  return order
+    .map((id) => visible.find((m) => m.id === id))
+    .filter((m): m is AdminModule => m != null);
+}
+
+/** Module group for sidebar (Memes, Expenses, Squash, Financial). */
+export interface ModuleGroup {
+  id: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  getLinks: (user: AuthUser | null) => ModuleLink[];
+  isVisible: (user: AuthUser | null) => boolean;
+}
+
+const MODULE_GROUPS: ModuleGroup[] = [
+  {
+    id: "memes",
+    label: "Memes",
+    icon: PhotoIcon,
+    isVisible: (u) => canAccessMemes(u) || canCreateMemes(u),
+    getLinks: (u) => {
+      const links: ModuleLink[] = [{ path: "/memes", label: "Memes Page" }];
+      if (canCreateMemes(u)) links.push({ path: "/memes/create", label: "Meme Generator" });
+      return links;
+    },
+  },
+  {
+    id: "expenses",
+    label: "Expenses",
+    icon: TruckIcon,
+    isVisible: canAccessExpenses,
+    getLinks: () => [{ path: "/vehicles-expenses", label: "Vehicle Expenses" }],
+  },
+  {
+    id: "squash",
+    label: "Squash",
+    icon: TrophyIcon,
+    isVisible: (u) => canAccessSquash(u) || canModifySquash(u),
+    getLinks: (u) => {
+      const links: ModuleLink[] = [];
+      if (canAccessSquash(u)) links.push({ path: "/squash", label: "Squash" });
+      if (canModifySquash(u)) links.push({ path: "/squash-admin", label: "Squash Admin" });
+      return links;
+    },
+  },
+  {
+    id: "financial",
+    label: "Financial",
+    icon: CurrencyDollarIcon,
+    isVisible: (u) => canAccessFinancial(u) || canAccessFinancialAdmin(u),
+    getLinks: (u) => {
+      const links: ModuleLink[] = [{ path: "/financial", label: "Financial Dashboard" }];
+      if (canAccessFinancialAdmin(u)) links.push({ path: "/admin/financial", label: "Financial Admin" });
+      return links;
+    },
+  },
+];
+
+/** Module groups visible to the user for the sidebar. */
+export function getVisibleModuleGroups(user: AuthUser | null): ModuleGroup[] {
+  if (!user) return [];
+  return MODULE_GROUPS.filter((g) => g.isVisible(user) && g.getLinks(user).length > 0);
 }

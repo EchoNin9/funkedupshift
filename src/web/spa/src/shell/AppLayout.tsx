@@ -4,6 +4,8 @@ import { useAuth } from "./AuthContext";
 import { useBranding } from "./BrandingContext";
 import { AdminLayout } from "./AdminLayout";
 import { Header } from "./Header";
+import { LeftSidebar } from "./LeftSidebar";
+import { getVisibleAdminModules, getVisibleModuleGroups } from "../config/modules";
 
 /* Eager-loaded (above-the-fold) */
 import HomePage from "../features/home/HomePage";
@@ -53,6 +55,9 @@ function PageLoader() {
 const AppLayout: React.FC = () => {
   const { user } = useAuth();
   const { siteName } = useBranding();
+  const adminModules = getVisibleAdminModules(user);
+  const moduleGroups = getVisibleModuleGroups(user);
+  const showSidebar = user && (adminModules.length > 0 || moduleGroups.length > 0);
 
   React.useEffect(() => {
     if (siteName) document.title = siteName;
@@ -61,9 +66,10 @@ const AppLayout: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-50 flex flex-col">
       <Header />
+      <LeftSidebar />
 
-      {/* Main content */}
-      <main className="flex-1 min-w-0">
+      {/* Main content - add left padding when sidebar is visible */}
+      <main className={`flex-1 min-w-0 ${showSidebar ? "md:pl-56" : ""}`}>
         <div className="container-max py-6">
           <Suspense fallback={<PageLoader />}>
             <Routes>
