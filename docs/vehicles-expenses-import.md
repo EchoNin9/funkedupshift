@@ -23,7 +23,7 @@ Use the following columns (order can vary; headers are auto-detected):
 | Column | Header keywords | Example |
 |--------|-----------------|---------|
 | Date | date | 2026-02-15 or Excel date serial |
-| Fuel price | price, fuel, cost | 65.00 |
+| Fuel price | price, cost | 65.00 |
 | Fuel litres | litre, liter, volume | 45.5 |
 | Odometer (km) | odometer, mileage, km | 123456 |
 | Vehicle | vehicle | My Car |

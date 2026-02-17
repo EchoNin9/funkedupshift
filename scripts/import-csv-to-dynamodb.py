@@ -35,7 +35,7 @@ def _build_col_map(headers: list) -> dict:
             col_map["date"] = key
         elif _match_column(key, ["litre", "liter", "volume"]):
             col_map["fuelLitres"] = key
-        elif _match_column(key, ["price", "cost"]) or ("fuel" in key.lower() and "litre" not in key.lower()):
+        elif _match_column(key, ["price", "cost"]):
             col_map["fuelPrice"] = key
         elif _match_column(key, ["odometer", "mileage"]) or ("km" in key.lower() and "l/100" not in key.lower()):
             col_map["odometerKm"] = key

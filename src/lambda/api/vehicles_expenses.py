@@ -41,6 +41,13 @@ def _dynamo_item_to_dict(item):
     return out
 
 
+def _normalize_fuel_entry(e):
+    """Ensure fuel entry has camelCase keys for API compatibility (handles legacy fuel_price)."""
+    if "fuelPrice" not in e and "fuel_price" in e:
+        e["fuelPrice"] = e["fuel_price"]
+    return e
+
+
 def list_vehicles(user_id):
     """List all vehicles for a user."""
     if not TABLE_NAME or not user_id:
@@ -200,7 +207,7 @@ def list_fuel_entries(user_id, vehicle_id):
         for item in items:
             sk = item.get("SK", {}).get("S", "")
             fillup_id = sk.replace(prefix, "") if sk.startswith(prefix) else sk.replace(f"VEHICLE#{vehicle_id}#FUEL#", "")
-            e = _dynamo_item_to_dict(item)
+            e = _normalize_fuel_entry(_dynamo_item_to_dict(item))
             e["id"] = fillup_id
             entries.append(e)
         entries.sort(key=lambda x: x.get("date", ""), reverse=True)
@@ -223,7 +230,7 @@ def get_fuel_entry(user_id, vehicle_id, fillup_id):
         )
         if "Item" not in resp:
             return None
-        e = _dynamo_item_to_dict(resp["Item"])
+        e = _normalize_fuel_entry(_dynamo_item_to_dict(resp["Item"]))
         e["id"] = fillup_id
         return e
     except Exception as e:

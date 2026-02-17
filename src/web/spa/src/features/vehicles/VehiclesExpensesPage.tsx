@@ -20,6 +20,7 @@ interface FuelEntry {
   id: string;
   date?: string;
   fuelPrice?: number;
+  fuel_price?: number; // legacy API key
   fuelLitres?: number;
   odometerKm?: number;
   createdAt?: string;
@@ -73,7 +74,7 @@ function calcFuelMetrics(
   entry: FuelEntry,
   prevEntry: FuelEntry | null
 ): { pricePerLitre: number | null; distanceKm: number; lPer100km: number | null; mpg: number | null } {
-  const price = entry.fuelPrice ?? 0;
+  const price = entry.fuelPrice ?? entry.fuel_price ?? 0;
   const litres = entry.fuelLitres ?? 0;
   const odometer = entry.odometerKm ?? 0;
   const prevOdometer = prevEntry?.odometerKm ?? odometer;
@@ -416,7 +417,7 @@ const VehiclesExpensesPage: React.FC = () => {
         if (!h) continue;
         if (h.includes("date")) colMap.date = i;
         else if (h.includes("litre") || h.includes("liter") || h.includes("volume")) colMap.fuelLitres = i;
-        else if (h.includes("price") || h.includes("cost") || (h.includes("fuel") && !h.includes("litre"))) colMap.fuelPrice = i;
+        else if (h.includes("price") || h.includes("cost")) colMap.fuelPrice = i;
         else if (h.includes("odometer") || h.includes("mileage") || (h.includes("km") && !h.includes("l/100"))) colMap.odometerKm = i;
         else if (h.includes("vehicle") || h === "car" || h.includes("car name")) colMap.vehicle = i;
       }
@@ -836,7 +837,7 @@ const VehiclesExpensesPage: React.FC = () => {
                             <>
                               <td className="px-4 py-3 text-sm text-slate-200">{formatDate(entry.date)}</td>
                               <td className="px-4 py-3 text-sm text-right text-slate-300">
-                                ${(entry.fuelPrice ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                ${(entry.fuelPrice ?? entry.fuel_price ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                               </td>
                               <td className="px-4 py-3 text-sm text-right text-slate-300">
                                 {(entry.fuelLitres ?? 0).toLocaleString(undefined, { minimumFractionDigits: 3 })}L
@@ -864,7 +865,7 @@ const VehiclesExpensesPage: React.FC = () => {
                                     setEditingFuelId(entry.id);
                                     setEditFuelForm({
                                       date: entry.date ?? "",
-                                      fuelPrice: String(entry.fuelPrice ?? ""),
+                                      fuelPrice: String(entry.fuelPrice ?? entry.fuel_price ?? ""),
                                       fuelLitres: String(entry.fuelLitres ?? ""),
                                       odometerKm: String(entry.odometerKm ?? ""),
                                     });
