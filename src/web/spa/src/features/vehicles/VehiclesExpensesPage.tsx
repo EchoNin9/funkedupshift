@@ -81,6 +81,68 @@ function formatDate(s: string | undefined): string {
   }
 }
 
+/** Simple SVG line chart - no external deps. */
+function LineChart({
+  data,
+  valueKey,
+  label,
+  formatValue,
+  color,
+}: {
+  data: { date: string; [k: string]: unknown }[];
+  valueKey: string;
+  label: string;
+  formatValue: (v: number) => string;
+  color: string;
+}) {
+  if (data.length === 0) return null;
+  const w = 600;
+  const h = 180;
+  const pad = { t: 20, r: 40, b: 30, l: 50 };
+  const values = data.map((d) => d[valueKey] as number).filter((v) => v != null && !isNaN(v));
+  const minV = Math.min(...values, 0);
+  const maxV = Math.max(...values, minV + 0.01);
+  const range = maxV - minV || 1;
+  const xScale = (i: number) => pad.l + (i / Math.max(1, data.length - 1)) * (w - pad.l - pad.r);
+  const yScale = (v: number) => pad.t + h - pad.t - pad.b - ((v - minV) / range) * (h - pad.t - pad.b);
+  const pts = data
+    .map((d, i) => {
+      const v = d[valueKey] as number;
+      if (v == null || isNaN(v)) return null;
+      return `${xScale(i)},${yScale(v)}`;
+    })
+    .filter(Boolean) as string[];
+  return (
+    <div className="mb-4">
+      <p className="text-xs font-medium text-slate-400 mb-1">{label}</p>
+      <svg viewBox={`0 0 ${w} ${h}`} className="w-full max-w-full" preserveAspectRatio="xMidYMid meet">
+        <line x1={pad.l} y1={h - pad.b} x2={w - pad.r} y2={h - pad.b} stroke="currentColor" strokeOpacity={0.2} />
+        <line x1={pad.l} y1={pad.t} x2={pad.l} y2={h - pad.b} stroke="currentColor" strokeOpacity={0.2} />
+        {pts.length > 1 && (
+          <polyline
+            fill="none"
+            stroke={color}
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            points={pts.join(" ")}
+          />
+        )}
+        {data.map((d, i) => {
+          const v = d[valueKey] as number;
+          if (v == null || isNaN(v)) return null;
+          return (
+            <circle key={i} cx={xScale(i)} cy={yScale(v)} r="3" fill={color} />
+          );
+        })}
+      </svg>
+      <p className="text-xs text-slate-500 mt-1">
+        Range: {formatValue(minV)} – {formatValue(maxV)}
+      </p>
+    </div>
+  );
+}
+
 function calcFuelMetrics(
   entry: FuelEntry,
   prevEntry: FuelEntry | null
@@ -127,6 +189,17 @@ const VehiclesExpensesPage: React.FC = () => {
     fuelPrice: "",
     fuelLitres: "",
     odometerKm: "",
+  });
+  const [limitResultsOpen, setLimitResultsOpen] = useState(false);
+  const [displayGraphOpen, setDisplayGraphOpen] = useState(false);
+  const [filters, setFilters] = useState({
+    startDate: "",
+    endDate: "",
+    sortNewestFirst: true,
+    fuelPriceOp: "higher" as "higher" | "lower",
+    fuelPriceVal: "",
+    pricePerLOp: "higher" as "higher" | "lower",
+    pricePerLVal: "",
   });
 
   const loadVehicles = useCallback(async () => {
@@ -197,6 +270,44 @@ const VehiclesExpensesPage: React.FC = () => {
   useEffect(() => {
     setEditingFuelId(null);
   }, [selectedVehicleId]);
+
+  const pricePerLitreByEntry = React.useMemo(() => {
+    const map = new Map<string, number | null>();
+    for (let i = 0; i < fuelEntries.length; i++) {
+      const prev = fuelEntries[i + 1] ?? null;
+      const { pricePerLitre } = calcFuelMetrics(fuelEntries[i], prev);
+      map.set(fuelEntries[i].id, pricePerLitre);
+    }
+    return map;
+  }, [fuelEntries]);
+
+  const filteredEntries = React.useMemo(() => {
+    let list = [...fuelEntries];
+    const { startDate, endDate, sortNewestFirst, fuelPriceOp, fuelPriceVal, pricePerLOp, pricePerLVal } = filters;
+    if (startDate) list = list.filter((e) => (e.date ?? "") >= startDate);
+    if (endDate) list = list.filter((e) => (e.date ?? "") <= endDate);
+    const fpVal = parseFloat(fuelPriceVal);
+    if (!isNaN(fpVal) && fuelPriceVal) {
+      list = list.filter((e) => {
+        const p = e.fuelPrice ?? e.fuel_price ?? 0;
+        return fuelPriceOp === "higher" ? p >= fpVal : p <= fpVal;
+      });
+    }
+    const pplVal = parseFloat(pricePerLVal);
+    if (!isNaN(pplVal) && pricePerLVal) {
+      list = list.filter((e) => {
+        const ppl = pricePerLitreByEntry.get(e.id);
+        if (ppl == null) return false;
+        return pricePerLOp === "higher" ? ppl >= pplVal : ppl <= pplVal;
+      });
+    }
+    list.sort((a, b) =>
+      sortNewestFirst
+        ? (b.date || "").localeCompare(a.date || "")
+        : (a.date || "").localeCompare(b.date || "")
+    );
+    return list;
+  }, [fuelEntries, filters, pricePerLitreByEntry]);
 
   const handleAddVehicle = async () => {
     const name = newVehicleName.trim();
@@ -741,14 +852,182 @@ const VehiclesExpensesPage: React.FC = () => {
             </button>
           </div>
 
+          <div className="rounded-lg border border-slate-700 bg-slate-800/50 overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setLimitResultsOpen((o) => !o)}
+              className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-slate-700/30 transition-colors"
+            >
+              <span className="text-sm font-medium text-slate-200">Limit results</span>
+              <span className="text-slate-400">{limitResultsOpen ? "▼" : "▶"}</span>
+            </button>
+            {limitResultsOpen && (
+              <div className="px-4 pb-4 pt-1 border-t border-slate-700 space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  <div>
+                    <label className="block text-xs text-slate-500 mb-1">Start date</label>
+                    <input
+                      type="date"
+                      value={filters.startDate}
+                      onChange={(e) => setFilters((f) => ({ ...f, startDate: e.target.value }))}
+                      className="w-full rounded-md border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-slate-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-slate-500 mb-1">End date</label>
+                    <input
+                      type="date"
+                      value={filters.endDate}
+                      onChange={(e) => setFilters((f) => ({ ...f, endDate: e.target.value }))}
+                      className="w-full rounded-md border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-slate-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-slate-500 mb-1">Sort order</label>
+                    <select
+                      value={filters.sortNewestFirst ? "newest" : "oldest"}
+                      onChange={(e) =>
+                        setFilters((f) => ({ ...f, sortNewestFirst: e.target.value === "newest" }))
+                      }
+                      className="w-full rounded-md border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-slate-100"
+                    >
+                      <option value="newest">Newest first</option>
+                      <option value="oldest">Oldest first</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="flex gap-2 items-end">
+                    <div className="flex-1">
+                      <label className="block text-xs text-slate-500 mb-1">Fuel price ($)</label>
+                      <div className="flex gap-2">
+                        <select
+                          value={filters.fuelPriceOp}
+                          onChange={(e) =>
+                            setFilters((f) => ({
+                              ...f,
+                              fuelPriceOp: e.target.value as "higher" | "lower",
+                            }))
+                          }
+                          className="rounded-md border border-slate-600 bg-slate-800 px-2 py-2 text-sm text-slate-100"
+                        >
+                          <option value="higher">Higher than</option>
+                          <option value="lower">Lower than</option>
+                        </select>
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="e.g. 50"
+                          value={filters.fuelPriceVal}
+                          onChange={(e) => setFilters((f) => ({ ...f, fuelPriceVal: e.target.value }))}
+                          className="flex-1 rounded-md border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder-slate-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 items-end">
+                    <div className="flex-1">
+                      <label className="block text-xs text-slate-500 mb-1">$/L</label>
+                      <div className="flex gap-2">
+                        <select
+                          value={filters.pricePerLOp}
+                          onChange={(e) =>
+                            setFilters((f) => ({
+                              ...f,
+                              pricePerLOp: e.target.value as "higher" | "lower",
+                            }))
+                          }
+                          className="rounded-md border border-slate-600 bg-slate-800 px-2 py-2 text-sm text-slate-100"
+                        >
+                          <option value="higher">Higher than</option>
+                          <option value="lower">Lower than</option>
+                        </select>
+                        <input
+                          type="number"
+                          step="0.001"
+                          placeholder="e.g. 1.50"
+                          value={filters.pricePerLVal}
+                          onChange={(e) => setFilters((f) => ({ ...f, pricePerLVal: e.target.value }))}
+                          className="flex-1 rounded-md border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder-slate-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-lg border border-slate-700 bg-slate-800/50 overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setDisplayGraphOpen((o) => !o)}
+              className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-slate-700/30 transition-colors"
+            >
+              <span className="text-sm font-medium text-slate-200">Display graph</span>
+              <span className="text-slate-400">{displayGraphOpen ? "▼" : "▶"}</span>
+            </button>
+            {displayGraphOpen && (
+              <div className="px-4 pb-4 pt-4 border-t border-slate-700">
+                <div className="rounded-lg border border-slate-600 bg-slate-900/50 p-4 min-h-[200px]">
+                  {filteredEntries.length < 2 ? (
+                    <p className="text-slate-500 text-sm py-8 text-center">
+                      Add at least 2 fuel entries to display the graph.
+                    </p>
+                  ) : (
+                    (() => {
+                      const chrono = [...filteredEntries].reverse();
+                      const chartData = chrono.map((e, i) => {
+                        const prev = i > 0 ? chrono[i - 1] : null;
+                        const m = calcFuelMetrics(e, prev);
+                        return {
+                          date: e.date ?? "",
+                          pricePerLitre: m.pricePerLitre,
+                          lPer100km: m.lPer100km,
+                        };
+                      });
+                      return (
+                        <div className="space-y-6">
+                          <LineChart
+                            data={chartData}
+                            valueKey="pricePerLitre"
+                            label="$/L (cost per litre)"
+                            formatValue={(v) => `$${v.toFixed(4)}`}
+                            color="rgb(99 102 241)"
+                          />
+                          <LineChart
+                            data={chartData}
+                            valueKey="lPer100km"
+                            label="L/100km (fuel efficiency)"
+                            formatValue={(v) => v.toFixed(2)}
+                            color="rgb(34 197 94)"
+                          />
+                        </div>
+                      );
+                    })()
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
           <div className="rounded-lg border border-slate-700 bg-slate-900/50 overflow-hidden">
             <h2 className="text-sm font-semibold text-slate-300 px-4 py-3 border-b border-slate-700">
-              Fuel expenses (newest first)
+              Fuel expenses ({filters.sortNewestFirst ? "newest first" : "oldest first"})
+              {filteredEntries.length !== fuelEntries.length && (
+                <span className="font-normal text-slate-500 ml-2">
+                  ({filteredEntries.length} of {fuelEntries.length})
+                </span>
+              )}
             </h2>
             {fuelLoading ? (
               <div className="p-8 text-center text-slate-500">Loading…</div>
-            ) : fuelEntries.length === 0 ? (
-              <div className="p-8 text-center text-slate-500">No fuel entries yet. Add one above.</div>
+            ) : filteredEntries.length === 0 ? (
+              <div className="p-8 text-center text-slate-500">
+                {fuelEntries.length === 0
+                  ? "No fuel entries yet. Add one above."
+                  : "No entries match the current filters. Adjust or clear filters."}
+              </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-slate-700">
@@ -766,8 +1045,8 @@ const VehiclesExpensesPage: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-700">
-                    {fuelEntries.map((entry, idx) => {
-                      const prev = fuelEntries[idx + 1] ?? null;
+                    {filteredEntries.map((entry, idx) => {
+                      const prev = filteredEntries[idx + 1] ?? null;
                       const { pricePerLitre, distanceKm, lPer100km, mpg } = calcFuelMetrics(entry, prev);
                       const isEditing = editingFuelId === entry.id;
                       return (
