@@ -6,6 +6,7 @@ import {
   canAccessFinancial,
   canAccessFinancialAdmin,
   canCreateMemes,
+  canAccessExpenses,
 } from "../shell/AuthContext";
 import {
   GlobeAltIcon,
@@ -23,7 +24,7 @@ export interface PublicModule {
   id: string;
   label: string;
   path: string;
-  section: "discover" | "recommended" | "memes" | "squash" | "financial";
+  section: "discover" | "recommended" | "memes" | "squash" | "financial" | "vehicles";
   minRole: "guest" | "user" | "manager" | "superadmin";
   /** Optional: custom visibility. If absent, uses hasRole(user, minRole). */
   visibility?: (user: AuthUser | null) => boolean;
@@ -52,6 +53,7 @@ export const PUBLIC_MODULES: PublicModule[] = [
   { id: "meme-generator", label: "Meme Generator", path: "/memes/create", section: "memes", minRole: "user", visibility: canCreateMemes },
   { id: "financial", label: "Financial", path: "/financial", section: "financial", minRole: "guest", visibility: canAccessFinancial },
   { id: "financial-admin", label: "Financial Admin", path: "/admin/financial", section: "financial", minRole: "superadmin", visibility: canAccessFinancialAdmin },
+  { id: "vehicles-expenses", label: "Vehicles Expenses", path: "/vehicles-expenses", section: "vehicles", minRole: "user", visibility: canAccessExpenses },
   { id: "highlights", label: "Highlights", path: "/recommended/highlights", section: "recommended", minRole: "guest" },
   { id: "highest-rated", label: "Highest Rated", path: "/recommended/highest-rated", section: "recommended", minRole: "guest" },
 ];
@@ -68,7 +70,7 @@ export const ADMIN_MODULES: AdminModule[] = [
 ];
 
 /** Sections for sidebar grouping, in display order. */
-export const SECTIONS = ["discover", "recommended", "memes", "squash", "financial", "admin"] as const;
+export const SECTIONS = ["discover", "recommended", "memes", "squash", "financial", "vehicles", "admin"] as const;
 
 /** Filter public modules visible to the given user. */
 export function getVisiblePublicModules(user: AuthUser | null): PublicModule[] {

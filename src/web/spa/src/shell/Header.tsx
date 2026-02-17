@@ -15,9 +15,10 @@ const SECTION_LABELS: Record<string, string> = {
   memes: "Memes",
   squash: "Squash",
   financial: "Financial",
+  vehicles: "Vehicles",
 };
 
-const NAV_SECTIONS = ["discover", "recommended", "memes", "squash", "financial"] as const;
+const NAV_SECTIONS = ["discover", "recommended", "memes", "squash", "financial", "vehicles"] as const;
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   `transition-colors duration-200 ${isActive ? "text-primary-400 font-semibold" : "text-slate-300 hover:text-white"}`;
