@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import { Link, NavLink, useLocation } from "react-router-dom";
-import { ChevronDownIcon, HomeIcon } from "@heroicons/react/24/outline";
+import { NavLink, useLocation } from "react-router-dom";
+import { ChevronRightIcon, HomeIcon } from "@heroicons/react/24/outline";
 import { useAuth } from "./AuthContext";
 import {
   getVisibleAdminModules,
@@ -18,20 +18,21 @@ const navLinkActive =
   "bg-slate-800 text-primary-400 font-medium border-l-2 border-primary-500 -ml-px";
 const navLinkInactive = "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200";
 
-/** Flyout panel that opens to the right on hover. Trigger can be a link or a non-link label. */
-function FlyoutExpandable({
+const subNavLinkBase = "flex items-center gap-2 pl-8 pr-4 py-2 text-sm rounded-r-md transition-colors";
+
+/** Accordion section: click to expand/collapse, sub-menus shown inline. */
+function AccordionSection({
   label,
   links,
   icon: Icon,
-  primaryPath,
+  defaultExpanded,
 }: {
   label: string;
   links: ModuleLink[];
   icon: React.ComponentType<{ className?: string }>;
-  /** When set, trigger is a Link; when null, trigger is a non-link (for Modules groups). */
-  primaryPath: string | null;
+  defaultExpanded?: boolean;
 }) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(defaultExpanded ?? false);
   const location = useLocation();
   const isActive = links.some(
     (m) =>
@@ -41,40 +42,32 @@ function FlyoutExpandable({
   if (links.length === 0) return null;
 
   const triggerClass = `${navLinkBase} ${isActive ? navLinkActive : navLinkInactive}`;
-  const Trigger = primaryPath ? (
-    <Link to={primaryPath} className={triggerClass}>
+  const Trigger = (
+    <button
+      type="button"
+      className={`w-full text-left ${triggerClass}`}
+      onClick={() => setExpanded((x) => !x)}
+    >
       {Icon && <Icon className="w-5 h-5 shrink-0" />}
       {label}
-      <ChevronDownIcon
-        className={`w-4 h-4 shrink-0 ml-auto transition-transform ${expanded ? "rotate-180" : ""}`}
+      <ChevronRightIcon
+        className={`w-4 h-4 shrink-0 ml-auto transition-transform ${expanded ? "rotate-90" : ""}`}
       />
-    </Link>
-  ) : (
-    <div className={triggerClass}>
-      {Icon && <Icon className="w-5 h-5 shrink-0" />}
-      {label}
-      <ChevronDownIcon
-        className={`w-4 h-4 shrink-0 ml-auto transition-transform ${expanded ? "rotate-180" : ""}`}
-      />
-    </div>
+    </button>
   );
 
   return (
-    <div
-      className="relative"
-      onMouseEnter={() => setExpanded(true)}
-      onMouseLeave={() => setExpanded(false)}
-    >
+    <div className="flex flex-col gap-0.5">
       {Trigger}
       {expanded && links.length > 0 && (
-        <div className="absolute left-full top-0 ml-1 min-w-[180px] rounded-lg border border-slate-700 bg-slate-900 py-1 shadow-xl z-50">
+        <div className="flex flex-col gap-0.5 py-1">
           {links.map((m) => (
             <NavLink
               key={m.path}
               to={m.path}
               className={({ isActive: active }) =>
-                `block px-4 py-2.5 text-sm transition-colors ${
-                  active ? "bg-slate-800 text-primary-400 font-medium" : "text-slate-300 hover:bg-slate-800 hover:text-white"
+                `${subNavLinkBase} ${
+                  active ? "bg-slate-800/70 text-primary-400 font-medium" : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"
                 }`
               }
             >
@@ -111,11 +104,11 @@ export function LeftSidebar() {
           <div className="mb-4">
             <div className={blockHeadingClass}>Admin Home</div>
             <nav className="flex flex-col gap-1">
-              <FlyoutExpandable
+              <AccordionSection
                 label="Admin Home"
                 links={adminHomeLinks}
                 icon={HomeIcon}
-                primaryPath="/admin"
+                defaultExpanded={true}
               />
             </nav>
           </div>
@@ -126,12 +119,11 @@ export function LeftSidebar() {
             <div className={blockHeadingClass}>Modules</div>
             <nav className="flex flex-col gap-1">
               {moduleGroups.map((group) => (
-                <FlyoutExpandable
+                <AccordionSection
                   key={group.id}
                   label={group.label}
                   links={group.getLinks(user)}
                   icon={group.icon}
-                  primaryPath={null}
                 />
               ))}
             </nav>
