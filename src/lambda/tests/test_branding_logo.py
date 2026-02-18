@@ -177,6 +177,83 @@ def test_getBrandingLogo_returns_hero_when_present(mock_boto_client):
   assert body["heroImageOpacity"] == 30
 
 
+@patch("api.handler.TABLE_NAME", "fus-main")
+@patch("boto3.client")
+def test_putBrandingLogo_requires_auth(mock_boto_client):
+  """PUT /branding/logo without auth returns 401."""
+  from api.handler import handler
+
+  event = {
+      "rawPath": "/branding/logo",
+      "requestContext": {"http": {"method": "PUT", "path": "/branding/logo"}},
+      "body": '{"alt": "New Alt"}',
+  }
+  result = handler(event, None)
+  assert result["statusCode"] == 401
+
+
+@patch("api.handler.TABLE_NAME", "fus-main")
+def test_putBrandingLogo_requires_admin():
+  """PUT /branding/logo with non-admin returns 403."""
+  from api.handler import handler
+
+  def _non_admin_user(event):
+    return {"userId": "user-1", "email": "u@example.com", "groups": ["user"], "groupsDisplay": []}
+
+  event = _admin_event_put("/branding/logo", body={"alt": "New Alt"})
+
+  with patch("api.handler.getEffectiveUserInfo", side_effect=_non_admin_user):
+    result = handler(event, None)
+
+  assert result["statusCode"] == 403
+
+
+@patch("api.handler.TABLE_NAME", "fus-main")
+@patch("boto3.client")
+def test_putBrandingLogo_returns_404_when_no_logo(mock_boto_client):
+  """PUT /branding/logo returns 404 when no logo exists."""
+  from api.handler import handler
+
+  mock_dynamo = MagicMock()
+  mock_dynamo.get_item.return_value = {}
+  mock_boto_client.return_value = mock_dynamo
+
+  event = _admin_event_put("/branding/logo", body={"alt": "New Alt"})
+  result = handler(event, None)
+
+  assert result["statusCode"] == 404
+  body = json.loads(result["body"])
+  assert "No logo configured" in body.get("error", "")
+
+
+@patch("api.handler.TABLE_NAME", "fus-main")
+@patch("boto3.client")
+def test_putBrandingLogo_success(mock_boto_client):
+  """PUT /branding/logo as admin updates alt text."""
+  from api.handler import handler
+
+  mock_dynamo = MagicMock()
+  mock_dynamo.get_item.return_value = {
+      "Item": {
+          "PK": {"S": "BRANDING"},
+          "SK": {"S": "LOGO#DEFAULT"},
+          "logoKey": {"S": "branding/logo/abc.png"},
+          "alt": {"S": "Old Alt"},
+      }
+  }
+  mock_boto_client.return_value = mock_dynamo
+
+  event = _admin_event_put("/branding/logo", body={"alt": "New Alt Text"})
+  result = handler(event, None)
+
+  assert result["statusCode"] == 200
+  body = json.loads(result["body"])
+  assert body["alt"] == "New Alt Text"
+  mock_dynamo.update_item.assert_called_once()
+  call_kwargs = mock_dynamo.update_item.call_args[1]
+  assert call_kwargs["ExpressionAttributeValues"][":alt"]["S"] == "New Alt Text"
+
+
 def test_putBrandingHero_requires_auth():
   """PUT /branding/hero without auth returns 401."""
   from api.handler import handler
