@@ -252,6 +252,8 @@ def handler(event, context):
             return getBrandingLogo(event)
         if method == "POST" and path == "/branding/logo":
             return postBrandingLogoUpload(event)
+        if method == "PUT" and path == "/branding/logo":
+            return putBrandingLogo(event)
         if method == "PUT" and path == "/branding/hero":
             return putBrandingHero(event)
         if method == "POST" and path == "/branding/hero-image":
@@ -2093,6 +2095,48 @@ def postBrandingLogoUpload(event):
         return jsonResponse({"uploadUrl": upload_url, "key": logo_key, "alt": alt})
     except Exception as e:
         logger.exception("postBrandingLogoUpload error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def putBrandingLogo(event):
+    """PUT /branding/logo - Admin-only: update logo alt text only (no new image)."""
+    user = getEffectiveUserInfo(event)
+    if not user.get("userId"):
+        return jsonResponse({"error": "Unauthorized"}, 401)
+    if "admin" not in user.get("groups", []):
+        return jsonResponse({"error": "Forbidden: admin role required"}, 403)
+    if not TABLE_NAME:
+        return jsonResponse({"error": "Not configured"}, 500)
+    try:
+        import boto3
+        import json as json_mod
+        from datetime import datetime
+
+        body = json_mod.loads(event.get("body", "{}"))
+        alt = (body.get("alt") or "Funkedupshift").strip() or "Funkedupshift"
+
+        region = os.environ.get("AWS_REGION", "us-east-1")
+        dynamodb = boto3.client("dynamodb", region_name=region)
+
+        # Update only if LOGO#DEFAULT exists
+        resp = dynamodb.get_item(
+            TableName=TABLE_NAME,
+            Key={"PK": {"S": "BRANDING"}, "SK": {"S": "LOGO#DEFAULT"}},
+        )
+        if "Item" not in resp:
+            return jsonResponse({"error": "No logo configured. Upload a logo first."}, 404)
+
+        now = datetime.utcnow().isoformat() + "Z"
+        dynamodb.update_item(
+            TableName=TABLE_NAME,
+            Key={"PK": {"S": "BRANDING"}, "SK": {"S": "LOGO#DEFAULT"}},
+            UpdateExpression="SET #alt = :alt, updatedAt = :now",
+            ExpressionAttributeNames={"#alt": "alt"},
+            ExpressionAttributeValues={":alt": {"S": alt}, ":now": {"S": now}},
+        )
+        return jsonResponse({"alt": alt})
+    except Exception as e:
+        logger.exception("putBrandingLogo error")
         return jsonResponse({"error": str(e)}, 500)
 
 

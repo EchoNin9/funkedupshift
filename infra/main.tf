@@ -988,6 +988,15 @@ resource "aws_apigatewayv2_route" "brandingLogoPost" {
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
+# Branding: admin-only logo alt text update
+resource "aws_apigatewayv2_route" "brandingLogoPut" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "PUT /branding/logo"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
 # Branding: admin-only hero config
 resource "aws_apigatewayv2_route" "brandingHeroPut" {
   api_id             = aws_apigatewayv2_api.main.id

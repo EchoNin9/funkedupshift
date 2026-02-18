@@ -25,11 +25,12 @@ const allowedTypes = [
 
 const BrandingPage: React.FC = () => {
   const { user } = useAuth();
-  const { logo, hero } = useBranding();
+  const { logo, hero, refreshBranding } = useBranding();
   const [file, setFile] = useState<File | null>(null);
   const [alt, setAlt] = useState("Funkedupshift");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSavingAlt, setIsSavingAlt] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -49,6 +50,10 @@ const BrandingPage: React.FC = () => {
     setHeroSubtext(hero.subtext);
     setHeroOpacity(hero.imageOpacity);
   }, [hero.tagline, hero.headline, hero.subtext, hero.imageOpacity]);
+
+  useEffect(() => {
+    if (logo?.alt) setAlt(logo.alt);
+  }, [logo?.alt]);
 
   const isSuperAdmin = hasRole(user ?? null, "superadmin");
 
@@ -200,6 +205,35 @@ const BrandingPage: React.FC = () => {
     }
   };
 
+  const onSaveAltText = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setMessage(null);
+    const apiBase = getApiBaseUrl();
+    if (!apiBase) {
+      setError("API URL not configured.");
+      return;
+    }
+    setIsSavingAlt(true);
+    try {
+      const resp = await fetchWithAuth(`${apiBase}/branding/logo`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ alt }),
+      });
+      if (!resp.ok) {
+        const txt = await resp.text();
+        throw new Error(txt || `Save failed with ${resp.status}`);
+      }
+      setMessage("Alt text saved.");
+      refreshBranding();
+    } catch (err: any) {
+      setError(err?.message ?? "Failed to save alt text.");
+    } finally {
+      setIsSavingAlt(false);
+    }
+  };
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -304,6 +338,16 @@ const BrandingPage: React.FC = () => {
             onChange={(e) => setAlt(e.target.value)}
             className="input-field"
           />
+          {logo && (
+            <button
+              type="button"
+              onClick={onSaveAltText}
+              disabled={isSavingAlt || alt === logo.alt}
+              className="btn-secondary mt-2 disabled:opacity-50"
+            >
+              {isSavingAlt ? "Saving…" : "Save alt text"}
+            </button>
+          )}
         </div>
 
         {previewUrl && (
@@ -320,9 +364,15 @@ const BrandingPage: React.FC = () => {
           type="submit"
           disabled={isSubmitting || !file}
           className="btn-primary disabled:opacity-50"
+          title={!file ? "Choose an image file to upload a new logo" : undefined}
         >
           {isSubmitting ? "Updating…" : "Update logo"}
         </button>
+        {!file && (
+          <p className="text-xs text-slate-500">
+            Choose an image file above to upload a new logo. Use &quot;Save alt text&quot; to update alt text only.
+          </p>
+        )}
 
         {message && (
           <div className="rounded-md border border-emerald-500/60 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">
