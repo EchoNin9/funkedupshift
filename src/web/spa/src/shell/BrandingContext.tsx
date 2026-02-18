@@ -6,10 +6,24 @@ interface LogoMeta {
   alt: string;
 }
 
+export const DEFAULT_HERO_TAGLINE = "Shared internet intelligence";
+export const DEFAULT_HERO_HEADLINE = "Discover, rate, and enrich the sites that matter.";
+export const DEFAULT_HERO_SUBTEXT =
+  "A living index of websites, media, and experiments – curated by admins, enriched by everyone.";
+
+export interface HeroMeta {
+  tagline: string;
+  headline: string;
+  subtext: string;
+  imageUrl: string | null;
+  imageOpacity: number;
+}
+
 interface BrandingContextValue {
   logo: LogoMeta | null;
   /** Site name for header/footer. From API or fallback. Ready for multi-domain. */
   siteName: string;
+  hero: HeroMeta;
 }
 
 const BrandingContext = createContext<BrandingContextValue | undefined>(undefined);
@@ -22,9 +36,18 @@ function getApiBaseUrl(): string | null {
 
 const DEFAULT_SITE_NAME = "Funked Up Shift";
 
+const defaultHero: HeroMeta = {
+  tagline: DEFAULT_HERO_TAGLINE,
+  headline: DEFAULT_HERO_HEADLINE,
+  subtext: DEFAULT_HERO_SUBTEXT,
+  imageUrl: null,
+  imageOpacity: 25,
+};
+
 export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [logo, setLogo] = useState<LogoMeta | null>(null);
   const [siteName, setSiteName] = useState<string>(DEFAULT_SITE_NAME);
+  const [hero, setHero] = useState<HeroMeta>(defaultHero);
 
   useEffect(() => {
     const apiBase = getApiBaseUrl();
@@ -50,6 +73,18 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         } else if (data?.alt && typeof data.alt === "string" && data.alt.trim()) {
           setSiteName(data.alt.trim());
         }
+        setHero({
+          tagline: (data?.heroTagline && String(data.heroTagline).trim()) || DEFAULT_HERO_TAGLINE,
+          headline: (data?.heroHeadline && String(data.heroHeadline).trim()) || DEFAULT_HERO_HEADLINE,
+          subtext: (data?.heroSubtext && String(data.heroSubtext).trim()) || DEFAULT_HERO_SUBTEXT,
+          imageUrl: data?.heroImageUrl && String(data.heroImageUrl).trim() ? String(data.heroImageUrl) : null,
+          imageOpacity:
+            typeof data?.heroImageOpacity === "number"
+              ? data.heroImageOpacity
+              : typeof data?.heroImageOpacity === "string"
+                ? parseInt(data.heroImageOpacity, 10) || defaultHero.imageOpacity
+                : defaultHero.imageOpacity,
+        });
       } catch {
         // Ignore; logo is optional (avoids Unexpected token '<' when response is HTML).
       }
@@ -60,7 +95,7 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     };
   }, []);
 
-  return <BrandingContext.Provider value={{ logo, siteName }}>{children}</BrandingContext.Provider>;
+  return <BrandingContext.Provider value={{ logo, siteName, hero }}>{children}</BrandingContext.Provider>;
 };
 
 export function useBranding(): BrandingContextValue {

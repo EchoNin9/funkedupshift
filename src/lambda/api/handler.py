@@ -252,6 +252,12 @@ def handler(event, context):
             return getBrandingLogo(event)
         if method == "POST" and path == "/branding/logo":
             return postBrandingLogoUpload(event)
+        if method == "PUT" and path == "/branding/hero":
+            return putBrandingHero(event)
+        if method == "POST" and path == "/branding/hero-image":
+            return postBrandingHeroImage(event)
+        if method == "DELETE" and path == "/branding/hero-image":
+            return deleteBrandingHeroImage(event)
         if method == "GET" and path == "/internet-dashboard":
             return getInternetDashboard(event)
         if method == "GET" and path == "/recommended/highlights":
@@ -1960,37 +1966,62 @@ def deleteProfileAvatar(event):
 
 
 def getBrandingLogo(event):
-    """GET /branding/logo - Public metadata and URL for current global logo."""
-    if not TABLE_NAME or not MEDIA_BUCKET:
-        # Fail-soft: return empty payload so frontend can fall back to default.
+    """GET /branding/logo - Public metadata and URL for current global logo + hero config."""
+    if not TABLE_NAME:
         return jsonResponse({})
     try:
         import boto3
 
         region = os.environ.get("AWS_REGION", "us-east-1")
         dynamodb = boto3.client("dynamodb", region_name=region)
-        pk = "BRANDING"
-        sk = "LOGO#DEFAULT"
-        resp = dynamodb.get_item(
-            TableName=TABLE_NAME,
-            Key={"PK": {"S": pk}, "SK": {"S": sk}},
-        )
-        if "Item" not in resp:
-            return jsonResponse({})
-        item = resp["Item"]
-        logo_key = item.get("logoKey", {}).get("S")
-        if not logo_key:
-            return jsonResponse({})
-        alt = item.get("alt", {}).get("S", "Funkedupshift")
-        updated_at = item.get("updatedAt", {}).get("S", "")
+        s3 = boto3.client("s3", region_name=region) if MEDIA_BUCKET else None
+        result = {}
 
-        s3 = boto3.client("s3", region_name=region)
-        url = s3.generate_presigned_url(
-            "get_object",
-            Params={"Bucket": MEDIA_BUCKET, "Key": logo_key},
-            ExpiresIn=3600,
+        # Logo
+        logo_resp = dynamodb.get_item(
+            TableName=TABLE_NAME,
+            Key={"PK": {"S": "BRANDING"}, "SK": {"S": "LOGO#DEFAULT"}},
         )
-        return jsonResponse({"url": url, "alt": alt, "updatedAt": updated_at})
+        if "Item" in logo_resp:
+            item = logo_resp["Item"]
+            logo_key = item.get("logoKey", {}).get("S")
+            if logo_key and s3:
+                url = s3.generate_presigned_url(
+                    "get_object",
+                    Params={"Bucket": MEDIA_BUCKET, "Key": logo_key},
+                    ExpiresIn=3600,
+                )
+                result["url"] = url
+            result["alt"] = item.get("alt", {}).get("S", "Funkedupshift")
+            result["updatedAt"] = item.get("updatedAt", {}).get("S", "")
+
+        # Hero
+        hero_resp = dynamodb.get_item(
+            TableName=TABLE_NAME,
+            Key={"PK": {"S": "BRANDING"}, "SK": {"S": "HERO#DEFAULT"}},
+        )
+        if "Item" in hero_resp:
+            hero = hero_resp["Item"]
+            if hero.get("heroTagline", {}).get("S"):
+                result["heroTagline"] = hero["heroTagline"]["S"]
+            if hero.get("heroHeadline", {}).get("S"):
+                result["heroHeadline"] = hero["heroHeadline"]["S"]
+            if hero.get("heroSubtext", {}).get("S"):
+                result["heroSubtext"] = hero["heroSubtext"]["S"]
+            hero_key = hero.get("heroImageKey", {}).get("S")
+            if hero_key and s3:
+                result["heroImageUrl"] = s3.generate_presigned_url(
+                    "get_object",
+                    Params={"Bucket": MEDIA_BUCKET, "Key": hero_key},
+                    ExpiresIn=3600,
+                )
+            if "heroImageOpacity" in hero:
+                try:
+                    result["heroImageOpacity"] = int(hero["heroImageOpacity"]["N"])
+                except (ValueError, KeyError, TypeError):
+                    result["heroImageOpacity"] = 25
+
+        return jsonResponse(result)
     except Exception as e:
         logger.exception("getBrandingLogo error")
         return jsonResponse({"error": str(e)}, 500)
@@ -2062,6 +2093,172 @@ def postBrandingLogoUpload(event):
         return jsonResponse({"uploadUrl": upload_url, "key": logo_key, "alt": alt})
     except Exception as e:
         logger.exception("postBrandingLogoUpload error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def putBrandingHero(event):
+    """PUT /branding/hero - Admin-only: update hero text and opacity."""
+    user = getEffectiveUserInfo(event)
+    if not user.get("userId"):
+        return jsonResponse({"error": "Unauthorized"}, 401)
+    if "admin" not in user.get("groups", []):
+        return jsonResponse({"error": "Forbidden: admin role required"}, 403)
+    if not TABLE_NAME:
+        return jsonResponse({"error": "Not configured"}, 500)
+    try:
+        import boto3
+        import json as json_mod
+        from datetime import datetime
+
+        body = json_mod.loads(event.get("body", "{}"))
+        hero_tagline = body.get("heroTagline")
+        hero_headline = body.get("heroHeadline")
+        hero_subtext = body.get("heroSubtext")
+        hero_opacity = body.get("heroImageOpacity")
+        remove_image = body.get("removeImage") is True
+
+        region = os.environ.get("AWS_REGION", "us-east-1")
+        dynamodb = boto3.client("dynamodb", region_name=region)
+        now = datetime.utcnow().isoformat() + "Z"
+
+        hero_resp = dynamodb.get_item(
+            TableName=TABLE_NAME,
+            Key={"PK": {"S": "BRANDING"}, "SK": {"S": "HERO#DEFAULT"}},
+        )
+        existing = dict(hero_resp.get("Item", {})) if "Item" in hero_resp else {}
+
+        def _s(key):
+            return existing.get(key, {}).get("S", "")
+
+        def _n(key, default=25):
+            try:
+                return int(existing.get(key, {}).get("N", str(default)))
+            except (ValueError, TypeError):
+                return default
+
+        item = {
+            "PK": {"S": "BRANDING"},
+            "SK": {"S": "HERO#DEFAULT"},
+            "entityType": {"S": "BRANDING"},
+            "entitySk": {"S": "HERO#DEFAULT"},
+            "updatedAt": {"S": now},
+        }
+        item["heroTagline"] = {"S": str(hero_tagline).strip()} if hero_tagline is not None else {"S": _s("heroTagline")}
+        item["heroHeadline"] = {"S": str(hero_headline).strip()} if hero_headline is not None else {"S": _s("heroHeadline")}
+        item["heroSubtext"] = {"S": str(hero_subtext).strip()} if hero_subtext is not None else {"S": _s("heroSubtext")}
+        item["heroImageOpacity"] = {"N": str(max(0, min(100, int(hero_opacity))))} if hero_opacity is not None else {"N": str(_n("heroImageOpacity"))}
+        item["heroImageKey"] = {"S": ""} if remove_image else {"S": _s("heroImageKey")}
+
+        dynamodb.put_item(TableName=TABLE_NAME, Item=item)
+        return jsonResponse({"ok": True})
+    except Exception as e:
+        logger.exception("putBrandingHero error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def postBrandingHeroImage(event):
+    """POST /branding/hero-image - Admin-only: presigned PUT URL for hero background image."""
+    user = getEffectiveUserInfo(event)
+    if not user.get("userId"):
+        return jsonResponse({"error": "Unauthorized"}, 401)
+    if "admin" not in user.get("groups", []):
+        return jsonResponse({"error": "Forbidden: admin role required"}, 403)
+    if not TABLE_NAME or not MEDIA_BUCKET:
+        return jsonResponse({"error": "Not configured"}, 500)
+    try:
+        import boto3
+        import json as json_mod
+        import uuid as uuid_mod
+        from datetime import datetime
+
+        body = json_mod.loads(event.get("body", "{}"))
+        content_type = (body.get("contentType") or "image/png").strip()
+        allowed = {"image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp"}
+        if content_type not in allowed:
+            return jsonResponse(
+                {"error": "contentType must be image/png, image/jpeg, image/gif, or image/webp"},
+                400,
+            )
+
+        ext = "png"
+        if "jpeg" in content_type or "jpg" in content_type:
+            ext = "jpg"
+        elif "gif" in content_type:
+            ext = "gif"
+        elif "webp" in content_type:
+            ext = "webp"
+
+        region = os.environ.get("AWS_REGION", "us-east-1")
+        unique = str(uuid_mod.uuid4())
+        hero_key = f"branding/hero/{unique}.{ext}"
+
+        s3 = boto3.client("s3", region_name=region)
+        upload_url = s3.generate_presigned_url(
+            "put_object",
+            Params={"Bucket": MEDIA_BUCKET, "Key": hero_key, "ContentType": content_type},
+            ExpiresIn=300,
+        )
+
+        dynamodb = boto3.client("dynamodb", region_name=region)
+        now = datetime.utcnow().isoformat() + "Z"
+
+        hero_resp = dynamodb.get_item(
+            TableName=TABLE_NAME,
+            Key={"PK": {"S": "BRANDING"}, "SK": {"S": "HERO#DEFAULT"}},
+        )
+        if "Item" in hero_resp:
+            hero_item = dict(hero_resp["Item"])
+            hero_item["heroImageKey"] = {"S": hero_key}
+            hero_item["updatedAt"] = {"S": now}
+            if "heroImageOpacity" not in hero_item:
+                hero_item["heroImageOpacity"] = {"N": "25"}
+            dynamodb.put_item(TableName=TABLE_NAME, Item=hero_item)
+        else:
+            dynamodb.put_item(
+                TableName=TABLE_NAME,
+                Item={
+                    "PK": {"S": "BRANDING"},
+                    "SK": {"S": "HERO#DEFAULT"},
+                    "heroImageKey": {"S": hero_key},
+                    "heroImageOpacity": {"N": "25"},
+                    "updatedAt": {"S": now},
+                    "entityType": {"S": "BRANDING"},
+                    "entitySk": {"S": "HERO#DEFAULT"},
+                },
+            )
+
+        return jsonResponse({"uploadUrl": upload_url, "key": hero_key})
+    except Exception as e:
+        logger.exception("postBrandingHeroImage error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def deleteBrandingHeroImage(event):
+    """DELETE /branding/hero-image - Admin-only: remove hero background image."""
+    user = getEffectiveUserInfo(event)
+    if not user.get("userId"):
+        return jsonResponse({"error": "Unauthorized"}, 401)
+    if "admin" not in user.get("groups", []):
+        return jsonResponse({"error": "Forbidden: admin role required"}, 403)
+    if not TABLE_NAME:
+        return jsonResponse({"error": "Not configured"}, 500)
+    try:
+        import boto3
+        from datetime import datetime
+
+        region = os.environ.get("AWS_REGION", "us-east-1")
+        dynamodb = boto3.client("dynamodb", region_name=region)
+        now = datetime.utcnow().isoformat() + "Z"
+
+        dynamodb.update_item(
+            TableName=TABLE_NAME,
+            Key={"PK": {"S": "BRANDING"}, "SK": {"S": "HERO#DEFAULT"}},
+            UpdateExpression="SET heroImageKey = :empty, updatedAt = :now",
+            ExpressionAttributeValues={":empty": {"S": ""}, ":now": {"S": now}},
+        )
+        return jsonResponse({"ok": True})
+    except Exception as e:
+        logger.exception("deleteBrandingHeroImage error")
         return jsonResponse({"error": str(e)}, 500)
 
 

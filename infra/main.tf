@@ -988,6 +988,33 @@ resource "aws_apigatewayv2_route" "brandingLogoPost" {
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
+# Branding: admin-only hero config
+resource "aws_apigatewayv2_route" "brandingHeroPut" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "PUT /branding/hero"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+# Branding: admin-only hero image upload
+resource "aws_apigatewayv2_route" "brandingHeroImagePost" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /branding/hero-image"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+# Branding: admin-only hero image remove
+resource "aws_apigatewayv2_route" "brandingHeroImageDelete" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "DELETE /branding/hero-image"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
 resource "aws_apigatewayv2_route" "internetDashboard" {
   api_id    = aws_apigatewayv2_api.main.id
   route_key = "GET /internet-dashboard"

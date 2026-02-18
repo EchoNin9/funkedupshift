@@ -28,6 +28,14 @@ def _admin_event(path, method="POST", body=None):
   }
 
 
+def _admin_event_put(path, body=None):
+  return _admin_event(path, method="PUT", body=body)
+
+
+def _admin_event_delete(path):
+  return _admin_event(path, method="DELETE", body=None)
+
+
 def _unauth_event(path, method="GET"):
   return {
       "rawPath": path,
@@ -113,4 +121,145 @@ def test_postBrandingLogoUpload_success(mock_boto_client):
   assert body["key"].startswith("branding/logo/")
   assert body["key"].endswith(".png")
   mock_dynamo.put_item.assert_called_once()
+
+
+# ── Hero endpoints ──
+
+
+@patch("api.handler.TABLE_NAME", "fus-main")
+@patch("api.handler.MEDIA_BUCKET", "test-media-bucket")
+@patch("boto3.client")
+def test_getBrandingLogo_returns_hero_when_present(mock_boto_client):
+  """GET /branding/logo returns hero fields when HERO#DEFAULT exists."""
+  from api.handler import handler
+
+  mock_dynamo = MagicMock()
+
+  def _get_item(**kwargs):
+    key = kwargs.get("Key", {})
+    sk = key.get("SK", {}).get("S", "")
+    if sk == "LOGO#DEFAULT":
+      return {}
+    if sk == "HERO#DEFAULT":
+      return {
+          "Item": {
+              "PK": {"S": "BRANDING"},
+              "SK": {"S": "HERO#DEFAULT"},
+              "heroTagline": {"S": "Custom tagline"},
+              "heroHeadline": {"S": "Custom headline"},
+              "heroSubtext": {"S": "Custom subtext"},
+              "heroImageKey": {"S": "branding/hero/abc.jpg"},
+              "heroImageOpacity": {"N": "30"},
+          }
+      }
+    return {}
+
+  mock_dynamo.get_item.side_effect = _get_item
+  mock_s3 = MagicMock()
+  mock_s3.generate_presigned_url.return_value = "https://presigned.example/hero.jpg"
+
+  def _client(service_name, *args, **kwargs):
+    if service_name == "dynamodb":
+      return mock_dynamo
+    return mock_s3
+
+  mock_boto_client.side_effect = _client
+
+  event = _unauth_event("/branding/logo", method="GET")
+  result = handler(event, None)
+
+  assert result["statusCode"] == 200
+  body = json.loads(result["body"])
+  assert body["heroTagline"] == "Custom tagline"
+  assert body["heroHeadline"] == "Custom headline"
+  assert body["heroSubtext"] == "Custom subtext"
+  assert body["heroImageUrl"] == "https://presigned.example/hero.jpg"
+  assert body["heroImageOpacity"] == 30
+
+
+def test_putBrandingHero_requires_auth():
+  """PUT /branding/hero without auth returns 401."""
+  from api.handler import handler
+
+  event = {
+      "rawPath": "/branding/hero",
+      "requestContext": {"http": {"method": "PUT", "path": "/branding/hero"}},
+      "body": '{"heroTagline": "Test"}',
+  }
+  result = handler(event, None)
+  assert result["statusCode"] == 401
+
+
+@patch("api.handler.TABLE_NAME", "fus-main")
+def test_putBrandingHero_requires_admin():
+  """PUT /branding/hero with non-admin returns 403."""
+  from api.handler import handler
+
+  def _non_admin_user(event):
+    return {"userId": "user-1", "email": "u@example.com", "groups": ["user"], "groupsDisplay": []}
+
+  event = _admin_event_put("/branding/hero", body={"heroTagline": "Test"})
+
+  with patch("api.handler.getEffectiveUserInfo", side_effect=_non_admin_user):
+    result = handler(event, None)
+
+  assert result["statusCode"] == 403
+
+
+def test_postBrandingHeroImage_requires_auth():
+  """POST /branding/hero-image without auth returns 401."""
+  from api.handler import handler
+
+  event = {
+      "rawPath": "/branding/hero-image",
+      "requestContext": {"http": {"method": "POST", "path": "/branding/hero-image"}},
+      "body": '{"contentType": "image/png"}',
+  }
+  result = handler(event, None)
+  assert result["statusCode"] == 401
+
+
+@patch("api.handler.TABLE_NAME", "fus-main")
+@patch("api.handler.MEDIA_BUCKET", "test-media-bucket")
+def test_postBrandingHeroImage_requires_admin():
+  """POST /branding/hero-image with non-admin returns 403."""
+  from api.handler import handler
+
+  def _non_admin_user(event):
+    return {"userId": "user-1", "email": "u@example.com", "groups": ["user"], "groupsDisplay": []}
+
+  event = _admin_event("/branding/hero-image", body={"contentType": "image/png"})
+
+  with patch("api.handler.getEffectiveUserInfo", side_effect=_non_admin_user):
+    result = handler(event, None)
+
+  assert result["statusCode"] == 403
+
+
+def test_deleteBrandingHeroImage_requires_auth():
+  """DELETE /branding/hero-image without auth returns 401."""
+  from api.handler import handler
+
+  event = {
+      "rawPath": "/branding/hero-image",
+      "requestContext": {"http": {"method": "DELETE", "path": "/branding/hero-image"}},
+  }
+  result = handler(event, None)
+  assert result["statusCode"] == 401
+
+
+@patch("api.handler.TABLE_NAME", "fus-main")
+def test_deleteBrandingHeroImage_requires_admin():
+  """DELETE /branding/hero-image with non-admin returns 403."""
+  from api.handler import handler
+
+  def _non_admin_user(event):
+    return {"userId": "user-1", "email": "u@example.com", "groups": ["user"], "groupsDisplay": []}
+
+  event = _admin_event_delete("/branding/hero-image")
+
+  with patch("api.handler.getEffectiveUserInfo", side_effect=_non_admin_user):
+    result = handler(event, None)
+
+  assert result["statusCode"] == 403
 
