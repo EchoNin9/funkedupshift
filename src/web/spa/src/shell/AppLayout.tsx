@@ -4,6 +4,7 @@ import { useAuth } from "./AuthContext";
 import { useBranding } from "./BrandingContext";
 import { AdminLayout } from "./AdminLayout";
 import { Header } from "./Header";
+import { DesktopHeaderBar } from "./DesktopHeaderBar";
 import { LeftSidebar } from "./LeftSidebar";
 import { getVisibleAdminModules, getVisibleModuleGroups } from "../config/modules";
 
@@ -47,7 +48,7 @@ const EditMemePage = lazy(() => import("../features/memes/EditMemePage"));
 function PageLoader() {
   return (
     <div className="container-max section-padding flex items-center justify-center min-h-[40vh]">
-      <div className="w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
+      <div className="w-8 h-8 border-2 border-accent-500 border-t-transparent rounded-full animate-spin" />
     </div>
   );
 }
@@ -64,14 +65,16 @@ const AppLayout: React.FC = () => {
   }, [siteName]);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-50 flex flex-col">
+    <div className="min-h-screen bg-surface-0 text-text-primary flex flex-col">
       <Header />
       <LeftSidebar />
 
-      {/* Main content - add left padding when sidebar is visible */}
-      <main className={`flex-1 min-w-0 ${showSidebar ? "md:pl-56" : ""}`}>
-        <div className="container-max py-6">
-          <Suspense fallback={<PageLoader />}>
+      {/* Content area - offset by sidebar width on desktop */}
+      <div className={`flex-1 min-w-0 flex flex-col ${showSidebar ? "md:pl-60" : ""}`}>
+        <DesktopHeaderBar />
+        <main className="flex-1 min-w-0">
+          <div className="container-max py-6">
+            <Suspense fallback={<PageLoader />}>
             <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/websites" element={<WebsitesPage />} />
@@ -107,49 +110,50 @@ const AppLayout: React.FC = () => {
               <Route path="/auth" element={<AuthPage />} />
               <Route path="*" element={<div>Not found</div>} />
             </Routes>
-          </Suspense>
-        </div>
-      </main>
+            </Suspense>
+          </div>
+        </main>
 
       {/* Footer */}
-      <footer className="border-t border-slate-800 bg-slate-950">
+      <footer className="border-t border-border-default bg-surface-0">
         <div className="container-max py-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div>
-              <Link to="/" className="text-lg font-display font-bold text-gradient">
+              <Link to="/" className="text-sm font-semibold text-text-primary">
                 {siteName}
               </Link>
-              <p className="mt-1 text-sm text-slate-500">
+              <p className="mt-1 text-sm text-text-tertiary">
                 Shared internet intelligence. All data public, admin-managed curation.
               </p>
             </div>
             <div>
-              <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">
+              <h3 className="text-xs font-medium text-text-tertiary uppercase tracking-wider mb-3">
                 Navigate
               </h3>
-              <nav className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-slate-500">
-                <Link to="/" className="min-h-[44px] flex items-center hover:text-slate-300 transition-colors">
+              <nav className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-text-tertiary">
+                <Link to="/" className="min-h-[44px] flex items-center hover:text-text-primary transition-colors duration-150">
                   Home
                 </Link>
-                <Link to="/websites" className="min-h-[44px] flex items-center hover:text-slate-300 transition-colors">
+                <Link to="/websites" className="min-h-[44px] flex items-center hover:text-text-primary transition-colors duration-150">
                   Websites
                 </Link>
-                <Link to="/media" className="min-h-[44px] flex items-center hover:text-slate-300 transition-colors">
+                <Link to="/media" className="min-h-[44px] flex items-center hover:text-text-primary transition-colors duration-150">
                   Media
                 </Link>
                 {user && (
-                  <Link to="/profile" className="min-h-[44px] flex items-center hover:text-slate-300 transition-colors">
+                  <Link to="/profile" className="min-h-[44px] flex items-center hover:text-text-primary transition-colors duration-150">
                     Profile
                   </Link>
                 )}
               </nav>
             </div>
           </div>
-          <div className="mt-8 pt-6 border-t border-slate-800 text-center text-xs text-slate-600">
+          <div className="mt-8 pt-6 border-t border-border-subtle text-center text-xs text-text-tertiary">
             &copy; {new Date().getFullYear()} {siteName}. All data public.
           </div>
         </div>
       </footer>
+      </div>
     </div>
   );
 };

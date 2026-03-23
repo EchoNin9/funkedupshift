@@ -17,7 +17,7 @@ const ImpersonationBanner: React.FC = () => {
   };
 
   return (
-    <div className="sticky top-0 z-50 flex flex-wrap items-center justify-between gap-3 bg-amber-600 px-4 py-2 text-sm font-medium text-amber-950 shadow-md">
+    <div className="sticky top-0 z-50 flex flex-wrap items-center justify-between gap-3 bg-amber-600 px-4 py-2 text-sm font-medium text-amber-950 shadow-sm">
       <span className="min-w-0 truncate">
         Viewing as: <strong>{displayLabel || impersonation.id}</strong>
       </span>

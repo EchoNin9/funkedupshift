@@ -6,7 +6,7 @@ import { getVisibleAdminModules } from "../config/modules";
 function PageLoader() {
   return (
     <div className="container-max section-padding flex items-center justify-center min-h-[40vh]">
-      <div className="w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
+      <div className="w-8 h-8 border-2 border-accent-500 border-t-transparent rounded-full animate-spin" />
     </div>
   );
 }
@@ -27,8 +27,8 @@ export function AdminLayout() {
   if (!user || adminModules.length === 0) {
     return (
       <div className="container-max section-padding text-center">
-        <h1 className="text-2xl font-display font-bold text-secondary-100 mb-4">Access Denied</h1>
-        <p className="text-secondary-400">You don&rsquo;t have permission to access the admin area.</p>
+        <h1 className="text-2xl font-semibold text-text-primary mb-4">Access Denied</h1>
+        <p className="text-text-secondary">You don&rsquo;t have permission to access the admin area.</p>
       </div>
     );
   }
