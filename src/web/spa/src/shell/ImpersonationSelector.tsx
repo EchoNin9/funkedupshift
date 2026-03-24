@@ -94,7 +94,7 @@ const ImpersonationSelector: React.FC = () => {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex items-center justify-center gap-1.5 min-h-[44px] min-w-[44px] sm:min-w-0 sm:px-2 sm:py-1.5 rounded-md px-2 py-1.5 text-xs font-medium text-amber-200 hover:bg-amber-500/20"
+        className="flex items-center justify-center gap-1.5 min-h-[44px] min-w-[44px] sm:min-w-0 sm:px-2 sm:py-1.5 rounded-md px-2 py-1.5 text-xs font-medium text-amber-400 hover:bg-amber-500/10 transition-colors duration-150"
         title="Impersonate user or role"
       >
         <UserCircleIcon className="h-4 w-4" />
@@ -103,56 +103,56 @@ const ImpersonationSelector: React.FC = () => {
       <Dialog open={open} onClose={() => setOpen(false)} className="relative z-50">
         <div className="fixed inset-0 bg-black/60" aria-hidden="true" />
         <div className="fixed inset-0 flex items-center justify-center p-4">
-          <Dialog.Panel className="mx-auto max-h-[80vh] w-full max-w-md overflow-y-auto scrollbar-thin rounded-xl border border-slate-700 bg-slate-900 p-4 shadow-xl overscroll-contain">
-            <Dialog.Title className="text-lg font-semibold text-slate-100">User impersonation</Dialog.Title>
-            <p className="mt-1 text-sm text-slate-400">View the site as another user or a defined role.</p>
+          <Dialog.Panel className="mx-auto max-h-[80vh] w-full max-w-md overflow-y-auto scrollbar-thin rounded-lg border border-border-default bg-surface-2 p-4 shadow-xl overscroll-contain">
+            <Dialog.Title className="text-lg font-semibold text-text-primary">User impersonation</Dialog.Title>
+            <p className="mt-1 text-sm text-text-secondary">View the site as another user or a defined role.</p>
             {error && (
               <div className="mt-2 rounded-md border border-red-500/60 bg-red-500/10 px-3 py-2 text-sm text-red-200">{error}</div>
             )}
             {loading ? (
-              <p className="mt-4 text-sm text-slate-500">Loading…</p>
+              <p className="mt-4 text-sm text-text-tertiary">Loading…</p>
             ) : (
               <div className="mt-4 space-y-4">
                 <div>
-                  <h3 className="text-sm font-medium text-slate-300">Users</h3>
-                  <p className="text-xs text-slate-500">Superadmins cannot be impersonated.</p>
-                  <ul className="mt-2 max-h-40 overflow-y-auto scrollbar-thin space-y-1">
+                  <h3 className="text-sm font-medium text-text-secondary">Users</h3>
+                  <p className="text-xs text-text-tertiary">Superadmins cannot be impersonated.</p>
+                  <ul className="mt-2 max-h-40 overflow-y-auto scrollbar-thin space-y-0.5">
                     {users.map((u) => (
                       <li key={u.username}>
                         <button
                           type="button"
                           onClick={() => handleSelectUser(u)}
-                          className="w-full min-h-[44px] flex items-center rounded-md px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-800"
+                          className="w-full min-h-[44px] flex items-center rounded-md px-3 py-2 text-left text-sm text-text-secondary hover:bg-surface-3 hover:text-text-primary transition-colors duration-150"
                         >
                           {u.email || u.username}
                         </button>
                       </li>
                     ))}
-                    {users.length === 0 && <li className="px-3 py-2 text-sm text-slate-500">No users</li>}
+                    {users.length === 0 && <li className="px-3 py-2 text-sm text-text-tertiary">No users</li>}
                   </ul>
                 </div>
                 <div>
-                  <h3 className="text-sm font-medium text-slate-300">Roles</h3>
-                  <ul className="mt-2 max-h-40 overflow-y-auto scrollbar-thin space-y-1">
+                  <h3 className="text-sm font-medium text-text-secondary">Roles</h3>
+                  <ul className="mt-2 max-h-40 overflow-y-auto scrollbar-thin space-y-0.5">
                     {roles.map((r) => (
                       <li key={r.name}>
                         <button
                           type="button"
                           onClick={() => handleSelectRole(r)}
-                          className="w-full min-h-[44px] flex items-center rounded-md px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-800"
+                          className="w-full min-h-[44px] flex items-center rounded-md px-3 py-2 text-left text-sm text-text-secondary hover:bg-surface-3 hover:text-text-primary transition-colors duration-150"
                         >
                           {r.name}
                         </button>
                       </li>
                     ))}
-                    {roles.length === 0 && <li className="px-3 py-2 text-sm text-slate-500">No roles defined</li>}
+                    {roles.length === 0 && <li className="px-3 py-2 text-sm text-text-tertiary">No roles defined</li>}
                   </ul>
                 </div>
                 {impersonation && (
                   <button
                     type="button"
                     onClick={handleStop}
-                    className="rounded-md border border-slate-600 px-3 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800"
+                    className="rounded-md border border-border-default px-3 py-2 text-sm font-medium text-text-secondary hover:bg-surface-3 hover:text-text-primary transition-colors duration-150"
                   >
                     Stop impersonating
                   </button>

@@ -1,6 +1,5 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
 import { useAuth, hasRole } from "./AuthContext";
 
 export type UserRole = "guest" | "user" | "manager" | "superadmin";
@@ -36,16 +35,11 @@ export function EmptyState({
   const canEdit = hasRole(user ?? null, minRoleForAdmin);
 
   return (
-    <motion.div
-      className="text-center py-20 sm:py-28"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-    >
+    <div className="text-center py-20 sm:py-28 animate-fade-in">
       {/* Icon */}
-      <div className="mx-auto w-24 h-24 rounded-2xl bg-gradient-to-br from-primary-500/20 to-primary-600/10 flex items-center justify-center mb-8">
+      <div className="mx-auto w-20 h-20 rounded-xl border border-border-default bg-surface-2 flex items-center justify-center mb-8">
         <svg
-          className="w-12 h-12 text-primary-400"
+          className="w-10 h-10 text-text-tertiary"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -60,10 +54,10 @@ export function EmptyState({
       </div>
 
       {/* Text */}
-      <h2 className="text-2xl sm:text-3xl font-display font-bold text-secondary-100 mb-3">
+      <h2 className="text-2xl sm:text-3xl font-semibold text-text-primary mb-3">
         {title}
       </h2>
-      <p className="text-secondary-400 text-lg max-w-md mx-auto mb-8">
+      <p className="text-text-secondary text-base max-w-md mx-auto mb-8">
         {description}
       </p>
 
@@ -73,18 +67,6 @@ export function EmptyState({
           {adminLabel}
         </Link>
       )}
-
-      {/* Decorative dots */}
-      <div className="flex justify-center gap-1.5 mt-12">
-        {[0, 1, 2].map((i) => (
-          <motion.div
-            key={i}
-            className="w-2 h-2 rounded-full bg-primary-500/30"
-            animate={{ opacity: [0.3, 1, 0.3] }}
-            transition={{ duration: 2, repeat: Infinity, delay: i * 0.3 }}
-          />
-        ))}
-      </div>
-    </motion.div>
+    </div>
   );
 }

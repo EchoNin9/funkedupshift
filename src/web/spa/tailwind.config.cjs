@@ -7,6 +7,23 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        surface: {
+          0: "rgb(var(--color-surface-0) / <alpha-value>)",
+          1: "rgb(var(--color-surface-1) / <alpha-value>)",
+          2: "rgb(var(--color-surface-2) / <alpha-value>)",
+          3: "rgb(var(--color-surface-3) / <alpha-value>)",
+        },
+        "border-default": "rgb(var(--color-border-default) / <alpha-value>)",
+        "border-subtle": "rgb(var(--color-border-subtle) / <alpha-value>)",
+        "border-hover": "rgb(var(--color-border-hover) / <alpha-value>)",
+        "text-primary": "rgb(var(--color-text-primary) / <alpha-value>)",
+        "text-secondary": "rgb(var(--color-text-secondary) / <alpha-value>)",
+        "text-tertiary": "rgb(var(--color-text-tertiary) / <alpha-value>)",
+        accent: {
+          400: "rgb(var(--color-accent-light) / <alpha-value>)",
+          500: "rgb(var(--color-accent) / <alpha-value>)",
+          600: "rgb(var(--color-accent-hover) / <alpha-value>)",
+        },
         primary: {
           50: "#fff7ed",
           100: "#ffedd5",
@@ -45,21 +62,14 @@ module.exports = {
       },
       fontFamily: {
         sans: ["Inter", "system-ui", "sans-serif"],
-        display: ["Oswald", "system-ui", "sans-serif"],
       },
       animation: {
-        "fade-in": "fadeIn 0.5s ease-out forwards",
-        "slide-up": "slideUp 0.5s ease-out forwards",
-        "pulse-slow": "pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+        "fade-in": "fadeIn 150ms ease-out forwards",
       },
       keyframes: {
         fadeIn: {
           "0%": { opacity: "0" },
           "100%": { opacity: "1" },
-        },
-        slideUp: {
-          "0%": { opacity: "0", transform: "translateY(20px)" },
-          "100%": { opacity: "1", transform: "translateY(0)" },
         },
       },
     }
