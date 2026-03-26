@@ -123,11 +123,11 @@ const MemeDetailPage: React.FC = () => {
   if (user && !canAccessMemes(user)) {
     return (
       <div className="space-y-6">
-        <Link to="/memes" className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-slate-200">
+        <Link to="/memes" className="inline-flex items-center gap-1 text-sm text-text-secondary transition-colors hover:text-text-primary">
           <ArrowLeftIcon className="h-4 w-4" />
           Back to Memes
         </Link>
-        <div className="rounded-md border border-slate-700 bg-slate-900/60 px-4 py-3 text-slate-200">
+        <div className="rounded-md border border-border-hover bg-surface-2 px-4 py-3 text-text-primary">
           Sign in and join Memes group to view.
         </div>
       </div>
@@ -137,11 +137,11 @@ const MemeDetailPage: React.FC = () => {
   if (isLoading) {
     return (
       <div className="space-y-4">
-        <Link to="/memes" className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-slate-200">
+        <Link to="/memes" className="inline-flex items-center gap-1 text-sm text-text-secondary transition-colors hover:text-text-primary">
           <ArrowLeftIcon className="h-4 w-4" />
           Back to Memes
         </Link>
-        <div className="text-sm text-slate-400">Loading…</div>
+        <div className="text-sm text-text-secondary">Loading…</div>
       </div>
     );
   }
@@ -149,11 +149,11 @@ const MemeDetailPage: React.FC = () => {
   if (error || !item) {
     return (
       <div className="space-y-4">
-        <Link to="/memes" className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-slate-200">
+        <Link to="/memes" className="inline-flex items-center gap-1 text-sm text-text-secondary transition-colors hover:text-text-primary">
           <ArrowLeftIcon className="h-4 w-4" />
           Back to Memes
         </Link>
-        <div className="rounded-md border border-slate-700 bg-slate-900/60 px-4 py-3 text-slate-200">
+        <div className="rounded-md border border-border-hover bg-surface-2 px-4 py-3 text-text-primary">
           {error || "Meme not found."}
         </div>
       </div>
@@ -166,7 +166,7 @@ const MemeDetailPage: React.FC = () => {
   return (
     <div className="space-y-6">
       <header className="flex items-center justify-between gap-4">
-        <Link to="/memes" className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-slate-200">
+        <Link to="/memes" className="inline-flex items-center gap-1 text-sm text-text-secondary transition-colors hover:text-text-primary">
           <ArrowLeftIcon className="h-4 w-4" />
           Back to Memes
         </Link>
@@ -174,7 +174,7 @@ const MemeDetailPage: React.FC = () => {
           {canEdit && (
             <Link
               to={`/memes/${encodeURIComponent(item.PK)}/edit`}
-              className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-slate-200"
+              className="inline-flex items-center gap-1 text-sm text-text-secondary transition-colors hover:text-text-primary"
             >
               <PencilSquareIcon className="h-4 w-4" />
               Edit
@@ -184,7 +184,7 @@ const MemeDetailPage: React.FC = () => {
             <button
               type="button"
               onClick={() => setConfirmDelete(true)}
-              className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-red-400"
+              className="inline-flex items-center gap-1 text-sm text-text-secondary transition-colors hover:text-red-400"
             >
               <TrashIcon className="h-4 w-4" />
               Delete
@@ -205,7 +205,7 @@ const MemeDetailPage: React.FC = () => {
                 type="button"
                 onClick={() => setConfirmDelete(false)}
                 disabled={isDeleting}
-                className="text-xs text-slate-500 hover:text-slate-300"
+                className="text-xs text-text-tertiary transition-colors hover:text-text-secondary"
               >
                 Cancel
               </button>
@@ -214,7 +214,7 @@ const MemeDetailPage: React.FC = () => {
         </div>
       </header>
 
-      <div className="rounded-xl border border-slate-800 bg-slate-950/60 overflow-hidden min-h-[200px] flex items-center justify-center p-4">
+      <div className="rounded-xl border border-border-default bg-surface-1 overflow-hidden min-h-[200px] flex items-center justify-center p-4">
         {imgUrl ? (
           <>
             <img
@@ -227,46 +227,46 @@ const MemeDetailPage: React.FC = () => {
                 if (next) (next as HTMLElement).classList.remove("hidden");
               }}
             />
-            <div className="hidden py-12 text-slate-500" aria-hidden>Image failed to load</div>
+            <div className="hidden py-12 text-text-tertiary" aria-hidden>Image failed to load</div>
           </>
         ) : (
-          <div className="py-12 text-slate-500">No image</div>
+          <div className="py-12 text-text-tertiary">No image</div>
         )}
       </div>
 
       <ShareMemeBox memeId={item.PK} title={title} mediaUrl={hasRole(user, "manager") ? imgUrl : undefined} />
 
       <div className="space-y-2">
-        <h1 className="text-xl font-semibold text-slate-50">{title}</h1>
+        <h1 className="text-xl font-semibold text-text-primary">{title}</h1>
         {item.isPrivate && (
-          <span className="inline-flex rounded-full bg-slate-900 px-2 py-0.5 text-xs uppercase text-slate-500">
+          <span className="inline-flex rounded-full bg-surface-2 px-2 py-0.5 text-xs uppercase text-text-tertiary">
             Private
           </span>
         )}
         {item.description && (
-          <p className="text-sm text-slate-300">{item.description}</p>
+          <p className="text-sm text-text-secondary">{item.description}</p>
         )}
         <div className="flex flex-wrap items-center gap-1">
-          <span className="text-xs text-slate-500">Tags:</span>
+          <span className="text-xs text-text-tertiary">Tags:</span>
           {item.tags && item.tags.length > 0 ? (
             item.tags.map((tag) => (
               <span
                 key={tag}
-                className="rounded-full bg-slate-800 px-2 py-0.5 text-xs text-slate-300"
+                className="rounded-full bg-surface-3 px-2 py-0.5 text-xs text-text-secondary"
               >
                 {tag}
               </span>
             ))
           ) : (
-            <span className="text-xs text-slate-500">—</span>
+            <span className="text-xs text-text-tertiary">—</span>
           )}
         </div>
         {user && canRateMemes(user) && (
           <div className="pt-2">
-            <label className="inline-flex items-center gap-2 text-sm text-slate-400">
+            <label className="inline-flex items-center gap-2 text-sm text-text-secondary">
               <span>Rate:</span>
               <select
-                className="rounded border border-slate-700 bg-slate-950 px-2 py-1 text-sm text-slate-50"
+                className="rounded border border-border-hover bg-surface-1 px-2 py-1 text-sm text-text-primary"
                 onChange={(e) => {
                   const value = Number(e.target.value);
                   if (value >= 1 && value <= 5) handleRate(value);

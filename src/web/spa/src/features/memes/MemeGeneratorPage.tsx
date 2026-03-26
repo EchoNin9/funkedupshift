@@ -317,8 +317,8 @@ const MemeGeneratorPage: React.FC = () => {
   if (!user) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-semibold text-slate-50">Meme Generator</h1>
-        <div className="rounded-md border border-slate-700 bg-slate-900/60 px-4 py-3 text-slate-200">
+        <h1 className="text-2xl font-semibold text-text-primary">Meme Generator</h1>
+        <div className="rounded-md border border-border-hover bg-surface-2 px-4 py-3 text-text-primary">
           Sign in to create memes.
         </div>
       </div>
@@ -327,8 +327,8 @@ const MemeGeneratorPage: React.FC = () => {
   if (!canCreate) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-semibold text-slate-50">Meme Generator</h1>
-        <div className="rounded-md border border-slate-700 bg-slate-900/60 px-4 py-3 text-slate-200">
+        <h1 className="text-2xl font-semibold text-text-primary">Meme Generator</h1>
+        <div className="rounded-md border border-border-hover bg-surface-2 px-4 py-3 text-text-primary">
           Meme creator access required (user + Memes group). Join the Memes custom group or contact an admin.
         </div>
       </div>
@@ -338,37 +338,37 @@ const MemeGeneratorPage: React.FC = () => {
   return (
     <div className="space-y-6">
       <header className="flex items-center gap-4">
-        <Link to="/memes" className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-slate-200">
+        <Link to="/memes" className="inline-flex items-center gap-1 text-sm text-text-secondary transition-colors hover:text-text-primary">
           <ArrowLeftIcon className="h-4 w-4" />
           Back to Memes
         </Link>
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-50">Meme Generator</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Meme Generator</h1>
       </header>
 
       <div className="grid gap-6 lg:grid-cols-[1fr,320px]">
         <div className="space-y-4">
-          <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
-            <label className="block text-xs font-medium text-slate-400 mb-2">Image</label>
+          <div className="rounded-xl border border-border-default bg-surface-1 p-4">
+            <label className="block text-xs font-medium text-text-secondary mb-2">Image</label>
             <div className="flex flex-col gap-2">
               <input
                 type="file"
                 accept="image/jpeg,image/png,image/gif,image/webp,image/bmp"
                 onChange={(e) => e.target.files?.[0] && loadImageFromFile(e.target.files[0])}
-                className="text-sm text-slate-300 file:mr-2 file:rounded file:border-0 file:bg-brand-orange file:px-3 file:py-1 file:text-slate-950"
+                className="text-sm text-text-secondary file:mr-2 file:rounded file:border-0 file:bg-accent-500 file:px-3 file:py-1 file:text-surface-0"
               />
-              <span className="text-xs text-slate-500">or</span>
+              <span className="text-xs text-text-tertiary">or</span>
               <div className="flex gap-2">
                 <input
                   type="url"
                   value={imageUrl}
                   onChange={(e) => setImageUrl(e.target.value)}
                   placeholder="Paste image URL"
-                  className="flex-1 rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-500"
+                  className="flex-1 rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary"
                 />
                 <button
                   type="button"
                   onClick={loadImageFromUrl}
-                  className="rounded-md bg-slate-700 px-3 py-2 text-sm text-slate-200 hover:bg-slate-600"
+                  className="rounded-md bg-surface-3 px-3 py-2 text-sm text-text-primary transition-colors hover:bg-surface-3"
                 >
                   Load
                 </button>
@@ -378,17 +378,17 @@ const MemeGeneratorPage: React.FC = () => {
 
           {imageSrc && (
             <>
-              <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
+              <div className="rounded-xl border border-border-default bg-surface-1 p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs font-medium text-slate-400">Preview</label>
-                  <div className="flex rounded-md border border-slate-700 overflow-hidden">
+                  <label className="text-xs font-medium text-text-secondary">Preview</label>
+                  <div className="flex rounded-md border border-border-hover overflow-hidden">
                     <button
                       type="button"
                       onClick={() => setSizeMode("resize")}
                       className={`px-3 py-1 text-xs transition-colors ${
                         sizeMode === "resize"
-                          ? "bg-brand-orange text-slate-950 font-medium"
-                          : "bg-slate-950 text-slate-400 hover:text-slate-200"
+                          ? "bg-accent-500 text-surface-0 font-medium"
+                          : "bg-surface-1 text-text-secondary hover:text-text-primary"
                       }`}
                     >
                       Resize to fit
@@ -398,8 +398,8 @@ const MemeGeneratorPage: React.FC = () => {
                       onClick={() => setSizeMode("original")}
                       className={`px-3 py-1 text-xs transition-colors ${
                         sizeMode === "original"
-                          ? "bg-brand-orange text-slate-950 font-medium"
-                          : "bg-slate-950 text-slate-400 hover:text-slate-200"
+                          ? "bg-accent-500 text-surface-0 font-medium"
+                          : "bg-surface-1 text-text-secondary hover:text-text-primary"
                       }`}
                     >
                       Original
@@ -410,19 +410,19 @@ const MemeGeneratorPage: React.FC = () => {
                   ref={canvasRef}
                   width={CANVAS_SIZE}
                   height={CANVAS_SIZE}
-                  className="w-full max-w-[500px] border border-slate-700 rounded-lg bg-slate-900"
+                  className="w-full max-w-[500px] border border-border-hover rounded-lg bg-surface-2"
                 />
               </div>
 
-              <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
-                <label className="block text-xs font-medium text-slate-400 mb-2">Text boxes (fixed zones)</label>
+              <div className="rounded-xl border border-border-default bg-surface-1 p-4">
+                <label className="block text-xs font-medium text-text-secondary mb-2">Text boxes (fixed zones)</label>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {FIXED_ZONES.map((zone) => {
                     const tb = textBoxes.find((t) => t.zoneId === zone.id);
                     return (
-                      <div key={zone.id} className="rounded border border-slate-700 p-2">
+                      <div key={zone.id} className="rounded border border-border-hover p-2">
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs text-slate-400">{zone.id}</span>
+                          <span className="text-xs text-text-secondary">{zone.id}</span>
                           {tb ? (
                             <button
                               type="button"
@@ -435,7 +435,7 @@ const MemeGeneratorPage: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => addTextBox(zone.id)}
-                              className="text-brand-orange hover:text-orange-400 text-xs"
+                              className="text-accent-500 transition-colors hover:text-orange-400 text-xs"
                             >
                               Add
                             </button>
@@ -448,12 +448,12 @@ const MemeGeneratorPage: React.FC = () => {
                               value={tb.text}
                               onChange={(e) => updateTextBox(zone.id, { text: e.target.value })}
                               placeholder="Text"
-                              className="w-full rounded border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-slate-50"
+                              className="w-full rounded border border-border-hover bg-surface-1 px-2 py-1 text-xs text-text-primary"
                             />
                             <select
                               value={tb.font}
                               onChange={(e) => updateTextBox(zone.id, { font: e.target.value })}
-                              className="w-full rounded border border-slate-700 bg-slate-950 px-2 py-1 text-[11px] text-slate-300"
+                              className="w-full rounded border border-border-hover bg-surface-1 px-2 py-1 text-[11px] text-text-secondary"
                             >
                               {FONTS.map((f) => (
                                 <option key={f} value={f}>{f}</option>
@@ -464,7 +464,7 @@ const MemeGeneratorPage: React.FC = () => {
                                 type="color"
                                 value={tb.color}
                                 onChange={(e) => updateTextBox(zone.id, { color: e.target.value })}
-                                className="h-6 w-8 cursor-pointer rounded border border-slate-700"
+                                className="h-6 w-8 cursor-pointer rounded border border-border-hover"
                               />
                               <input
                                 type="number"
@@ -472,7 +472,7 @@ const MemeGeneratorPage: React.FC = () => {
                                 onChange={(e) => updateTextBox(zone.id, { size: Number(e.target.value) || 32 })}
                                 min={12}
                                 max={72}
-                                className="w-14 rounded border border-slate-700 bg-slate-950 px-1 py-0.5 text-[11px] text-slate-50"
+                                className="w-14 rounded border border-border-hover bg-surface-1 px-1 py-0.5 text-[11px] text-text-primary"
                               />
                             </div>
                           </div>
@@ -487,39 +487,39 @@ const MemeGeneratorPage: React.FC = () => {
         </div>
 
         <div className="space-y-4">
-          <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 space-y-3">
+          <div className="rounded-xl border border-border-default bg-surface-1 p-4 space-y-3">
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1">Title (optional)</label>
+              <label className="block text-xs font-medium text-text-secondary mb-1">Title (optional)</label>
               <div className="flex gap-2">
                 <input
                   type="text"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="Generate or type"
-                  className="flex-1 rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-500"
+                  className="flex-1 rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary"
                 />
                 <button
                   type="button"
                   onClick={generateTitle}
                   disabled={generatingTitle}
-                  className="rounded-md bg-brand-orange px-3 py-2 text-sm font-medium text-slate-950 disabled:opacity-50"
+                  className="rounded-md bg-accent-500 px-3 py-2 text-sm font-medium text-surface-0 disabled:opacity-50"
                 >
                   {generatingTitle ? "…" : "Generate"}
                 </button>
               </div>
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1">Description (optional)</label>
+              <label className="block text-xs font-medium text-text-secondary mb-1">Description (optional)</label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Optional description"
                 rows={3}
-                className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-500"
+                className="w-full rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1">Tags</label>
+              <label className="block text-xs font-medium text-text-secondary mb-1">Tags</label>
               <AddTagInput
                 tags={tags}
                 onTagsChange={setTags}
@@ -535,12 +535,12 @@ const MemeGeneratorPage: React.FC = () => {
                 placeholder="Type to suggest or create tag, Tab to autocomplete"
               />
             </div>
-            <label className="flex items-center gap-2 text-sm text-slate-300">
+            <label className="flex items-center gap-2 text-sm text-text-secondary">
               <input
                 type="checkbox"
                 checked={isPrivate}
                 onChange={(e) => setIsPrivate(e.target.checked)}
-                className="rounded border-slate-600"
+                className="rounded border-border-default"
               />
               Private (only you can see)
             </label>
@@ -556,7 +556,7 @@ const MemeGeneratorPage: React.FC = () => {
             type="button"
             onClick={handleSubmit}
             disabled={!imageSrc || isSubmitting}
-            className="w-full rounded-md bg-brand-orange px-4 py-3 text-sm font-semibold text-slate-950 hover:bg-orange-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full rounded-md bg-accent-500 px-4 py-3 text-sm font-semibold text-surface-0 hover:bg-orange-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSubmitting ? "Saving…" : "Save meme"}
           </button>

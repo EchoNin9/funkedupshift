@@ -434,7 +434,7 @@ const SquashAdminPage: React.FC = () => {
   if (!user) {
     return (
       <div className="space-y-4">
-        <h1 className="text-xl font-semibold text-slate-100">Squash Admin</h1>
+        <h1 className="text-xl font-semibold text-text-primary">Squash Admin</h1>
         <div className="rounded-md bg-red-900/30 border border-red-800/50 px-4 py-3 text-sm text-red-200">
           Sign in required. <Link to="/auth" className="underline hover:text-red-100">Sign in</Link>
         </div>
@@ -445,7 +445,7 @@ const SquashAdminPage: React.FC = () => {
   if (!canModify) {
     return (
       <div className="space-y-4">
-        <h1 className="text-xl font-semibold text-slate-100">Squash Admin</h1>
+        <h1 className="text-xl font-semibold text-text-primary">Squash Admin</h1>
         <div className="rounded-md bg-amber-900/30 border border-amber-800/50 px-4 py-3 text-sm text-amber-200">
           Squash Admin requires manager (in Squash group) or SuperAdmin access.
         </div>
@@ -455,10 +455,10 @@ const SquashAdminPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold text-slate-100">Squash Admin</h1>
+      <h1 className="text-xl font-semibold text-text-primary">Squash Admin</h1>
 
-      <p className="text-sm text-slate-400">
-        <Link to="/squash" className="text-brand-orange hover:text-orange-400">
+      <p className="text-sm text-text-secondary">
+        <Link to="/squash" className="text-accent-500 hover:text-orange-400">
           Squash
         </Link>
       </p>
@@ -471,18 +471,18 @@ const SquashAdminPage: React.FC = () => {
         </div>
       )}
 
-      <div className="flex gap-2 border-b border-slate-800 pb-2">
+      <div className="flex gap-2 border-b border-border-default pb-2">
         <button
           type="button"
           onClick={() => setActiveTab("matches")}
-          className={`px-4 py-2 rounded-md text-sm font-medium ${activeTab === "matches" ? "bg-slate-800 text-slate-100" : "text-slate-400 hover:text-slate-200"}`}
+          className={`px-4 py-2 rounded-md text-sm font-medium ${activeTab === "matches" ? "bg-surface-3 text-text-primary" : "text-text-secondary hover:text-text-primary transition-colors"}`}
         >
           Matches
         </button>
         <button
           type="button"
           onClick={() => setActiveTab("players")}
-          className={`px-4 py-2 rounded-md text-sm font-medium ${activeTab === "players" ? "bg-slate-800 text-slate-100" : "text-slate-400 hover:text-slate-200"}`}
+          className={`px-4 py-2 rounded-md text-sm font-medium ${activeTab === "players" ? "bg-surface-3 text-text-primary" : "text-text-secondary hover:text-text-primary transition-colors"}`}
         >
           Players
         </button>
@@ -491,7 +491,7 @@ const SquashAdminPage: React.FC = () => {
       {activeTab === "matches" && (
         <>
           <section>
-            <h2 className="text-base font-semibold text-slate-200 mb-3">Add match</h2>
+            <h2 className="text-base font-semibold text-text-primary mb-3">Add match</h2>
             <form onSubmit={handleMatchSubmit} className="grid grid-cols-2 gap-4 max-w-2xl">
               <div className="col-span-2">
                 <DateInput
@@ -503,14 +503,14 @@ const SquashAdminPage: React.FC = () => {
                 />
               </div>
               <div>
-                <label htmlFor="matchTeamAP1" className="block text-xs font-semibold text-slate-400 mb-1">
+                <label htmlFor="matchTeamAP1" className="block text-xs font-semibold text-text-secondary mb-1">
                   Team A – Player 1
                 </label>
                 <select
                   id="matchTeamAP1"
                   value={matchTeamAP1}
                   onChange={(e) => setMatchTeamAP1(e.target.value)}
-                  className="block w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200 focus:border-brand-orange focus:outline-none"
+                  className="block w-full rounded-md border border-border-hover bg-surface-2 px-3 py-2 text-sm text-text-primary focus:border-accent-500 focus:outline-none"
                 >
                   <option value="">— Select —</option>
                   {playerOptionsFor("p1").map((p) => (
@@ -521,14 +521,14 @@ const SquashAdminPage: React.FC = () => {
                 </select>
               </div>
               <div>
-                <label htmlFor="matchTeamAP2" className="block text-xs font-semibold text-slate-400 mb-1">
+                <label htmlFor="matchTeamAP2" className="block text-xs font-semibold text-text-secondary mb-1">
                   Team A – Player 2
                 </label>
                 <select
                   id="matchTeamAP2"
                   value={matchTeamAP2}
                   onChange={(e) => setMatchTeamAP2(e.target.value)}
-                  className="block w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200 focus:border-brand-orange focus:outline-none"
+                  className="block w-full rounded-md border border-border-hover bg-surface-2 px-3 py-2 text-sm text-text-primary focus:border-accent-500 focus:outline-none"
                 >
                   <option value="">— Select —</option>
                   {playerOptionsFor("p2").map((p) => (
@@ -539,14 +539,14 @@ const SquashAdminPage: React.FC = () => {
                 </select>
               </div>
               <div>
-                <label htmlFor="matchTeamBP1" className="block text-xs font-semibold text-slate-400 mb-1">
+                <label htmlFor="matchTeamBP1" className="block text-xs font-semibold text-text-secondary mb-1">
                   Team B – Player 1
                 </label>
                 <select
                   id="matchTeamBP1"
                   value={matchTeamBP1}
                   onChange={(e) => setMatchTeamBP1(e.target.value)}
-                  className="block w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200 focus:border-brand-orange focus:outline-none"
+                  className="block w-full rounded-md border border-border-hover bg-surface-2 px-3 py-2 text-sm text-text-primary focus:border-accent-500 focus:outline-none"
                 >
                   <option value="">— Select —</option>
                   {playerOptionsFor("p3").map((p) => (
@@ -557,14 +557,14 @@ const SquashAdminPage: React.FC = () => {
                 </select>
               </div>
               <div>
-                <label htmlFor="matchTeamBP2" className="block text-xs font-semibold text-slate-400 mb-1">
+                <label htmlFor="matchTeamBP2" className="block text-xs font-semibold text-text-secondary mb-1">
                   Team B – Player 2
                 </label>
                 <select
                   id="matchTeamBP2"
                   value={matchTeamBP2}
                   onChange={(e) => setMatchTeamBP2(e.target.value)}
-                  className="block w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200 focus:border-brand-orange focus:outline-none"
+                  className="block w-full rounded-md border border-border-hover bg-surface-2 px-3 py-2 text-sm text-text-primary focus:border-accent-500 focus:outline-none"
                 >
                   <option value="">— Select —</option>
                   {playerOptionsFor("p4").map((p) => (
@@ -575,28 +575,28 @@ const SquashAdminPage: React.FC = () => {
                 </select>
               </div>
               <div>
-                <label htmlFor="matchWinningTeam" className="block text-xs font-semibold text-slate-400 mb-1">
+                <label htmlFor="matchWinningTeam" className="block text-xs font-semibold text-text-secondary mb-1">
                   Winning team
                 </label>
                 <select
                   id="matchWinningTeam"
                   value={matchWinningTeam}
                   onChange={(e) => setMatchWinningTeam(e.target.value as "A" | "B")}
-                  className="block w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200 focus:border-brand-orange focus:outline-none"
+                  className="block w-full rounded-md border border-border-hover bg-surface-2 px-3 py-2 text-sm text-text-primary focus:border-accent-500 focus:outline-none"
                 >
                   <option value="A">Team A</option>
                   <option value="B">Team B</option>
                 </select>
               </div>
               <div>
-                <label htmlFor="matchLoserGames" className="block text-xs font-semibold text-slate-400 mb-1">
+                <label htmlFor="matchLoserGames" className="block text-xs font-semibold text-text-secondary mb-1">
                   Games won by losing team
                 </label>
                 <select
                   id="matchLoserGames"
                   value={matchLoserGames}
                   onChange={(e) => setMatchLoserGames(parseInt(e.target.value, 10))}
-                  className="block w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200 focus:border-brand-orange focus:outline-none"
+                  className="block w-full rounded-md border border-border-hover bg-surface-2 px-3 py-2 text-sm text-text-primary focus:border-accent-500 focus:outline-none"
                 >
                   <option value={0}>0</option>
                   <option value={1}>1</option>
@@ -607,14 +607,14 @@ const SquashAdminPage: React.FC = () => {
                 <button
                   type="submit"
                   disabled={isMatchSubmitting}
-                  className="rounded-md bg-brand-orange px-4 py-2 text-sm font-medium text-slate-950 hover:bg-orange-500 disabled:opacity-50"
+                  className="rounded-md bg-accent-500 px-4 py-2 text-sm font-medium text-surface-0 hover:bg-orange-500 disabled:opacity-50"
                 >
                   {editingMatchId ? "Update match" : "Add match"}
                 </button>
                 <button
                   type="button"
                   onClick={cancelMatchEdit}
-                  className="rounded-md border border-slate-600 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800"
+                  className="rounded-md border border-border-default px-4 py-2 text-sm font-medium text-text-secondary hover:bg-surface-3 transition-colors"
                 >
                   Cancel
                 </button>
@@ -623,7 +623,7 @@ const SquashAdminPage: React.FC = () => {
           </section>
 
           <section>
-            <h2 className="text-base font-semibold text-slate-200 mb-3">Search matches</h2>
+            <h2 className="text-base font-semibold text-text-primary mb-3">Search matches</h2>
             <div className="flex flex-wrap gap-4 items-end">
               <DateInput
                 id="searchDate"
@@ -647,7 +647,7 @@ const SquashAdminPage: React.FC = () => {
                 className="max-w-[12rem]"
               />
               <div className="relative max-w-[14rem] min-w-[12rem]" ref={playerDropdownRef}>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Filter by players</label>
+                <label className="block text-xs font-semibold text-text-secondary mb-1">Filter by players</label>
                 <input
                   type="text"
                   value={playerSearch}
@@ -655,23 +655,23 @@ const SquashAdminPage: React.FC = () => {
                   onFocus={() => setPlayerDropdownOpen(true)}
                   placeholder="Search players..."
                   autoComplete="off"
-                  className="block w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200 focus:border-brand-orange focus:outline-none"
+                  className="block w-full rounded-md border border-border-hover bg-surface-2 px-3 py-2 text-sm text-text-primary focus:border-accent-500 focus:outline-none"
                 />
                 {playerDropdownOpen && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-slate-900 border border-slate-700 rounded-md max-h-48 overflow-y-auto scrollbar-thin z-10">
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-surface-2 border border-border-hover rounded-md max-h-48 overflow-y-auto scrollbar-thin z-10">
                     {filteredPlayerOptions.length ? (
                       filteredPlayerOptions.map((p) => (
                         <button
                           key={p.id}
                           type="button"
                           onClick={() => addPlayerFilter(p.id)}
-                          className="w-full text-left px-3 py-2 text-sm text-slate-200 hover:bg-slate-800"
+                          className="w-full text-left px-3 py-2 text-sm text-text-primary hover:bg-surface-3 transition-colors"
                         >
                           {p.name || p.id}
                         </button>
                       ))
                     ) : (
-                      <div className="px-3 py-2 text-sm text-slate-500">No matches</div>
+                      <div className="px-3 py-2 text-sm text-text-tertiary">No matches</div>
                     )}
                   </div>
                 )}
@@ -679,10 +679,10 @@ const SquashAdminPage: React.FC = () => {
                   {selectedPlayerIds.map((id) => (
                     <span
                       key={id}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-700 text-slate-200 text-xs"
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-3 text-text-primary text-xs"
                     >
                       {getPlayerName(id)}
-                      <button type="button" onClick={() => removePlayerFilter(id)} className="text-slate-400 hover:text-slate-100" aria-label="Remove">
+                      <button type="button" onClick={() => removePlayerFilter(id)} className="text-text-secondary hover:text-text-primary transition-colors" aria-label="Remove">
                         ×
                       </button>
                     </span>
@@ -690,13 +690,13 @@ const SquashAdminPage: React.FC = () => {
                 </div>
                 {selectedPlayerIds.length > 0 && (
                   <div className="mt-2 flex items-center gap-2">
-                    <span className="text-xs text-slate-500">Match:</span>
-                    <div className="inline-flex rounded-md border border-slate-700 bg-slate-950 p-0.5">
+                    <span className="text-xs text-text-tertiary">Match:</span>
+                    <div className="inline-flex rounded-md border border-border-hover bg-surface-1 p-0.5">
                       <button
                         type="button"
                         onClick={() => setPlayerMode("and")}
                         className={`rounded px-2 py-0.5 text-xs font-medium ${
-                          playerMode === "and" ? "bg-brand-orange text-slate-950" : "text-slate-400 hover:text-slate-200"
+                          playerMode === "and" ? "bg-accent-500 text-surface-0" : "text-text-secondary hover:text-text-primary transition-colors"
                         }`}
                       >
                         AND
@@ -705,7 +705,7 @@ const SquashAdminPage: React.FC = () => {
                         type="button"
                         onClick={() => setPlayerMode("or")}
                         className={`rounded px-2 py-0.5 text-xs font-medium ${
-                          playerMode === "or" ? "bg-brand-orange text-slate-950" : "text-slate-400 hover:text-slate-200"
+                          playerMode === "or" ? "bg-accent-500 text-surface-0" : "text-text-secondary hover:text-text-primary transition-colors"
                         }`}
                       >
                         OR
@@ -719,14 +719,14 @@ const SquashAdminPage: React.FC = () => {
                   type="button"
                   onClick={searchMatches}
                   disabled={isMatchesLoading}
-                  className="rounded-md bg-brand-orange px-4 py-2 text-sm font-medium text-slate-950 hover:bg-orange-500 disabled:opacity-50"
+                  className="rounded-md bg-accent-500 px-4 py-2 text-sm font-medium text-surface-0 hover:bg-orange-500 disabled:opacity-50"
                 >
                   {isMatchesLoading ? "Searching…" : "Search"}
                 </button>
                 <button
                   type="button"
                   onClick={clearMatchSearch}
-                  className="rounded-md border border-slate-600 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800"
+                  className="rounded-md border border-border-default px-4 py-2 text-sm font-medium text-text-secondary hover:bg-surface-3 transition-colors"
                 >
                   Clear
                 </button>
@@ -736,14 +736,14 @@ const SquashAdminPage: React.FC = () => {
 
           <section>
             <div className="flex flex-wrap items-center gap-3 mb-3">
-              <h2 className="text-base font-semibold text-slate-200">Search results</h2>
+              <h2 className="text-base font-semibold text-text-primary">Search results</h2>
               {hasSearched && sortedMatches.length > 0 && (
-                <div className="inline-flex rounded-md border border-slate-700 bg-slate-950 p-0.5">
+                <div className="inline-flex rounded-md border border-border-hover bg-surface-1 p-0.5">
                   <button
                     type="button"
                     onClick={() => setSortOrder("newest")}
                     className={`rounded px-2 py-0.5 text-xs font-medium ${
-                      sortOrder === "newest" ? "bg-brand-orange text-slate-950" : "text-slate-400 hover:text-slate-200"
+                      sortOrder === "newest" ? "bg-accent-500 text-surface-0" : "text-text-secondary hover:text-text-primary transition-colors"
                     }`}
                   >
                     Newest first
@@ -752,7 +752,7 @@ const SquashAdminPage: React.FC = () => {
                     type="button"
                     onClick={() => setSortOrder("oldest")}
                     className={`rounded px-2 py-0.5 text-xs font-medium ${
-                      sortOrder === "oldest" ? "bg-brand-orange text-slate-950" : "text-slate-400 hover:text-slate-200"
+                      sortOrder === "oldest" ? "bg-accent-500 text-surface-0" : "text-text-secondary hover:text-text-primary transition-colors"
                     }`}
                   >
                     Oldest first
@@ -761,19 +761,19 @@ const SquashAdminPage: React.FC = () => {
               )}
             </div>
             {hasSearched && (
-              <div className="rounded-md border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm text-slate-400 mb-3">
+              <div className="rounded-md border border-border-default bg-surface-1 px-3 py-2 text-sm text-text-secondary mb-3">
                 {sortedMatches.length === 0 ? "No results" : `${sortedMatches.length} results`}
               </div>
             )}
             {!hasSearched ? (
               <div className="flex items-center justify-center min-h-[280px]">
-                <p className="text-2xl sm:text-3xl font-light text-slate-500/80 tracking-wide animate-pulse">
+                <p className="text-2xl sm:text-3xl font-light text-text-tertiary/80 tracking-wide animate-pulse">
                   Enter search criteria and click Search to find matches.
                 </p>
               </div>
             ) : pageMatches.length === 0 ? (
               <ul className="list-none p-0">
-                <li className="py-2 text-slate-400">No matches found.</li>
+                <li className="py-2 text-text-secondary">No matches found.</li>
               </ul>
             ) : (
               <>
@@ -783,16 +783,16 @@ const SquashAdminPage: React.FC = () => {
                     const teamA = [getPlayerName(m.teamAPlayer1Id || ""), getPlayerName(m.teamAPlayer2Id || "")].filter(Boolean).join(" & ");
                     const teamB = [getPlayerName(m.teamBPlayer1Id || ""), getPlayerName(m.teamBPlayer2Id || "")].filter(Boolean).join(" & ");
                     return (
-                      <li key={id} className="flex items-center gap-2 flex-wrap py-2 border-b border-slate-800 last:border-0">
-                        <span className="font-semibold text-slate-200">{m.date || ""}</span>
-                        <span className="text-slate-300">
+                      <li key={id} className="flex items-center gap-2 flex-wrap py-2 border-b border-border-default last:border-0">
+                        <span className="font-semibold text-text-primary">{m.date || ""}</span>
+                        <span className="text-text-secondary">
                           {teamA} vs {teamB}
                         </span>
-                        <span className="italic text-slate-400">{renderMatchScore(m)}</span>
+                        <span className="italic text-text-secondary">{renderMatchScore(m)}</span>
                         <button
                           type="button"
                           onClick={() => startEditMatch(m)}
-                          className="rounded-md border border-slate-600 px-2 py-1 text-xs text-slate-300 hover:bg-slate-800"
+                          className="rounded-md border border-border-default px-2 py-1 text-xs text-text-secondary hover:bg-surface-3 transition-colors"
                         >
                           Edit
                         </button>
@@ -813,16 +813,16 @@ const SquashAdminPage: React.FC = () => {
                       type="button"
                       disabled={currentPage <= 1}
                       onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                      className="rounded-md border border-slate-600 px-3 py-1 text-sm disabled:opacity-50 disabled:cursor-not-allowed text-slate-300 hover:bg-slate-800"
+                      className="rounded-md border border-border-default px-3 py-1 text-sm disabled:opacity-50 disabled:cursor-not-allowed text-text-secondary hover:bg-surface-3 transition-colors"
                     >
                       Prev
                     </button>
                     <span className="flex items-center gap-1">
                       {pageNums.map((p, i) =>
                         p === "…" ? (
-                          <span key={`ellipsis-${i}`} className="px-1 text-slate-500">…</span>
+                          <span key={`ellipsis-${i}`} className="px-1 text-text-tertiary">…</span>
                         ) : p === currentPage ? (
-                          <span key={p} className="min-w-[2rem] px-2 py-1 text-center font-semibold text-slate-200">
+                          <span key={p} className="min-w-[2rem] px-2 py-1 text-center font-semibold text-text-primary">
                             {p}
                           </span>
                         ) : (
@@ -830,7 +830,7 @@ const SquashAdminPage: React.FC = () => {
                             key={p}
                             type="button"
                             onClick={() => setCurrentPage(p as number)}
-                            className="min-w-[2rem] rounded px-2 py-1 text-sm text-slate-300 hover:bg-slate-800 border border-slate-600"
+                            className="min-w-[2rem] rounded px-2 py-1 text-sm text-text-secondary hover:bg-surface-3 transition-colors border border-border-default"
                           >
                             {p}
                           </button>
@@ -841,7 +841,7 @@ const SquashAdminPage: React.FC = () => {
                       type="button"
                       disabled={currentPage >= totalPages}
                       onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                      className="rounded-md border border-slate-600 px-3 py-1 text-sm disabled:opacity-50 disabled:cursor-not-allowed text-slate-300 hover:bg-slate-800"
+                      className="rounded-md border border-border-default px-3 py-1 text-sm disabled:opacity-50 disabled:cursor-not-allowed text-text-secondary hover:bg-surface-3 transition-colors"
                     >
                       Next
                     </button>
@@ -856,10 +856,10 @@ const SquashAdminPage: React.FC = () => {
       {activeTab === "players" && (
         <>
           <section>
-            <h2 className="text-base font-semibold text-slate-200 mb-3">Players</h2>
+            <h2 className="text-base font-semibold text-text-primary mb-3">Players</h2>
             <form onSubmit={handlePlayerSubmit} className="space-y-4 max-w-md">
               <div>
-                <label htmlFor="playerName" className="block text-xs font-semibold text-slate-400 mb-1">
+                <label htmlFor="playerName" className="block text-xs font-semibold text-text-secondary mb-1">
                   Name
                 </label>
                 <input
@@ -869,11 +869,11 @@ const SquashAdminPage: React.FC = () => {
                   onChange={(e) => setPlayerFormName(e.target.value)}
                   required
                   placeholder="Player name"
-                  className="block w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200 focus:border-brand-orange focus:outline-none"
+                  className="block w-full rounded-md border border-border-hover bg-surface-2 px-3 py-2 text-sm text-text-primary focus:border-accent-500 focus:outline-none"
                 />
               </div>
               <div>
-                <label htmlFor="playerEmail" className="block text-xs font-semibold text-slate-400 mb-1">
+                <label htmlFor="playerEmail" className="block text-xs font-semibold text-text-secondary mb-1">
                   Email (optional)
                 </label>
                 <input
@@ -882,18 +882,18 @@ const SquashAdminPage: React.FC = () => {
                   value={playerFormEmail}
                   onChange={(e) => setPlayerFormEmail(e.target.value)}
                   placeholder="player@example.com"
-                  className="block w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200 focus:border-brand-orange focus:outline-none"
+                  className="block w-full rounded-md border border-border-hover bg-surface-2 px-3 py-2 text-sm text-text-primary focus:border-accent-500 focus:outline-none"
                 />
               </div>
               <div>
-                <label htmlFor="playerUserId" className="block text-xs font-semibold text-slate-400 mb-1">
+                <label htmlFor="playerUserId" className="block text-xs font-semibold text-text-secondary mb-1">
                   Link to user (optional)
                 </label>
                 <select
                   id="playerUserId"
                   value={playerFormUserId}
                   onChange={(e) => setPlayerFormUserId(e.target.value)}
-                  className="block w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200 focus:border-brand-orange focus:outline-none"
+                  className="block w-full rounded-md border border-border-hover bg-surface-2 px-3 py-2 text-sm text-text-primary focus:border-accent-500 focus:outline-none"
                 >
                   <option value="">— None —</option>
                   {adminUsers.map((u) => (
@@ -907,14 +907,14 @@ const SquashAdminPage: React.FC = () => {
                 <button
                   type="submit"
                   disabled={isPlayerSubmitting}
-                  className="rounded-md bg-brand-orange px-4 py-2 text-sm font-medium text-slate-950 hover:bg-orange-500 disabled:opacity-50"
+                  className="rounded-md bg-accent-500 px-4 py-2 text-sm font-medium text-surface-0 hover:bg-orange-500 disabled:opacity-50"
                 >
                   {editingPlayerId ? "Update player" : "Add player"}
                 </button>
                 <button
                   type="button"
                   onClick={cancelPlayerEdit}
-                  className="rounded-md border border-slate-600 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800"
+                  className="rounded-md border border-border-default px-4 py-2 text-sm font-medium text-text-secondary hover:bg-surface-3 transition-colors"
                 >
                   Cancel
                 </button>
@@ -923,19 +923,19 @@ const SquashAdminPage: React.FC = () => {
           </section>
 
           <section>
-            <h2 className="text-base font-semibold text-slate-200 mb-3">Player list</h2>
+            <h2 className="text-base font-semibold text-text-primary mb-3">Player list</h2>
             {players.length === 0 ? (
-              <p className="text-sm text-slate-500">No players yet. Add players above.</p>
+              <p className="text-sm text-text-tertiary">No players yet. Add players above.</p>
             ) : (
               <ul className="list-none p-0">
                 {players.map((p) => (
-                  <li key={p.id} className="flex items-center gap-2 flex-wrap py-2 border-b border-slate-800 last:border-0">
-                    <span className="font-semibold text-slate-200">{p.name || p.id}</span>
-                    {p.email && <span className="text-slate-500 text-sm">({p.email})</span>}
+                  <li key={p.id} className="flex items-center gap-2 flex-wrap py-2 border-b border-border-default last:border-0">
+                    <span className="font-semibold text-text-primary">{p.name || p.id}</span>
+                    {p.email && <span className="text-text-tertiary text-sm">({p.email})</span>}
                     <button
                       type="button"
                       onClick={() => startEditPlayer(p)}
-                      className="rounded-md border border-slate-600 px-2 py-1 text-xs text-slate-300 hover:bg-slate-800"
+                      className="rounded-md border border-border-default px-2 py-1 text-xs text-text-secondary hover:bg-surface-3 transition-colors"
                     >
                       Edit
                     </button>

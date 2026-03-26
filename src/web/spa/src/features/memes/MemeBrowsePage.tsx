@@ -265,8 +265,8 @@ const MemeBrowsePage: React.FC = () => {
   if (user && !canAccessMemes(user)) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-50">Memes</h1>
-        <div className="rounded-md border border-slate-700 bg-slate-900/60 px-4 py-3 text-slate-200">
+        <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Memes</h1>
+        <div className="rounded-md border border-border-hover bg-surface-2 px-4 py-3 text-text-primary">
           You do not have access to Memes. Join the Memes custom group or contact an admin.
         </div>
       </div>
@@ -294,14 +294,14 @@ const MemeBrowsePage: React.FC = () => {
     <div className="space-y-6">
       <header className="space-y-2">
         <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-semibold tracking-tight text-slate-50">Memes</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Memes</h1>
           {showMyMemes && (
-            <div className="flex rounded-lg border border-slate-700 bg-slate-900/60 p-0.5">
+            <div className="flex rounded-lg border border-border-hover bg-surface-2 p-0.5">
               <button
                 type="button"
                 onClick={() => setTab("all")}
                 className={`rounded-md px-3 py-1 text-sm font-medium transition-colors ${
-                  tab === "all" ? "bg-slate-700 text-slate-50" : "text-slate-400 hover:text-slate-200"
+                  tab === "all" ? "bg-surface-3 text-text-primary" : "text-text-secondary hover:text-text-primary"
                 }`}
               >
                 All
@@ -310,7 +310,7 @@ const MemeBrowsePage: React.FC = () => {
                 type="button"
                 onClick={() => setTab("mine")}
                 className={`rounded-md px-3 py-1 text-sm font-medium transition-colors ${
-                  tab === "mine" ? "bg-slate-700 text-slate-50" : "text-slate-400 hover:text-slate-200"
+                  tab === "mine" ? "bg-surface-3 text-text-primary" : "text-text-secondary hover:text-text-primary"
                 }`}
               >
                 My Memes
@@ -318,7 +318,7 @@ const MemeBrowsePage: React.FC = () => {
             </div>
           )}
         </div>
-        <p className="text-sm text-slate-400">
+        <p className="text-sm text-text-secondary">
           {tab === "mine"
             ? "Your memes, newest first. Filter by tags below."
             : user
@@ -328,7 +328,7 @@ const MemeBrowsePage: React.FC = () => {
       </header>
 
       {user && (
-      <section className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 space-y-4" aria-label="Search and filter">
+      <section className="rounded-xl border border-border-default bg-surface-1 p-4 space-y-4" aria-label="Search and filter">
         <form
           className="flex flex-col gap-3 sm:flex-row sm:items-center"
           onSubmit={(e) => {
@@ -341,11 +341,11 @@ const MemeBrowsePage: React.FC = () => {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search memes (title, description)…"
-            className="flex-1 rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-500 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange"
+            className="flex-1 rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
           />
           <button
             type="submit"
-            className="inline-flex items-center justify-center rounded-md bg-brand-orange px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-orange-500"
+            className="inline-flex items-center justify-center rounded-md bg-accent-500 px-4 py-2 text-sm font-semibold text-surface-0 hover:bg-orange-500"
           >
             Search
           </button>
@@ -353,7 +353,7 @@ const MemeBrowsePage: React.FC = () => {
 
         <div className="flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-6">
           <div ref={tagDropdownRef} className="relative flex-shrink-0 min-w-0 max-w-sm">
-            <label htmlFor="meme-tag-filter" className="block text-xs font-medium text-slate-400 mb-1">
+            <label htmlFor="meme-tag-filter" className="block text-xs font-medium text-text-secondary mb-1">
               Tags (filter by)
             </label>
             <input
@@ -363,12 +363,12 @@ const MemeBrowsePage: React.FC = () => {
               onChange={(e) => setTagSearch(e.target.value)}
               onFocus={() => setTagDropdownOpen(true)}
               placeholder="Search and select tags…"
-              className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-500 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange"
+              className="w-full rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
               autoComplete="off"
             />
             {tagDropdownOpen && (
               <div
-                className="absolute left-0 top-full z-10 mt-1 w-full max-h-48 overflow-auto scrollbar-thin rounded-md border border-slate-700 bg-slate-900 shadow-lg"
+                className="absolute left-0 top-full z-10 mt-1 w-full max-h-48 overflow-auto scrollbar-thin rounded-md border border-border-hover bg-surface-2 shadow-lg"
                 role="listbox"
               >
                 {filteredTagOptions.length > 0 ? (
@@ -381,13 +381,13 @@ const MemeBrowsePage: React.FC = () => {
                         setSelectedTags((prev) => (prev.includes(tag) ? prev : [...prev, tag]));
                         setTagSearch("");
                       }}
-                      className="block w-full text-left px-3 py-2 text-sm text-slate-200 hover:bg-slate-800"
+                      className="block w-full text-left px-3 py-2 text-sm text-text-primary transition-colors hover:bg-surface-3"
                     >
                       {tag}
                     </button>
                   ))
                 ) : (
-                  <div className="px-3 py-2 text-xs text-slate-500">No matching tags</div>
+                  <div className="px-3 py-2 text-xs text-text-tertiary">No matching tags</div>
                 )}
               </div>
             )}
@@ -396,13 +396,13 @@ const MemeBrowsePage: React.FC = () => {
                 {selectedTags.map((tag) => (
                   <span
                     key={tag}
-                    className="inline-flex items-center gap-1 rounded-full bg-slate-800 px-2 py-0.5 text-xs text-slate-300"
+                    className="inline-flex items-center gap-1 rounded-full bg-surface-3 px-2 py-0.5 text-xs text-text-secondary"
                   >
                     {tag}
                     <button
                       type="button"
                       onClick={() => setSelectedTags((prev) => prev.filter((t) => t !== tag))}
-                      className="hover:text-slate-100"
+                      className="transition-colors hover:text-text-primary"
                       aria-label={`Remove ${tag}`}
                     >
                       ×
@@ -412,7 +412,7 @@ const MemeBrowsePage: React.FC = () => {
                 <select
                   value={tagMode}
                   onChange={(e) => setTagMode(e.target.value as "and" | "or")}
-                  className="rounded border border-slate-700 bg-slate-950 px-2 py-0.5 text-[11px] text-slate-400"
+                  className="rounded border border-border-hover bg-surface-1 px-2 py-0.5 text-[11px] text-text-secondary"
                 >
                   <option value="or">OR</option>
                   <option value="and">AND</option>
@@ -421,11 +421,11 @@ const MemeBrowsePage: React.FC = () => {
             )}
           </div>
           <div className="flex items-end gap-2">
-            <label className="text-xs font-medium text-slate-400">Sort</label>
+            <label className="text-xs font-medium text-text-secondary">Sort</label>
             <select
               value={sort}
               onChange={(e) => setSort(e.target.value as SortKey)}
-              className="rounded-md border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-slate-50 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange"
+              className="rounded-md border border-border-hover bg-surface-1 px-2 py-1 text-xs text-text-primary focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
             >
               <option value="newest">Newest first</option>
               <option value="oldest">Oldest first</option>
@@ -434,7 +434,7 @@ const MemeBrowsePage: React.FC = () => {
               <option value="alphaAsc">Title A–Z</option>
               <option value="alphaDesc">Title Z–A</option>
             </select>
-            <span className="text-slate-500">
+            <span className="text-text-tertiary">
               {sortedItems.length === 0 ? "No memes" : `${sortedItems.length} memes`}
             </span>
           </div>
@@ -449,63 +449,63 @@ const MemeBrowsePage: React.FC = () => {
       )}
 
       {isLoading ? (
-        <div className="text-sm text-slate-400">Loading memes…</div>
+        <div className="text-sm text-text-secondary">Loading memes…</div>
       ) : (
         <>
-          <ul className="space-y-3 mt-2">
+          <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-4 mt-2">
             {sortedItems.map((m) => {
               const thumb = m.thumbnailUrl || m.mediaUrl;
               const title = m.title || m.PK || "Untitled";
               const detailLink = `/memes/${encodeURIComponent(m.PK)}`;
               return (
-                <li
+                <div
                   key={m.PK}
-                  className="flex gap-3 rounded-xl border border-slate-800 bg-slate-950/60 p-3"
+                  className="break-inside-avoid mb-4 rounded-xl border border-border-default bg-surface-1 overflow-hidden transition-transform hover:scale-[1.02]"
                 >
                   <Link
                     to={detailLink}
-                    className="h-16 w-24 flex-shrink-0 overflow-hidden rounded-lg border border-slate-700 bg-slate-900 flex items-center justify-center text-xl hover:border-slate-600"
+                    className="block w-full overflow-hidden bg-surface-2"
                   >
                     {thumb ? (
                       <img
                         src={thumb}
                         alt=""
-                        className="h-full w-full object-cover"
+                        className="w-full object-cover"
                         onError={(e) => {
                           (e.currentTarget as HTMLImageElement).style.visibility = "hidden";
                         }}
                       />
                     ) : (
-                      <span>🖼</span>
+                      <div className="flex h-32 items-center justify-center text-xl">🖼</div>
                     )}
                   </Link>
-                  <div className="min-w-0 flex-1 space-y-1">
+                  <div className="p-3 space-y-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <h2 className="truncate text-sm font-semibold text-slate-50">
-                        <Link to={detailLink} className="hover:text-brand-orange">
+                      <h2 className="truncate text-sm font-semibold text-text-primary">
+                        <Link to={detailLink} className="transition-colors hover:text-accent-400">
                           {title}
                         </Link>
                       </h2>
                       {m.isPrivate && (
-                        <span className="inline-flex rounded-full bg-slate-900 px-2 py-0.5 text-[10px] uppercase text-slate-500">
+                        <span className="inline-flex rounded-full bg-surface-2 px-2 py-0.5 text-[10px] uppercase text-text-tertiary">
                           Private
                         </span>
                       )}
                       {typeof m.averageRating === "number" && (
-                        <span className="inline-flex rounded-full bg-slate-900 px-2 py-0.5 text-[11px] text-amber-300">
+                        <span className="inline-flex rounded-full bg-surface-2 px-2 py-0.5 text-[11px] text-amber-300">
                           {m.averageRating.toFixed(1)}★
                         </span>
                       )}
                     </div>
                     {m.description && (
-                      <p className="text-xs text-slate-300 line-clamp-3">{m.description}</p>
+                      <p className="text-xs text-text-secondary line-clamp-3">{m.description}</p>
                     )}
                     {m.tags && m.tags.length > 0 && (
                       <div className="flex flex-wrap gap-1 pt-1">
                         {m.tags.map((tag) => (
                           <span
                             key={tag}
-                            className="rounded-full bg-slate-900 px-2 py-0.5 text-[11px] text-slate-300"
+                            className="rounded-full bg-surface-2 px-2 py-0.5 text-[11px] text-text-secondary"
                           >
                             {tag}
                           </span>
@@ -526,17 +526,17 @@ const MemeBrowsePage: React.FC = () => {
                       {canEditMeme(m) && (
                         <Link
                           to={`/memes/${encodeURIComponent(m.PK)}/edit`}
-                          className="inline-flex items-center gap-1 text-[11px] text-slate-400 hover:text-slate-200"
+                          className="inline-flex items-center gap-1 text-[11px] text-text-secondary transition-colors hover:text-text-primary"
                         >
                           <PencilSquareIcon className="h-3.5 w-3.5" />
                           Edit
                         </Link>
                       )}
                       {canRate && (
-                        <label className="inline-flex items-center gap-1 text-[11px] text-slate-400">
+                        <label className="inline-flex items-center gap-1 text-[11px] text-text-secondary">
                           <span>Rate:</span>
                           <select
-                            className="rounded border border-slate-700 bg-slate-950 px-1 py-0.5 text-[11px] text-slate-50"
+                            className="rounded border border-border-hover bg-surface-1 px-1 py-0.5 text-[11px] text-text-primary"
                             onChange={(e) => {
                               const value = Number(e.target.value);
                               if (value >= 1 && value <= 5) handleRate(m.PK, value);
@@ -554,13 +554,13 @@ const MemeBrowsePage: React.FC = () => {
                       )}
                     </div>
                   </div>
-                </li>
+                </div>
               );
             })}
-          </ul>
+          </div>
           {sortedItems.length === 0 && !isLoading && (
             <div className="flex items-center justify-center min-h-[200px]">
-              <p className="text-lg text-slate-500">
+              <p className="text-lg text-text-tertiary">
                 {tab === "mine"
                   ? hasActiveSearch
                     ? "No memes match the selected tags."

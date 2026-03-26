@@ -212,12 +212,12 @@ const SquashPage: React.FC = () => {
     const leftTeam = m.winningTeam === "B" ? teamB : teamA;
     const rightTeam = m.winningTeam === "B" ? teamA : teamB;
     return (
-      <li key={m.id || m.date + leftTeam} className="flex items-center gap-2 flex-wrap py-2 border-b border-slate-800 last:border-0">
-        <span className="font-semibold text-slate-200">{m.date || ""}</span>
-        <span className="text-slate-300">
+      <li key={m.id || m.date + leftTeam} className="flex items-center gap-2 flex-wrap py-2 border-b border-border-default last:border-0">
+        <span className="font-semibold text-text-primary">{m.date || ""}</span>
+        <span className="text-text-secondary">
           {leftTeam} vs {rightTeam}
         </span>
-        <span className="italic text-slate-400">{renderScore(m)}</span>
+        <span className="italic text-text-secondary">{renderScore(m)}</span>
       </li>
     );
   };
@@ -239,7 +239,7 @@ const SquashPage: React.FC = () => {
   if (!user) {
     return (
       <div className="space-y-4">
-        <h1 className="text-xl font-semibold text-slate-100">Squash Doubles</h1>
+        <h1 className="text-xl font-semibold text-text-primary">Squash Doubles</h1>
         <div className="rounded-md bg-red-900/30 border border-red-800/50 px-4 py-3 text-sm text-red-200">
           Sign in required. <Link to="/auth" className="underline hover:text-red-100">Sign in</Link>
         </div>
@@ -250,7 +250,7 @@ const SquashPage: React.FC = () => {
   if (!access) {
     return (
       <div className="space-y-4">
-        <h1 className="text-xl font-semibold text-slate-100">Squash Doubles</h1>
+        <h1 className="text-xl font-semibold text-text-primary">Squash Doubles</h1>
         <div className="rounded-md bg-amber-900/30 border border-amber-800/50 px-4 py-3 text-sm text-amber-200">
           You do not have access to the Squash section. Join the Squash group or contact an admin.
         </div>
@@ -260,11 +260,11 @@ const SquashPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold text-slate-100">Squash Doubles</h1>
+      <h1 className="text-xl font-semibold text-text-primary">Squash Doubles</h1>
 
       {canModify && (
-        <p className="text-sm text-slate-400">
-          <Link to="/squash-admin" className="text-brand-orange hover:text-orange-400">
+        <p className="text-sm text-text-secondary">
+          <Link to="/squash-admin" className="text-accent-500 hover:text-orange-400">
             Squash Admin
           </Link>
         </p>
@@ -279,7 +279,7 @@ const SquashPage: React.FC = () => {
       )}
 
       <section>
-        <h2 className="text-base font-semibold text-slate-200 mb-3">Search matches</h2>
+        <h2 className="text-base font-semibold text-text-primary mb-3">Search matches</h2>
         <div className="flex flex-wrap gap-4 items-end">
           <DateInput
             id="searchDate"
@@ -303,7 +303,7 @@ const SquashPage: React.FC = () => {
             className="max-w-[12rem]"
           />
           <div className="relative max-w-[14rem] min-w-[12rem]" ref={playerDropdownRef}>
-            <label className="block text-xs font-semibold text-slate-400 mb-1">Filter by players</label>
+            <label className="block text-xs font-semibold text-text-secondary mb-1">Filter by players</label>
             <input
               type="text"
               value={playerSearch}
@@ -311,23 +311,23 @@ const SquashPage: React.FC = () => {
               onFocus={() => setPlayerDropdownOpen(true)}
               placeholder="Search players..."
               autoComplete="off"
-              className="block w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200 focus:border-brand-orange focus:outline-none"
+              className="block w-full rounded-md border border-border-hover bg-surface-2 px-3 py-2 text-sm text-text-primary focus:border-accent-500 focus:outline-none"
             />
             {playerDropdownOpen && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-slate-900 border border-slate-700 rounded-md max-h-48 overflow-y-auto scrollbar-thin z-10">
+              <div className="absolute top-full left-0 right-0 mt-1 bg-surface-2 border border-border-hover rounded-md max-h-48 overflow-y-auto scrollbar-thin z-10">
                 {filteredPlayerOptions.length ? (
                   filteredPlayerOptions.map((p) => (
                     <button
                       key={p.id}
                       type="button"
                       onClick={() => addPlayer(p.id)}
-                      className="w-full text-left px-3 py-2 text-sm text-slate-200 hover:bg-slate-800"
+                      className="w-full text-left px-3 py-2 text-sm text-text-primary hover:bg-surface-3 transition-colors"
                     >
                       {p.name || p.id}
                     </button>
                   ))
                 ) : (
-                  <div className="px-3 py-2 text-sm text-slate-500">No matches</div>
+                  <div className="px-3 py-2 text-sm text-text-tertiary">No matches</div>
                 )}
               </div>
             )}
@@ -335,13 +335,13 @@ const SquashPage: React.FC = () => {
               {selectedPlayerIds.map((id) => (
                 <span
                   key={id}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-700 text-slate-200 text-xs"
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-3 text-text-primary text-xs"
                 >
                   {playerName(id)}
                   <button
                     type="button"
                     onClick={() => removePlayer(id)}
-                    className="text-slate-400 hover:text-slate-100"
+                    className="text-text-secondary hover:text-text-primary transition-colors"
                     aria-label="Remove"
                   >
                     ×
@@ -351,13 +351,13 @@ const SquashPage: React.FC = () => {
             </div>
             {selectedPlayerIds.length > 0 && (
               <div className="mt-2 flex items-center gap-2">
-                <span className="text-xs text-slate-500">Match:</span>
-                <div className="inline-flex rounded-md border border-slate-700 bg-slate-950 p-0.5">
+                <span className="text-xs text-text-tertiary">Match:</span>
+                <div className="inline-flex rounded-md border border-border-hover bg-surface-1 p-0.5">
                   <button
                     type="button"
                     onClick={() => setPlayerMode("and")}
                     className={`rounded px-2 py-0.5 text-xs font-medium ${
-                      playerMode === "and" ? "bg-brand-orange text-slate-950" : "text-slate-400 hover:text-slate-200"
+                      playerMode === "and" ? "bg-accent-500 text-surface-0" : "text-text-secondary hover:text-text-primary transition-colors"
                     }`}
                   >
                     AND
@@ -366,7 +366,7 @@ const SquashPage: React.FC = () => {
                     type="button"
                     onClick={() => setPlayerMode("or")}
                     className={`rounded px-2 py-0.5 text-xs font-medium ${
-                      playerMode === "or" ? "bg-brand-orange text-slate-950" : "text-slate-400 hover:text-slate-200"
+                      playerMode === "or" ? "bg-accent-500 text-surface-0" : "text-text-secondary hover:text-text-primary transition-colors"
                     }`}
                   >
                     OR
@@ -380,14 +380,14 @@ const SquashPage: React.FC = () => {
               type="button"
               onClick={searchMatches}
               disabled={isLoading}
-              className="rounded-md bg-brand-orange px-4 py-2 text-sm font-medium text-slate-950 hover:bg-orange-500 disabled:opacity-50"
+              className="rounded-md bg-accent-500 px-4 py-2 text-sm font-medium text-surface-0 hover:bg-orange-500 disabled:opacity-50"
             >
               {isLoading ? "Searching…" : "Search"}
             </button>
             <button
               type="button"
               onClick={clearSearch}
-              className="rounded-md border border-slate-600 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800"
+              className="rounded-md border border-border-default px-4 py-2 text-sm font-medium text-text-secondary hover:bg-surface-3 transition-colors"
             >
               Clear
             </button>
@@ -397,14 +397,14 @@ const SquashPage: React.FC = () => {
 
       <section>
         <div className="flex flex-wrap items-center gap-3 mb-3">
-          <h2 className="text-base font-semibold text-slate-200">Results</h2>
+          <h2 className="text-base font-semibold text-text-primary">Results</h2>
           {hasSearched && sortedMatches.length > 0 && (
-            <div className="inline-flex rounded-md border border-slate-700 bg-slate-950 p-0.5">
+            <div className="inline-flex rounded-md border border-border-hover bg-surface-1 p-0.5">
               <button
                 type="button"
                 onClick={() => setSortOrder("newest")}
                 className={`rounded px-2 py-0.5 text-xs font-medium ${
-                  sortOrder === "newest" ? "bg-brand-orange text-slate-950" : "text-slate-400 hover:text-slate-200"
+                  sortOrder === "newest" ? "bg-accent-500 text-surface-0" : "text-text-secondary hover:text-text-primary transition-colors"
                 }`}
               >
                 Newest first
@@ -413,7 +413,7 @@ const SquashPage: React.FC = () => {
                 type="button"
                 onClick={() => setSortOrder("oldest")}
                 className={`rounded px-2 py-0.5 text-xs font-medium ${
-                  sortOrder === "oldest" ? "bg-brand-orange text-slate-950" : "text-slate-400 hover:text-slate-200"
+                  sortOrder === "oldest" ? "bg-accent-500 text-surface-0" : "text-text-secondary hover:text-text-primary transition-colors"
                 }`}
               >
                 Oldest first
@@ -422,19 +422,19 @@ const SquashPage: React.FC = () => {
           )}
         </div>
         {hasSearched && (
-          <div className="rounded-md border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm text-slate-400 mb-3">
+          <div className="rounded-md border border-border-default bg-surface-1 px-3 py-2 text-sm text-text-secondary mb-3">
             {sortedMatches.length === 0 ? "No results" : `${sortedMatches.length} results`}
           </div>
         )}
         {!hasSearched ? (
           <div className="flex items-center justify-center min-h-[280px]">
-            <p className="text-2xl sm:text-3xl font-light text-slate-500/80 tracking-wide animate-pulse">
+            <p className="text-2xl sm:text-3xl font-light text-text-tertiary/80 tracking-wide animate-pulse">
               Enter search criteria and click Search to find matches.
             </p>
           </div>
         ) : pageMatches.length === 0 ? (
           <ul className="list-none p-0">
-            <li className="py-2 text-slate-400">No matches found.</li>
+            <li className="py-2 text-text-secondary">No matches found.</li>
           </ul>
         ) : (
           <>
@@ -447,18 +447,18 @@ const SquashPage: React.FC = () => {
                   type="button"
                   disabled={currentPage <= 1}
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  className="rounded-md border border-slate-600 px-3 py-1 text-sm disabled:opacity-50 disabled:cursor-not-allowed text-slate-300 hover:bg-slate-800"
+                  className="rounded-md border border-border-default px-3 py-1 text-sm disabled:opacity-50 disabled:cursor-not-allowed text-text-secondary hover:bg-surface-3 transition-colors"
                 >
                   Prev
                 </button>
                 <span className="flex items-center gap-1">
                   {pageNums.map((p, i) =>
                     p === "…" ? (
-                      <span key={`ellipsis-${i}`} className="px-1 text-slate-500">
+                      <span key={`ellipsis-${i}`} className="px-1 text-text-tertiary">
                         …
                       </span>
                     ) : p === currentPage ? (
-                      <span key={p} className="min-w-[2rem] px-2 py-1 text-center font-semibold text-slate-200">
+                      <span key={p} className="min-w-[2rem] px-2 py-1 text-center font-semibold text-text-primary">
                         {p}
                       </span>
                     ) : (
@@ -466,7 +466,7 @@ const SquashPage: React.FC = () => {
                         key={p}
                         type="button"
                         onClick={() => setCurrentPage(p as number)}
-                        className="min-w-[2rem] rounded px-2 py-1 text-sm text-slate-300 hover:bg-slate-800 border border-slate-600"
+                        className="min-w-[2rem] rounded px-2 py-1 text-sm text-text-secondary hover:bg-surface-3 transition-colors border border-border-default"
                       >
                         {p}
                       </button>
@@ -477,7 +477,7 @@ const SquashPage: React.FC = () => {
                   type="button"
                   disabled={currentPage >= totalPages}
                   onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  className="rounded-md border border-slate-600 px-3 py-1 text-sm disabled:opacity-50 disabled:cursor-not-allowed text-slate-300 hover:bg-slate-800"
+                  className="rounded-md border border-border-default px-3 py-1 text-sm disabled:opacity-50 disabled:cursor-not-allowed text-text-secondary hover:bg-surface-3 transition-colors"
                 >
                   Next
                 </button>

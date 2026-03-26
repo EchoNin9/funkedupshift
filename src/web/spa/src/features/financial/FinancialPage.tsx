@@ -168,23 +168,23 @@ const FinancialPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold text-slate-100">Financial</h1>
+      <h1 className="text-xl font-semibold text-text-primary">Financial</h1>
 
       {canAdmin && (
-        <p className="text-sm text-slate-400">
-          <Link to="/admin/financial" className="text-brand-orange hover:text-orange-400">
+        <p className="text-sm text-text-secondary">
+          <Link to="/admin/financial" className="text-accent-500 hover:text-orange-400">
             Financial Admin
           </Link>
         </p>
       )}
 
       {loading ? (
-        <p className="text-sm text-slate-500">Loading…</p>
+        <p className="text-sm text-text-primary0">Loading…</p>
       ) : (
         <>
           <div className="flex flex-wrap gap-2 items-end">
             <div>
-              <label htmlFor="newSymbol" className="block text-xs text-slate-500 mb-1">
+              <label htmlFor="newSymbol" className="block text-xs text-text-primary0 mb-1">
                 Add symbol
               </label>
               <input
@@ -194,24 +194,24 @@ const FinancialPage: React.FC = () => {
                 onChange={(e) => setNewSymbol(e.target.value.toUpperCase())}
                 onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddSymbol())}
                 placeholder="AAPL"
-                className="rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 w-24"
+                className="rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary w-24"
               />
             </div>
             <button
               type="button"
               onClick={handleAddSymbol}
               disabled={!newSymbol.trim()}
-              className="rounded-md bg-brand-orange px-3 py-2 text-sm font-medium text-slate-950 hover:bg-orange-500 disabled:opacity-50"
+              className="rounded-md bg-accent-500 px-3 py-2 text-sm font-medium text-surface-0 hover:bg-orange-500 disabled:opacity-50"
             >
               Add
             </button>
             {availableSources.length > 1 && (
               <div className="ml-4">
-                <label className="block text-xs text-slate-500 mb-1">Data source</label>
+                <label className="block text-xs text-text-primary0 mb-1">Data source</label>
                 <select
                   value={source}
                   onChange={(e) => setSource(e.target.value)}
-                  className="rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50"
+                  className="rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary"
                 >
                   {availableSources.map((s) => (
                     <option key={s} value={s}>
@@ -224,23 +224,23 @@ const FinancialPage: React.FC = () => {
           </div>
 
           {symbols.length > 0 && (
-            <div className="rounded-xl border border-slate-800 bg-slate-950/60 overflow-hidden">
-              <table className="min-w-full divide-y divide-slate-800">
-                <thead className="bg-slate-900/80">
+            <div className="rounded-xl border border-border-default bg-surface-1 overflow-hidden">
+              <table className="min-w-full divide-y divide-border-default">
+                <thead className="bg-surface-2">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Symbol</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-slate-400 uppercase">Price</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-slate-400 uppercase">Change</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">Symbol</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-text-secondary uppercase">Price</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-text-secondary uppercase">Change</th>
                     <th className="px-4 py-3 w-10" />
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800">
+                <tbody className="divide-y divide-border-default">
                   {symbols.map((sym) => {
                     const q = quotes[sym];
                     return (
-                      <tr key={sym} className="hover:bg-slate-800/50">
-                        <td className="px-4 py-3 text-sm font-medium text-slate-200">{sym}</td>
-                        <td className="px-4 py-3 text-sm text-right text-slate-300">
+                      <tr key={sym} className="hover:bg-surface-3">
+                        <td className="px-4 py-3 text-sm font-medium text-text-primary">{sym}</td>
+                        <td className="px-4 py-3 text-sm text-right text-text-secondary">
                           {q ? `$${q.price.toFixed(2)}` : "—"}
                         </td>
                         <td className="px-4 py-3 text-sm text-right">
@@ -251,14 +251,14 @@ const FinancialPage: React.FC = () => {
                               {q.changePercent.toFixed(2)}%)
                             </span>
                           ) : (
-                            <span className="text-slate-500">—</span>
+                            <span className="text-text-primary0">—</span>
                           )}
                         </td>
                         <td className="px-4 py-3">
                           <button
                             type="button"
                             onClick={() => handleRemoveSymbol(sym)}
-                            className="text-slate-500 hover:text-red-400"
+                            className="text-text-primary0 hover:text-red-400"
                             aria-label={`Remove ${sym}`}
                           >
                             ×
@@ -277,20 +277,20 @@ const FinancialPage: React.FC = () => {
               type="button"
               onClick={handleSaveWatchlist}
               disabled={saving}
-              className="rounded-md bg-brand-orange px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-orange-500 disabled:opacity-50"
+              className="rounded-md bg-accent-500 px-4 py-2 text-sm font-semibold text-surface-0 hover:bg-orange-500 disabled:opacity-50"
             >
               {saving ? "Saving…" : "Save watchlist"}
             </button>
           )}
 
           {!canSave && (
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-text-primary0">
               Sign in to save your watchlist. Guest symbols are temporary and expire when you close the browser.
             </p>
           )}
 
           {symbols.length === 0 && (
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-text-primary0">
               Add symbols above to build your watchlist. Default symbols from admin may appear when you first load.
             </p>
           )}
