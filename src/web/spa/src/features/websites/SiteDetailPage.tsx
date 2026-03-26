@@ -114,12 +114,12 @@ const SiteDetailPage: React.FC = () => {
       <div className="space-y-4">
         <Link
           to="/websites"
-          className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-slate-200"
+          className="inline-flex items-center gap-1 text-sm text-text-tertiary hover:text-text-primary transition-colors"
         >
           <ArrowLeftIcon className="h-4 w-4" />
           Back to Websites
         </Link>
-        <div className="text-sm text-slate-400">Loading…</div>
+        <div className="text-sm text-text-secondary">Loading…</div>
       </div>
     );
   }
@@ -129,12 +129,12 @@ const SiteDetailPage: React.FC = () => {
       <div className="space-y-4">
         <Link
           to="/websites"
-          className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-slate-200"
+          className="inline-flex items-center gap-1 text-sm text-text-tertiary hover:text-text-primary transition-colors"
         >
           <ArrowLeftIcon className="h-4 w-4" />
           Back to Websites
         </Link>
-        <div className="rounded-md border border-slate-700 bg-slate-900/60 px-4 py-3 text-slate-200">
+        <div className="rounded-xl border border-border-hover bg-surface-2 px-4 py-3 text-text-primary">
           {error || "Site not found."}
         </div>
       </div>
@@ -148,7 +148,7 @@ const SiteDetailPage: React.FC = () => {
       <div className="flex flex-wrap items-center gap-3">
         <Link
           to="/websites"
-          className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-slate-200"
+          className="inline-flex items-center gap-1 text-sm text-text-tertiary hover:text-text-primary transition-colors"
         >
           <ArrowLeftIcon className="h-4 w-4" />
           Back to Websites
@@ -156,7 +156,7 @@ const SiteDetailPage: React.FC = () => {
         {canEdit && site && (
           <Link
             to={`/admin/sites/edit/${encodeURIComponent(site.PK)}`}
-            className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-slate-200"
+            className="inline-flex items-center gap-1 text-sm text-text-secondary hover:text-text-primary transition-colors"
           >
             <PencilSquareIcon className="h-4 w-4" />
             Edit site
@@ -164,9 +164,9 @@ const SiteDetailPage: React.FC = () => {
         )}
       </div>
 
-      <article className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 sm:p-6">
+      <article className="rounded-xl border border-border-default bg-surface-1 p-4 sm:p-6">
         <header className="flex flex-wrap gap-4">
-          <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg border border-slate-700 bg-slate-900">
+          <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg border border-border-hover bg-surface-2">
             {site.logoUrl ? (
               <img
                 src={site.logoUrl}
@@ -179,9 +179,9 @@ const SiteDetailPage: React.FC = () => {
             ) : null}
           </div>
           <div className="min-w-0 flex-1 space-y-1">
-            <h1 className="text-xl font-semibold tracking-tight text-slate-50">{title}</h1>
+            <h1 className="text-xl font-semibold tracking-tight text-text-primary">{title}</h1>
             {typeof site.averageRating === "number" && (
-              <span className="inline-flex items-center rounded-full bg-slate-800 px-2 py-0.5 text-sm text-amber-300">
+              <span className="inline-flex items-center rounded-full bg-surface-3 px-2 py-0.5 text-sm text-amber-300">
                 {site.averageRating.toFixed(1)}★ average
               </span>
             )}
@@ -190,7 +190,7 @@ const SiteDetailPage: React.FC = () => {
                 href={site.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="block truncate text-sm text-slate-400 hover:text-slate-200"
+                className="block truncate text-sm text-text-secondary hover:text-text-primary transition-colors"
               >
                 {site.url}
               </a>
@@ -200,10 +200,10 @@ const SiteDetailPage: React.FC = () => {
 
         {site.description && (
           <div className="mt-4">
-            <p className="text-sm text-slate-300">
+            <p className="text-sm text-text-secondary">
               {site.description}
               {site.descriptionAiGenerated && (
-                <span className="ml-1 text-xs uppercase tracking-wide text-slate-500">
+                <span className="ml-1 text-xs uppercase tracking-wide text-text-tertiary">
                   AI summary
                 </span>
               )}
@@ -216,7 +216,7 @@ const SiteDetailPage: React.FC = () => {
             {site.categories!.map((c) => (
               <span
                 key={c.id}
-                className="rounded-full bg-slate-800 px-2 py-0.5 text-xs text-slate-300"
+                className="rounded-full bg-surface-3 px-2 py-0.5 text-xs text-text-secondary"
               >
                 {c.name}
               </span>
@@ -229,7 +229,7 @@ const SiteDetailPage: React.FC = () => {
             {site.tags!.map((tag) => (
               <span
                 key={tag}
-                className="rounded-full bg-slate-900 px-2 py-0.5 text-xs text-slate-400"
+                className="rounded-full bg-surface-2 px-2 py-0.5 text-xs text-text-secondary"
               >
                 {tag}
               </span>
@@ -240,12 +240,12 @@ const SiteDetailPage: React.FC = () => {
         {user && (
           <div className="mt-4 flex flex-wrap items-center gap-3">
             {userRating !== null && (
-              <span className="text-xs text-slate-400">Your rating: {userRating}★</span>
+              <span className="text-xs text-text-secondary">Your rating: {userRating}★</span>
             )}
-            <label className="inline-flex items-center gap-2 text-sm text-slate-400">
+            <label className="inline-flex items-center gap-2 text-sm text-text-secondary">
               <span>Rate:</span>
               <select
-                className="rounded border border-slate-700 bg-slate-950 px-2 py-1 text-sm text-slate-50"
+                className="rounded border border-border-hover bg-surface-1 px-2 py-1 text-sm text-text-primary"
                 value={userRating ?? ""}
                 onChange={(e) => {
                   const value = Number(e.target.value);
@@ -264,10 +264,10 @@ const SiteDetailPage: React.FC = () => {
         )}
 
         {site.scrapedContent && (
-          <section className="mt-6 border-t border-slate-800 pt-4">
-            <h2 className="text-sm font-medium text-slate-400">About / Scraped content</h2>
-            <div className="mt-2 overflow-x-auto rounded-lg border border-slate-800 bg-slate-900/60 p-3">
-              <pre className="whitespace-pre-wrap break-words font-sans text-sm text-slate-300">
+          <section className="mt-6 border-t border-border-default pt-4">
+            <h2 className="text-sm font-medium text-text-secondary">About / Scraped content</h2>
+            <div className="mt-2 overflow-x-auto rounded-lg border border-border-default bg-surface-2 p-3">
+              <pre className="whitespace-pre-wrap break-words font-sans text-sm text-text-secondary">
                 {site.scrapedContent}
               </pre>
             </div>
