@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { PencilSquareIcon } from "@heroicons/react/24/outline";
+import { PencilSquareIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
+import { motion } from "framer-motion";
 import { useAuth, hasRole } from "../../shell/AuthContext";
 import { fetchWithAuthOptional } from "../../utils/api";
 
@@ -28,8 +29,6 @@ function getApiBaseUrl(): string | null {
   return raw ? raw.replace(/\/$/, "") : null;
 }
 
-const PAGE_SIZE = 10;
-
 const MediaPage: React.FC = () => {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -46,7 +45,6 @@ const MediaPage: React.FC = () => {
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const [categorySearch, setCategorySearch] = useState("");
   const [sort, setSort] = useState<SortKey>("avgDesc");
-  const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,6 +53,7 @@ const MediaPage: React.FC = () => {
   const categoryDropdownRef = useRef<HTMLDivElement>(null);
   const [allCategories, setAllCategories] = useState<MediaCategory[]>([]);
 
+  /* ── Fetch categories on mount ── */
   useEffect(() => {
     const apiBase = getApiBaseUrl();
     if (!apiBase) return;
@@ -98,30 +97,19 @@ const MediaPage: React.FC = () => {
     );
   }, [categoriesForDropdown, selectedCategoryIds, categorySearch]);
 
-  const hasActiveSearch = search.trim().length > 0 || selectedCategoryIds.length > 0;
-
+  /* ── Sync URL search params ── */
   useEffect(() => {
-    if (hasActiveSearch) {
-      const next = new URLSearchParams();
-      if (search.trim()) next.set("q", search.trim());
-      if (selectedCategoryIds.length) {
-        next.set("categoryIds", selectedCategoryIds.join(","));
-        next.set("categoryMode", categoryMode);
-      }
-      setSearchParams(next, { replace: true });
-    } else {
-      setSearchParams({}, { replace: true });
+    const next = new URLSearchParams();
+    if (search.trim()) next.set("q", search.trim());
+    if (selectedCategoryIds.length) {
+      next.set("categoryIds", selectedCategoryIds.join(","));
+      next.set("categoryMode", categoryMode);
     }
-  }, [hasActiveSearch, search, selectedCategoryIds, categoryMode, setSearchParams]);
+    setSearchParams(next, { replace: true });
+  }, [search, selectedCategoryIds, categoryMode, setSearchParams]);
 
+  /* ── Fetch media on mount and whenever filters change ── */
   useEffect(() => {
-    if (!hasActiveSearch) {
-      setItems([]);
-      setPage(1);
-      setIsLoading(false);
-      setError(null);
-      return;
-    }
     const apiBase = getApiBaseUrl();
     if (!apiBase) {
       setError("API URL not set. Deploy via CI or set window.API_BASE_URL in config.js.");
@@ -147,7 +135,6 @@ const MediaPage: React.FC = () => {
         const data = (await resp.json()) as { media?: MediaItem[] };
         if (cancelled) return;
         setItems(data.media ?? []);
-        setPage(1);
       } catch (e: any) {
         if (!cancelled) setError(e?.message ?? "Failed to load media.");
       } finally {
@@ -158,8 +145,9 @@ const MediaPage: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [hasActiveSearch, search, selectedCategoryIds, categoryMode]);
+  }, [search, selectedCategoryIds, categoryMode]);
 
+  /* ── Close category dropdown on outside click ── */
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(e.target as Node)) {
@@ -172,6 +160,7 @@ const MediaPage: React.FC = () => {
     }
   }, [categoryDropdownOpen]);
 
+  /* ── Sort ── */
   const sortedItems = useMemo(() => {
     const copy = [...items];
     copy.sort((a, b) => {
@@ -194,9 +183,7 @@ const MediaPage: React.FC = () => {
     return copy;
   }, [items, sort]);
 
-  const totalPages = Math.max(1, Math.ceil(sortedItems.length / PAGE_SIZE));
-  const pageItems = sortedItems.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-
+  /* ── Rate handler ── */
   const handleRate = async (mediaId: string, rating: number) => {
     const apiBase = getApiBaseUrl();
     if (!apiBase) return;
@@ -216,247 +203,304 @@ const MediaPage: React.FC = () => {
     }).catch(() => {});
   };
 
+  /* ── Toggle a category pill ── */
+  const toggleCategory = (id: string) => {
+    setSelectedCategoryIds((prev) =>
+      prev.includes(id) ? prev.filter((cid) => cid !== id) : [...prev, id]
+    );
+  };
+
+  /* ── Skeleton cards for loading state ── */
+  const skeletonCards = Array.from({ length: 12 }).map((_, i) => {
+    const heights = ["h-40", "h-56", "h-48", "h-64", "h-44", "h-52"];
+    const h = heights[i % heights.length];
+    return (
+      <div key={i} className="break-inside-avoid mb-4">
+        <div className="overflow-hidden rounded-xl bg-surface-2 border border-border-default">
+          <div className={`${h} w-full animate-pulse bg-surface-3`} />
+          <div className="p-3 space-y-2">
+            <div className="h-4 w-3/4 animate-pulse rounded bg-surface-3" />
+            <div className="h-3 w-1/2 animate-pulse rounded bg-surface-3" />
+            <div className="flex gap-1">
+              <div className="h-5 w-12 animate-pulse rounded-full bg-surface-3" />
+              <div className="h-5 w-16 animate-pulse rounded-full bg-surface-3" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  });
+
+  /* ── Card entrance animation variants ── */
+  const cardVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: (i: number) => ({
+      opacity: 1,
+      y: 0,
+      transition: { delay: i * 0.04, duration: 0.35, ease: "easeOut" },
+    }),
+  };
+
   return (
-    <div className="space-y-6">
-      <header className="space-y-2">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-50">Media</h1>
-        <p className="text-sm text-slate-400">
+    <div className="space-y-5">
+      {/* ── Header ── */}
+      <header className="space-y-1">
+        <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Media</h1>
+        <p className="text-sm text-text-secondary">
           Images and videos attached to sites and experiments across Funkedupshift.
         </p>
       </header>
 
-      <section className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 space-y-4" aria-label="Search and filter">
-        <form
-          className="flex flex-col gap-3 sm:flex-row sm:items-center"
-          onSubmit={(e) => {
-            e.preventDefault();
-            setSearch(search.trim());
-          }}
-        >
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search media by title or description…"
-            className="input-field flex-1"
-          />
-          <button
-            type="submit"
-            className="btn-primary min-h-[44px] !px-4 !py-2 text-sm"
+      {/* ── Search bar (pill-shaped) ── */}
+      <form
+        className="relative max-w-xl"
+        onSubmit={(e) => {
+          e.preventDefault();
+          setSearch(search.trim());
+        }}
+      >
+        <MagnifyingGlassIcon className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-text-tertiary" />
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search media by title or description..."
+          className="w-full rounded-full border border-border-default bg-surface-2 py-2.5 pl-11 pr-4 text-sm text-text-primary placeholder:text-text-tertiary focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500 transition-colors"
+        />
+      </form>
+
+      {/* ── Sort + count + AND/OR toggle row ── */}
+      <div className="flex flex-wrap items-center gap-3 text-xs">
+        <div className="flex items-center gap-2">
+          <span className="font-medium text-text-primary">Sort:</span>
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value as SortKey)}
+            className="rounded-md border border-border-default bg-surface-2 px-2 py-1 text-xs text-text-primary focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
           >
-            Search
-          </button>
-        </form>
-
-        <div className="flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-6">
-          <div ref={categoryDropdownRef} className="relative flex-shrink-0 min-w-0 max-w-sm">
-            <label htmlFor="media-category-filter" className="block text-xs font-medium text-slate-400 mb-1">
-              Categories (filter by)
-            </label>
-            <input
-              id="media-category-filter"
-              type="text"
-              value={categorySearch}
-              onChange={(e) => setCategorySearch(e.target.value)}
-              onFocus={() => setCategoryDropdownOpen(true)}
-              placeholder="Search and select categories…"
-              className="input-field w-full"
-              autoComplete="off"
-            />
-            {categoryDropdownOpen && (
-              <div
-                className="absolute left-0 top-full z-10 mt-1 w-full max-h-48 overflow-auto scrollbar-thin rounded-md border border-slate-700 bg-slate-900 shadow-lg"
-                role="listbox"
-                aria-label="Category options"
-              >
-                {filteredCategoryOptions.length > 0 ? (
-                  filteredCategoryOptions.map((c) => (
-                    <button
-                      key={c.id}
-                      type="button"
-                      role="option"
-                      onClick={() => {
-                        setSelectedCategoryIds((prev) => (prev.includes(c.id) ? prev : [...prev, c.id]));
-                        setCategorySearch("");
-                        // Keep dropdown open for multi-select (same as add media page)
-                      }}
-                      className="block w-full min-h-[44px] flex items-center px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-800"
-                    >
-                      {c.name}
-                    </button>
-                  ))
-                ) : (
-                  <p className="px-3 py-2 text-xs text-slate-500">
-                    {categoriesForDropdown.length === 0 ? "No categories yet." : "No matches or all selected."}
-                  </p>
-                )}
-              </div>
-            )}
-            <div className="mt-2 flex flex-wrap gap-1">
-              {selectedCategoryIds.map((cid) => {
-                const c = categoriesForDropdown.find((x) => x.id === cid);
-                return (
-                  <span
-                    key={cid}
-                    className="inline-flex items-center gap-1 rounded-full bg-slate-800 px-2 py-0.5 text-xs text-slate-200"
-                  >
-                    {c?.name ?? cid}
-                    <button
-                      type="button"
-                      onClick={() => setSelectedCategoryIds((prev) => prev.filter((id) => id !== cid))}
-                      className="hover:text-red-400"
-                      aria-label="Remove category filter"
-                    >
-                      ×
-                    </button>
-                  </span>
-                );
-              })}
-            </div>
-            {selectedCategoryIds.length > 0 && (
-              <div className="mt-2 flex items-center gap-2">
-                <span className="text-xs text-slate-500">Match:</span>
-                <div className="inline-flex rounded-md border border-slate-700 bg-slate-950 p-0.5">
-                  <button
-                    type="button"
-                    onClick={() => setCategoryMode("and")}
-                    className={`rounded px-2 py-0.5 text-xs font-medium ${
-                      categoryMode === "and" ? "bg-brand-orange text-slate-950" : "text-slate-400 hover:text-slate-200"
-                    }`}
-                  >
-                    AND
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setCategoryMode("or")}
-                    className={`rounded px-2 py-0.5 text-xs font-medium ${
-                      categoryMode === "or" ? "bg-brand-orange text-slate-950" : "text-slate-400 hover:text-slate-200"
-                    }`}
-                  >
-                    OR
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="flex flex-wrap gap-3 items-center text-xs text-slate-400">
-            <span className="font-medium text-slate-200">Sort:</span>
-            <select
-              value={sort}
-              onChange={(e) => {
-                setSort(e.target.value as SortKey);
-                setPage(1);
-              }}
-              className="rounded-md border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-slate-50 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange"
-            >
-              <option value="avgDesc">Avg stars (high first)</option>
-              <option value="avgAsc">Avg stars (low first)</option>
-              <option value="alphaAsc">Title A–Z</option>
-              <option value="alphaDesc">Title Z–A</option>
-            </select>
-            <span className="text-slate-500">
-              {!hasActiveSearch ? "" : sortedItems.length === 0 ? "No media found." : `${sortedItems.length} items`}
-            </span>
-          </div>
+            <option value="avgDesc">Avg stars (high first)</option>
+            <option value="avgAsc">Avg stars (low first)</option>
+            <option value="alphaAsc">Title A-Z</option>
+            <option value="alphaDesc">Title Z-A</option>
+          </select>
         </div>
-      </section>
 
+        {selectedCategoryIds.length > 0 && (
+          <div className="flex items-center gap-2">
+            <span className="text-text-tertiary">Match:</span>
+            <div className="inline-flex rounded-md border border-border-default bg-surface-1 p-0.5">
+              <button
+                type="button"
+                onClick={() => setCategoryMode("and")}
+                className={`rounded px-2 py-0.5 text-xs font-medium transition-colors ${
+                  categoryMode === "and" ? "bg-accent-500 text-surface-1" : "text-text-secondary hover:text-text-primary"
+                }`}
+              >
+                AND
+              </button>
+              <button
+                type="button"
+                onClick={() => setCategoryMode("or")}
+                className={`rounded px-2 py-0.5 text-xs font-medium transition-colors ${
+                  categoryMode === "or" ? "bg-accent-500 text-surface-1" : "text-text-secondary hover:text-text-primary"
+                }`}
+              >
+                OR
+              </button>
+            </div>
+          </div>
+        )}
+
+        <span className="text-text-tertiary">
+          {sortedItems.length === 0 && !isLoading ? "" : `${sortedItems.length} items`}
+        </span>
+      </div>
+
+      {/* ── Horizontal scrollable category pills ── */}
+      {allCategories.length > 0 && (
+        <div className="relative" ref={categoryDropdownRef}>
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-thin pb-1">
+            {/* "All" pill */}
+            <button
+              type="button"
+              onClick={() => setSelectedCategoryIds([])}
+              className={`flex-shrink-0 rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors ${
+                selectedCategoryIds.length === 0
+                  ? "bg-accent-500 text-surface-1"
+                  : "bg-surface-2 text-text-secondary border border-border-default hover:border-border-hover hover:text-text-primary"
+              }`}
+            >
+              All
+            </button>
+            {allCategories.map((c) => {
+              const isActive = selectedCategoryIds.includes(c.id);
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => toggleCategory(c.id)}
+                  className={`flex-shrink-0 rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors ${
+                    isActive
+                      ? "bg-accent-500 text-surface-1"
+                      : "bg-surface-2 text-text-secondary border border-border-default hover:border-border-hover hover:text-text-primary"
+                  }`}
+                >
+                  {c.name}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Hidden category search input - still accessible for programmatic multi-select */}
+          <input
+            id="media-category-filter"
+            type="text"
+            value={categorySearch}
+            onChange={(e) => setCategorySearch(e.target.value)}
+            onFocus={() => setCategoryDropdownOpen(true)}
+            placeholder="Search categories..."
+            className="mt-2 w-full max-w-xs rounded-full border border-border-default bg-surface-2 px-3 py-1.5 text-xs text-text-primary placeholder:text-text-tertiary focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500 transition-colors"
+            autoComplete="off"
+          />
+          {categoryDropdownOpen && (
+            <div
+              className="absolute left-0 top-full z-10 mt-1 w-full max-w-xs max-h-48 overflow-auto scrollbar-thin rounded-xl border border-border-hover bg-surface-2 shadow-lg shadow-black/20"
+              role="listbox"
+              aria-label="Category options"
+            >
+              {filteredCategoryOptions.length > 0 ? (
+                filteredCategoryOptions.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    role="option"
+                    onClick={() => {
+                      setSelectedCategoryIds((prev) => (prev.includes(c.id) ? prev : [...prev, c.id]));
+                      setCategorySearch("");
+                    }}
+                    className="block w-full min-h-[44px] flex items-center px-3 py-2 text-left text-sm text-text-primary hover:bg-surface-3 transition-colors"
+                  >
+                    {c.name}
+                  </button>
+                ))
+              ) : (
+                <p className="px-3 py-2 text-xs text-text-tertiary">
+                  {categoriesForDropdown.length === 0 ? "No categories yet." : "No matches or all selected."}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Error ── */}
       {error && (
         <div className="rounded-md border border-red-500/60 bg-red-500/10 px-3 py-2 text-xs text-red-200">
           {error}
         </div>
       )}
 
-      {!hasActiveSearch ? (
+      {/* ── Content: skeleton / empty / masonry grid ── */}
+      {isLoading ? (
+        <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-4">
+          {skeletonCards}
+        </div>
+      ) : sortedItems.length === 0 ? (
         <div className="flex items-center justify-center min-h-[280px]">
-          <p className="text-2xl sm:text-3xl font-light text-slate-500/80 tracking-wide animate-pulse">
-            Enter search term or select categories
+          <p className="text-lg font-light text-text-tertiary tracking-wide">
+            {items.length === 0 && !error
+              ? "No media found. Try adjusting your search or filters."
+              : "No results match your current filters."}
           </p>
         </div>
-      ) : isLoading ? (
-        <div className="text-sm text-slate-400">Loading media…</div>
       ) : (
-        <>
-          <div className="rounded-md border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm text-slate-400">
-            {sortedItems.length === 0 ? "No results" : `${sortedItems.length} results`}
-          </div>
-          <ul className="space-y-3 mt-2">
-          {pageItems.map((m) => {
+        <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-4">
+          {sortedItems.map((m, index) => {
             const thumb = m.thumbnailUrl || (m.mediaType === "image" ? m.mediaUrl : undefined);
             const title = m.title || m.PK || "Untitled";
             const mediaTypeLabel = m.mediaType === "video" ? "Video" : "Image";
             const detailLink = `/media/${encodeURIComponent(m.PK)}`;
+
             return (
-              <li
+              <motion.div
                 key={m.PK}
-                className="flex gap-3 rounded-xl border border-slate-800 bg-slate-950/60 p-3"
+                className="break-inside-avoid mb-4 group"
+                variants={cardVariants}
+                initial="hidden"
+                animate="visible"
+                custom={index}
               >
                 <Link
                   to={detailLink}
-                  className="h-16 w-24 flex-shrink-0 overflow-hidden rounded-lg border border-slate-700 bg-slate-900 flex items-center justify-center text-xl hover:border-slate-600"
+                  className="block overflow-hidden rounded-xl bg-surface-2 border border-border-default hover:border-border-hover transition-all hover:shadow-lg hover:shadow-black/20"
                 >
-                  {thumb ? (
-                    <img
-                      src={thumb}
-                      alt=""
-                      className="h-full w-full object-cover"
-                      onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).style.visibility = "hidden";
-                      }}
-                    />
-                  ) : (
-                    <span>{m.mediaType === "video" ? "▶" : "📷"}</span>
-                  )}
-                </Link>
-                <div className="min-w-0 flex-1 space-y-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="truncate text-sm font-semibold text-slate-50">
-                      <Link to={detailLink} className="hover:text-brand-orange">
-                        {title}
-                      </Link>
-                    </h2>
-                    {typeof m.averageRating === "number" && (
-                      <span className="inline-flex items-center rounded-full bg-slate-900 px-2 py-0.5 text-[11px] text-amber-300">
-                        {m.averageRating.toFixed(1)}★
-                      </span>
+                  {/* ── Image ── */}
+                  <div className="overflow-hidden">
+                    {thumb ? (
+                      <img
+                        src={thumb}
+                        alt={title}
+                        className="w-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).style.display = "none";
+                        }}
+                      />
+                    ) : (
+                      <div className="flex items-center justify-center h-40 bg-surface-3 text-3xl text-text-tertiary">
+                        {m.mediaType === "video" ? "\u25B6" : "\uD83D\uDCF7"}
+                      </div>
                     )}
-                    <span className="inline-flex items-center rounded-full bg-slate-900 px-2 py-0.5 text-[10px] uppercase tracking-wide text-slate-400">
-                      {mediaTypeLabel}
-                    </span>
                   </div>
-                  {m.description && (
-                    <p className="text-xs text-slate-300 line-clamp-3">{m.description}</p>
-                  )}
-                  {m.categories && m.categories.length > 0 && (
-                    <div className="flex flex-wrap gap-1 pt-1">
-                      {m.categories.map((c) => (
-                        <span
-                          key={c.id}
-                          className="rounded-full bg-slate-900 px-2 py-0.5 text-[11px] text-slate-300"
-                        >
-                          {c.name}
+
+                  {/* ── Card body ── */}
+                  <div className="p-3 space-y-1.5">
+                    <h2 className="text-sm font-semibold text-text-primary line-clamp-2 group-hover:text-accent-400 transition-colors">
+                      {title}
+                    </h2>
+
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {typeof m.averageRating === "number" && (
+                        <span className="inline-flex items-center rounded-full bg-surface-3 px-2 py-0.5 text-[11px] text-amber-300">
+                          {m.averageRating.toFixed(1)}{"\u2605"}
                         </span>
-                      ))}
+                      )}
+                      <span className="inline-flex items-center rounded-full bg-surface-3 px-2 py-0.5 text-[10px] uppercase tracking-wide text-text-secondary">
+                        {mediaTypeLabel}
+                      </span>
                     </div>
-                  )}
-                  {canEdit && (
-                    <div className="pt-1">
+
+                    {m.categories && m.categories.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {m.categories.map((c) => (
+                          <span
+                            key={c.id}
+                            className="rounded-full bg-surface-3 px-2 py-0.5 text-[11px] text-text-secondary"
+                          >
+                            {c.name}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </Link>
+
+                {/* ── Edit / Rate controls (below the card) ── */}
+                {(canEdit || canRate) && (
+                  <div className="flex items-center gap-3 mt-1.5 px-1">
+                    {canEdit && (
                       <Link
                         to={`/admin/media/edit/${encodeURIComponent(m.PK)}`}
-                        className="inline-flex items-center gap-1 text-[11px] text-slate-400 hover:text-slate-200"
+                        className="inline-flex items-center gap-1 text-[11px] text-text-secondary hover:text-accent-400 transition-colors"
                       >
                         <PencilSquareIcon className="h-3.5 w-3.5" />
                         Edit
                       </Link>
-                    </div>
-                  )}
-                  {canRate && (
-                    <div className="pt-1">
-                      <label className="inline-flex items-center gap-1 text-[11px] text-slate-400">
+                    )}
+                    {canRate && (
+                      <label className="inline-flex items-center gap-1 text-[11px] text-text-secondary">
                         <span>Rate:</span>
                         <select
-                          className="rounded border border-slate-700 bg-slate-950 px-1 py-0.5 text-[11px] text-slate-50"
+                          className="rounded border border-border-default bg-surface-2 px-1 py-0.5 text-[11px] text-text-primary focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
                           onChange={(e) => {
                             const value = Number(e.target.value);
                             if (value >= 1 && value <= 5) {
@@ -464,6 +508,7 @@ const MediaPage: React.FC = () => {
                             }
                           }}
                           defaultValue=""
+                          onClick={(e) => e.preventDefault()}
                         >
                           <option value="">--</option>
                           <option value="1">1</option>
@@ -473,37 +518,12 @@ const MediaPage: React.FC = () => {
                           <option value="5">5</option>
                         </select>
                       </label>
-                    </div>
-                  )}
-                </div>
-              </li>
+                    )}
+                  </div>
+                )}
+              </motion.div>
             );
           })}
-        </ul>
-        </>
-      )}
-
-      {hasActiveSearch && totalPages > 1 && (
-        <div className="mt-2 flex flex-wrap items-center justify-center gap-2 text-xs">
-          <button
-            type="button"
-            disabled={page <= 1}
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            className="min-h-[44px] flex items-center rounded-md border border-slate-700 bg-slate-950 px-4 py-2 text-slate-200 disabled:opacity-40"
-          >
-            Prev
-          </button>
-          <span className="text-slate-500">
-            Page {page} of {totalPages}
-          </span>
-          <button
-            type="button"
-            disabled={page >= totalPages}
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            className="min-h-[44px] flex items-center rounded-md border border-slate-700 bg-slate-950 px-4 py-2 text-slate-200 disabled:opacity-40"
-          >
-            Next
-          </button>
         </div>
       )}
     </div>
@@ -511,4 +531,3 @@ const MediaPage: React.FC = () => {
 };
 
 export default MediaPage;
-
