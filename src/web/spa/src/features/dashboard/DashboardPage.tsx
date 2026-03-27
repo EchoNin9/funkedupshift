@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
 import { useAuth, hasRole } from "../../shell/AuthContext";
 import { fetchWithAuthOptional } from "../../utils/api";
-import { Alert } from "../../components";
+import { Alert, fadeUp, fadeUpStaggered, stagger, viewportOnce } from "../../components";
 
 const CACHE_KEY = "funkedupshift_internet_dashboard";
 const CACHE_TTL_MS = 5 * 60 * 1000;
@@ -105,10 +106,20 @@ const DashboardPage: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold tracking-tight text-text-primary">
+      <motion.h1
+        className="text-2xl font-semibold tracking-tight text-text-primary"
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+      >
         Internet dashboard
-      </h1>
-      <div className="rounded-xl border border-teal-800/60 bg-gradient-to-br from-teal-900/40 to-teal-950/60 p-4 shadow-lg">
+      </motion.h1>
+      <motion.div
+        className="rounded-xl border border-teal-800/60 bg-gradient-to-br from-teal-900/40 to-teal-950/60 p-4 shadow-lg"
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
+      >
         <p className="text-sm font-medium text-teal-100">
           Live status of popular sites
         </p>
@@ -122,18 +133,30 @@ const DashboardPage: React.FC = () => {
             </Link>
           </p>
         )}
-      </div>
+      </motion.div>
 
       {isLoading && (
-        <p className="text-sm text-text-secondary">Loading…</p>
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="rounded-lg border border-border-default bg-surface-2 p-3 space-y-2">
+              <div className="h-4 w-3/4 mx-auto animate-pulse rounded bg-surface-3" />
+              <div className="h-3 w-1/2 mx-auto animate-pulse rounded bg-surface-3" />
+            </div>
+          ))}
+        </div>
       )}
 
       {error && !sites.length && (
         <Alert variant="error">{error}</Alert>
       )}
 
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-3">
-        {sites.map((s) => {
+      <motion.div
+        className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-3"
+        initial="hidden"
+        animate="visible"
+        variants={stagger(0.04)}
+      >
+        {sites.map((s, i) => {
           const status = (s.status || "down").toLowerCase();
           const statusClass =
             status === "up"
@@ -144,8 +167,10 @@ const DashboardPage: React.FC = () => {
           const rtStr =
             s.responseTimeMs != null ? `${s.responseTimeMs} ms` : null;
           return (
-            <div
+            <motion.div
               key={s.domain}
+              variants={fadeUpStaggered}
+              custom={i}
               className={`rounded-lg border p-3 text-center text-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-lg ${statusClass}`}
             >
               <a
@@ -160,10 +185,10 @@ const DashboardPage: React.FC = () => {
               {rtStr && (
                 <div className="mt-0.5 text-[11px] opacity-75">{rtStr}</div>
               )}
-            </div>
+            </motion.div>
           );
         })}
-      </div>
+      </motion.div>
     </div>
   );
 };

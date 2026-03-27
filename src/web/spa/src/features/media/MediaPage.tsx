@@ -245,12 +245,17 @@ const MediaPage: React.FC = () => {
   return (
     <div className="space-y-5">
       {/* ── Header ── */}
-      <header className="space-y-1">
+      <motion.header
+        className="space-y-1"
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+      >
         <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Media</h1>
         <p className="text-sm text-text-secondary">
           Images and videos attached to sites and experiments across Funkedupshift.
         </p>
-      </header>
+      </motion.header>
 
       {/* ── Search bar (pill-shaped) ── */}
       <form

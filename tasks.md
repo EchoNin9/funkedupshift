@@ -14,10 +14,11 @@
 
 - [x] **Shared component library extraction** — Created `src/components/` with Alert, FormField, Badge, SearchableSelect, useClickOutside hook, and barrel index. Refactored 22 consumer files across admin, public, meme, financial, and shell pages. Net ~450 lines removed, zero inline alert/dropdown patterns remaining. *(commit c288759)*
 
+- [x] **Animation & polish pass** — Created shared motion presets (`components/motion.ts`: fadeUp, fadeUpStaggered, scaleIn, stagger, pageTransition, slideIn, viewportOnce). Added AnimatePresence page transitions in AppLayout keyed by top-level route. Created PageTransition wrapper and SkeletonCard/SkeletonGrid components. Added staggered card reveals to MemeBrowsePage and DashboardPage. Added animated headers to Websites, Media, Memes, Auth, Financial pages. Replaced inline skeletons with shared SkeletonGrid in WebsitesPage and MemeBrowsePage. Added skeleton table loading state to FinancialPage. Added skeleton cards to DashboardPage.
+
 ## Upcoming
 
 - [ ] **Analytics dashboard + stats section** — Add site/media/user/rating counts API. Display animated counters on HomePage (scroll-triggered count-up). Requires backend analytics endpoints.
-- [ ] **Animation & polish pass** — Page transitions, staggered list reveals, skeleton loading states using Framer Motion.
 - [ ] **Dark/light theme toggle** — CSS variables already in place. Needs toggle UI and second set of variable values.
 - [ ] **Accessibility audit** — Focus states, ARIA labels, keyboard navigation, color contrast checks.
 

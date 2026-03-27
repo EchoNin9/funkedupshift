@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { motion } from "framer-motion";
 import { PencilSquareIcon, LinkIcon } from "@heroicons/react/24/outline";
 import { useAuth, canAccessMemes, canRateMemes, canCreateMemes, canEditAnyMeme } from "../../shell/AuthContext";
-import { Alert, useClickOutside } from "../../components";
+import { Alert, useClickOutside, SkeletonGrid, fadeUpStaggered, stagger } from "../../components";
 import ShareMemePopover from "./ShareMemePopover";
 import { fetchWithAuthOptional } from "../../utils/api";
 
@@ -283,7 +284,12 @@ const MemeBrowsePage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <header className="space-y-2">
+      <motion.header
+        className="space-y-2"
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+      >
         <div className="flex items-center gap-2">
           <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Memes</h1>
           {showMyMemes && (
@@ -316,7 +322,7 @@ const MemeBrowsePage: React.FC = () => {
               ? "Browse and rate memes. Latest 20 shown by default."
               : "The latest user created memes. Sign in to rate or create."}
         </p>
-      </header>
+      </motion.header>
 
       {user && (
       <section className="rounded-xl border border-border-default bg-surface-1 p-4 space-y-4" aria-label="Search and filter">
@@ -438,17 +444,24 @@ const MemeBrowsePage: React.FC = () => {
       )}
 
       {isLoading ? (
-        <div className="text-sm text-text-secondary">Loading memes…</div>
+        <SkeletonGrid count={8} heights={["h-36", "h-48", "h-40", "h-56", "h-44", "h-52"]} />
       ) : (
         <>
-          <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-4 mt-2">
-            {sortedItems.map((m) => {
+          <motion.div
+            className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-4 mt-2"
+            initial="hidden"
+            animate="visible"
+            variants={stagger(0.04)}
+          >
+            {sortedItems.map((m, idx) => {
               const thumb = m.thumbnailUrl || m.mediaUrl;
               const title = m.title || m.PK || "Untitled";
               const detailLink = `/memes/${encodeURIComponent(m.PK)}`;
               return (
-                <div
+                <motion.div
                   key={m.PK}
+                  variants={fadeUpStaggered}
+                  custom={idx}
                   className="break-inside-avoid mb-4 rounded-xl border border-border-default bg-surface-1 overflow-hidden transition-transform hover:scale-[1.02]"
                 >
                   <Link
@@ -543,10 +556,10 @@ const MemeBrowsePage: React.FC = () => {
                       )}
                     </div>
                   </div>
-                </div>
+                </motion.div>
               );
             })}
-          </div>
+          </motion.div>
           {sortedItems.length === 0 && !isLoading && (
             <div className="flex items-center justify-center min-h-[200px]">
               <p className="text-lg text-text-tertiary">

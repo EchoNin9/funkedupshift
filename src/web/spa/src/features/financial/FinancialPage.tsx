@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
 import { useAuth, canSaveFinancialWatchlist, canAccessFinancialAdmin } from "../../shell/AuthContext";
 import { fetchWithAuth, fetchWithAuthOptional } from "../../utils/api";
 import { Alert } from "../../components";
@@ -169,7 +170,14 @@ const FinancialPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold text-text-primary">Financial</h1>
+      <motion.h1
+        className="text-xl font-semibold text-text-primary"
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+      >
+        Financial
+      </motion.h1>
 
       {canAdmin && (
         <p className="text-sm text-text-secondary">
@@ -180,7 +188,21 @@ const FinancialPage: React.FC = () => {
       )}
 
       {loading ? (
-        <p className="text-sm text-text-primary0">Loading…</p>
+        <div className="rounded-xl border border-border-default bg-surface-1 overflow-hidden">
+          <div className="bg-surface-2 px-4 py-3 flex gap-8">
+            {["w-16","w-20","w-24","w-8"].map((w, i) => (
+              <div key={i} className={`h-3 ${w} animate-pulse rounded bg-surface-3`} />
+            ))}
+          </div>
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="px-4 py-3 flex gap-8 border-t border-border-default">
+              <div className="h-4 w-12 animate-pulse rounded bg-surface-3" />
+              <div className="h-4 w-16 animate-pulse rounded bg-surface-3" />
+              <div className="h-4 w-20 animate-pulse rounded bg-surface-3" />
+              <div className="h-4 w-6 animate-pulse rounded bg-surface-3" />
+            </div>
+          ))}
+        </div>
       ) : (
         <>
           <div className="flex flex-wrap gap-2 items-end">
@@ -225,7 +247,12 @@ const FinancialPage: React.FC = () => {
           </div>
 
           {symbols.length > 0 && (
-            <div className="rounded-xl border border-border-default bg-surface-1 overflow-hidden">
+            <motion.div
+              className="rounded-xl border border-border-default bg-surface-1 overflow-hidden"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+            >
               <table className="min-w-full divide-y divide-border-default">
                 <thead className="bg-surface-2">
                   <tr>
@@ -270,7 +297,7 @@ const FinancialPage: React.FC = () => {
                   })}
                 </tbody>
               </table>
-            </div>
+            </motion.div>
           )}
 
           {canSave && symbols.length > 0 && (

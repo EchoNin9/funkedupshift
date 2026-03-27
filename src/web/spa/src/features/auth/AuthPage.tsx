@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import { useAuth } from "../../shell/AuthContext";
 
 type AuthMode = "signin" | "signup";
@@ -75,12 +76,17 @@ const AuthPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <header className="space-y-2">
+      <motion.header
+        className="space-y-2"
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+      >
         <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Sign in / Sign up</h1>
         <p className="text-sm text-text-secondary">
           Use your Funkedupshift account to rate sites, add notes, and manage curated content (based on your role).
         </p>
-      </header>
+      </motion.header>
 
       {user && (
         <div className="rounded-xl border border-emerald-600/60 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
@@ -91,7 +97,12 @@ const AuthPage: React.FC = () => {
         </div>
       )}
 
-      <div className="grid gap-6 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] items-start">
+      <motion.div
+        className="grid gap-6 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] items-start"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+      >
         <section className="rounded-2xl border border-border-default bg-surface-1 p-5 shadow-lg shadow-black/40">
           <div className="mb-4 flex gap-2 rounded-full bg-surface-2 p-1 text-xs font-medium text-text-secondary">
             <button
@@ -198,7 +209,7 @@ const AuthPage: React.FC = () => {
             the AWS Console.
           </p>
         </aside>
-      </div>
+      </motion.div>
     </div>
   );
 };
