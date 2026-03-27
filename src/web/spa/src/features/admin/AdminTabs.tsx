@@ -16,7 +16,7 @@ interface AdminTabsProps {
  */
 export function AdminTabs({ tabs, activeId, onSelect }: AdminTabsProps) {
   return (
-    <div className="flex gap-1 rounded-lg border border-secondary-700/50 bg-secondary-900/30 p-1">
+    <div className="flex gap-1 rounded-lg border border-border-hover bg-surface-2 p-1">
       {tabs.map((tab) => (
         <button
           key={tab.id}
@@ -24,8 +24,8 @@ export function AdminTabs({ tabs, activeId, onSelect }: AdminTabsProps) {
           onClick={() => onSelect(tab.id)}
           className={`min-h-[44px] flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors ${
             activeId === tab.id
-              ? "bg-primary-500/20 text-primary-400"
-              : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
+              ? "bg-accent-500/20 text-accent-400"
+              : "text-text-secondary hover:text-text-primary hover:bg-surface-3"
           }`}
         >
           {tab.label}

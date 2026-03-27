@@ -638,7 +638,7 @@ const VehiclesExpensesPage: React.FC = () => {
   if (!user) {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-display font-bold text-text-primary">Vehicles Expenses</h1>
+        <h1 className="text-2xl font-sans font-bold text-text-primary">Vehicles Expenses</h1>
         <p className="text-text-secondary">Sign in to access your vehicle expenses.</p>
       </div>
     );
@@ -647,7 +647,7 @@ const VehiclesExpensesPage: React.FC = () => {
   if (!canAccess) {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-display font-bold text-text-primary">Vehicles Expenses</h1>
+        <h1 className="text-2xl font-sans font-bold text-text-primary">Vehicles Expenses</h1>
         <p className="text-text-secondary">
           You need to be in the expenses group to access this section. Contact an admin to be added.
         </p>
@@ -665,7 +665,7 @@ const VehiclesExpensesPage: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-display font-bold text-text-primary">Vehicles Expenses</h1>
+          <h1 className="text-2xl font-sans font-bold text-text-primary">Vehicles Expenses</h1>
           <p className="text-text-secondary mt-1">Track fuel costs per vehicle. Data is private to you.</p>
         </div>
         <div className="flex items-center gap-2">

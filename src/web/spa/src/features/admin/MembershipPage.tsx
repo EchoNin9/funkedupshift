@@ -277,7 +277,7 @@ const MembershipPage: React.FC = () => {
     (cognitoGroups || []).forEach((g) => {
       const display = ROLE_DISPLAY[g] || g;
       const cls =
-        g === "admin" ? "bg-amber-500/20 text-amber-200" : g === "manager" ? "bg-blue-500/20 text-blue-200" : "bg-slate-600/30 text-slate-300";
+        g === "admin" ? "bg-amber-500/20 text-amber-200" : g === "manager" ? "bg-blue-500/20 text-blue-200" : "bg-surface-3/30 text-text-secondary";
       items.push(
         <span key={`c-${g}`} className={`inline-block px-2 py-0.5 rounded text-xs mr-1 ${cls}`}>
           {display}
@@ -291,7 +291,7 @@ const MembershipPage: React.FC = () => {
         </span>
       );
     });
-    return items.length ? items : <span className="text-slate-500">—</span>;
+    return items.length ? items : <span className="text-text-primary0">—</span>;
   };
 
   const startEdit = (g: Group) => {
@@ -548,8 +548,8 @@ const MembershipPage: React.FC = () => {
           }}
           className={`flex items-center gap-3 px-4 py-2.5 text-sm rounded-r-md transition-colors text-left w-full ${
             activeTab === item.id
-              ? "bg-slate-800 text-primary-400 font-medium border-l-2 border-primary-500 -ml-px"
-              : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"
+              ? "bg-surface-3 text-accent-400 font-medium border-l-2 border-accent-500 -ml-px"
+              : "text-text-secondary hover:bg-surface-3 hover:text-text-primary"
           }`}
         >
           <item.icon className="w-5 h-5 shrink-0" />
@@ -565,7 +565,7 @@ const MembershipPage: React.FC = () => {
 
       {/* Desktop: left sidebar + content */}
       <div className="flex min-h-0 flex-1 gap-0">
-        <aside className="hidden md:flex md:w-52 md:flex-col md:shrink-0 border-r border-slate-800 bg-slate-950/50 rounded-lg pr-2">
+        <aside className="hidden md:flex md:w-52 md:flex-col md:shrink-0 border-r border-border-default bg-surface-1/50 rounded-lg pr-2">
           {sidebarContent}
         </aside>
 
@@ -575,30 +575,30 @@ const MembershipPage: React.FC = () => {
             <button
               type="button"
               onClick={() => setMembershipSidebarOpen(true)}
-              className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
+              className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md text-text-secondary hover:text-white hover:bg-surface-3 transition-colors"
               aria-label="Open membership menu"
             >
               <Bars3Icon className="w-6 h-6" />
             </button>
-            <span className="text-sm font-medium text-slate-400">
+            <span className="text-sm font-medium text-text-secondary">
               {membershipNavItems.find((i) => i.id === activeTab)?.label ?? "Menu"}
             </span>
           </div>
           {membershipSidebarOpen && (
             <>
               <div
-                className="fixed inset-0 z-40 bg-slate-950/80 backdrop-blur-sm md:hidden"
+                className="fixed inset-0 z-40 bg-surface-1/80 backdrop-blur-sm md:hidden"
                 aria-hidden
                 onClick={() => setMembershipSidebarOpen(false)}
               />
               <aside
-                className="fixed top-0 left-0 z-50 w-64 h-full bg-slate-950 border-r border-slate-800 md:hidden overflow-y-auto pt-16"
+                className="fixed top-0 left-0 z-50 w-64 h-full bg-surface-1 border-r border-border-default md:hidden overflow-y-auto pt-16"
                 aria-label="Membership navigation"
               >
                 <button
                   type="button"
                   onClick={() => setMembershipSidebarOpen(false)}
-                  className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white"
+                  className="absolute top-4 right-4 p-2 text-text-secondary hover:text-white"
                   aria-label="Close menu"
                 >
                   <XMarkIcon className="w-6 h-6" />
@@ -613,14 +613,14 @@ const MembershipPage: React.FC = () => {
       {activeTab === "users" && (
         <>
           <div className="flex items-center gap-2 text-sm">
-            <label htmlFor="tz-select" className="text-slate-500">
+            <label htmlFor="tz-select" className="text-text-primary0">
               Last login timezone:
             </label>
             <select
               id="tz-select"
               value={tzOffset}
               onChange={handleTzChange}
-              className="rounded border border-slate-700 bg-slate-950 px-2 py-1 text-slate-200 text-sm"
+              className="rounded border border-border-hover bg-surface-1 px-2 py-1 text-text-primary text-sm"
             >
               {TZ_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
@@ -634,27 +634,27 @@ const MembershipPage: React.FC = () => {
             <div className="rounded-md border border-red-500/60 bg-red-500/10 px-3 py-2 text-sm text-red-200">{usersError}</div>
           )}
 
-          <div className="overflow-x-auto rounded-lg border border-slate-800">
-            <table className="min-w-full divide-y divide-slate-800">
-              <thead className="bg-slate-900/80">
+          <div className="overflow-x-auto rounded-lg border border-border-default">
+            <table className="min-w-full divide-y divide-border-default">
+              <thead className="bg-surface-2/80">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Email</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Status</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Last login</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">System Roles</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Custom Groups</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">Email</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">Status</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">Last login</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">System Roles</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">Custom Groups</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800">
+              <tbody className="divide-y divide-border-default">
                 {usersLoading && users.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-slate-500">
+                    <td colSpan={5} className="px-4 py-8 text-center text-text-primary0">
                       Loading…
                     </td>
                   </tr>
                 ) : users.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-slate-500">
+                    <td colSpan={5} className="px-4 py-8 text-center text-text-primary0">
                       No users found.
                     </td>
                   </tr>
@@ -681,7 +681,7 @@ const MembershipPage: React.FC = () => {
                 type="button"
                 onClick={() => loadUsers(paginationToken)}
                 disabled={usersLoading}
-                className="rounded-md border border-slate-700 px-4 py-2 text-sm font-medium text-slate-200 hover:bg-slate-800 disabled:opacity-50"
+                className="rounded-md border border-border-hover px-4 py-2 text-sm font-medium text-text-primary hover:bg-surface-3 disabled:opacity-50"
               >
                 {usersLoading ? "Loading…" : "Load more"}
               </button>
@@ -693,33 +693,33 @@ const MembershipPage: React.FC = () => {
       {activeTab === "groups" && (
         <>
           <form className="space-y-3 max-w-md" onSubmit={handleCreateGroup}>
-            <h2 className="text-sm font-medium text-slate-300">Create group</h2>
+            <h2 className="text-sm font-medium text-text-secondary">Create group</h2>
             <input
               type="text"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               placeholder="Name (alphanumeric, underscore, hyphen)"
               required
-              className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-500 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange"
+              className="w-full rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-primary0 focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
             />
             <input
               type="text"
               value={newDescription}
               onChange={(e) => setNewDescription(e.target.value)}
               placeholder="Description (optional)"
-              className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-500 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange"
+              className="w-full rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-primary0 focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
             />
             <input
               type="text"
               value={newPermissions}
               onChange={(e) => setNewPermissions(e.target.value)}
               placeholder="Permissions (comma-separated, e.g. media:edit, sites:add)"
-              className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-500 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange"
+              className="w-full rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-primary0 focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
             />
             <button
               type="submit"
               disabled={isSubmitting || !newName.trim()}
-              className="inline-flex items-center justify-center rounded-md bg-brand-orange px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-orange-500 disabled:opacity-50"
+              className="inline-flex items-center justify-center rounded-md bg-accent-500 px-4 py-2 text-sm font-semibold text-surface-0 hover:bg-orange-500 disabled:opacity-50"
             >
               {isSubmitting ? "Creating…" : "Create"}
             </button>
@@ -732,44 +732,44 @@ const MembershipPage: React.FC = () => {
           </form>
 
           <section>
-            <h2 className="text-sm font-medium text-slate-300 mb-2">Custom groups</h2>
+            <h2 className="text-sm font-medium text-text-secondary mb-2">Custom groups</h2>
             {groupsLoading ? (
-              <p className="text-sm text-slate-500">Loading…</p>
+              <p className="text-sm text-text-primary0">Loading…</p>
             ) : groups.length === 0 ? (
-              <p className="text-sm text-slate-500">No custom groups yet. Create one above.</p>
+              <p className="text-sm text-text-primary0">No custom groups yet. Create one above.</p>
             ) : (
               <ul className="space-y-2">
                 {groups.map((g) => (
-                  <li key={g.name} className="rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm">
+                  <li key={g.name} className="rounded-lg border border-border-default bg-surface-1 px-3 py-2 text-sm">
                     {editingName === g.name ? (
                       <form onSubmit={handleUpdateGroup} className="space-y-2">
-                        <span className="font-medium text-slate-200">{g.name}</span>
+                        <span className="font-medium text-text-primary">{g.name}</span>
                         <input
                           type="text"
                           value={editDescription}
                           onChange={(e) => setEditDescription(e.target.value)}
                           placeholder="Description (optional)"
-                          className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-500 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange"
+                          className="w-full rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-primary0 focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
                         />
                         <input
                           type="text"
                           value={editPermissions}
                           onChange={(e) => setEditPermissions(e.target.value)}
                           placeholder="Permissions (comma-separated)"
-                          className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-500 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange"
+                          className="w-full rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-primary0 focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
                         />
                         <div className="flex gap-2 flex-wrap">
                           <button
                             type="submit"
                             disabled={isUpdating}
-                            className="rounded-md bg-brand-orange px-3 py-1.5 text-xs font-medium text-slate-950 hover:bg-orange-500 disabled:opacity-50"
+                            className="rounded-md bg-accent-500 px-3 py-1.5 text-xs font-medium text-surface-0 hover:bg-orange-500 disabled:opacity-50"
                           >
                             {isUpdating ? "Saving…" : "Save"}
                           </button>
                           <button
                             type="button"
                             onClick={cancelEdit}
-                            className="rounded-md border border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-300 hover:bg-slate-800"
+                            className="rounded-md border border-border-hover px-3 py-1.5 text-xs font-medium text-text-secondary hover:bg-surface-3"
                           >
                             Cancel
                           </button>
@@ -787,17 +787,17 @@ const MembershipPage: React.FC = () => {
                     ) : (
                       <div className="flex items-center justify-between gap-2 flex-wrap">
                         <div className="flex-1 min-w-0">
-                          <span className="font-medium text-slate-200">{g.name}</span>
-                          {g.description && <span className="text-slate-500 ml-2">{g.description}</span>}
+                          <span className="font-medium text-text-primary">{g.name}</span>
+                          {g.description && <span className="text-text-primary0 ml-2">{g.description}</span>}
                           {g.permissions && g.permissions.length > 0 && (
-                            <div className="text-xs text-slate-500 mt-1">Permissions: {g.permissions.join(", ")}</div>
+                            <div className="text-xs text-text-primary0 mt-1">Permissions: {g.permissions.join(", ")}</div>
                           )}
                         </div>
                         <div className="flex gap-2 shrink-0">
                           <button
                             type="button"
                             onClick={() => startEdit(g)}
-                            className="rounded-md border border-slate-700 px-2 py-1 text-xs font-medium text-slate-300 hover:bg-slate-800"
+                            className="rounded-md border border-border-hover px-2 py-1 text-xs font-medium text-text-secondary hover:bg-surface-3"
                           >
                             Edit
                           </button>
@@ -823,18 +823,18 @@ const MembershipPage: React.FC = () => {
       {activeTab === "roles" && isSuperAdmin && (
         <>
           <form className="space-y-3 max-w-md" onSubmit={handleCreateRole}>
-            <h2 className="text-sm font-medium text-slate-300">Create role</h2>
-            <p className="text-xs text-slate-500">Define a named role by selecting Cognito groups and custom groups. Use for impersonation.</p>
+            <h2 className="text-sm font-medium text-text-secondary">Create role</h2>
+            <p className="text-xs text-text-primary0">Define a named role by selecting Cognito groups and custom groups. Use for impersonation.</p>
             <input
               type="text"
               value={newRoleName}
               onChange={(e) => setNewRoleName(e.target.value)}
               placeholder="Role name (e.g. Squash Manager)"
               required
-              className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-500 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange"
+              className="w-full rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-primary0 focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
             />
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1">Cognito groups</label>
+              <label className="block text-xs font-medium text-text-secondary mb-1">Cognito groups</label>
               <div className="flex flex-wrap gap-2">
                 {COGNITO_SYSTEM_GROUPS.map((g) => (
                   <button
@@ -842,7 +842,7 @@ const MembershipPage: React.FC = () => {
                     type="button"
                     onClick={() => toggleCognito(g, newRoleCognito, setNewRoleCognito)}
                     className={`rounded-md px-2 py-1 text-xs font-medium ${
-                      newRoleCognito.includes(g) ? "bg-blue-500/30 text-blue-200" : "border border-slate-600 text-slate-400 hover:bg-slate-800"
+                      newRoleCognito.includes(g) ? "bg-blue-500/30 text-blue-200" : "border border-border-hover text-text-secondary hover:bg-surface-3"
                     }`}
                   >
                     {ROLE_DISPLAY[g] || g}
@@ -851,7 +851,7 @@ const MembershipPage: React.FC = () => {
               </div>
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1">Custom groups</label>
+              <label className="block text-xs font-medium text-text-secondary mb-1">Custom groups</label>
               <div className="flex flex-wrap gap-2">
                 {groups.map((g) => (
                   <button
@@ -859,19 +859,19 @@ const MembershipPage: React.FC = () => {
                     type="button"
                     onClick={() => toggleCustom(g.name, newRoleCustom, setNewRoleCustom)}
                     className={`rounded-md px-2 py-1 text-xs font-medium ${
-                      newRoleCustom.includes(g.name) ? "bg-emerald-500/30 text-emerald-200" : "border border-slate-600 text-slate-400 hover:bg-slate-800"
+                      newRoleCustom.includes(g.name) ? "bg-emerald-500/30 text-emerald-200" : "border border-border-hover text-text-secondary hover:bg-surface-3"
                     }`}
                   >
                     {g.name}
                   </button>
                 ))}
-                {groups.length === 0 && <span className="text-xs text-slate-500">Create groups first.</span>}
+                {groups.length === 0 && <span className="text-xs text-text-primary0">Create groups first.</span>}
               </div>
             </div>
             <button
               type="submit"
               disabled={isRoleSubmitting || !newRoleName.trim()}
-              className="inline-flex items-center justify-center rounded-md bg-brand-orange px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-orange-500 disabled:opacity-50"
+              className="inline-flex items-center justify-center rounded-md bg-accent-500 px-4 py-2 text-sm font-semibold text-surface-0 hover:bg-orange-500 disabled:opacity-50"
             >
               {isRoleSubmitting ? "Creating…" : "Create"}
             </button>
@@ -884,27 +884,27 @@ const MembershipPage: React.FC = () => {
           </form>
 
           <section>
-            <h2 className="text-sm font-medium text-slate-300 mb-2">Defined roles</h2>
+            <h2 className="text-sm font-medium text-text-secondary mb-2">Defined roles</h2>
             {rolesLoading ? (
-              <p className="text-sm text-slate-500">Loading…</p>
+              <p className="text-sm text-text-primary0">Loading…</p>
             ) : roles.length === 0 ? (
-              <p className="text-sm text-slate-500">No roles yet. Create one above.</p>
+              <p className="text-sm text-text-primary0">No roles yet. Create one above.</p>
             ) : (
               <ul className="space-y-2">
                 {roles.map((r) => (
-                  <li key={r.name} className="rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm">
+                  <li key={r.name} className="rounded-lg border border-border-default bg-surface-1 px-3 py-2 text-sm">
                     {editingRole === r.name ? (
                       <form onSubmit={handleUpdateRole} className="space-y-2">
-                        <span className="font-medium text-slate-200">{r.name}</span>
+                        <span className="font-medium text-text-primary">{r.name}</span>
                         <div>
-                          <label className="block text-xs text-slate-500 mb-1">Cognito groups</label>
+                          <label className="block text-xs text-text-primary0 mb-1">Cognito groups</label>
                           <div className="flex flex-wrap gap-2">
                             {COGNITO_SYSTEM_GROUPS.map((g) => (
                               <button
                                 key={g}
                                 type="button"
                                 onClick={() => toggleCognito(g, editRoleCognito, setEditRoleCognito)}
-                                className={`rounded-md px-2 py-1 text-xs ${editRoleCognito.includes(g) ? "bg-blue-500/30 text-blue-200" : "border border-slate-600 text-slate-400"}`}
+                                className={`rounded-md px-2 py-1 text-xs ${editRoleCognito.includes(g) ? "bg-blue-500/30 text-blue-200" : "border border-border-hover text-text-secondary"}`}
                               >
                                 {ROLE_DISPLAY[g] || g}
                               </button>
@@ -912,14 +912,14 @@ const MembershipPage: React.FC = () => {
                           </div>
                         </div>
                         <div>
-                          <label className="block text-xs text-slate-500 mb-1">Custom groups</label>
+                          <label className="block text-xs text-text-primary0 mb-1">Custom groups</label>
                           <div className="flex flex-wrap gap-2">
                             {groups.map((g) => (
                               <button
                                 key={g.name}
                                 type="button"
                                 onClick={() => toggleCustom(g.name, editRoleCustom, setEditRoleCustom)}
-                                className={`rounded-md px-2 py-1 text-xs ${editRoleCustom.includes(g.name) ? "bg-emerald-500/30 text-emerald-200" : "border border-slate-600 text-slate-400"}`}
+                                className={`rounded-md px-2 py-1 text-xs ${editRoleCustom.includes(g.name) ? "bg-emerald-500/30 text-emerald-200" : "border border-border-hover text-text-secondary"}`}
                               >
                                 {g.name}
                               </button>
@@ -930,11 +930,11 @@ const MembershipPage: React.FC = () => {
                           <button
                             type="submit"
                             disabled={isRoleUpdating}
-                            className="rounded-md bg-brand-orange px-3 py-1.5 text-xs font-medium text-slate-950 hover:bg-orange-500 disabled:opacity-50"
+                            className="rounded-md bg-accent-500 px-3 py-1.5 text-xs font-medium text-surface-0 hover:bg-orange-500 disabled:opacity-50"
                           >
                             {isRoleUpdating ? "Saving…" : "Save"}
                           </button>
-                          <button type="button" onClick={cancelEditRole} className="rounded-md border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800">
+                          <button type="button" onClick={cancelEditRole} className="rounded-md border border-border-hover px-3 py-1.5 text-xs text-text-secondary hover:bg-surface-3">
                             Cancel
                           </button>
                           <button
@@ -951,7 +951,7 @@ const MembershipPage: React.FC = () => {
                     ) : (
                       <div className="flex items-center justify-between gap-2 flex-wrap">
                         <div className="flex-1 min-w-0">
-                          <span className="font-medium text-slate-200">{r.name}</span>
+                          <span className="font-medium text-text-primary">{r.name}</span>
                           <div className="flex flex-wrap gap-1 mt-1">
                             {(r.cognitoGroups ?? []).map((g) => (
                               <span key={`c-${g}`} className="inline-block px-2 py-0.5 rounded text-xs bg-blue-500/20 text-blue-200">
@@ -966,7 +966,7 @@ const MembershipPage: React.FC = () => {
                           </div>
                         </div>
                         <div className="flex gap-2 shrink-0">
-                          <button type="button" onClick={() => startEditRole(r)} className="rounded-md border border-slate-700 px-2 py-1 text-xs text-slate-300 hover:bg-slate-800">
+                          <button type="button" onClick={() => startEditRole(r)} className="rounded-md border border-border-hover px-2 py-1 text-xs text-text-secondary hover:bg-surface-3">
                             Edit
                           </button>
                           <button
@@ -1017,12 +1017,12 @@ const UserRow: React.FC<UserRowProps> = ({ user, tzOffset, formatLastLogin, rend
   }, [user.username]);
 
   return (
-    <tr className="cursor-pointer hover:bg-slate-800/50 transition-colors" onClick={onClick}>
-      <td className="px-4 py-3 text-sm text-slate-200">{user.email || user.username || "—"}</td>
-      <td className="px-4 py-3 text-sm text-slate-400">{user.status || "—"}</td>
-      <td className="px-4 py-3 text-sm text-slate-400">{formatLastLogin(user.lastLoginAt ?? "", tzOffset, user.lastLoginIp)}</td>
-      <td className="px-4 py-3 text-sm">{groups ? renderGroupBadges(groups.cognitoGroups, []) : <span className="text-slate-500">…</span>}</td>
-      <td className="px-4 py-3 text-sm">{groups ? renderGroupBadges([], groups.customGroups) : <span className="text-slate-500">…</span>}</td>
+    <tr className="cursor-pointer hover:bg-surface-3 transition-colors" onClick={onClick}>
+      <td className="px-4 py-3 text-sm text-text-primary">{user.email || user.username || "—"}</td>
+      <td className="px-4 py-3 text-sm text-text-secondary">{user.status || "—"}</td>
+      <td className="px-4 py-3 text-sm text-text-secondary">{formatLastLogin(user.lastLoginAt ?? "", tzOffset, user.lastLoginIp)}</td>
+      <td className="px-4 py-3 text-sm">{groups ? renderGroupBadges(groups.cognitoGroups, []) : <span className="text-text-primary0">…</span>}</td>
+      <td className="px-4 py-3 text-sm">{groups ? renderGroupBadges([], groups.customGroups) : <span className="text-text-primary0">…</span>}</td>
     </tr>
   );
 };

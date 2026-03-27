@@ -104,7 +104,7 @@ const DashboardPage: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold tracking-tight text-slate-50">
+      <h1 className="text-2xl font-semibold tracking-tight text-text-primary">
         Internet dashboard
       </h1>
       <div className="rounded-xl border border-teal-800/60 bg-gradient-to-br from-teal-900/40 to-teal-950/60 p-4 shadow-lg">
@@ -116,7 +116,7 @@ const DashboardPage: React.FC = () => {
         </p>
         {hasRole(user ?? null, "superadmin") && (
           <p className="mt-2">
-            <Link to="/admin/internet-dashboard" className="text-brand-orange hover:text-orange-400 text-sm">
+            <Link to="/admin/internet-dashboard" className="text-accent-500 hover:text-orange-400 text-sm">
               Edit sites list
             </Link>
           </p>
@@ -124,7 +124,7 @@ const DashboardPage: React.FC = () => {
       </div>
 
       {isLoading && (
-        <p className="text-sm text-slate-400">Loading…</p>
+        <p className="text-sm text-text-secondary">Loading…</p>
       )}
 
       {error && !sites.length && (

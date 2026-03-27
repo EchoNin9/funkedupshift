@@ -76,8 +76,8 @@ const AuthPage: React.FC = () => {
   return (
     <div className="space-y-6">
       <header className="space-y-2">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-50">Sign in / Sign up</h1>
-        <p className="text-sm text-slate-400">
+        <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Sign in / Sign up</h1>
+        <p className="text-sm text-text-secondary">
           Use your Funkedupshift account to rate sites, add notes, and manage curated content (based on your role).
         </p>
       </header>
@@ -92,14 +92,14 @@ const AuthPage: React.FC = () => {
       )}
 
       <div className="grid gap-6 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] items-start">
-        <section className="rounded-2xl border border-slate-800 bg-slate-950/70 p-5 shadow-lg shadow-slate-950/40">
-          <div className="mb-4 flex gap-2 rounded-full bg-slate-900/70 p-1 text-xs font-medium text-slate-300">
+        <section className="rounded-2xl border border-border-default bg-surface-1 p-5 shadow-lg shadow-black/40">
+          <div className="mb-4 flex gap-2 rounded-full bg-surface-2 p-1 text-xs font-medium text-text-secondary">
             <button
               type="button"
               onClick={() => switchMode("signin")}
               className={[
                 "flex-1 rounded-full px-3 py-1.5 transition-colors",
-                mode === "signin" ? "bg-slate-50 text-slate-950" : "hover:bg-slate-800/80"
+                mode === "signin" ? "bg-white text-surface-0" : "hover:bg-surface-3"
               ].join(" ")}
             >
               Sign in
@@ -109,7 +109,7 @@ const AuthPage: React.FC = () => {
               onClick={() => switchMode("signup")}
               className={[
                 "flex-1 rounded-full px-3 py-1.5 transition-colors",
-                mode === "signup" ? "bg-slate-50 text-slate-950" : "hover:bg-slate-800/80"
+                mode === "signup" ? "bg-white text-surface-0" : "hover:bg-surface-3"
               ].join(" ")}
             >
               Sign up
@@ -118,7 +118,7 @@ const AuthPage: React.FC = () => {
 
           <form className="space-y-4" onSubmit={handleSubmit}>
             <div className="space-y-1">
-              <label htmlFor="authEmail" className="text-xs font-medium uppercase tracking-[0.18em] text-slate-400">
+              <label htmlFor="authEmail" className="text-xs font-medium uppercase tracking-[0.18em] text-text-secondary">
                 Email
               </label>
               <input
@@ -127,7 +127,7 @@ const AuthPage: React.FC = () => {
                 autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-500 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange"
+                className="w-full rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-primary0 focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
                 placeholder="you@example.com"
                 required
               />
@@ -136,7 +136,7 @@ const AuthPage: React.FC = () => {
             <div className="space-y-1">
               <label
                 htmlFor="authPassword"
-                className="text-xs font-medium uppercase tracking-[0.18em] text-slate-400"
+                className="text-xs font-medium uppercase tracking-[0.18em] text-text-secondary"
               >
                 Password
               </label>
@@ -146,7 +146,7 @@ const AuthPage: React.FC = () => {
                 autoComplete={mode === "signin" ? "current-password" : "new-password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-500 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange"
+                className="w-full rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-primary0 focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
                 placeholder={mode === "signup" ? "At least 8 characters" : "Your password"}
                 minLength={8}
                 required
@@ -168,32 +168,32 @@ const AuthPage: React.FC = () => {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="inline-flex w-full items-center justify-center rounded-full bg-brand-orange px-4 py-2.5 text-sm font-semibold text-slate-950 shadow-md shadow-orange-500/40 transition hover:bg-orange-500 disabled:cursor-not-allowed disabled:opacity-70"
+              className="inline-flex w-full items-center justify-center rounded-full bg-accent-500 px-4 py-2.5 text-sm font-semibold text-surface-0 shadow-md shadow-orange-500/40 transition hover:bg-orange-500 disabled:cursor-not-allowed disabled:opacity-70"
             >
               {isSubmitting ? (mode === "signin" ? "Signing in…" : "Creating account…") : mode === "signin" ? "Sign in" : "Create account"}
             </button>
           </form>
         </section>
 
-        <aside className="space-y-3 rounded-2xl border border-slate-800 bg-slate-950/40 p-4 text-xs text-slate-300">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-500">
+        <aside className="space-y-3 rounded-2xl border border-border-default bg-surface-1 p-4 text-xs text-text-secondary">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-text-primary0">
             How access works
           </p>
           <ul className="space-y-2">
             <li>
-              <span className="font-semibold text-slate-100">Guests</span> can browse all websites and media without
+              <span className="font-semibold text-text-primary">Guests</span> can browse all websites and media without
               signing in.
             </li>
             <li>
-              <span className="font-semibold text-slate-100">Signed-in users</span> can star sites and media, and later
+              <span className="font-semibold text-text-primary">Signed-in users</span> can star sites and media, and later
               add their own metadata and comments.
             </li>
             <li>
-              <span className="font-semibold text-slate-100">Managers & admins</span> can curate sites, media, and
+              <span className="font-semibold text-text-primary">Managers & admins</span> can curate sites, media, and
               categories, with extra tooling in the admin area.
             </li>
           </ul>
-          <p className="text-slate-500">
+          <p className="text-text-primary0">
             If you don&apos;t see expected admin controls after signing in, confirm your Cognito group membership in
             the AWS Console.
           </p>

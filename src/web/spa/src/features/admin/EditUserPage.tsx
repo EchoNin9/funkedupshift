@@ -49,7 +49,7 @@ function formatLastLogin(isoString: string, offsetHours: number, ip?: string): s
 const chipClass = (name: string) => {
   if (name === "admin") return "bg-amber-500/20 text-amber-200";
   if (name === "manager") return "bg-blue-500/20 text-blue-200";
-  if (name === "user") return "bg-slate-600/30 text-slate-300";
+  if (name === "user") return "bg-surface-3/30 text-text-secondary";
   return "bg-emerald-500/20 text-emerald-200";
 };
 
@@ -271,8 +271,8 @@ const EditUserPage: React.FC = () => {
   if (!canAccess) {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-50">Edit User</h1>
-        <p className="text-sm text-slate-400">Manager or SuperAdmin access is required.</p>
+        <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Edit User</h1>
+        <p className="text-sm text-text-secondary">Manager or SuperAdmin access is required.</p>
       </div>
     );
   }
@@ -280,8 +280,8 @@ const EditUserPage: React.FC = () => {
   if (!username) {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-50">Edit User</h1>
-        <p className="text-sm text-slate-400">Missing username in URL.</p>
+        <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Edit User</h1>
+        <p className="text-sm text-text-secondary">Missing username in URL.</p>
       </div>
     );
   }
@@ -289,8 +289,8 @@ const EditUserPage: React.FC = () => {
   if (loading) {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-50">Edit User</h1>
-        <p className="text-sm text-slate-500">Loading…</p>
+        <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Edit User</h1>
+        <p className="text-sm text-text-primary0">Loading…</p>
       </div>
     );
   }
@@ -298,7 +298,7 @@ const EditUserPage: React.FC = () => {
   if (error || !userData) {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-50">Edit User</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Edit User</h1>
         <div className="rounded-md border border-red-500/60 bg-red-500/10 px-3 py-2 text-sm text-red-200">
           {error ?? "Failed to load user"}
         </div>
@@ -318,7 +318,7 @@ const EditUserPage: React.FC = () => {
         }
       />
         <div className="flex items-center gap-2 text-sm mt-2">
-          <label htmlFor="tz-select" className="text-slate-500">
+          <label htmlFor="tz-select" className="text-text-primary0">
             Last login timezone:
           </label>
           <select
@@ -336,21 +336,21 @@ const EditUserPage: React.FC = () => {
         </div>
 
       <form onSubmit={handleSave} className="card p-6 space-y-6 max-w-2xl">
-        <div className="rounded-lg border border-slate-800 bg-slate-950/60 p-4">
-          <h2 className="text-sm font-medium text-slate-300 mb-3">User info</h2>
+        <div className="rounded-lg border border-border-default bg-surface-1 p-4">
+          <h2 className="text-sm font-medium text-text-secondary mb-3">User info</h2>
           <table className="text-sm">
             <tbody>
               <tr>
-                <td className="py-1 pr-4 font-medium text-slate-400 w-28">Email</td>
-                <td className="py-1 text-slate-200">{emailParam || userData.email}</td>
+                <td className="py-1 pr-4 font-medium text-text-secondary w-28">Email</td>
+                <td className="py-1 text-text-primary">{emailParam || userData.email}</td>
               </tr>
               <tr>
-                <td className="py-1 pr-4 font-medium text-slate-400">Status</td>
-                <td className="py-1 text-slate-200">{statusParam || userData.status || "—"}</td>
+                <td className="py-1 pr-4 font-medium text-text-secondary">Status</td>
+                <td className="py-1 text-text-primary">{statusParam || userData.status || "—"}</td>
               </tr>
               <tr>
-                <td className="py-1 pr-4 font-medium text-slate-400">Last login</td>
-                <td className="py-1 text-slate-200">
+                <td className="py-1 pr-4 font-medium text-text-secondary">Last login</td>
+                <td className="py-1 text-text-primary">
                   {formatLastLogin(userData.lastLoginAt, tzOffset, userData.lastLoginIp)}
                 </td>
               </tr>
@@ -359,9 +359,9 @@ const EditUserPage: React.FC = () => {
         </div>
 
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-slate-200">System roles</label>
+          <label className="block text-sm font-medium text-text-primary">System roles</label>
           <select
-            className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 w-full max-w-xs"
+            className="rounded border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary w-full max-w-xs"
             onChange={(e) => {
               const v = e.target.value;
               if (v) addSystemRole(v);
@@ -403,10 +403,10 @@ const EditUserPage: React.FC = () => {
         </div>
 
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-slate-200">Custom groups</label>
+          <label className="block text-sm font-medium text-text-primary">Custom groups</label>
           {allCustomGroups.length === 0 ? (
-            <p className="text-sm text-slate-500">
-              No custom groups. <Link to="/admin/membership?tab=groups" className="text-brand-orange hover:underline">Create groups</Link>.
+            <p className="text-sm text-text-primary0">
+              No custom groups. <Link to="/admin/membership?tab=groups" className="text-accent-500 hover:underline">Create groups</Link>.
             </p>
           ) : (
             <>
@@ -420,7 +420,7 @@ const EditUserPage: React.FC = () => {
                   }}
                   onFocus={() => setCustomDropdownOpen(true)}
                   placeholder="Search or select groups…"
-                  className="w-full rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 placeholder:text-slate-500"
+                  className="w-full rounded border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-primary0"
                 />
                 {customDropdownOpen && (
                   <>
@@ -429,15 +429,15 @@ const EditUserPage: React.FC = () => {
                       onClick={() => setCustomDropdownOpen(false)}
                       aria-hidden="true"
                     />
-                    <div className="absolute top-full left-0 right-0 mt-1 max-h-48 overflow-y-auto scrollbar-thin rounded border border-slate-700 bg-slate-900 shadow-lg z-20">
+                    <div className="absolute top-full left-0 right-0 mt-1 max-h-48 overflow-y-auto scrollbar-thin rounded border border-border-hover bg-surface-2 shadow-lg z-20">
                       {customGroupOptions.length === 0 ? (
-                        <div className="px-3 py-2 text-sm text-slate-500">No matches</div>
+                        <div className="px-3 py-2 text-sm text-text-primary0">No matches</div>
                       ) : (
                         customGroupOptions.map((g) => (
                           <button
                             key={g}
                             type="button"
-                            className="w-full px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-800"
+                            className="w-full px-3 py-2 text-left text-sm text-text-primary hover:bg-surface-3"
                             onClick={() => addCustomGroup(g)}
                           >
                             {g}
@@ -474,13 +474,13 @@ const EditUserPage: React.FC = () => {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="rounded-md bg-brand-orange px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-orange-500 disabled:opacity-50"
+            className="rounded-md bg-accent-500 px-4 py-2 text-sm font-semibold text-surface-0 hover:bg-orange-500 disabled:opacity-50"
           >
             {isSubmitting ? "Saving…" : "Save"}
           </button>
           <Link
             to="/admin/membership"
-            className="rounded-md border border-slate-700 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800"
+            className="rounded-md border border-border-hover px-4 py-2 text-sm font-medium text-text-secondary hover:bg-surface-3"
           >
             Cancel
           </Link>

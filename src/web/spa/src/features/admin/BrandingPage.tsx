@@ -306,11 +306,11 @@ const BrandingPage: React.FC = () => {
 
       <form className="card p-6 space-y-4 max-w-md" onSubmit={onSubmit}>
         <div className="space-y-1 text-sm">
-          <label className="block text-slate-200">Logo image</label>
+          <label className="block text-text-primary">Logo image</label>
           {logo && !previewUrl && (
             <div className="space-y-1 mb-3">
-              <p className="text-slate-200">Current logo</p>
-              <div className="inline-flex items-center rounded-lg border border-slate-800 bg-slate-950 p-2">
+              <p className="text-text-primary">Current logo</p>
+              <div className="inline-flex items-center rounded-lg border border-border-default bg-surface-1 p-2">
                 <img
                   src={logo.url}
                   alt={logo.alt}
@@ -323,15 +323,15 @@ const BrandingPage: React.FC = () => {
             type="file"
             accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
             onChange={onFileChange}
-            className="block w-full text-xs text-slate-300 file:mr-3 file:rounded-md file:border-0 file:bg-slate-800 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-slate-100 hover:file:bg-slate-700"
+            className="block w-full text-xs text-text-secondary file:mr-3 file:rounded-md file:border-0 file:bg-surface-3 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-text-primary hover:file:bg-surface-3"
           />
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-text-primary0">
             PNG, JPEG, GIF, or WEBP. Recommended square or horizontal layout.
           </p>
         </div>
 
         <div className="space-y-1 text-sm">
-          <label className="block text-slate-200">Alt text</label>
+          <label className="block text-text-primary">Alt text</label>
           <input
             type="text"
             value={alt}
@@ -352,10 +352,10 @@ const BrandingPage: React.FC = () => {
 
         {previewUrl && (
           <div className="space-y-1 text-sm">
-            <p className="text-slate-200">Preview</p>
-            <div className="inline-flex items-center rounded-lg border border-slate-800 bg-slate-950 p-2">
+            <p className="text-text-primary">Preview</p>
+            <div className="inline-flex items-center rounded-lg border border-border-default bg-surface-1 p-2">
               <img src={previewUrl} alt="Preview" className="h-12 w-auto rounded-md object-contain" />
-              <span className="ml-3 text-xs text-slate-400 truncate max-w-[12rem]">{file?.name}</span>
+              <span className="ml-3 text-xs text-text-secondary truncate max-w-[12rem]">{file?.name}</span>
             </div>
           </div>
         )}
@@ -369,7 +369,7 @@ const BrandingPage: React.FC = () => {
           {isSubmitting ? "Updating…" : "Update logo"}
         </button>
         {!file && (
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-text-primary0">
             Choose an image file above to upload a new logo. Use &quot;Save alt text&quot; to update alt text only.
           </p>
         )}
@@ -387,13 +387,13 @@ const BrandingPage: React.FC = () => {
       </form>
 
       <form className="card p-6 space-y-4 max-w-2xl" onSubmit={onHeroTextSave}>
-        <h2 className="text-lg font-semibold text-slate-100">Hero section</h2>
-        <p className="text-sm text-slate-400">
+        <h2 className="text-lg font-semibold text-text-primary">Hero section</h2>
+        <p className="text-sm text-text-secondary">
           Edit the home page hero text and background image. Text uses fallbacks when empty.
         </p>
 
         <div className="space-y-1 text-sm">
-          <label className="block text-slate-200">Tagline</label>
+          <label className="block text-text-primary">Tagline</label>
           <input
             type="text"
             value={heroTagline}
@@ -403,7 +403,7 @@ const BrandingPage: React.FC = () => {
           />
         </div>
         <div className="space-y-1 text-sm">
-          <label className="block text-slate-200">Headline</label>
+          <label className="block text-text-primary">Headline</label>
           <input
             type="text"
             value={heroHeadline}
@@ -413,7 +413,7 @@ const BrandingPage: React.FC = () => {
           />
         </div>
         <div className="space-y-1 text-sm">
-          <label className="block text-slate-200">Subtext</label>
+          <label className="block text-text-primary">Subtext</label>
           <textarea
             value={heroSubtext}
             onChange={(e) => setHeroSubtext(e.target.value)}
@@ -423,7 +423,7 @@ const BrandingPage: React.FC = () => {
           />
         </div>
         <div className="space-y-1 text-sm">
-          <label className="block text-slate-200">Background image opacity ({heroOpacity}%)</label>
+          <label className="block text-text-primary">Background image opacity ({heroOpacity}%)</label>
           <input
             type="range"
             min={0}
@@ -441,12 +441,12 @@ const BrandingPage: React.FC = () => {
           {heroSubmitting ? "Saving…" : "Save hero text & opacity"}
         </button>
 
-        <div className="border-t border-slate-700 pt-4 mt-4 space-y-4">
-          <label className="block text-slate-200">Hero background image</label>
+        <div className="border-t border-border-hover pt-4 mt-4 space-y-4">
+          <label className="block text-text-primary">Hero background image</label>
           {hero.imageUrl && !heroPreviewUrl && (
             <div className="space-y-1">
-              <p className="text-slate-200">Current image</p>
-              <div className="inline-flex items-center gap-3 rounded-lg border border-slate-800 bg-slate-950 p-2">
+              <p className="text-text-primary">Current image</p>
+              <div className="inline-flex items-center gap-3 rounded-lg border border-border-default bg-surface-1 p-2">
                 <img
                   src={hero.imageUrl}
                   alt=""
@@ -467,11 +467,11 @@ const BrandingPage: React.FC = () => {
             type="file"
             accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
             onChange={onHeroFileChange}
-            className="block w-full text-xs text-slate-300 file:mr-3 file:rounded-md file:border-0 file:bg-slate-800 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-slate-100 hover:file:bg-slate-700"
+            className="block w-full text-xs text-text-secondary file:mr-3 file:rounded-md file:border-0 file:bg-surface-3 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-text-primary hover:file:bg-surface-3"
           />
           {heroFile && (
             <div className="flex items-center gap-3">
-              <div className="inline-flex items-center rounded-lg border border-slate-800 bg-slate-950 p-2">
+              <div className="inline-flex items-center rounded-lg border border-border-default bg-surface-1 p-2">
                 <img src={heroPreviewUrl!} alt="" className="h-24 w-auto max-w-[12rem] rounded-md object-cover" />
               </div>
               <button
