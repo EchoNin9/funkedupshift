@@ -107,7 +107,7 @@ const HighestRatedPage: React.FC = () => {
       </div>
 
       {isLoading && (
-        <p className="text-sm text-slate-400">Loading…</p>
+        <p className="text-sm text-text-secondary">Loading…</p>
       )}
 
       {error && !items.length && (
@@ -117,7 +117,7 @@ const HighestRatedPage: React.FC = () => {
       )}
 
       {!isLoading && items.length === 0 && !error && (
-        <p className="text-sm text-slate-400">
+        <p className="text-sm text-text-secondary">
           No items configured yet.{" "}
           {canEdit && (
             <Link
@@ -179,7 +179,7 @@ const HighestRatedPage: React.FC = () => {
                     </a>
                   )}
                   <span
-                    className="absolute left-0 top-full mt-1 px-2 py-1.5 rounded bg-slate-900 border border-amber-700/60 text-xs text-amber-200 break-all max-w-[280px] shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-10 pointer-events-none"
+                    className="absolute left-0 top-full mt-1 px-2 py-1.5 rounded bg-surface-2 border border-amber-700/60 text-xs text-amber-200 break-all max-w-[280px] shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-10 pointer-events-none"
                     role="tooltip"
                   >
                     {isMedia ? item.link : item.link}

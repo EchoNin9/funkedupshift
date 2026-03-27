@@ -381,8 +381,8 @@ const MediaAdminPage: React.FC = () => {
   if (!canAccess) {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-50">Media</h1>
-        <p className="text-sm text-slate-400">Manager or SuperAdmin access is required.</p>
+        <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Media</h1>
+        <p className="text-sm text-text-secondary">Manager or SuperAdmin access is required.</p>
       </div>
     );
   }
@@ -406,7 +406,7 @@ const MediaAdminPage: React.FC = () => {
       {activeTab === "add" && (
         <form className="card p-6 space-y-4 max-w-xl" onSubmit={handleSubmit}>
           <div>
-            <label className="block text-sm font-medium text-slate-200 mb-1">Title (optional)</label>
+            <label className="block text-sm font-medium text-text-primary mb-1">Title (optional)</label>
             <input
               type="text"
               value={title}
@@ -416,7 +416,7 @@ const MediaAdminPage: React.FC = () => {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-200 mb-1">Description (optional)</label>
+            <label className="block text-sm font-medium text-text-primary mb-1">Description (optional)</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -426,20 +426,20 @@ const MediaAdminPage: React.FC = () => {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-200 mb-1">Image or video *</label>
+            <label className="block text-sm font-medium text-text-primary mb-1">Image or video *</label>
             <input
               type="file"
               accept="image/png,image/jpeg,image/gif,image/webp,video/mp4,video/webm"
               onChange={onFileChange}
-              className="block w-full text-xs text-slate-300 file:mr-3 file:rounded-md file:border-0 file:bg-slate-800 file:px-3 file:py-1.5 file:text-slate-100"
+              className="block w-full text-xs text-text-secondary file:mr-3 file:rounded-md file:border-0 file:bg-surface-3 file:px-3 file:py-1.5 file:text-text-primary"
             />
-            <p className="mt-1 text-xs text-slate-500">
+            <p className="mt-1 text-xs text-text-primary0">
               Videos get an auto-generated thumbnail from the 3–4 sec frame. Change it when editing.
             </p>
             {file?.type.startsWith("video/") && thumbnailFile && (
               <p className="mt-1 text-xs text-emerald-400">
                 Custom thumbnail: {thumbnailFile.name}{" "}
-                <button type="button" onClick={() => setShowThumbnailDialog(true)} className="text-brand-orange hover:underline">
+                <button type="button" onClick={() => setShowThumbnailDialog(true)} className="text-accent-500 hover:underline">
                   Change
                 </button>
               </p>
@@ -453,11 +453,11 @@ const MediaAdminPage: React.FC = () => {
                 onClick={() => setShowThumbnailDialog(false)}
               >
                 <div
-                  className="rounded-lg border border-slate-700 bg-slate-900 p-6 shadow-xl max-w-sm w-full mx-4"
+                  className="rounded-lg border border-border-hover bg-surface-2 p-6 shadow-xl max-w-sm w-full mx-4"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <h2 id="thumbnail-dialog-title" className="text-lg font-medium text-slate-100 mb-2">Add thumbnail</h2>
-                  <p className="text-sm text-slate-400 mb-4">Choose a custom thumbnail image for this video (optional).</p>
+                  <h2 id="thumbnail-dialog-title" className="text-lg font-medium text-text-primary mb-2">Add thumbnail</h2>
+                  <p className="text-sm text-text-secondary mb-4">Choose a custom thumbnail image for this video (optional).</p>
                   <input
                     ref={thumbnailInputRef}
                     type="file"
@@ -469,14 +469,14 @@ const MediaAdminPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => thumbnailInputRef.current?.click()}
-                      className="rounded-md bg-slate-700 px-3 py-2 text-sm font-medium text-slate-100 hover:bg-slate-600"
+                      className="rounded-md bg-surface-3 px-3 py-2 text-sm font-medium text-text-primary hover:bg-surface-3"
                     >
                       Choose file
                     </button>
                     <button
                       type="button"
                       onClick={() => setShowThumbnailDialog(false)}
-                      className="rounded-md border border-slate-600 px-3 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800"
+                      className="rounded-md border border-border-hover px-3 py-2 text-sm font-medium text-text-secondary hover:bg-surface-3"
                     >
                       Skip
                     </button>
@@ -487,15 +487,15 @@ const MediaAdminPage: React.FC = () => {
             {filePreview && (
               <div className="mt-2">
                 {file?.type.startsWith("video/") ? (
-                  <video src={filePreview} muted controls className="max-h-32 rounded-lg border border-slate-700" />
+                  <video src={filePreview} muted controls className="max-h-32 rounded-lg border border-border-hover" />
                 ) : (
-                  <img src={filePreview} alt="Preview" className="h-24 w-auto rounded-lg border border-slate-700 object-cover" />
+                  <img src={filePreview} alt="Preview" className="h-24 w-auto rounded-lg border border-border-hover object-cover" />
                 )}
               </div>
             )}
           </div>
           <div ref={categoryDropdownRef} className="relative">
-            <label className="block text-sm font-medium text-slate-200 mb-1">Media categories (optional)</label>
+            <label className="block text-sm font-medium text-text-primary mb-1">Media categories (optional)</label>
             <input
               type="text"
               value={categorySearch}
@@ -507,26 +507,26 @@ const MediaAdminPage: React.FC = () => {
             />
             {categoryDropdownOpen && (
               <>
-                <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-48 overflow-auto scrollbar-thin rounded-md border border-slate-700 bg-slate-900 shadow-lg">
+                <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-48 overflow-auto scrollbar-thin rounded-md border border-border-hover bg-surface-2 shadow-lg">
                   {filteredCategories.length ? (
                     filteredCategories.map((c) => (
                       <button
                         key={c.id}
                         type="button"
                         onClick={() => addCategory(c.id)}
-                        className="block w-full px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-800"
+                        className="block w-full px-3 py-2 text-left text-sm text-text-primary hover:bg-surface-3"
                       >
                         {c.name}
                       </button>
                     ))
                   ) : (
-                    <p className="px-3 py-2 text-xs text-slate-500">No matches</p>
+                    <p className="px-3 py-2 text-xs text-text-primary0">No matches</p>
                   )}
                 </div>
                 {categories.length === 0 && (
-                  <p className="mt-1 text-xs text-slate-500">
+                  <p className="mt-1 text-xs text-text-primary0">
                     No categories.{" "}
-                    <button type="button" onClick={() => setTab("categories")} className="text-brand-orange hover:underline">
+                    <button type="button" onClick={() => setTab("categories")} className="text-accent-500 hover:underline">
                       Create media categories
                     </button>
                   </p>
@@ -539,7 +539,7 @@ const MediaAdminPage: React.FC = () => {
                 return (
                   <span
                     key={id}
-                    className="inline-flex items-center gap-1 rounded-full bg-slate-800 px-2 py-0.5 text-xs text-slate-200"
+                    className="inline-flex items-center gap-1 rounded-full bg-surface-3 px-2 py-0.5 text-xs text-text-primary"
                   >
                     {c?.name ?? id}
                     <button type="button" onClick={() => removeCategory(id)} className="hover:text-red-400" aria-label="Remove">
@@ -570,7 +570,7 @@ const MediaAdminPage: React.FC = () => {
         <>
           <form className="card p-6 space-y-3 max-w-md" onSubmit={handleCreateCategory}>
             <div>
-              <label className="block text-sm font-medium text-slate-200 mb-1">New category name</label>
+              <label className="block text-sm font-medium text-text-primary mb-1">New category name</label>
               <input
                 type="text"
                 value={newName}
@@ -580,7 +580,7 @@ const MediaAdminPage: React.FC = () => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-200 mb-1">Description (optional)</label>
+              <label className="block text-sm font-medium text-text-primary mb-1">Description (optional)</label>
               <input
                 type="text"
                 value={newDescription}
@@ -605,15 +605,15 @@ const MediaAdminPage: React.FC = () => {
           </form>
 
           <section className="card p-6 mt-6">
-            <h2 className="text-sm font-medium text-slate-300 mb-2">Existing media categories</h2>
+            <h2 className="text-sm font-medium text-text-secondary mb-2">Existing media categories</h2>
             {categoriesLoading ? (
-              <p className="text-sm text-slate-500">Loading…</p>
+              <p className="text-sm text-text-primary0">Loading…</p>
             ) : categories.length === 0 ? (
-              <p className="text-sm text-slate-500">No media categories yet. Create one above.</p>
+              <p className="text-sm text-text-primary0">No media categories yet. Create one above.</p>
             ) : (
               <ul className="space-y-2">
                 {categories.map((c) => (
-                  <li key={c.id} className="rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm">
+                  <li key={c.id} className="rounded-lg border border-border-default bg-surface-1 px-3 py-2 text-sm">
                     {editingId === c.id ? (
                       <form onSubmit={handleUpdateCategory} className="space-y-2">
                         <input
@@ -663,10 +663,10 @@ const MediaAdminPage: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => startEdit(c)}
-                          className="flex-1 min-w-0 text-left hover:bg-slate-800/50 rounded px-1 -mx-1 py-1 -my-1 transition-colors"
+                          className="flex-1 min-w-0 text-left hover:bg-surface-3 rounded px-1 -mx-1 py-1 -my-1 transition-colors"
                         >
-                          <span className="font-medium text-slate-200">{c.name}</span>
-                          {c.description && <span className="text-slate-500 truncate max-w-xs ml-2">{c.description}</span>}
+                          <span className="font-medium text-text-primary">{c.name}</span>
+                          {c.description && <span className="text-text-primary0 truncate max-w-xs ml-2">{c.description}</span>}
                         </button>
                         <button
                           type="button"

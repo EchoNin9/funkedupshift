@@ -114,7 +114,7 @@ function LineChart({
     .filter(Boolean) as string[];
   return (
     <div className="mb-4">
-      <p className="text-xs font-medium text-slate-400 mb-1">{label}</p>
+      <p className="text-xs font-medium text-text-secondary mb-1">{label}</p>
       <svg viewBox={`0 0 ${w} ${h}`} className="w-full max-w-full" preserveAspectRatio="xMidYMid meet">
         <line x1={pad.l} y1={h - pad.b} x2={w - pad.r} y2={h - pad.b} stroke="currentColor" strokeOpacity={0.2} />
         <line x1={pad.l} y1={pad.t} x2={pad.l} y2={h - pad.b} stroke="currentColor" strokeOpacity={0.2} />
@@ -136,7 +136,7 @@ function LineChart({
           );
         })}
       </svg>
-      <p className="text-xs text-slate-500 mt-1">
+      <p className="text-xs text-text-primary0 mt-1">
         Range: {formatValue(minV)} – {formatValue(maxV)}
       </p>
     </div>
@@ -638,8 +638,8 @@ const VehiclesExpensesPage: React.FC = () => {
   if (!user) {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-display font-bold text-slate-100">Vehicles Expenses</h1>
-        <p className="text-slate-400">Sign in to access your vehicle expenses.</p>
+        <h1 className="text-2xl font-sans font-bold text-text-primary">Vehicles Expenses</h1>
+        <p className="text-text-secondary">Sign in to access your vehicle expenses.</p>
       </div>
     );
   }
@@ -647,8 +647,8 @@ const VehiclesExpensesPage: React.FC = () => {
   if (!canAccess) {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-display font-bold text-slate-100">Vehicles Expenses</h1>
-        <p className="text-slate-400">
+        <h1 className="text-2xl font-sans font-bold text-text-primary">Vehicles Expenses</h1>
+        <p className="text-text-secondary">
           You need to be in the expenses group to access this section. Contact an admin to be added.
         </p>
       </div>
@@ -665,8 +665,8 @@ const VehiclesExpensesPage: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-display font-bold text-slate-100">Vehicles Expenses</h1>
-          <p className="text-slate-400 mt-1">Track fuel costs per vehicle. Data is private to you.</p>
+          <h1 className="text-2xl font-sans font-bold text-text-primary">Vehicles Expenses</h1>
+          <p className="text-text-secondary mt-1">Track fuel costs per vehicle. Data is private to you.</p>
         </div>
         <div className="flex items-center gap-2">
           <input
@@ -679,14 +679,14 @@ const VehiclesExpensesPage: React.FC = () => {
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={importing}
-            className="rounded-md border border-slate-600 bg-slate-800 px-4 py-2 text-sm text-slate-200 hover:bg-slate-700 disabled:opacity-50"
+            className="rounded-md border border-border-hover bg-surface-3 px-4 py-2 text-sm text-text-primary hover:bg-surface-3 disabled:opacity-50"
           >
             {importing ? "Importing…" : "Import from CSV/Excel"}
           </button>
           <button
             type="button"
             onClick={() => setShowImportHelp((v) => !v)}
-            className="text-sm text-slate-400 hover:text-slate-200"
+            className="text-sm text-text-secondary hover:text-text-primary"
           >
             {showImportHelp ? "Hide format" : "Import format"}
           </button>
@@ -694,8 +694,8 @@ const VehiclesExpensesPage: React.FC = () => {
       </div>
 
       {showImportHelp && (
-        <div className="rounded-lg border border-slate-700 bg-slate-900/50 p-4 text-sm text-slate-300 space-y-2">
-          <p className="font-medium text-slate-200">CSV / Excel import format</p>
+        <div className="rounded-lg border border-border-hover bg-surface-2 p-4 text-sm text-text-secondary space-y-2">
+          <p className="font-medium text-text-primary">CSV / Excel import format</p>
           <p>Use columns: <strong>Date</strong> (YYYY-MM-DD), <strong>Fuel Price</strong> ($), <strong>Fuel Litres</strong>, <strong>Odometer (km)</strong>, <strong>Vehicle</strong>. First row = headers. CSV or Excel (.xlsx, .xls) supported.</p>
         </div>
       )}
@@ -726,20 +726,20 @@ const VehiclesExpensesPage: React.FC = () => {
       />
 
       {showAddVehicle ? (
-        <div className="rounded-lg border border-slate-700 bg-slate-900/50 p-4">
-          <h2 className="text-sm font-semibold text-slate-300 mb-3">Add vehicle</h2>
+        <div className="rounded-lg border border-border-hover bg-surface-2 p-4">
+          <h2 className="text-sm font-semibold text-text-secondary mb-3">Add vehicle</h2>
           <div className="flex gap-2">
             <input
               type="text"
               placeholder="Vehicle name"
               value={newVehicleName}
               onChange={(e) => setNewVehicleName(e.target.value)}
-              className="rounded-md border border-slate-600 bg-slate-800 px-3 py-2 text-slate-100 placeholder-slate-500 flex-1"
+              className="rounded-md border border-border-hover bg-surface-3 px-3 py-2 text-text-primary placeholder-text-tertiary flex-1"
             />
             <button
               onClick={handleAddVehicle}
               disabled={saving || !newVehicleName.trim()}
-              className="rounded-md bg-primary-500 px-4 py-2 text-sm font-medium text-white hover:bg-primary-600 disabled:opacity-50"
+              className="rounded-md bg-accent-500 px-4 py-2 text-sm font-medium text-white hover:bg-accent-600 disabled:opacity-50"
             >
               {saving ? "Adding…" : "Add"}
             </button>
@@ -747,7 +747,7 @@ const VehiclesExpensesPage: React.FC = () => {
         </div>
       ) : selectedVehicleId ? (
         <>
-          <div className="rounded-lg border border-slate-700 bg-slate-900/50 p-4">
+          <div className="rounded-lg border border-border-hover bg-surface-2 p-4">
             <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
               <div className="flex items-center gap-2">
                 {renamingVehicleId === selectedVehicleId ? (
@@ -764,13 +764,13 @@ const VehiclesExpensesPage: React.FC = () => {
                         }
                       }}
                       placeholder="Vehicle name"
-                      className="rounded-md border border-slate-600 bg-slate-800 px-3 py-1.5 text-slate-100 placeholder-slate-500 w-48"
+                      className="rounded-md border border-border-hover bg-surface-3 px-3 py-1.5 text-text-primary placeholder-text-tertiary w-48"
                       autoFocus
                     />
                     <button
                       onClick={() => handleRenameVehicle(selectedVehicleId, renameValue)}
                       disabled={saving || !renameValue.trim()}
-                      className="text-sm text-primary-400 hover:text-primary-300"
+                      className="text-sm text-accent-400 hover:text-accent-300"
                     >
                       Save
                     </button>
@@ -779,14 +779,14 @@ const VehiclesExpensesPage: React.FC = () => {
                         setRenamingVehicleId(null);
                         setRenameValue("");
                       }}
-                      className="text-sm text-slate-400 hover:text-slate-200"
+                      className="text-sm text-text-secondary hover:text-text-primary"
                     >
                       Cancel
                     </button>
                   </div>
                 ) : (
                   <>
-                    <h2 className="text-sm font-semibold text-slate-300">
+                    <h2 className="text-sm font-semibold text-text-secondary">
                       {vehicles.find((v) => v.id === selectedVehicleId)?.name || "Vehicle"}
                     </h2>
                     <button
@@ -795,7 +795,7 @@ const VehiclesExpensesPage: React.FC = () => {
                         setRenameValue(vehicles.find((v) => v.id === selectedVehicleId)?.name || "");
                       }}
                       disabled={saving}
-                      className="text-xs text-slate-400 hover:text-slate-200"
+                      className="text-xs text-text-secondary hover:text-text-primary"
                     >
                       Rename
                     </button>
@@ -810,13 +810,13 @@ const VehiclesExpensesPage: React.FC = () => {
                 Delete vehicle
               </button>
             </div>
-            <h2 className="text-sm font-semibold text-slate-300 mb-3">Add fuel expense</h2>
+            <h2 className="text-sm font-semibold text-text-secondary mb-3">Add fuel expense</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               <input
                 type="date"
                 value={fuelForm.date}
                 onChange={(e) => setFuelForm((f) => ({ ...f, date: e.target.value }))}
-                className="rounded-md border border-slate-600 bg-slate-800 px-3 py-2 text-slate-100"
+                className="rounded-md border border-border-hover bg-surface-3 px-3 py-2 text-text-primary"
               />
               <input
                 type="number"
@@ -824,7 +824,7 @@ const VehiclesExpensesPage: React.FC = () => {
                 placeholder="Fuel price ($)"
                 value={fuelForm.fuelPrice}
                 onChange={(e) => setFuelForm((f) => ({ ...f, fuelPrice: e.target.value }))}
-                className="rounded-md border border-slate-600 bg-slate-800 px-3 py-2 text-slate-100 placeholder-slate-500"
+                className="rounded-md border border-border-hover bg-surface-3 px-3 py-2 text-text-primary placeholder-text-tertiary"
               />
               <input
                 type="number"
@@ -832,7 +832,7 @@ const VehiclesExpensesPage: React.FC = () => {
                 placeholder="Fuel litres"
                 value={fuelForm.fuelLitres}
                 onChange={(e) => setFuelForm((f) => ({ ...f, fuelLitres: e.target.value }))}
-                className="rounded-md border border-slate-600 bg-slate-800 px-3 py-2 text-slate-100 placeholder-slate-500"
+                className="rounded-md border border-border-hover bg-surface-3 px-3 py-2 text-text-primary placeholder-text-tertiary"
               />
               <input
                 type="number"
@@ -840,56 +840,56 @@ const VehiclesExpensesPage: React.FC = () => {
                 placeholder="Odometer (km)"
                 value={fuelForm.odometerKm}
                 onChange={(e) => setFuelForm((f) => ({ ...f, odometerKm: e.target.value }))}
-                className="rounded-md border border-slate-600 bg-slate-800 px-3 py-2 text-slate-100 placeholder-slate-500"
+                className="rounded-md border border-border-hover bg-surface-3 px-3 py-2 text-text-primary placeholder-text-tertiary"
               />
             </div>
             <button
               onClick={handleAddFuel}
               disabled={saving || !fuelForm.fuelPrice || !fuelForm.fuelLitres || !fuelForm.odometerKm}
-              className="mt-3 rounded-md bg-primary-500 px-4 py-2 text-sm font-medium text-white hover:bg-primary-600 disabled:opacity-50"
+              className="mt-3 rounded-md bg-accent-500 px-4 py-2 text-sm font-medium text-white hover:bg-accent-600 disabled:opacity-50"
             >
               {saving ? "Adding…" : "Add fuel entry"}
             </button>
           </div>
 
-          <div className="rounded-lg border border-slate-700 bg-slate-800/50 overflow-hidden">
+          <div className="rounded-lg border border-border-hover bg-surface-3 overflow-hidden">
             <button
               type="button"
               onClick={() => setLimitResultsOpen((o) => !o)}
-              className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-slate-700/30 transition-colors"
+              className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-surface-3/30 transition-colors"
             >
-              <span className="text-sm font-medium text-slate-200">Limit results</span>
-              <span className="text-slate-400">{limitResultsOpen ? "▼" : "▶"}</span>
+              <span className="text-sm font-medium text-text-primary">Limit results</span>
+              <span className="text-text-secondary">{limitResultsOpen ? "▼" : "▶"}</span>
             </button>
             {limitResultsOpen && (
-              <div className="px-4 pb-4 pt-1 border-t border-slate-700 space-y-3">
+              <div className="px-4 pb-4 pt-1 border-t border-border-hover space-y-3">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                   <div>
-                    <label className="block text-xs text-slate-500 mb-1">Start date</label>
+                    <label className="block text-xs text-text-primary0 mb-1">Start date</label>
                     <input
                       type="date"
                       value={filters.startDate}
                       onChange={(e) => setFilters((f) => ({ ...f, startDate: e.target.value }))}
-                      className="w-full rounded-md border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-slate-100"
+                      className="w-full rounded-md border border-border-hover bg-surface-3 px-3 py-2 text-sm text-text-primary"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-slate-500 mb-1">End date</label>
+                    <label className="block text-xs text-text-primary0 mb-1">End date</label>
                     <input
                       type="date"
                       value={filters.endDate}
                       onChange={(e) => setFilters((f) => ({ ...f, endDate: e.target.value }))}
-                      className="w-full rounded-md border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-slate-100"
+                      className="w-full rounded-md border border-border-hover bg-surface-3 px-3 py-2 text-sm text-text-primary"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-slate-500 mb-1">Sort order</label>
+                    <label className="block text-xs text-text-primary0 mb-1">Sort order</label>
                     <select
                       value={filters.sortNewestFirst ? "newest" : "oldest"}
                       onChange={(e) =>
                         setFilters((f) => ({ ...f, sortNewestFirst: e.target.value === "newest" }))
                       }
-                      className="w-full rounded-md border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-slate-100"
+                      className="w-full rounded-md border border-border-hover bg-surface-3 px-3 py-2 text-sm text-text-primary"
                     >
                       <option value="newest">Newest first</option>
                       <option value="oldest">Oldest first</option>
@@ -899,7 +899,7 @@ const VehiclesExpensesPage: React.FC = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="flex gap-2 items-end">
                     <div className="flex-1">
-                      <label className="block text-xs text-slate-500 mb-1">Fuel price ($)</label>
+                      <label className="block text-xs text-text-primary0 mb-1">Fuel price ($)</label>
                       <div className="flex gap-2">
                         <select
                           value={filters.fuelPriceOp}
@@ -909,7 +909,7 @@ const VehiclesExpensesPage: React.FC = () => {
                               fuelPriceOp: e.target.value as "higher" | "lower",
                             }))
                           }
-                          className="rounded-md border border-slate-600 bg-slate-800 px-2 py-2 text-sm text-slate-100"
+                          className="rounded-md border border-border-hover bg-surface-3 px-2 py-2 text-sm text-text-primary"
                         >
                           <option value="higher">Higher than</option>
                           <option value="lower">Lower than</option>
@@ -920,14 +920,14 @@ const VehiclesExpensesPage: React.FC = () => {
                           placeholder="e.g. 50"
                           value={filters.fuelPriceVal}
                           onChange={(e) => setFilters((f) => ({ ...f, fuelPriceVal: e.target.value }))}
-                          className="flex-1 rounded-md border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder-slate-500"
+                          className="flex-1 rounded-md border border-border-hover bg-surface-3 px-3 py-2 text-sm text-text-primary placeholder-text-tertiary"
                         />
                       </div>
                     </div>
                   </div>
                   <div className="flex gap-2 items-end">
                     <div className="flex-1">
-                      <label className="block text-xs text-slate-500 mb-1">$/L</label>
+                      <label className="block text-xs text-text-primary0 mb-1">$/L</label>
                       <div className="flex gap-2">
                         <select
                           value={filters.pricePerLOp}
@@ -937,7 +937,7 @@ const VehiclesExpensesPage: React.FC = () => {
                               pricePerLOp: e.target.value as "higher" | "lower",
                             }))
                           }
-                          className="rounded-md border border-slate-600 bg-slate-800 px-2 py-2 text-sm text-slate-100"
+                          className="rounded-md border border-border-hover bg-surface-3 px-2 py-2 text-sm text-text-primary"
                         >
                           <option value="higher">Higher than</option>
                           <option value="lower">Lower than</option>
@@ -948,7 +948,7 @@ const VehiclesExpensesPage: React.FC = () => {
                           placeholder="e.g. 1.50"
                           value={filters.pricePerLVal}
                           onChange={(e) => setFilters((f) => ({ ...f, pricePerLVal: e.target.value }))}
-                          className="flex-1 rounded-md border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder-slate-500"
+                          className="flex-1 rounded-md border border-border-hover bg-surface-3 px-3 py-2 text-sm text-text-primary placeholder-text-tertiary"
                         />
                       </div>
                     </div>
@@ -958,20 +958,20 @@ const VehiclesExpensesPage: React.FC = () => {
             )}
           </div>
 
-          <div className="rounded-lg border border-slate-700 bg-slate-800/50 overflow-hidden">
+          <div className="rounded-lg border border-border-hover bg-surface-3 overflow-hidden">
             <button
               type="button"
               onClick={() => setDisplayGraphOpen((o) => !o)}
-              className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-slate-700/30 transition-colors"
+              className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-surface-3/30 transition-colors"
             >
-              <span className="text-sm font-medium text-slate-200">Display graph</span>
-              <span className="text-slate-400">{displayGraphOpen ? "▼" : "▶"}</span>
+              <span className="text-sm font-medium text-text-primary">Display graph</span>
+              <span className="text-text-secondary">{displayGraphOpen ? "▼" : "▶"}</span>
             </button>
             {displayGraphOpen && (
-              <div className="px-4 pb-4 pt-4 border-t border-slate-700">
-                <div className="rounded-lg border border-slate-600 bg-slate-900/50 p-4 min-h-[200px]">
+              <div className="px-4 pb-4 pt-4 border-t border-border-hover">
+                <div className="rounded-lg border border-border-hover bg-surface-2 p-4 min-h-[200px]">
                   {filteredEntries.length < 2 ? (
-                    <p className="text-slate-500 text-sm py-8 text-center">
+                    <p className="text-text-primary0 text-sm py-8 text-center">
                       Add at least 2 fuel entries to display the graph.
                     </p>
                   ) : (
@@ -1011,46 +1011,46 @@ const VehiclesExpensesPage: React.FC = () => {
             )}
           </div>
 
-          <div className="rounded-lg border border-slate-700 bg-slate-900/50 overflow-hidden">
-            <h2 className="text-sm font-semibold text-slate-300 px-4 py-3 border-b border-slate-700">
+          <div className="rounded-lg border border-border-hover bg-surface-2 overflow-hidden">
+            <h2 className="text-sm font-semibold text-text-secondary px-4 py-3 border-b border-border-hover">
               Fuel expenses ({filters.sortNewestFirst ? "newest first" : "oldest first"})
               {filteredEntries.length !== fuelEntries.length && (
-                <span className="font-normal text-slate-500 ml-2">
+                <span className="font-normal text-text-primary0 ml-2">
                   ({filteredEntries.length} of {fuelEntries.length})
                 </span>
               )}
             </h2>
             {fuelLoading ? (
-              <div className="p-8 text-center text-slate-500">Loading…</div>
+              <div className="p-8 text-center text-text-primary0">Loading…</div>
             ) : filteredEntries.length === 0 ? (
-              <div className="p-8 text-center text-slate-500">
+              <div className="p-8 text-center text-text-primary0">
                 {fuelEntries.length === 0
                   ? "No fuel entries yet. Add one above."
                   : "No entries match the current filters. Adjust or clear filters."}
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-slate-700">
+                <table className="min-w-full divide-y divide-border-hover">
                   <thead>
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Date</th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-slate-400 uppercase">Fuel price</th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-slate-400 uppercase">Volume</th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-slate-400 uppercase">$/L</th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-slate-400 uppercase">L/100km</th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-slate-400 uppercase">MPG</th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-slate-400 uppercase">Odometer</th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-slate-400 uppercase">Distance</th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-slate-400 uppercase">Actions</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">Date</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-text-secondary uppercase">Fuel price</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-text-secondary uppercase">Volume</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-text-secondary uppercase">$/L</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-text-secondary uppercase">L/100km</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-text-secondary uppercase">MPG</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-text-secondary uppercase">Odometer</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-text-secondary uppercase">Distance</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-text-secondary uppercase">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-700">
+                  <tbody className="divide-y divide-border-hover">
                     {filteredEntries.map((entry, idx) => {
                       const prev = filteredEntries[idx + 1] ?? null;
                       const { pricePerLitre, distanceKm, lPer100km, mpg } = calcFuelMetrics(entry, prev);
                       const isEditing = editingFuelId === entry.id;
                       return (
-                        <tr key={entry.id} className="hover:bg-slate-800/50">
+                        <tr key={entry.id} className="hover:bg-surface-3">
                           {isEditing ? (
                             <>
                               <td className="px-4 py-2">
@@ -1062,7 +1062,7 @@ const VehiclesExpensesPage: React.FC = () => {
                                     if (e.key === "Enter") handleUpdateFuel(entry.id);
                                     if (e.key === "Escape") setEditingFuelId(null);
                                   }}
-                                  className="rounded border border-slate-600 bg-slate-800 px-2 py-1 text-sm text-slate-100 w-36"
+                                  className="rounded border border-border-hover bg-surface-3 px-2 py-1 text-sm text-text-primary w-36"
                                 />
                               </td>
                               <td className="px-4 py-2">
@@ -1071,7 +1071,7 @@ const VehiclesExpensesPage: React.FC = () => {
                                   step="0.01"
                                   value={editFuelForm.fuelPrice}
                                   onChange={(e) => setEditFuelForm((f) => ({ ...f, fuelPrice: e.target.value }))}
-                                  className="rounded border border-slate-600 bg-slate-800 px-2 py-1 text-sm text-slate-100 w-20 text-right"
+                                  className="rounded border border-border-hover bg-surface-3 px-2 py-1 text-sm text-text-primary w-20 text-right"
                                 />
                               </td>
                               <td className="px-4 py-2">
@@ -1080,12 +1080,12 @@ const VehiclesExpensesPage: React.FC = () => {
                                   step="0.001"
                                   value={editFuelForm.fuelLitres}
                                   onChange={(e) => setEditFuelForm((f) => ({ ...f, fuelLitres: e.target.value }))}
-                                  className="rounded border border-slate-600 bg-slate-800 px-2 py-1 text-sm text-slate-100 w-20 text-right"
+                                  className="rounded border border-border-hover bg-surface-3 px-2 py-1 text-sm text-text-primary w-20 text-right"
                                 />
                               </td>
-                              <td className="px-4 py-2 text-sm text-slate-500">—</td>
-                              <td className="px-4 py-2 text-sm text-slate-500">—</td>
-                              <td className="px-4 py-2 text-sm text-slate-500">—</td>
+                              <td className="px-4 py-2 text-sm text-text-primary0">—</td>
+                              <td className="px-4 py-2 text-sm text-text-primary0">—</td>
+                              <td className="px-4 py-2 text-sm text-text-primary0">—</td>
                               <td className="px-4 py-2">
                                 <input
                                   type="number"
@@ -1093,15 +1093,15 @@ const VehiclesExpensesPage: React.FC = () => {
                                   value={editFuelForm.odometerKm}
                                   onChange={(e) => setEditFuelForm((f) => ({ ...f, odometerKm: e.target.value }))}
                                   placeholder="Odometer"
-                                  className="rounded border border-slate-600 bg-slate-800 px-2 py-1 text-sm text-slate-100 w-24 text-right"
+                                  className="rounded border border-border-hover bg-surface-3 px-2 py-1 text-sm text-text-primary w-24 text-right"
                                 />
                               </td>
-                              <td className="px-4 py-2 text-sm text-slate-500">—</td>
+                              <td className="px-4 py-2 text-sm text-text-primary0">—</td>
                               <td className="px-4 py-2 text-right">
                                 <button
                                   onClick={() => handleUpdateFuel(entry.id)}
                                   disabled={saving || !editFuelForm.date || !editFuelForm.fuelPrice || !editFuelForm.fuelLitres || !editFuelForm.odometerKm}
-                                  className="text-primary-400 hover:text-primary-300 text-sm mr-2"
+                                  className="text-accent-400 hover:text-accent-300 text-sm mr-2"
                                 >
                                   Save
                                 </button>
@@ -1110,7 +1110,7 @@ const VehiclesExpensesPage: React.FC = () => {
                                     setEditingFuelId(null);
                                   }}
                                   disabled={saving}
-                                  className="text-slate-400 hover:text-slate-200 text-sm mr-2"
+                                  className="text-text-secondary hover:text-text-primary text-sm mr-2"
                                 >
                                   Cancel
                                 </button>
@@ -1125,28 +1125,28 @@ const VehiclesExpensesPage: React.FC = () => {
                             </>
                           ) : (
                             <>
-                              <td className="px-4 py-3 text-sm text-slate-200">{formatDate(entry.date)}</td>
-                              <td className="px-4 py-3 text-sm text-right text-slate-300">
+                              <td className="px-4 py-3 text-sm text-text-primary">{formatDate(entry.date)}</td>
+                              <td className="px-4 py-3 text-sm text-right text-text-secondary">
                                 ${(entry.fuelPrice ?? entry.fuel_price ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                               </td>
-                              <td className="px-4 py-3 text-sm text-right text-slate-300">
+                              <td className="px-4 py-3 text-sm text-right text-text-secondary">
                                 {(entry.fuelLitres ?? 0).toLocaleString(undefined, { minimumFractionDigits: 3 })}L
                               </td>
-                              <td className="px-4 py-3 text-sm text-right text-slate-300">
+                              <td className="px-4 py-3 text-sm text-right text-text-secondary">
                                 {pricePerLitre != null
                                   ? `$${pricePerLitre.toLocaleString(undefined, { minimumFractionDigits: 4 })}/L`
                                   : "—"}
                               </td>
-                              <td className="px-4 py-3 text-sm text-right text-slate-300">
+                              <td className="px-4 py-3 text-sm text-right text-text-secondary">
                                 {lPer100km != null ? lPer100km.toFixed(2) : "—"}
                               </td>
-                              <td className="px-4 py-3 text-sm text-right text-slate-300">
+                              <td className="px-4 py-3 text-sm text-right text-text-secondary">
                                 {mpg != null ? mpg.toFixed(1) : "—"}
                               </td>
-                              <td className="px-4 py-3 text-sm text-right text-slate-300">
+                              <td className="px-4 py-3 text-sm text-right text-text-secondary">
                                 {(entry.odometerKm ?? 0).toLocaleString()} km
                               </td>
-                              <td className="px-4 py-3 text-sm text-right text-slate-300">
+                              <td className="px-4 py-3 text-sm text-right text-text-secondary">
                                 {distanceKm > 0 ? `${distanceKm.toLocaleString()} km` : "—"}
                               </td>
                               <td className="px-4 py-3 text-right">
@@ -1161,7 +1161,7 @@ const VehiclesExpensesPage: React.FC = () => {
                                     });
                                   }}
                                   disabled={saving}
-                                  className="text-slate-400 hover:text-slate-200 text-sm mr-2"
+                                  className="text-text-secondary hover:text-text-primary text-sm mr-2"
                                 >
                                   Edit
                                 </button>
@@ -1185,9 +1185,9 @@ const VehiclesExpensesPage: React.FC = () => {
           </div>
         </>
       ) : loading ? (
-        <div className="p-8 text-center text-slate-500">Loading vehicles…</div>
+        <div className="p-8 text-center text-text-primary0">Loading vehicles…</div>
       ) : vehicles.length === 0 ? (
-        <div className="rounded-lg border border-slate-700 bg-slate-900/50 p-8 text-center text-slate-500">
+        <div className="rounded-lg border border-border-hover bg-surface-2 p-8 text-center text-text-primary0">
           No vehicles yet. Click &quot;+ Add vehicle&quot; to create one.
         </div>
       ) : null}

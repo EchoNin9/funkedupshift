@@ -55,13 +55,13 @@ const ShareMemePopover: React.FC<ShareMemePopoverProps> = ({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="inline-flex items-center gap-1 text-[11px] text-slate-400 hover:text-slate-200"
+        className="inline-flex items-center gap-1 text-[11px] text-text-secondary transition-colors hover:text-text-primary"
       >
         {trigger}
       </button>
       {open && (
-        <div className="absolute left-0 top-full z-20 mt-1 min-w-[180px] rounded-lg border border-slate-700 bg-slate-900 p-2 shadow-xl">
-          <div className="flex items-center gap-1.5 px-2 py-1 mb-2 text-xs font-medium text-slate-500 uppercase">
+        <div className="absolute left-0 top-full z-20 mt-1 min-w-[180px] rounded-lg border border-border-hover bg-surface-2 p-2 shadow-xl">
+          <div className="flex items-center gap-1.5 px-2 py-1 mb-2 text-xs font-medium text-text-tertiary uppercase">
             <LinkIcon className="h-3.5 w-3.5" />
             Share
           </div>
@@ -69,9 +69,9 @@ const ShareMemePopover: React.FC<ShareMemePopoverProps> = ({
             <button
               type="button"
               onClick={handleCopyLink}
-              className="flex items-center gap-2 rounded px-2 py-1.5 text-left text-sm text-slate-200 hover:bg-slate-800"
+              className="flex items-center gap-2 rounded px-2 py-1.5 text-left text-sm text-text-primary transition-colors hover:bg-surface-3"
             >
-              <ClipboardDocumentIcon className="h-4 w-4 text-slate-500" />
+              <ClipboardDocumentIcon className="h-4 w-4 text-text-tertiary" />
               Copy link
               {copied && <span className="text-emerald-400 text-xs">✓</span>}
             </button>
@@ -80,7 +80,7 @@ const ShareMemePopover: React.FC<ShareMemePopoverProps> = ({
               target="_blank"
               rel="noopener noreferrer"
               title="Open Instagram"
-              className="flex items-center gap-2 rounded px-2 py-1.5 text-left text-sm text-slate-200 hover:bg-slate-800"
+              className="flex items-center gap-2 rounded px-2 py-1.5 text-left text-sm text-text-primary transition-colors hover:bg-surface-3"
               onClick={() => setOpen(false)}
             >
               Instagram
@@ -89,7 +89,7 @@ const ShareMemePopover: React.FC<ShareMemePopoverProps> = ({
               href={`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 rounded px-2 py-1.5 text-left text-sm text-slate-200 hover:bg-slate-800"
+              className="flex items-center gap-2 rounded px-2 py-1.5 text-left text-sm text-text-primary transition-colors hover:bg-surface-3"
               onClick={() => setOpen(false)}
             >
               Facebook
@@ -98,7 +98,7 @@ const ShareMemePopover: React.FC<ShareMemePopoverProps> = ({
               href={`https://bsky.app/intent/compose?text=${encodedUrl}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 rounded px-2 py-1.5 text-left text-sm text-slate-200 hover:bg-slate-800"
+              className="flex items-center gap-2 rounded px-2 py-1.5 text-left text-sm text-text-primary transition-colors hover:bg-surface-3"
               onClick={() => setOpen(false)}
             >
               Bluesky
@@ -107,7 +107,7 @@ const ShareMemePopover: React.FC<ShareMemePopoverProps> = ({
               href={`https://www.reddit.com/submit?url=${encodedUrl}&title=${encodedTitle}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 rounded px-2 py-1.5 text-left text-sm text-slate-200 hover:bg-slate-800"
+              className="flex items-center gap-2 rounded px-2 py-1.5 text-left text-sm text-text-primary transition-colors hover:bg-surface-3"
               onClick={() => setOpen(false)}
             >
               Reddit

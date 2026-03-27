@@ -60,14 +60,14 @@ const DateInput: React.FC<DateInputProps> = ({
   };
 
   const baseInputClass =
-    "rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200 focus:border-brand-orange focus:outline-none";
+    "rounded-md border border-border-hover bg-surface-2 px-3 py-2 text-sm text-text-primary focus:border-accent-500 focus:outline-none";
   const validValue = value && isValidDate(value);
 
   return (
     <div className={className}>
-      <label htmlFor={`${id}-text`} className="block text-xs font-semibold text-slate-400 mb-1">
+      <label htmlFor={`${id}-text`} className="block text-xs font-semibold text-text-secondary mb-1">
         {label}
-        <span className="block font-normal text-slate-500 mt-0.5">yyyy-MM-DD or use calendar</span>
+        <span className="block font-normal text-text-tertiary mt-0.5">yyyy-MM-DD or use calendar</span>
       </label>
       <div className="flex gap-1">
         <input
@@ -100,7 +100,7 @@ const DateInput: React.FC<DateInputProps> = ({
           onClick={openCalendar}
           title="Open calendar"
           aria-label="Open calendar"
-          className="rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-slate-400 hover:bg-slate-800 hover:text-slate-200 focus:border-brand-orange focus:outline-none shrink-0"
+          className="rounded-md border border-border-hover bg-surface-2 px-3 py-2 text-text-secondary hover:bg-surface-3 hover:text-text-primary transition-colors focus:border-accent-500 focus:outline-none shrink-0"
         >
           <CalendarDaysIcon className="h-5 w-5" />
         </button>

@@ -135,12 +135,12 @@ const AddTagInput: React.FC<AddTagInputProps> = ({
         onFocus={() => setDropdownOpen(true)}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
-        className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-500 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange"
+        className="w-full rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
         autoComplete="off"
       />
       {dropdownOpen && (suggestions.length > 0 || input.trim()) && (
         <div
-          className="absolute left-0 top-full z-10 mt-1 w-full max-h-48 overflow-auto scrollbar-thin rounded-md border border-slate-700 bg-slate-900 shadow-lg"
+          className="absolute left-0 top-full z-10 mt-1 w-full max-h-48 overflow-auto scrollbar-thin rounded-md border border-border-hover bg-surface-2 shadow-lg"
           role="listbox"
         >
           {suggestions.length > 0 ? (
@@ -152,8 +152,8 @@ const AddTagInput: React.FC<AddTagInputProps> = ({
                 aria-selected={i === highlightIndex}
                 onClick={() => addTag(tag)}
                 onMouseEnter={() => setHighlightIndex(i)}
-                className={`block w-full text-left px-3 py-2 text-sm text-slate-200 hover:bg-slate-800 ${
-                  i === highlightIndex ? "bg-slate-800" : ""
+                className={`block w-full text-left px-3 py-2 text-sm text-text-primary transition-colors hover:bg-surface-3 ${
+                  i === highlightIndex ? "bg-surface-3" : ""
                 }`}
               >
                 {tag}
@@ -163,7 +163,7 @@ const AddTagInput: React.FC<AddTagInputProps> = ({
             <button
               type="button"
               onClick={() => input.trim() && addTag(input.trim())}
-              className="block w-full text-left px-3 py-2 text-sm text-slate-200 hover:bg-slate-800"
+              className="block w-full text-left px-3 py-2 text-sm text-text-primary transition-colors hover:bg-surface-3"
             >
               Create &quot;{input.trim()}&quot;
             </button>
@@ -175,13 +175,13 @@ const AddTagInput: React.FC<AddTagInputProps> = ({
           {tags.map((t) => (
             <span
               key={t}
-              className="inline-flex items-center gap-1 rounded-full bg-slate-800 px-2 py-0.5 text-xs text-slate-300"
+              className="inline-flex items-center gap-1 rounded-full bg-surface-3 px-2 py-0.5 text-xs text-text-secondary"
             >
               {t}
               <button
                 type="button"
                 onClick={() => removeTag(t)}
-                className="hover:text-slate-100"
+                className="transition-colors hover:text-text-primary"
                 aria-label={`Remove ${t}`}
               >
                 ×

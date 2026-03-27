@@ -68,10 +68,10 @@ const ShareMemeBox: React.FC<ShareMemeBoxProps> = ({ memeId, title = "", classNa
   ];
 
   return (
-    <div className={`rounded-xl border border-slate-800 bg-slate-950/60 p-4 ${className}`}>
+    <div className={`rounded-xl border border-border-default bg-surface-1 p-4 ${className}`}>
       <div className="flex items-center gap-2 mb-2">
-        <LinkIcon className="h-4 w-4 text-slate-400" />
-        <span className="text-xs font-medium text-slate-400 uppercase">Share</span>
+        <LinkIcon className="h-4 w-4 text-text-secondary" />
+        <span className="text-xs font-medium text-text-secondary uppercase">Share</span>
       </div>
       <div className="flex flex-wrap gap-2">
         {shareLinks.map((item) =>
@@ -80,12 +80,12 @@ const ShareMemeBox: React.FC<ShareMemeBoxProps> = ({ memeId, title = "", classNa
               key={item.label}
               type="button"
               onClick={item.onClick}
-              className="inline-flex items-center gap-1.5 rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200 hover:bg-slate-800 hover:border-slate-600"
+              className="inline-flex items-center gap-1.5 rounded-md border border-border-hover bg-surface-2 px-3 py-2 text-sm text-text-primary transition-colors hover:bg-surface-3 hover:border-border-hover"
             >
               {item.icon ? (
                 <span className="text-emerald-400">{item.icon}</span>
               ) : (
-                <ClipboardDocumentIcon className="h-4 w-4 text-slate-400" />
+                <ClipboardDocumentIcon className="h-4 w-4 text-text-secondary" />
               )}
               {item.label}
             </button>
@@ -96,7 +96,7 @@ const ShareMemeBox: React.FC<ShareMemeBoxProps> = ({ memeId, title = "", classNa
               target="_blank"
               rel="noopener noreferrer"
               title={item.title}
-              className="inline-flex items-center gap-1.5 rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200 hover:bg-slate-800 hover:border-slate-600"
+              className="inline-flex items-center gap-1.5 rounded-md border border-border-hover bg-surface-2 px-3 py-2 text-sm text-text-primary transition-colors hover:bg-surface-3 hover:border-border-hover"
             >
               {item.label}
             </a>

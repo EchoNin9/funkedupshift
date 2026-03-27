@@ -289,8 +289,8 @@ const EditMediaPage: React.FC = () => {
   if (!canAccess) {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-50">Edit Media</h1>
-        <p className="text-sm text-slate-400">Manager or SuperAdmin access is required.</p>
+        <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Edit Media</h1>
+        <p className="text-sm text-text-secondary">Manager or SuperAdmin access is required.</p>
       </div>
     );
   }
@@ -299,7 +299,7 @@ const EditMediaPage: React.FC = () => {
     return (
       <div className="space-y-6">
         <AdminPageHeader title="Edit Media" />
-        <p className="text-sm text-slate-400">Loading…</p>
+        <p className="text-sm text-text-secondary">Loading…</p>
       </div>
     );
   }
@@ -327,43 +327,43 @@ const EditMediaPage: React.FC = () => {
 
       {mediaUrl && (
         <section className="card overflow-hidden max-w-2xl">
-          <p className="px-4 py-2 text-xs font-medium text-slate-400 border-b border-slate-800">Current media</p>
-          <div className="p-4 flex justify-center items-center bg-slate-900/40 min-h-[160px]">
+          <p className="px-4 py-2 text-xs font-medium text-text-secondary border-b border-border-default">Current media</p>
+          <div className="p-4 flex justify-center items-center bg-surface-2 min-h-[160px]">
             {mediaType === "video" ? (
               <video
                 src={mediaUrl}
                 controls
-                className="max-w-full max-h-[50vh] rounded-lg border border-slate-700"
+                className="max-w-full max-h-[50vh] rounded-lg border border-border-hover"
                 playsInline
               />
             ) : (
               <img
                 src={mediaUrl}
                 alt={title || "Media"}
-                className="max-w-full max-h-[50vh] w-auto h-auto object-contain rounded-lg border border-slate-700"
+                className="max-w-full max-h-[50vh] w-auto h-auto object-contain rounded-lg border border-border-hover"
               />
             )}
           </div>
           {mediaType === "video" && (
-            <div className="px-4 py-3 border-t border-slate-800 space-y-2">
-              <p className="text-xs font-medium text-slate-400">Logo / Thumbnail</p>
+            <div className="px-4 py-3 border-t border-border-default space-y-2">
+              <p className="text-xs font-medium text-text-secondary">Logo / Thumbnail</p>
               <div className="flex flex-wrap items-center gap-3">
                 {thumbnailUrl && (
                   <img
                     src={thumbnailUrl}
                     alt="Thumbnail"
-                    className="h-16 w-auto rounded border border-slate-700 object-cover"
+                    className="h-16 w-auto rounded border border-border-hover object-cover"
                   />
                 )}
                 <button
                   type="button"
                   onClick={handleRegenerateThumbnail}
                   disabled={isRegenerating}
-                  className="rounded-md border border-slate-600 px-3 py-1.5 text-sm font-medium text-slate-200 hover:bg-slate-800 disabled:opacity-50"
+                  className="rounded-md border border-border-hover px-3 py-1.5 text-sm font-medium text-text-primary hover:bg-surface-3 disabled:opacity-50"
                 >
                   {isRegenerating ? "Regenerating…" : "Take screenshot"}
                 </button>
-                <label className="cursor-pointer rounded-md border border-slate-600 px-3 py-1.5 text-sm font-medium text-slate-200 hover:bg-slate-800">
+                <label className="cursor-pointer rounded-md border border-border-hover px-3 py-1.5 text-sm font-medium text-text-primary hover:bg-surface-3">
                   {isUploadingThumb ? "Uploading…" : "Add logo"}
                   <input
                     type="file"
@@ -391,7 +391,7 @@ const EditMediaPage: React.FC = () => {
 
       <form className="card p-6 space-y-4 max-w-xl" onSubmit={handleSubmit}>
         <div>
-          <label className="block text-sm font-medium text-slate-200 mb-1">Title</label>
+          <label className="block text-sm font-medium text-text-primary mb-1">Title</label>
           <input
             type="text"
             value={title}
@@ -400,7 +400,7 @@ const EditMediaPage: React.FC = () => {
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-slate-200 mb-1">Description</label>
+          <label className="block text-sm font-medium text-text-primary mb-1">Description</label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
@@ -409,7 +409,7 @@ const EditMediaPage: React.FC = () => {
           />
         </div>
         <div className="relative">
-          <label className="block text-sm font-medium text-slate-200 mb-1">Media categories</label>
+          <label className="block text-sm font-medium text-text-primary mb-1">Media categories</label>
           <input
             type="text"
             value={categorySearch}
@@ -420,20 +420,20 @@ const EditMediaPage: React.FC = () => {
             autoComplete="off"
           />
           {categoryDropdownOpen && (
-            <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-48 overflow-auto scrollbar-thin rounded-md border border-slate-700 bg-slate-900 shadow-lg">
+            <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-48 overflow-auto scrollbar-thin rounded-md border border-border-hover bg-surface-2 shadow-lg">
               {filteredCategories.length ? (
                 filteredCategories.map((c) => (
                   <button
                     key={c.id}
                     type="button"
                     onClick={() => addCategory(c.id)}
-                    className="block w-full px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-800"
+                    className="block w-full px-3 py-2 text-left text-sm text-text-primary hover:bg-surface-3"
                   >
                     {c.name}
                   </button>
                 ))
               ) : (
-                <p className="px-3 py-2 text-xs text-slate-500">No matches</p>
+                <p className="px-3 py-2 text-xs text-text-primary0">No matches</p>
               )}
             </div>
           )}
@@ -443,7 +443,7 @@ const EditMediaPage: React.FC = () => {
               return (
                 <span
                   key={cid}
-                  className="inline-flex items-center gap-1 rounded-full bg-slate-800 px-2 py-0.5 text-xs text-slate-200"
+                  className="inline-flex items-center gap-1 rounded-full bg-surface-3 px-2 py-0.5 text-xs text-text-primary"
                 >
                   {c?.name ?? cid}
                   <button type="button" onClick={() => removeCategory(cid)} className="hover:text-red-400" aria-label="Remove">

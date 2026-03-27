@@ -300,7 +300,7 @@ const EditSitePage: React.FC = () => {
     return (
       <div className="space-y-6">
         <AdminPageHeader title="Edit Site" />
-        <p className="text-sm text-slate-400">Loading…</p>
+        <p className="text-sm text-text-secondary">Loading…</p>
       </div>
     );
   }
@@ -331,7 +331,7 @@ const EditSitePage: React.FC = () => {
 
       <form className="card p-6 space-y-4 max-w-xl" onSubmit={handleSubmit}>
         <div>
-          <label className="block text-sm font-medium text-slate-200 mb-1">URL *</label>
+          <label className="block text-sm font-medium text-text-primary mb-1">URL *</label>
           <input
             type="url"
             value={url}
@@ -341,7 +341,7 @@ const EditSitePage: React.FC = () => {
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-slate-200 mb-1">Title</label>
+          <label className="block text-sm font-medium text-text-primary mb-1">Title</label>
           <input
             type="text"
             value={title}
@@ -350,7 +350,7 @@ const EditSitePage: React.FC = () => {
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-slate-200 mb-1">Description</label>
+          <label className="block text-sm font-medium text-text-primary mb-1">Description</label>
           <textarea
             value={description}
             onChange={(e) => {
@@ -370,9 +370,9 @@ const EditSitePage: React.FC = () => {
             {isGeneratingDesc ? "Generating…" : "Generate AI description"}
           </button>
           {descriptionAiGenerated && (
-            <span className="ml-2 text-xs uppercase tracking-wide text-slate-500">AI summary</span>
+            <span className="ml-2 text-xs uppercase tracking-wide text-text-primary0">AI summary</span>
           )}
-          <label className="mt-2 block inline-flex items-center gap-2 text-xs text-slate-500">
+          <label className="mt-2 block inline-flex items-center gap-2 text-xs text-text-primary0">
             <input
               type="checkbox"
               checked={descriptionAiGenerated}
@@ -382,11 +382,11 @@ const EditSitePage: React.FC = () => {
           </label>
         </div>
         <div>
-          <label className="block text-sm font-medium text-slate-200 mb-1">Logo</label>
+          <label className="block text-sm font-medium text-text-primary mb-1">Logo</label>
           {logoUrl && !deleteLogo && !logoPreview && (
             <div className="mb-2 flex items-center gap-2">
-              <img src={logoUrl} alt="Current logo" className="h-12 w-12 rounded-lg border border-slate-700 object-cover" />
-              <label className="text-xs text-slate-400">
+              <img src={logoUrl} alt="Current logo" className="h-12 w-12 rounded-lg border border-border-hover object-cover" />
+              <label className="text-xs text-text-secondary">
                 <input type="checkbox" checked={deleteLogo} onChange={(e) => setDeleteLogo(e.target.checked)} />
                 <span className="ml-1">Remove logo</span>
               </label>
@@ -396,9 +396,9 @@ const EditSitePage: React.FC = () => {
             type="file"
             accept="image/png,image/jpeg,image/gif,image/webp"
             onChange={onLogoChange}
-            className="block w-full text-xs text-slate-300 file:mr-3 file:rounded-md file:border-0 file:bg-slate-800 file:px-3 file:py-1.5 file:text-slate-100"
+            className="block w-full text-xs text-text-secondary file:mr-3 file:rounded-md file:border-0 file:bg-surface-3 file:px-3 file:py-1.5 file:text-text-primary"
           />
-          <p className="mt-2 text-xs text-slate-500">Or paste image URL (image will be copied to S3 on save):</p>
+          <p className="mt-2 text-xs text-text-primary0">Or paste image URL (image will be copied to S3 on save):</p>
           <input
             type="url"
             value={logoImageUrl}
@@ -411,13 +411,13 @@ const EditSitePage: React.FC = () => {
           />
           {logoPreview && (
             <div className="mt-2">
-              <img src={logoPreview} alt="New logo" className="h-16 w-16 rounded-lg border border-slate-700 object-cover" />
+              <img src={logoPreview} alt="New logo" className="h-16 w-16 rounded-lg border border-border-hover object-cover" />
             </div>
           )}
           {logoError && <p className="mt-1 text-xs text-red-400">{logoError}</p>}
         </div>
         <div className="relative">
-          <label className="block text-sm font-medium text-slate-200 mb-1">Categories</label>
+          <label className="block text-sm font-medium text-text-primary mb-1">Categories</label>
           <input
             type="text"
             value={categorySearch}
@@ -428,20 +428,20 @@ const EditSitePage: React.FC = () => {
             autoComplete="off"
           />
           {categoryDropdownOpen && (
-            <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-48 overflow-auto scrollbar-thin rounded-md border border-slate-700 bg-slate-900 shadow-lg">
+            <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-48 overflow-auto scrollbar-thin rounded-md border border-border-hover bg-surface-2 shadow-lg">
               {filteredCategories.length ? (
                 filteredCategories.map((c) => (
                   <button
                     key={c.id}
                     type="button"
                     onClick={() => addCategory(c.id)}
-                    className="block w-full px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-800"
+                    className="block w-full px-3 py-2 text-left text-sm text-text-primary hover:bg-surface-3"
                   >
                     {c.name}
                   </button>
                 ))
               ) : (
-                <p className="px-3 py-2 text-xs text-slate-500">No matches</p>
+                <p className="px-3 py-2 text-xs text-text-primary0">No matches</p>
               )}
             </div>
           )}
@@ -451,7 +451,7 @@ const EditSitePage: React.FC = () => {
               return (
                 <span
                   key={cid}
-                  className="inline-flex items-center gap-1 rounded-full bg-slate-800 px-2 py-0.5 text-xs text-slate-200"
+                  className="inline-flex items-center gap-1 rounded-full bg-surface-3 px-2 py-0.5 text-xs text-text-primary"
                 >
                   {c?.name ?? cid}
                   <button type="button" onClick={() => removeCategory(cid)} className="hover:text-red-400" aria-label="Remove">
@@ -463,12 +463,12 @@ const EditSitePage: React.FC = () => {
           </div>
         </div>
         <div>
-          <label className="block text-sm font-medium text-slate-200 mb-1">Tags</label>
+          <label className="block text-sm font-medium text-text-primary mb-1">Tags</label>
           <div className="flex flex-wrap gap-1 mb-2">
             {tags.map((t) => (
               <span
                 key={t}
-                className="inline-flex items-center gap-1 rounded-full bg-slate-800 px-2 py-0.5 text-xs text-slate-200"
+                className="inline-flex items-center gap-1 rounded-full bg-surface-3 px-2 py-0.5 text-xs text-text-primary"
               >
                 {t}
                 <button type="button" onClick={() => removeTag(t)} className="hover:text-red-400" aria-label="Remove">
@@ -492,7 +492,7 @@ const EditSitePage: React.FC = () => {
           </div>
         </div>
         <div>
-          <label className="block text-sm font-medium text-slate-200 mb-1">Scraped content (optional)</label>
+          <label className="block text-sm font-medium text-text-primary mb-1">Scraped content (optional)</label>
           <textarea
             value={scrapedContent}
             onChange={(e) => setScrapedContent(e.target.value)}

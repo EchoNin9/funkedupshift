@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { motion } from "framer-motion";
 import { useAuth } from "../../shell/AuthContext";
 import { fetchWithAuthOptional } from "../../utils/api";
 
@@ -28,8 +29,6 @@ function getApiBaseUrl(): string | null {
   return raw ? raw.replace(/\/$/, "") : null;
 }
 
-const PAGE_SIZE = 10;
-
 const WebsitesPage: React.FC = () => {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -46,7 +45,6 @@ const WebsitesPage: React.FC = () => {
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const [categorySearch, setCategorySearch] = useState("");
   const [sort, setSort] = useState<SortKey>("avgDesc");
-  const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -54,6 +52,7 @@ const WebsitesPage: React.FC = () => {
   const categoryDropdownRef = useRef<HTMLDivElement>(null);
   const [allCategories, setAllCategories] = useState<SiteCategory[]>([]);
 
+  /* ── Fetch categories ── */
   useEffect(() => {
     const apiBase = getApiBaseUrl();
     if (!apiBase) return;
@@ -97,10 +96,11 @@ const WebsitesPage: React.FC = () => {
     );
   }, [categoriesForDropdown, selectedCategoryIds, categorySearch]);
 
-  const hasActiveSearch = search.trim().length > 0 || selectedCategoryIds.length > 0;
+  /* ── Sync search params ── */
+  const hasActiveFilters = search.trim().length > 0 || selectedCategoryIds.length > 0;
 
   useEffect(() => {
-    if (hasActiveSearch) {
+    if (hasActiveFilters) {
       const next = new URLSearchParams();
       if (search.trim()) next.set("q", search.trim());
       if (selectedCategoryIds.length) {
@@ -111,16 +111,10 @@ const WebsitesPage: React.FC = () => {
     } else {
       setSearchParams({}, { replace: true });
     }
-  }, [hasActiveSearch, search, selectedCategoryIds, categoryMode, setSearchParams]);
+  }, [hasActiveFilters, search, selectedCategoryIds, categoryMode, setSearchParams]);
 
+  /* ── Fetch sites on mount (all) and when filters change ── */
   useEffect(() => {
-    if (!hasActiveSearch) {
-      setSites([]);
-      setPage(1);
-      setIsLoading(false);
-      setError(null);
-      return;
-    }
     const apiBase = getApiBaseUrl();
     if (!apiBase) {
       setError("API URL not set. Deploy via CI or set window.API_BASE_URL in config.js.");
@@ -146,7 +140,6 @@ const WebsitesPage: React.FC = () => {
         const data = (await resp.json()) as { sites?: Site[] };
         if (cancelled) return;
         setSites(data.sites ?? []);
-        setPage(1);
       } catch (e: any) {
         if (!cancelled) setError(e?.message ?? "Failed to load sites.");
       } finally {
@@ -157,8 +150,9 @@ const WebsitesPage: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [hasActiveSearch, search, selectedCategoryIds, categoryMode]);
+  }, [search, selectedCategoryIds, categoryMode]);
 
+  /* ── Close category dropdown on outside click ── */
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(e.target as Node)) {
@@ -171,6 +165,7 @@ const WebsitesPage: React.FC = () => {
     }
   }, [categoryDropdownOpen]);
 
+  /* ── Sort ── */
   const sortedSites = useMemo(() => {
     const copy = [...sites];
     copy.sort((a, b) => {
@@ -193,9 +188,7 @@ const WebsitesPage: React.FC = () => {
     return copy;
   }, [sites, sort]);
 
-  const totalPages = Math.max(1, Math.ceil(sortedSites.length / PAGE_SIZE));
-  const pageSites = sortedSites.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-
+  /* ── Rate handler ── */
   const handleRate = async (siteId: string, rating: number) => {
     const apiBase = getApiBaseUrl();
     if (!apiBase) return;
@@ -215,290 +208,338 @@ const WebsitesPage: React.FC = () => {
     }).catch(() => {});
   };
 
+  /* ── Toggle a category pill ── */
+  const toggleCategory = (id: string) => {
+    setSelectedCategoryIds((prev) =>
+      prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]
+    );
+  };
+
+  /* ── Card animation variants ── */
+  const cardVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: (i: number) => ({
+      opacity: 1,
+      y: 0,
+      transition: { delay: i * 0.04, duration: 0.35, ease: "easeOut" }
+    })
+  };
+
   return (
-    <div className="space-y-6">
-      <header className="space-y-2">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-50">Websites</h1>
-        <p className="text-sm text-slate-400">
+    <div className="space-y-5">
+      {/* ── Header ── */}
+      <header className="space-y-1">
+        <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Websites</h1>
+        <p className="text-sm text-text-secondary">
           Browse curated sites, see ratings, and jump straight into the interesting corners of the internet.
         </p>
       </header>
 
-      <section className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 space-y-4" aria-label="Search and filter">
-        <form
-          className="flex flex-col gap-3 sm:flex-row sm:items-center"
-          onSubmit={(e) => {
-            e.preventDefault();
-            setSearch(search.trim());
-          }}
-        >
+      {/* ── Search bar + sort ── */}
+      <form
+        className="flex items-center gap-3"
+        onSubmit={(e) => {
+          e.preventDefault();
+          setSearch(search.trim());
+        }}
+      >
+        <div className="relative flex-1">
+          <svg
+            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-tertiary"
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth={2}
+            stroke="currentColor"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+          </svg>
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search sites (title, URL, description)…"
-            className="input-field flex-1"
+            placeholder="Search sites (title, URL, description)..."
+            className="w-full rounded-full border border-border-default bg-surface-2 py-2.5 pl-10 pr-4 text-sm text-text-primary placeholder:text-text-tertiary focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500 transition-colors"
           />
-          <button
-            type="submit"
-            className="btn-primary min-h-[44px] !px-4 !py-2 text-sm"
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value as SortKey)}
+            className="rounded-full border border-border-default bg-surface-2 px-3 py-2.5 text-xs text-text-primary focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
           >
-            Search
-          </button>
-        </form>
+            <option value="avgDesc">Stars (high first)</option>
+            <option value="avgAsc">Stars (low first)</option>
+            <option value="alphaAsc">Title A-Z</option>
+            <option value="alphaDesc">Title Z-A</option>
+          </select>
+          <span className="hidden sm:inline text-xs text-text-tertiary whitespace-nowrap">
+            {sortedSites.length} sites
+          </span>
+        </div>
+      </form>
 
-        <div className="flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-6">
-          <div ref={categoryDropdownRef} className="relative flex-shrink-0 min-w-0 max-w-sm">
-            <label htmlFor="website-category-filter" className="block text-xs font-medium text-slate-400 mb-1">
-              Categories (filter by)
-            </label>
-            <input
-              id="website-category-filter"
-              type="text"
-              value={categorySearch}
-              onChange={(e) => setCategorySearch(e.target.value)}
-              onFocus={() => setCategoryDropdownOpen(true)}
-              placeholder="Search and select categories…"
-              className="input-field w-full"
-              autoComplete="off"
-            />
-            {categoryDropdownOpen && (
-              <div
-                className="absolute left-0 top-full z-10 mt-1 w-full max-h-48 overflow-auto scrollbar-thin rounded-md border border-slate-700 bg-slate-900 shadow-lg"
-                role="listbox"
-                aria-label="Category options"
+      {/* ── Category pills (horizontal scroll) ── */}
+      {allCategories.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-3 overflow-x-auto scrollbar-thin pb-1">
+            {/* "All" pill */}
+            <button
+              type="button"
+              onClick={() => setSelectedCategoryIds([])}
+              className={`flex-shrink-0 rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors ${
+                selectedCategoryIds.length === 0
+                  ? "bg-accent-500 text-white"
+                  : "bg-surface-3 text-text-secondary hover:text-text-primary hover:bg-surface-2"
+              }`}
+            >
+              All
+            </button>
+            {allCategories.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => toggleCategory(c.id)}
+                className={`flex-shrink-0 rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors ${
+                  selectedCategoryIds.includes(c.id)
+                    ? "bg-accent-500 text-white"
+                    : "bg-surface-3 text-text-secondary hover:text-text-primary hover:bg-surface-2"
+                }`}
               >
-                {filteredCategoryOptions.length > 0 ? (
-                  filteredCategoryOptions.map((c) => (
-                    <button
-                      key={c.id}
-                      type="button"
-                      role="option"
-                      onClick={() => {
-                        setSelectedCategoryIds((prev) => (prev.includes(c.id) ? prev : [...prev, c.id]));
-                        setCategorySearch("");
-                        // Keep dropdown open for multi-select (same as add site page)
-                      }}
-                      className="block w-full min-h-[44px] flex items-center px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-800"
-                    >
-                      {c.name}
-                    </button>
-                  ))
-                ) : (
-                  <p className="px-3 py-2 text-xs text-slate-500">
-                    {categoriesForDropdown.length === 0 ? "No categories yet." : "No matches or all selected."}
-                  </p>
+                {c.name}
+              </button>
+            ))}
+          </div>
+
+          {/* AND/OR toggle + extra category search (for adding via dropdown) */}
+          {selectedCategoryIds.length > 0 && (
+            <div className="flex items-center gap-3">
+              <div className="inline-flex rounded-full border border-border-default bg-surface-1 p-0.5">
+                <button
+                  type="button"
+                  onClick={() => setCategoryMode("and")}
+                  className={`rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors ${
+                    categoryMode === "and" ? "bg-accent-500 text-white" : "text-text-secondary hover:text-text-primary"
+                  }`}
+                >
+                  AND
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCategoryMode("or")}
+                  className={`rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors ${
+                    categoryMode === "or" ? "bg-accent-500 text-white" : "text-text-secondary hover:text-text-primary"
+                  }`}
+                >
+                  OR
+                </button>
+              </div>
+              {/* Category search dropdown (hidden behind a toggle for clean UI) */}
+              <div ref={categoryDropdownRef} className="relative">
+                <input
+                  type="text"
+                  value={categorySearch}
+                  onChange={(e) => setCategorySearch(e.target.value)}
+                  onFocus={() => setCategoryDropdownOpen(true)}
+                  placeholder="Find category..."
+                  className="w-40 rounded-full border border-border-default bg-surface-2 px-3 py-1 text-xs text-text-primary placeholder:text-text-tertiary focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
+                  autoComplete="off"
+                />
+                {categoryDropdownOpen && (
+                  <div
+                    className="absolute left-0 top-full z-10 mt-1 w-56 max-h-48 overflow-auto scrollbar-thin rounded-xl border border-border-default bg-surface-2 shadow-lg"
+                    role="listbox"
+                    aria-label="Category options"
+                  >
+                    {filteredCategoryOptions.length > 0 ? (
+                      filteredCategoryOptions.map((c) => (
+                        <button
+                          key={c.id}
+                          type="button"
+                          role="option"
+                          onClick={() => {
+                            setSelectedCategoryIds((prev) => (prev.includes(c.id) ? prev : [...prev, c.id]));
+                            setCategorySearch("");
+                          }}
+                          className="block w-full min-h-[40px] flex items-center px-3 py-2 text-left text-sm text-text-primary hover:bg-surface-3 transition-colors"
+                        >
+                          {c.name}
+                        </button>
+                      ))
+                    ) : (
+                      <p className="px-3 py-2 text-xs text-text-tertiary">
+                        {categoriesForDropdown.length === 0 ? "No categories yet." : "No matches or all selected."}
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
-            )}
-            <div className="mt-2 flex flex-wrap gap-1">
-              {selectedCategoryIds.map((cid) => {
-                const c = categoriesForDropdown.find((x) => x.id === cid);
-                return (
-                  <span
-                    key={cid}
-                    className="inline-flex items-center gap-1 rounded-full bg-slate-800 px-2 py-0.5 text-xs text-slate-200"
-                  >
-                    {c?.name ?? cid}
-                    <button
-                      type="button"
-                      onClick={() => setSelectedCategoryIds((prev) => prev.filter((id) => id !== cid))}
-                      className="hover:text-red-400"
-                      aria-label="Remove category filter"
-                    >
-                      ×
-                    </button>
-                  </span>
-                );
-              })}
             </div>
-            {selectedCategoryIds.length > 0 && (
-              <div className="mt-2 flex items-center gap-2">
-                <span className="text-xs text-slate-500">Match:</span>
-                <div className="inline-flex rounded-md border border-slate-700 bg-slate-950 p-0.5">
-                  <button
-                    type="button"
-                    onClick={() => setCategoryMode("and")}
-                    className={`rounded px-2 py-0.5 text-xs font-medium ${
-                      categoryMode === "and" ? "bg-brand-orange text-slate-950" : "text-slate-400 hover:text-slate-200"
-                    }`}
-                  >
-                    AND
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setCategoryMode("or")}
-                    className={`rounded px-2 py-0.5 text-xs font-medium ${
-                      categoryMode === "or" ? "bg-brand-orange text-slate-950" : "text-slate-400 hover:text-slate-200"
-                    }`}
-                  >
-                    OR
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="flex flex-wrap gap-3 items-center text-xs text-slate-400">
-            <span className="font-medium text-slate-200">Sort:</span>
-            <select
-              value={sort}
-              onChange={(e) => {
-                setSort(e.target.value as SortKey);
-                setPage(1);
-              }}
-              className="rounded-md border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-slate-50 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange"
-            >
-              <option value="avgDesc">Avg stars (high first)</option>
-              <option value="avgAsc">Avg stars (low first)</option>
-              <option value="alphaAsc">Title A–Z</option>
-              <option value="alphaDesc">Title Z–A</option>
-            </select>
-            <span className="text-slate-500">
-              {!hasActiveSearch ? "" : sortedSites.length === 0 ? "No sites found." : `${sortedSites.length} sites`}
-            </span>
-          </div>
+          )}
         </div>
-      </section>
+      )}
 
+      {/* ── Error ── */}
       {error && (
-        <div className="rounded-md border border-red-500/60 bg-red-500/10 px-3 py-2 text-xs text-red-200">
+        <div className="rounded-xl border border-red-500/60 bg-red-500/10 px-4 py-3 text-xs text-red-200">
           {error}
         </div>
       )}
 
-      {!hasActiveSearch ? (
-        <div className="flex items-center justify-center min-h-[280px]">
-          <p className="text-2xl sm:text-3xl font-light text-slate-500/80 tracking-wide animate-pulse">
-            Enter search term or select categories
-          </p>
-        </div>
-      ) : isLoading ? (
-        <div className="text-sm text-slate-400">Loading sites…</div>
-      ) : (
-        <>
-          <div className="rounded-md border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm text-slate-400">
-            {sortedSites.length === 0 ? "No results" : `${sortedSites.length} results`}
-          </div>
-          <ul className="space-y-2 mt-2">
-          {pageSites.map((site) => {
-            const title = site.title || site.url || site.PK || "Untitled";
-            const logo = site.logoUrl;
-            return (
-              <li
-                key={site.PK}
-                className="flex gap-3 rounded-xl border border-slate-800 bg-slate-950/60 p-3"
-              >
-                <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded-lg border border-slate-700 bg-slate-900">
-                  {logo ? (
-                    <img
-                      src={logo}
-                      alt=""
-                      className="h-full w-full object-cover"
-                      onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).style.visibility = "hidden";
-                      }}
-                    />
-                  ) : null}
-                </div>
-                <div className="min-w-0 flex-1 space-y-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="truncate text-sm font-semibold text-slate-50">
-                      <Link to={`/websites/${encodeURIComponent(site.PK)}`} className="hover:text-brand-orange">
-                        {title}
-                      </Link>
-                    </h2>
-                    {typeof site.averageRating === "number" && (
-                      <span className="inline-flex items-center rounded-full bg-slate-900 px-2 py-0.5 text-[11px] text-amber-300">
-                        {site.averageRating.toFixed(1)}★
-                      </span>
-                    )}
+      {/* ── Skeleton loading ── */}
+      {isLoading && (
+        <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="break-inside-avoid mb-4">
+              <div className="overflow-hidden rounded-xl bg-surface-2 border border-border-default">
+                <div className="h-24 bg-surface-3 animate-pulse" />
+                <div className="p-3 space-y-2">
+                  <div className="h-4 w-3/4 rounded bg-surface-3 animate-pulse" />
+                  <div className="h-3 w-1/2 rounded bg-surface-3 animate-pulse" />
+                  <div className="space-y-1">
+                    <div className="h-3 w-full rounded bg-surface-3 animate-pulse" />
+                    <div className="h-3 w-5/6 rounded bg-surface-3 animate-pulse" />
                   </div>
-                  {site.url && (
-                    <a
-                      href={site.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block truncate text-xs text-slate-400 hover:text-slate-200"
-                    >
-                      {site.url}
-                    </a>
-                  )}
-                  {site.description && (
-                    <p className="text-xs text-slate-300 line-clamp-3">
-                      {site.description}
-                      {site.descriptionAiGenerated && (
-                        <span className="ml-1 text-[11px] uppercase tracking-wide text-slate-500">
-                          AI summary
-                        </span>
-                      )}
-                    </p>
-                  )}
-                  {site.categories && site.categories.length > 0 && (
-                    <div className="flex flex-wrap gap-1 pt-1">
-                      {site.categories.map((c) => (
-                        <span
-                          key={c.id}
-                          className="rounded-full bg-slate-900 px-2 py-0.5 text-[11px] text-slate-300"
-                        >
-                          {c.name}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                  {canRate && (
-                    <div className="pt-1">
-                      <label className="inline-flex items-center gap-1 text-[11px] text-slate-400">
-                        <span>Rate:</span>
-                        <select
-                          className="rounded border border-slate-700 bg-slate-950 px-1 py-0.5 text-[11px] text-slate-50"
-                          onChange={(e) => {
-                            const value = Number(e.target.value);
-                            if (value >= 1 && value <= 5) {
-                              handleRate(site.PK, value);
-                            }
-                          }}
-                          defaultValue=""
-                        >
-                          <option value="">--</option>
-                          <option value="1">1</option>
-                          <option value="2">2</option>
-                          <option value="3">3</option>
-                          <option value="4">4</option>
-                          <option value="5">5</option>
-                        </select>
-                      </label>
-                    </div>
-                  )}
+                  <div className="flex gap-1 pt-1">
+                    <div className="h-5 w-14 rounded-full bg-surface-3 animate-pulse" />
+                    <div className="h-5 w-10 rounded-full bg-surface-3 animate-pulse" />
+                  </div>
                 </div>
-              </li>
-            );
-          })}
-        </ul>
-        </>
+              </div>
+            </div>
+          ))}
+        </div>
       )}
 
-      {hasActiveSearch && totalPages > 1 && (
-        <div className="mt-2 flex flex-wrap items-center justify-center gap-2 text-xs">
-          <button
-            type="button"
-            disabled={page <= 1}
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            className="min-h-[44px] flex items-center rounded-md border border-slate-700 bg-slate-950 px-4 py-2 text-slate-200 disabled:opacity-40"
-          >
-            Prev
-          </button>
-          <span className="text-slate-500">
-            Page {page} of {totalPages}
-          </span>
-          <button
-            type="button"
-            disabled={page >= totalPages}
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            className="min-h-[44px] flex items-center rounded-md border border-slate-700 bg-slate-950 px-4 py-2 text-slate-200 disabled:opacity-40"
-          >
-            Next
-          </button>
+      {/* ── Empty state ── */}
+      {!isLoading && !error && sortedSites.length === 0 && (
+        <div className="flex flex-col items-center justify-center min-h-[280px] text-center">
+          <svg className="h-12 w-12 text-text-tertiary mb-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418" />
+          </svg>
+          <p className="text-lg font-medium text-text-secondary">No websites found</p>
+          <p className="text-sm text-text-tertiary mt-1">Try adjusting your search or category filters.</p>
+        </div>
+      )}
+
+      {/* ── Masonry grid ── */}
+      {!isLoading && sortedSites.length > 0 && (
+        <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-4">
+          {sortedSites.map((site, i) => {
+            const title = site.title || site.url || site.PK || "Untitled";
+            const logo = site.logoUrl;
+            const detailLink = `/websites/${encodeURIComponent(site.PK)}`;
+
+            return (
+              <motion.div
+                key={site.PK}
+                className="break-inside-avoid mb-4 group"
+                variants={cardVariants}
+                initial="hidden"
+                animate="visible"
+                custom={i}
+              >
+                <Link
+                  to={detailLink}
+                  className="block overflow-hidden rounded-xl bg-surface-2 border border-border-default hover:border-border-hover transition-all duration-200 hover:shadow-lg hover:shadow-black/20 group-hover:scale-[1.02]"
+                >
+                  {/* Banner header area with logo */}
+                  <div className="h-24 bg-surface-3 flex items-center justify-center overflow-hidden">
+                    {logo ? (
+                      <img
+                        src={logo}
+                        alt=""
+                        className="h-12 w-12 object-contain"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).style.visibility = "hidden";
+                        }}
+                      />
+                    ) : (
+                      <svg className="h-10 w-10 text-text-tertiary/40" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418" />
+                      </svg>
+                    )}
+                  </div>
+
+                  {/* Card body */}
+                  <div className="p-3 space-y-1.5">
+                    <h2 className="text-sm font-semibold text-text-primary truncate group-hover:text-accent-400 transition-colors">
+                      {title}
+                    </h2>
+
+                    {site.url && (
+                      <a
+                        href={site.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="block truncate text-xs text-text-tertiary hover:text-accent-400 transition-colors"
+                      >
+                        {site.url}
+                      </a>
+                    )}
+
+                    {site.description && (
+                      <p className="text-xs text-text-secondary line-clamp-3">
+                        {site.description}
+                        {site.descriptionAiGenerated && (
+                          <span className="ml-1 text-[11px] uppercase tracking-wide text-text-tertiary">
+                            AI summary
+                          </span>
+                        )}
+                      </p>
+                    )}
+
+                    {typeof site.averageRating === "number" && (
+                      <div>
+                        <span className="inline-flex items-center rounded-full bg-surface-3 px-2 py-0.5 text-[11px] text-amber-300 font-medium">
+                          {site.averageRating.toFixed(1)} ★
+                        </span>
+                      </div>
+                    )}
+
+                    {site.categories && site.categories.length > 0 && (
+                      <div className="flex flex-wrap gap-1 pt-0.5">
+                        {site.categories.map((c) => (
+                          <span
+                            key={c.id}
+                            className="rounded-full bg-surface-3 px-2 py-0.5 text-[11px] text-text-secondary"
+                          >
+                            {c.name}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </Link>
+
+                {/* Rate below card */}
+                {canRate && (
+                  <div className="mt-1.5 px-1">
+                    <label className="inline-flex items-center gap-1.5 text-[11px] text-text-tertiary">
+                      <span>Rate:</span>
+                      <select
+                        className="rounded-full border border-border-default bg-surface-2 px-2 py-0.5 text-[11px] text-text-primary focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
+                        onChange={(e) => {
+                          const value = Number(e.target.value);
+                          if (value >= 1 && value <= 5) {
+                            handleRate(site.PK, value);
+                          }
+                        }}
+                        defaultValue=""
+                      >
+                        <option value="">--</option>
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
+                      </select>
+                    </label>
+                  </div>
+                )}
+              </motion.div>
+            );
+          })}
         </div>
       )}
     </div>
@@ -506,4 +547,3 @@ const WebsitesPage: React.FC = () => {
 };
 
 export default WebsitesPage;
-

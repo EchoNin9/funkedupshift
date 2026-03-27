@@ -119,11 +119,11 @@ const EditMemePage: React.FC = () => {
   if (!user || !canEdit) {
     return (
       <div className="space-y-6">
-        <Link to="/memes" className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-slate-200">
+        <Link to="/memes" className="inline-flex items-center gap-1 text-sm text-text-secondary transition-colors hover:text-text-primary">
           <ArrowLeftIcon className="h-4 w-4" />
           Back to Memes
         </Link>
-        <div className="rounded-md border border-slate-700 bg-slate-900/60 px-4 py-3 text-slate-200">
+        <div className="rounded-md border border-border-hover bg-surface-2 px-4 py-3 text-text-primary">
           Sign in and join Memes group to edit.
         </div>
       </div>
@@ -133,11 +133,11 @@ const EditMemePage: React.FC = () => {
   if (isLoading) {
     return (
       <div className="space-y-4">
-        <Link to="/memes" className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-slate-200">
+        <Link to="/memes" className="inline-flex items-center gap-1 text-sm text-text-secondary transition-colors hover:text-text-primary">
           <ArrowLeftIcon className="h-4 w-4" />
           Back to Memes
         </Link>
-        <div className="text-sm text-slate-400">Loading…</div>
+        <div className="text-sm text-text-secondary">Loading…</div>
       </div>
     );
   }
@@ -145,11 +145,11 @@ const EditMemePage: React.FC = () => {
   if (error || !item) {
     return (
       <div className="space-y-4">
-        <Link to="/memes" className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-slate-200">
+        <Link to="/memes" className="inline-flex items-center gap-1 text-sm text-text-secondary transition-colors hover:text-text-primary">
           <ArrowLeftIcon className="h-4 w-4" />
           Back to Memes
         </Link>
-        <div className="rounded-md border border-slate-700 bg-slate-900/60 px-4 py-3 text-slate-200">
+        <div className="rounded-md border border-border-hover bg-surface-2 px-4 py-3 text-text-primary">
           {error || "Meme not found."}
         </div>
       </div>
@@ -162,14 +162,14 @@ const EditMemePage: React.FC = () => {
   return (
     <div className="space-y-6">
       <header className="flex items-center gap-4">
-        <Link to={`/memes/${encodeURIComponent(item.PK)}`} className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-slate-200">
+        <Link to={`/memes/${encodeURIComponent(item.PK)}`} className="inline-flex items-center gap-1 text-sm text-text-secondary transition-colors hover:text-text-primary">
           <ArrowLeftIcon className="h-4 w-4" />
           Back to Meme
         </Link>
-        <h1 className="text-xl font-semibold text-slate-50">Edit meme</h1>
+        <h1 className="text-xl font-semibold text-text-primary">Edit meme</h1>
       </header>
 
-      <div className="rounded-xl border border-slate-800 bg-slate-950/60 overflow-hidden min-h-[200px] flex items-center justify-center p-4">
+      <div className="rounded-xl border border-border-default bg-surface-1 overflow-hidden min-h-[200px] flex items-center justify-center p-4">
         {imgUrl ? (
           <>
             <img
@@ -182,18 +182,18 @@ const EditMemePage: React.FC = () => {
                 if (next) (next as HTMLElement).classList.remove("hidden");
               }}
             />
-            <div className="hidden py-12 text-slate-500" aria-hidden>Image failed to load</div>
+            <div className="hidden py-12 text-text-tertiary" aria-hidden>Image failed to load</div>
           </>
         ) : (
-          <div className="py-12 text-slate-500">No image</div>
+          <div className="py-12 text-text-tertiary">No image</div>
         )}
       </div>
 
       <ShareMemeBox memeId={item.PK} title={title} />
 
-      <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 space-y-4 max-w-xl">
+      <div className="rounded-xl border border-border-default bg-surface-1 p-4 space-y-4 max-w-xl">
         <div>
-          <label className="block text-xs font-medium text-slate-400 mb-1">Tags</label>
+          <label className="block text-xs font-medium text-text-secondary mb-1">Tags</label>
           <AddTagInput
             tags={tags}
             onTagsChange={setTags}
@@ -210,12 +210,12 @@ const EditMemePage: React.FC = () => {
           />
         </div>
 
-        <label className="flex items-center gap-2 text-sm text-slate-300">
+        <label className="flex items-center gap-2 text-sm text-text-secondary">
           <input
             type="checkbox"
             checked={isPrivate}
             onChange={(e) => setIsPrivate(e.target.checked)}
-            className="rounded border-slate-600"
+            className="rounded border-border-default"
           />
           Private (only you can see)
         </label>
@@ -230,7 +230,7 @@ const EditMemePage: React.FC = () => {
           type="button"
           onClick={handleSave}
           disabled={isSaving}
-          className="rounded-md bg-brand-orange px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-orange-500 disabled:opacity-50"
+          className="rounded-md bg-accent-500 px-4 py-2 text-sm font-semibold text-surface-0 hover:bg-orange-500 disabled:opacity-50"
         >
           {isSaving ? "Saving…" : "Save"}
         </button>

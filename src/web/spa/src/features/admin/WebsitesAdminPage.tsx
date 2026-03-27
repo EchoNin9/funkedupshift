@@ -404,8 +404,8 @@ const WebsitesAdminPage: React.FC = () => {
   if (!canAccess) {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-50">Websites</h1>
-        <p className="text-sm text-slate-400">Manager or SuperAdmin access is required.</p>
+        <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Websites</h1>
+        <p className="text-sm text-text-secondary">Manager or SuperAdmin access is required.</p>
       </div>
     );
   }
@@ -429,7 +429,7 @@ const WebsitesAdminPage: React.FC = () => {
       {activeTab === "add" && (
         <form className="card p-6 space-y-4 max-w-xl" onSubmit={handleSubmit}>
           <div>
-            <label className="block text-sm font-medium text-slate-200 mb-1">URL *</label>
+            <label className="block text-sm font-medium text-text-primary mb-1">URL *</label>
             <input
               type="url"
               value={url}
@@ -440,7 +440,7 @@ const WebsitesAdminPage: React.FC = () => {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-200 mb-1">Title (optional)</label>
+            <label className="block text-sm font-medium text-text-primary mb-1">Title (optional)</label>
             <input
               type="text"
               value={title}
@@ -450,7 +450,7 @@ const WebsitesAdminPage: React.FC = () => {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-200 mb-1">Description (optional)</label>
+            <label className="block text-sm font-medium text-text-primary mb-1">Description (optional)</label>
             <textarea
               value={description}
               onChange={(e) => {
@@ -469,17 +469,17 @@ const WebsitesAdminPage: React.FC = () => {
             >
               {isGeneratingDesc ? "Generating…" : "Generate AI description"}
             </button>
-            {descriptionAiGenerated && <span className="ml-2 text-xs uppercase tracking-wide text-slate-500">AI summary</span>}
+            {descriptionAiGenerated && <span className="ml-2 text-xs uppercase tracking-wide text-text-primary0">AI summary</span>}
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-200 mb-1">Logo (optional, min 100×100, max 5 MB)</label>
+            <label className="block text-sm font-medium text-text-primary mb-1">Logo (optional, min 100×100, max 5 MB)</label>
             <input
               type="file"
               accept="image/png,image/jpeg,image/gif,image/webp"
               onChange={onLogoChange}
-              className="block w-full text-xs text-slate-300 file:mr-3 file:rounded-md file:border-0 file:bg-slate-800 file:px-3 file:py-1.5 file:text-slate-100"
+              className="block w-full text-xs text-text-secondary file:mr-3 file:rounded-md file:border-0 file:bg-surface-3 file:px-3 file:py-1.5 file:text-text-primary"
             />
-            <p className="mt-2 text-xs text-slate-500">Or paste image URL (image will be copied to S3 on save):</p>
+            <p className="mt-2 text-xs text-text-primary0">Or paste image URL (image will be copied to S3 on save):</p>
             <input
               type="url"
               value={logoImageUrl}
@@ -492,13 +492,13 @@ const WebsitesAdminPage: React.FC = () => {
             />
             {logoPreview && (
               <div className="mt-2">
-                <img src={logoPreview} alt="Preview" className="h-16 w-16 rounded-lg border border-slate-700 object-cover" />
+                <img src={logoPreview} alt="Preview" className="h-16 w-16 rounded-lg border border-border-hover object-cover" />
               </div>
             )}
             {logoError && <p className="mt-1 text-xs text-red-400">{logoError}</p>}
           </div>
           <div ref={categoryDropdownRef} className="relative">
-            <label className="block text-sm font-medium text-slate-200 mb-1">Categories (optional)</label>
+            <label className="block text-sm font-medium text-text-primary mb-1">Categories (optional)</label>
             <input
               type="text"
               value={categorySearch}
@@ -510,26 +510,26 @@ const WebsitesAdminPage: React.FC = () => {
             />
             {categoryDropdownOpen && (
               <>
-                <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-48 overflow-auto scrollbar-thin rounded-md border border-slate-700 bg-slate-900 shadow-lg">
+                <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-48 overflow-auto scrollbar-thin rounded-md border border-border-hover bg-surface-2 shadow-lg">
                   {filteredCategories.length ? (
                     filteredCategories.map((c) => (
                       <button
                         key={c.id}
                         type="button"
                         onClick={() => addCategory(c.id)}
-                        className="block w-full px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-800"
+                        className="block w-full px-3 py-2 text-left text-sm text-text-primary hover:bg-surface-3"
                       >
                         {c.name}
                       </button>
                     ))
                   ) : (
-                    <p className="px-3 py-2 text-xs text-slate-500">No matches</p>
+                    <p className="px-3 py-2 text-xs text-text-primary0">No matches</p>
                   )}
                 </div>
                 {categories.length === 0 && (
-                  <p className="mt-1 text-xs text-slate-500">
+                  <p className="mt-1 text-xs text-text-primary0">
                     No categories.{" "}
-                    <button type="button" onClick={() => setTab("categories")} className="text-brand-orange hover:underline">
+                    <button type="button" onClick={() => setTab("categories")} className="text-accent-500 hover:underline">
                       Create categories
                     </button>
                   </p>
@@ -542,7 +542,7 @@ const WebsitesAdminPage: React.FC = () => {
                 return (
                   <span
                     key={id}
-                    className="inline-flex items-center gap-1 rounded-full bg-slate-800 px-2 py-0.5 text-xs text-slate-200"
+                    className="inline-flex items-center gap-1 rounded-full bg-surface-3 px-2 py-0.5 text-xs text-text-primary"
                   >
                     {c?.name ?? id}
                     <button type="button" onClick={() => removeCategory(id)} className="hover:text-red-400" aria-label="Remove">
@@ -573,7 +573,7 @@ const WebsitesAdminPage: React.FC = () => {
         <>
           <form className="card p-6 space-y-3 max-w-md" onSubmit={handleCreateCategory}>
             <div>
-              <label className="block text-sm font-medium text-slate-200 mb-1">New category name</label>
+              <label className="block text-sm font-medium text-text-primary mb-1">New category name</label>
               <input
                 type="text"
                 value={newName}
@@ -583,7 +583,7 @@ const WebsitesAdminPage: React.FC = () => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-200 mb-1">Description (optional)</label>
+              <label className="block text-sm font-medium text-text-primary mb-1">Description (optional)</label>
               <input
                 type="text"
                 value={newDescription}
@@ -608,15 +608,15 @@ const WebsitesAdminPage: React.FC = () => {
           </form>
 
           <section className="card p-6 mt-6">
-            <h2 className="text-sm font-medium text-slate-300 mb-2">Existing categories</h2>
+            <h2 className="text-sm font-medium text-text-secondary mb-2">Existing categories</h2>
             {categoriesLoading ? (
-              <p className="text-sm text-slate-500">Loading…</p>
+              <p className="text-sm text-text-primary0">Loading…</p>
             ) : categories.length === 0 ? (
-              <p className="text-sm text-slate-500">No categories yet. Create one above.</p>
+              <p className="text-sm text-text-primary0">No categories yet. Create one above.</p>
             ) : (
               <ul className="space-y-2">
                 {categories.map((c) => (
-                  <li key={c.id} className="rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm">
+                  <li key={c.id} className="rounded-lg border border-border-default bg-surface-1 px-3 py-2 text-sm">
                     {editingId === c.id ? (
                       <form onSubmit={handleUpdateCategory} className="space-y-2">
                         <input
@@ -666,10 +666,10 @@ const WebsitesAdminPage: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => startEdit(c)}
-                          className="flex-1 min-w-0 text-left hover:bg-slate-800/50 rounded px-1 -mx-1 py-1 -my-1 transition-colors"
+                          className="flex-1 min-w-0 text-left hover:bg-surface-3 rounded px-1 -mx-1 py-1 -my-1 transition-colors"
                         >
-                          <span className="font-medium text-slate-200">{c.name}</span>
-                          {c.description && <span className="text-slate-500 truncate max-w-xs ml-2">{c.description}</span>}
+                          <span className="font-medium text-text-primary">{c.name}</span>
+                          {c.description && <span className="text-text-primary0 truncate max-w-xs ml-2">{c.description}</span>}
                         </button>
                         <button
                           type="button"

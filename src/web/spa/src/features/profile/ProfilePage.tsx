@@ -332,9 +332,9 @@ const ProfilePage: React.FC = () => {
   if (!user) {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-50">My Profile</h1>
-        <p className="text-sm text-slate-400">
-          <Link to="/auth" className="text-brand-orange hover:underline">
+        <h1 className="text-2xl font-semibold tracking-tight text-text-primary">My Profile</h1>
+        <p className="text-sm text-text-secondary">
+          <Link to="/auth" className="text-accent-500 hover:underline">
             Sign in
           </Link>{" "}
           to view and edit your profile.
@@ -346,7 +346,7 @@ const ProfilePage: React.FC = () => {
   if (!apiBase) {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-50">My Profile</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-text-primary">My Profile</h1>
         <p className="text-sm text-red-400">API URL not set.</p>
       </div>
     );
@@ -355,8 +355,8 @@ const ProfilePage: React.FC = () => {
   if (isLoading) {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-50">My Profile</h1>
-        <p className="text-sm text-slate-400">Loading profile…</p>
+        <h1 className="text-2xl font-semibold tracking-tight text-text-primary">My Profile</h1>
+        <p className="text-sm text-text-secondary">Loading profile…</p>
       </div>
     );
   }
@@ -367,26 +367,26 @@ const ProfilePage: React.FC = () => {
 
   return (
     <div className="space-y-6 max-w-2xl">
-      <Link to="/" className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-slate-200">
+      <Link to="/" className="inline-flex items-center gap-1 text-sm text-text-secondary hover:text-text-primary">
         ← Back to Home
       </Link>
 
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-50">My Profile</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-text-primary">My Profile</h1>
       </header>
 
-      <div className="flex gap-2 border-b border-slate-800 pb-2">
+      <div className="flex gap-2 border-b border-border-default pb-2">
         <button
           type="button"
           onClick={() => setTab("profile")}
-          className={`px-4 py-2 rounded-md text-sm font-medium ${activeTab === "profile" ? "bg-slate-800 text-slate-100" : "text-slate-400 hover:text-slate-200"}`}
+          className={`px-4 py-2 rounded-md text-sm font-medium ${activeTab === "profile" ? "bg-surface-3 text-text-primary" : "text-text-secondary hover:text-text-primary"}`}
         >
           Profile
         </button>
         <button
           type="button"
           onClick={() => setTab("groups")}
-          className={`px-4 py-2 rounded-md text-sm font-medium ${activeTab === "groups" ? "bg-slate-800 text-slate-100" : "text-slate-400 hover:text-slate-200"}`}
+          className={`px-4 py-2 rounded-md text-sm font-medium ${activeTab === "groups" ? "bg-surface-3 text-text-primary" : "text-text-secondary hover:text-text-primary"}`}
         >
           Custom groups
         </button>
@@ -394,7 +394,7 @@ const ProfilePage: React.FC = () => {
 
       {activeTab === "groups" && (
         <div className="space-y-4">
-          <p className="text-sm text-slate-400">Add or remove yourself from custom groups. Changes take effect immediately.</p>
+          <p className="text-sm text-text-secondary">Add or remove yourself from custom groups. Changes take effect immediately.</p>
           {groupsMessage && (
             <div
               className={`rounded-md px-3 py-2 text-sm ${
@@ -405,9 +405,9 @@ const ProfilePage: React.FC = () => {
             </div>
           )}
           {groupsLoading ? (
-            <p className="text-sm text-slate-500">Loading groups…</p>
+            <p className="text-sm text-text-primary0">Loading groups…</p>
           ) : availableGroups.length === 0 ? (
-            <p className="text-sm text-slate-500">No custom groups available. Admins can create groups in Membership.</p>
+            <p className="text-sm text-text-primary0">No custom groups available. Admins can create groups in Membership.</p>
           ) : (
             <ul className="space-y-2">
               {availableGroups.map((g) => {
@@ -415,11 +415,11 @@ const ProfilePage: React.FC = () => {
                 return (
                   <li
                     key={g.name}
-                    className="flex items-center justify-between rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2"
+                    className="flex items-center justify-between rounded-lg border border-border-default bg-surface-1 px-3 py-2"
                   >
                     <div>
-                      <span className="font-medium text-slate-200">{g.name}</span>
-                      {g.description && <span className="text-slate-500 ml-2 text-sm">{g.description}</span>}
+                      <span className="font-medium text-text-primary">{g.name}</span>
+                      {g.description && <span className="text-text-primary0 ml-2 text-sm">{g.description}</span>}
                     </div>
                     <button
                       type="button"
@@ -444,7 +444,7 @@ const ProfilePage: React.FC = () => {
       {activeTab === "profile" && (
         <>
       <div className="space-y-2">
-        <label className="block text-xs font-medium text-slate-400">Last login timezone</label>
+        <label className="block text-xs font-medium text-text-secondary">Last login timezone</label>
         <select
           value={timezoneOffset}
           onChange={(e) => {
@@ -452,7 +452,7 @@ const ProfilePage: React.FC = () => {
             setStoredTz(v);
             setTimezoneOffset(v);
           }}
-          className="rounded-md border border-slate-700 bg-slate-950 px-2 py-1 text-sm text-slate-50 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange"
+          className="rounded-md border border-border-hover bg-surface-1 px-2 py-1 text-sm text-text-primary focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
         >
           {TZ_OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>
@@ -474,34 +474,34 @@ const ProfilePage: React.FC = () => {
 
       {profile && (
         <div className="space-y-6">
-          <section className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
-            <h2 className="text-sm font-semibold text-slate-200 mb-3">User info</h2>
+          <section className="rounded-xl border border-border-default bg-surface-1 p-4">
+            <h2 className="text-sm font-semibold text-text-primary mb-3">User info</h2>
             <table className="w-full text-sm">
               <tbody>
                 <tr>
-                  <td className="py-1 pr-4 font-medium text-slate-300 w-28">Email</td>
-                  <td className="text-slate-400">{profile.email ?? "—"}</td>
+                  <td className="py-1 pr-4 font-medium text-text-secondary w-28">Email</td>
+                  <td className="text-text-secondary">{profile.email ?? "—"}</td>
                 </tr>
                 <tr>
-                  <td className="py-1 pr-4 font-medium text-slate-300">Status</td>
-                  <td className="text-slate-400">{profile.status ?? "—"}</td>
+                  <td className="py-1 pr-4 font-medium text-text-secondary">Status</td>
+                  <td className="text-text-secondary">{profile.status ?? "—"}</td>
                 </tr>
                 <tr>
-                  <td className="py-1 pr-4 font-medium text-slate-300">Last login</td>
-                  <td className="text-slate-400">{lastLoginText}</td>
+                  <td className="py-1 pr-4 font-medium text-text-secondary">Last login</td>
+                  <td className="text-text-secondary">{lastLoginText}</td>
                 </tr>
               </tbody>
             </table>
           </section>
 
-          <section className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
-            <h2 className="text-sm font-semibold text-slate-200 mb-3">System role</h2>
+          <section className="rounded-xl border border-border-default bg-surface-1 p-4">
+            <h2 className="text-sm font-semibold text-text-primary mb-3">System role</h2>
             <div className="flex flex-wrap gap-2">
               {(profile.cognitoGroups?.length ?? 0) > 0 ? (
                 profile.cognitoGroups!.map((g) => {
                   const display = ROLE_DISPLAY[g] ?? g;
                   const cls =
-                    g === "admin" ? "bg-amber-500/20 text-amber-300" : g === "manager" ? "bg-blue-500/20 text-blue-300" : "bg-slate-700 text-slate-200";
+                    g === "admin" ? "bg-amber-500/20 text-amber-300" : g === "manager" ? "bg-blue-500/20 text-blue-300" : "bg-surface-3 text-text-primary";
                   return (
                     <span key={g} className={`rounded-md px-2 py-0.5 text-xs font-medium ${cls}`}>
                       {display}
@@ -509,13 +509,13 @@ const ProfilePage: React.FC = () => {
                   );
                 })
               ) : (
-                <span className="rounded-md px-2 py-0.5 text-xs font-medium bg-slate-700 text-slate-200">User</span>
+                <span className="rounded-md px-2 py-0.5 text-xs font-medium bg-surface-3 text-text-primary">User</span>
               )}
             </div>
           </section>
 
-          <section className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
-            <h2 className="text-sm font-semibold text-slate-200 mb-3">Custom groups</h2>
+          <section className="rounded-xl border border-border-default bg-surface-1 p-4">
+            <h2 className="text-sm font-semibold text-text-primary mb-3">Custom groups</h2>
             {(profile.customGroups?.length ?? 0) > 0 ? (
               <div className="flex flex-wrap gap-2">
                 {profile.customGroups!.map((g) => (
@@ -525,25 +525,25 @@ const ProfilePage: React.FC = () => {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-slate-500">Not in any custom groups.</p>
+              <p className="text-sm text-text-primary0">Not in any custom groups.</p>
             )}
           </section>
 
-          <section className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
-            <h2 className="text-sm font-semibold text-slate-200 mb-3">Edit profile</h2>
+          <section className="rounded-xl border border-border-default bg-surface-1 p-4">
+            <h2 className="text-sm font-semibold text-text-primary mb-3">Edit profile</h2>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1">Profile icon</label>
+                <label className="block text-xs font-medium text-text-secondary mb-1">Profile icon</label>
                 <div className="flex items-start gap-4">
                   {profile.profile?.avatarUrl ? (
                     <img
                       src={profile.profile.avatarUrl}
                       alt="Profile"
-                      className="h-24 w-24 rounded-full border-2 border-slate-700 object-cover"
+                      className="h-24 w-24 rounded-full border-2 border-border-hover object-cover"
                     />
                   ) : (
-                    <div className="h-24 w-24 rounded-full border-2 border-slate-700 bg-slate-800 flex items-center justify-center text-2xl text-slate-500">
+                    <div className="h-24 w-24 rounded-full border-2 border-border-hover bg-surface-3 flex items-center justify-center text-2xl text-text-primary0">
                       ?
                     </div>
                   )}
@@ -552,22 +552,22 @@ const ProfilePage: React.FC = () => {
                       type="file"
                       accept="image/png,image/jpeg,image/gif,image/webp"
                       onChange={handleAvatarChange}
-                      className="block w-full text-xs text-slate-300 file:mr-3 file:rounded-md file:border-0 file:bg-slate-800 file:px-3 file:py-1.5 file:text-slate-100"
+                      className="block w-full text-xs text-text-secondary file:mr-3 file:rounded-md file:border-0 file:bg-surface-3 file:px-3 file:py-1.5 file:text-text-primary"
                     />
-                    <p className="text-xs text-slate-500">Or paste image URL (min 48×48, max 5 MB):</p>
+                    <p className="text-xs text-text-primary0">Or paste image URL (min 48×48, max 5 MB):</p>
                     <div className="flex gap-2">
                       <input
                         type="url"
                         value={avatarImageUrl}
                         onChange={(e) => setAvatarImageUrl(e.target.value)}
                         placeholder="https://example.com/avatar.png"
-                        className="flex-1 rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-500 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange"
+                        className="flex-1 rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-primary0 focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
                       />
                       <button
                         type="button"
                         onClick={handleAvatarFromUrl}
                         disabled={!avatarImageUrl.trim() || isAvatarUrlLoading}
-                        className="rounded-md border border-slate-600 px-3 py-2 text-sm font-medium text-slate-200 hover:bg-slate-800 disabled:opacity-50"
+                        className="rounded-md border border-border-hover px-3 py-2 text-sm font-medium text-text-primary hover:bg-surface-3 disabled:opacity-50"
                       >
                         {isAvatarUrlLoading ? "Importing…" : "Use from URL"}
                       </button>
@@ -583,12 +583,12 @@ const ProfilePage: React.FC = () => {
                     )}
                   </div>
                 </div>
-                <p className="mt-1 text-xs text-slate-500">PNG, JPEG, GIF, or WebP. Same constraints as thumbnail uploads.</p>
+                <p className="mt-1 text-xs text-text-primary0">PNG, JPEG, GIF, or WebP. Same constraints as thumbnail uploads.</p>
                 {avatarError && <p className="mt-1 text-xs text-red-400">{avatarError}</p>}
               </div>
 
               <div>
-                <label htmlFor="profile-description" className="block text-xs font-medium text-slate-400 mb-1">
+                <label htmlFor="profile-description" className="block text-xs font-medium text-text-secondary mb-1">
                   Description
                 </label>
                 <textarea
@@ -598,9 +598,9 @@ const ProfilePage: React.FC = () => {
                   maxLength={100}
                   placeholder="About you (max 100 characters)"
                   rows={4}
-                  className="w-full max-w-md rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-500 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange"
+                  className="w-full max-w-md rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-primary0 focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
                 />
-                <div className={`mt-1 text-xs ${description.length >= 100 ? "text-red-400" : "text-slate-500"}`}>
+                <div className={`mt-1 text-xs ${description.length >= 100 ? "text-red-400" : "text-text-primary0"}`}>
                   {description.length} / 100
                 </div>
               </div>
@@ -609,7 +609,7 @@ const ProfilePage: React.FC = () => {
                 type="button"
                 onClick={handleSave}
                 disabled={isSaving}
-                className="rounded-md bg-brand-orange px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-orange-500 disabled:opacity-50"
+                className="rounded-md bg-accent-500 px-4 py-2 text-sm font-semibold text-surface-0 hover:bg-orange-500 disabled:opacity-50"
               >
                 {isSaving ? "Saving…" : "Save"}
               </button>

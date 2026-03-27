@@ -76,7 +76,7 @@ const HomePage: React.FC = () => {
   return (
     <div className="space-y-8">
       <section className="card relative overflow-hidden px-4 py-8 sm:px-6 sm:py-10">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary-500/10 via-transparent to-brand-teal/10 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-br from-accent-500/10 via-transparent to-accent-400/10 pointer-events-none" />
         {hero.imageUrl && (
           <div
             className="absolute inset-0 bg-cover bg-center pointer-events-none"
@@ -88,7 +88,7 @@ const HomePage: React.FC = () => {
         )}
         <div className="relative max-w-xl space-y-4">
           <motion.p
-            className="text-xs font-semibold uppercase tracking-[0.25em] text-secondary-300"
+            className="text-xs font-semibold uppercase tracking-[0.25em] text-text-secondary"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
@@ -96,7 +96,7 @@ const HomePage: React.FC = () => {
             {hero.tagline}
           </motion.p>
           <motion.h1
-            className="text-3xl sm:text-4xl font-display font-bold text-gradient tracking-tight"
+            className="text-3xl sm:text-4xl font-sans font-bold text-gradient tracking-tight"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
@@ -104,7 +104,7 @@ const HomePage: React.FC = () => {
             {hero.headline}
           </motion.h1>
           <motion.p
-            className="text-sm text-secondary-300"
+            className="text-sm text-text-secondary"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
@@ -150,8 +150,8 @@ const HomePage: React.FC = () => {
       {memes.length > 0 && (
         <section className="card p-4 space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400">Latest Memes</h2>
-            <Link to="/memes" className="text-xs text-primary-400 hover:text-primary-300 transition-colors">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-text-secondary">Latest Memes</h2>
+            <Link to="/memes" className="text-xs text-accent-400 hover:text-accent-300 transition-colors">
               View all &rarr;
             </Link>
           </div>
@@ -167,14 +167,14 @@ const HomePage: React.FC = () => {
               return (
                 <motion.div
                   key={m.PK}
-                  className="card group overflow-hidden flex flex-col hover:border-primary-500/50 transition-colors"
+                  className="card group overflow-hidden flex flex-col hover:border-accent-500/50 transition-colors"
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3 }}
                 >
                   <Link
                     to={`/memes/${encodeURIComponent(m.PK)}`}
-                    className="block aspect-square overflow-hidden bg-slate-900"
+                    className="block aspect-square overflow-hidden bg-surface-2"
                   >
                     {thumb ? (
                       <img
@@ -184,13 +184,13 @@ const HomePage: React.FC = () => {
                         onError={(e) => { (e.currentTarget as HTMLImageElement).style.visibility = "hidden"; }}
                       />
                     ) : (
-                      <div className="flex h-full items-center justify-center text-2xl text-slate-600">🖼</div>
+                      <div className="flex h-full items-center justify-center text-2xl text-text-tertiary">🖼</div>
                     )}
                   </Link>
                   <div className="p-2 space-y-1 flex-1 flex flex-col">
                     <Link
                       to={`/memes/${encodeURIComponent(m.PK)}`}
-                      className="block truncate text-xs font-medium text-slate-200 hover:text-primary-400 transition-colors"
+                      className="block truncate text-xs font-medium text-text-primary hover:text-accent-400 transition-colors"
                     >
                       {title}
                     </Link>
@@ -204,7 +204,7 @@ const HomePage: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => handleCopyMediaUrl(m.mediaUrl!)}
-                          className="inline-flex items-center gap-1 text-[10px] text-slate-500 hover:text-slate-300 transition-colors"
+                          className="inline-flex items-center gap-1 text-[10px] text-text-primary0 hover:text-text-secondary transition-colors"
                           title="Copy media URL"
                         >
                           {isCopied ? (
@@ -239,8 +239,8 @@ const HomePage: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.1 * i }}
           >
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-secondary-500 mb-2">{item.label}</p>
-            <p className="text-sm text-secondary-200">{item.desc}</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-text-tertiary mb-2">{item.label}</p>
+            <p className="text-sm text-text-primary">{item.desc}</p>
           </motion.div>
         ))}
       </section>

@@ -133,9 +133,9 @@ const FinancialAdminPage: React.FC = () => {
       />
 
       {activeTab === "overview" && (
-        <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-6 text-sm text-slate-400">
+        <div className="rounded-xl border border-border-default bg-surface-1 p-6 text-sm text-text-secondary">
           <p className="mb-2">Admin configuration:</p>
-          <ul className="list-disc list-inside space-y-1 text-slate-500">
+          <ul className="list-disc list-inside space-y-1 text-text-primary0">
             <li>
               <strong>Tracked symbols</strong> – Default symbols for new users&apos; watchlists
             </li>
@@ -150,7 +150,7 @@ const FinancialAdminPage: React.FC = () => {
         <div className="space-y-4">
           <div className="flex flex-wrap gap-2 items-end">
             <div>
-              <label htmlFor="newSymbol" className="block text-xs text-slate-500 mb-1">
+              <label htmlFor="newSymbol" className="block text-xs text-text-primary0 mb-1">
                 Add symbol
               </label>
               <input
@@ -160,25 +160,25 @@ const FinancialAdminPage: React.FC = () => {
                 onChange={(e) => setNewSymbol(e.target.value.toUpperCase())}
                 onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddSymbol())}
                 placeholder="AAPL"
-                className="rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 w-24"
+                className="rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary w-24"
               />
             </div>
             <button
               type="button"
               onClick={handleAddSymbol}
               disabled={!newSymbol.trim()}
-              className="rounded-md bg-brand-orange px-3 py-2 text-sm font-medium text-slate-950 hover:bg-orange-500 disabled:opacity-50"
+              className="rounded-md bg-accent-500 px-3 py-2 text-sm font-medium text-surface-0 hover:bg-orange-500 disabled:opacity-50"
             >
               Add
             </button>
           </div>
 
           <div>
-            <label className="block text-xs text-slate-500 mb-1">Default data source</label>
+            <label className="block text-xs text-text-primary0 mb-1">Default data source</label>
             <select
               value={source}
               onChange={(e) => setSource(e.target.value)}
-              className="rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50"
+              className="rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary"
             >
               {availableSources.map((s) => (
                 <option key={s} value={s}>
@@ -193,13 +193,13 @@ const FinancialAdminPage: React.FC = () => {
               {symbols.map((s) => (
                 <li
                   key={s}
-                  className="inline-flex items-center gap-1 rounded-md bg-slate-800 px-2 py-1 text-sm text-slate-200"
+                  className="inline-flex items-center gap-1 rounded-md bg-surface-3 px-2 py-1 text-sm text-text-primary"
                 >
                   {s}
                   <button
                     type="button"
                     onClick={() => handleRemoveSymbol(s)}
-                    className="text-slate-500 hover:text-red-400"
+                    className="text-text-primary0 hover:text-red-400"
                     aria-label={`Remove ${s}`}
                   >
                     ×
@@ -213,7 +213,7 @@ const FinancialAdminPage: React.FC = () => {
             type="button"
             onClick={handleSaveSymbols}
             disabled={symbolsSaving || symbolsLoading}
-            className="rounded-md bg-brand-orange px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-orange-500 disabled:opacity-50"
+            className="rounded-md bg-accent-500 px-4 py-2 text-sm font-semibold text-surface-0 hover:bg-orange-500 disabled:opacity-50"
           >
             {symbolsSaving ? "Saving…" : "Save defaults"}
           </button>
@@ -232,7 +232,7 @@ const FinancialAdminPage: React.FC = () => {
       )}
 
       {activeTab === "members" && (
-        <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-6 text-sm text-slate-400">
+        <div className="rounded-xl border border-border-default bg-surface-1 p-6 text-sm text-text-secondary">
           <p className="mb-2">
             Financial access is RBAC-based: guests view default symbols (session-only custom symbols); logged-in users can save their watchlist. No custom group required.
           </p>

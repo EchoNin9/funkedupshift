@@ -147,8 +147,8 @@ const InternetDashboardAdminPage: React.FC = () => {
   if (!isSuperAdmin) {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-50">Internet Dashboard</h1>
-        <p className="text-sm text-slate-400">
+        <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Internet Dashboard</h1>
+        <p className="text-sm text-text-secondary">
           Only SuperAdmin users can edit the dashboard sites list.
         </p>
       </div>
@@ -158,8 +158,8 @@ const InternetDashboardAdminPage: React.FC = () => {
   if (isLoading) {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-50">Internet Dashboard</h1>
-        <p className="text-sm text-slate-400">Loading sites…</p>
+        <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Internet Dashboard</h1>
+        <p className="text-sm text-text-secondary">Loading sites…</p>
       </div>
     );
   }
@@ -178,13 +178,13 @@ const InternetDashboardAdminPage: React.FC = () => {
 
       <section className="card p-6 space-y-4 max-w-2xl">
         <div className="flex flex-wrap items-center gap-3">
-          <h2 className="text-base font-semibold text-slate-200">Sites list ({sites.length})</h2>
-          <div className="inline-flex rounded-md border border-slate-700 bg-slate-950 p-0.5">
+          <h2 className="text-base font-semibold text-text-primary">Sites list ({sites.length})</h2>
+          <div className="inline-flex rounded-md border border-border-hover bg-surface-1 p-0.5">
             <button
               type="button"
               onClick={() => setDisplayOrder("custom")}
               className={`rounded px-2 py-0.5 text-xs font-medium ${
-                displayOrder === "custom" ? "bg-brand-orange text-slate-950" : "text-slate-400 hover:text-slate-200"
+                displayOrder === "custom" ? "bg-accent-500 text-surface-0" : "text-text-secondary hover:text-text-primary"
               }`}
             >
               Custom
@@ -193,7 +193,7 @@ const InternetDashboardAdminPage: React.FC = () => {
               type="button"
               onClick={() => setDisplayOrder("a-z")}
               className={`rounded px-2 py-0.5 text-xs font-medium ${
-                displayOrder === "a-z" ? "bg-brand-orange text-slate-950" : "text-slate-400 hover:text-slate-200"
+                displayOrder === "a-z" ? "bg-accent-500 text-surface-0" : "text-text-secondary hover:text-text-primary"
               }`}
             >
               A–Z
@@ -202,7 +202,7 @@ const InternetDashboardAdminPage: React.FC = () => {
               type="button"
               onClick={() => setDisplayOrder("z-a")}
               className={`rounded px-2 py-0.5 text-xs font-medium ${
-                displayOrder === "z-a" ? "bg-brand-orange text-slate-950" : "text-slate-400 hover:text-slate-200"
+                displayOrder === "z-a" ? "bg-accent-500 text-surface-0" : "text-text-secondary hover:text-text-primary"
               }`}
             >
               Z–A
@@ -212,7 +212,7 @@ const InternetDashboardAdminPage: React.FC = () => {
 
         <form onSubmit={handleAdd} className="flex gap-2 flex-wrap items-end">
           <div className="flex-1 min-w-[12rem]">
-            <label htmlFor="newDomain" className="block text-xs font-medium text-slate-400 mb-1">
+            <label htmlFor="newDomain" className="block text-xs font-medium text-text-secondary mb-1">
               Add domain
             </label>
             <input
@@ -245,16 +245,16 @@ const InternetDashboardAdminPage: React.FC = () => {
               onDrop={(e) => handleDrop(e, index)}
               className={`flex items-center gap-2 rounded-md border px-3 py-2 ${
                 draggedIndex === index
-                  ? "border-brand-orange bg-slate-800 opacity-60"
+                  ? "border-accent-500 bg-surface-3 opacity-60"
                   : dragOverIndex === index
-                  ? "border-brand-orange/70 bg-slate-800/80"
-                  : "border-slate-700 bg-slate-900"
+                  ? "border-accent-500/70 bg-surface-3"
+                  : "border-border-hover bg-surface-2"
               } ${displayOrder === "custom" ? "cursor-grab active:cursor-grabbing" : ""}`}
             >
               {displayOrder === "custom" && (
-                <Bars3Icon className="h-4 w-4 flex-shrink-0 text-slate-500" aria-hidden />
+                <Bars3Icon className="h-4 w-4 flex-shrink-0 text-text-primary0" aria-hidden />
               )}
-              <span className="font-medium text-slate-200 break-all flex-1">{domain}</span>
+              <span className="font-medium text-text-primary break-all flex-1">{domain}</span>
               <button
                 type="button"
                 onClick={() => handleRemove(domain)}

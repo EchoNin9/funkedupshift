@@ -351,20 +351,20 @@ const ListTab: React.FC<ListTabProps> = ({ config }) => {
     : null;
 
   return (
-    <section className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 space-y-4 max-w-2xl">
+    <section className="rounded-xl border border-border-default bg-surface-1 p-4 space-y-4 max-w-2xl">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
-          <h2 className="text-base font-semibold text-slate-200">
+          <h2 className="text-base font-semibold text-text-primary">
             {config.listLabel} ({sites.length})
           </h2>
           {formattedDate && (
-            <span className="text-xs text-slate-500">Cache was last updated {formattedDate}</span>
+            <span className="text-xs text-text-primary0">Cache was last updated {formattedDate}</span>
           )}
         </div>
         <div className="flex items-center gap-2">
           <Link
             to={config.viewPath}
-            className="text-sm text-slate-400 hover:text-slate-200"
+            className="text-sm text-text-secondary hover:text-text-primary"
           >
             View
           </Link>
@@ -379,14 +379,14 @@ const ListTab: React.FC<ListTabProps> = ({ config }) => {
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-3">
-        <div className="inline-flex rounded-md border border-slate-700 bg-slate-950 p-0.5">
+        <div className="inline-flex rounded-md border border-border-hover bg-surface-1 p-0.5">
           {(["custom", "a-z", "z-a"] as const).map((order) => (
             <button
               key={order}
               type="button"
               onClick={() => setDisplayOrder(order)}
               className={`rounded px-2 py-0.5 text-xs font-medium ${
-                displayOrder === order ? "bg-brand-orange text-slate-950" : "text-slate-400 hover:text-slate-200"
+                displayOrder === order ? "bg-accent-500 text-surface-0" : "text-text-secondary hover:text-text-primary"
               }`}
             >
               {order === "custom" ? "Custom" : order === "a-z" ? "A–Z" : "Z–A"}
@@ -396,7 +396,7 @@ const ListTab: React.FC<ListTabProps> = ({ config }) => {
       </div>
       <form onSubmit={handleAdd} className="flex gap-2 flex-wrap items-end">
         <div className="flex-1 min-w-[12rem]">
-          <label htmlFor="newUrl" className="block text-xs font-medium text-slate-400 mb-1">
+          <label htmlFor="newUrl" className="block text-xs font-medium text-text-secondary mb-1">
             Add URL
           </label>
           <input
@@ -405,13 +405,13 @@ const ListTab: React.FC<ListTabProps> = ({ config }) => {
             value={newUrl}
             onChange={(e) => setNewUrl(e.target.value)}
             placeholder="https://example.com or example.com"
-            className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-500 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange"
+            className="w-full rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-primary0 focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
           />
         </div>
         <button
           type="submit"
           disabled={isSaving || !newUrl.trim()}
-          className="rounded-md bg-brand-orange px-4 py-2 text-sm font-medium text-slate-950 hover:bg-orange-500 disabled:opacity-50"
+          className="rounded-md bg-accent-500 px-4 py-2 text-sm font-medium text-surface-0 hover:bg-orange-500 disabled:opacity-50"
         >
           Add
         </button>
@@ -428,15 +428,15 @@ const ListTab: React.FC<ListTabProps> = ({ config }) => {
             onDrop={(e) => handleDrop(e, index)}
             className={`flex flex-col gap-2 rounded-md border px-3 py-2 ${
               draggedIndex === index
-                ? "border-brand-orange bg-slate-800 opacity-60"
+                ? "border-accent-500 bg-surface-3 opacity-60"
                 : dragOverIndex === index
-                ? "border-brand-orange/70 bg-slate-800/80"
-                : "border-slate-700 bg-slate-900"
+                ? "border-accent-500/70 bg-surface-3"
+                : "border-border-hover bg-surface-2"
             } ${displayOrder === "custom" && editingIndex === null ? "cursor-grab active:cursor-grabbing" : ""}`}
           >
             <div className="flex items-center gap-2">
               {displayOrder === "custom" && (
-                <Bars3Icon className="h-4 w-4 flex-shrink-0 text-slate-500" aria-hidden />
+                <Bars3Icon className="h-4 w-4 flex-shrink-0 text-text-primary0" aria-hidden />
               )}
               {editingIndex === index ? (
                 <input
@@ -449,18 +449,18 @@ const ListTab: React.FC<ListTabProps> = ({ config }) => {
                     if (e.key === "Escape") cancelEdit();
                   }}
                   autoFocus
-                  className="flex-1 rounded-md border border-slate-600 bg-slate-900 px-2 py-1 text-sm text-slate-50 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange"
+                  className="flex-1 rounded-md border border-border-hover bg-surface-2 px-2 py-1 text-sm text-text-primary focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
                 />
               ) : (
                 entry.type === "media" ? (
-                  <span className="font-medium text-slate-200 break-all flex-1">
+                  <span className="font-medium text-text-primary break-all flex-1">
                     {entry.title || entry.id}
                   </span>
                 ) : (
                   <button
                     type="button"
                     onClick={() => startEdit(index)}
-                    className="font-medium text-slate-200 break-all flex-1 text-left hover:text-brand-orange hover:underline"
+                    className="font-medium text-text-primary break-all flex-1 text-left hover:text-accent-500 hover:underline"
                   >
                     {domainFromUrl(entry.url || "")}
                   </button>
@@ -482,7 +482,7 @@ const ListTab: React.FC<ListTabProps> = ({ config }) => {
               </button>
             </div>
             <div>
-              <label htmlFor={`desc-${config.id}-${index}`} className="block text-xs font-medium text-slate-400 mb-0.5">
+              <label htmlFor={`desc-${config.id}-${index}`} className="block text-xs font-medium text-text-secondary mb-0.5">
                 Description
               </label>
               <input
@@ -494,15 +494,15 @@ const ListTab: React.FC<ListTabProps> = ({ config }) => {
                 maxLength={255}
                 placeholder="One-line description (255 chars max)"
                 disabled={isSaving}
-                className="w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1 text-sm text-slate-50 placeholder:text-slate-500 focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange disabled:opacity-50"
+                className="w-full rounded-md border border-border-hover bg-surface-1 px-2 py-1 text-sm text-text-primary placeholder:text-text-primary0 focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500 disabled:opacity-50"
               />
-              <span className="text-[10px] text-slate-500">{entry.description.length}/255</span>
+              <span className="text-[10px] text-text-primary0">{entry.description.length}/255</span>
             </div>
           </li>
         ))}
       </ul>
       {displayedSites.length === 0 && (
-        <p className="text-sm text-slate-500">{config.emptyMessage}</p>
+        <p className="text-sm text-text-primary0">{config.emptyMessage}</p>
       )}
       {message && (
         <div className="rounded-md border border-emerald-500/60 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">
