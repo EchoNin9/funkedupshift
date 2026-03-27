@@ -16,9 +16,11 @@
 
 - [x] **Animation & polish pass** — Created shared motion presets (`components/motion.ts`: fadeUp, fadeUpStaggered, scaleIn, stagger, pageTransition, slideIn, viewportOnce). Added AnimatePresence page transitions in AppLayout keyed by top-level route. Created PageTransition wrapper and SkeletonCard/SkeletonGrid components. Added staggered card reveals to MemeBrowsePage and DashboardPage. Added animated headers to Websites, Media, Memes, Auth, Financial pages. Replaced inline skeletons with shared SkeletonGrid in WebsitesPage and MemeBrowsePage. Added skeleton table loading state to FinancialPage. Added skeleton cards to DashboardPage. *(commit d58c8cb)*
 
+- [x] **Stats counters on HomePage** — Scroll-triggered animated count-up section (150+ websites, 85+ media, 30+ users, 1200+ ratings) using IntersectionObserver + requestAnimationFrame with ease-out cubic. Placeholder data with TODO to swap in `GET /stats` API later. Positioned between Feature Cards and Role Breakdown sections.
+
 ## Upcoming
 
-- [ ] **Analytics dashboard + stats section** — Add site/media/user/rating counts API. Display animated counters on HomePage (scroll-triggered count-up). Requires backend analytics endpoints.
+- [ ] **Backend `GET /stats` endpoint** — Simple DynamoDB count query returning `{ sites, media, users, ratings }`. Wire into HomePage StatsSection to replace placeholder data.
 - [ ] **Dark/light theme toggle** — CSS variables already in place. Needs toggle UI and second set of variable values.
 - [ ] **Accessibility audit** — Focus states, ARIA labels, keyboard navigation, color contrast checks.
 
