@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth, hasRole } from "../../shell/AuthContext";
 import { AdminPageHeader } from "./AdminPageHeader";
 import { fetchWithAuth } from "../../utils/api";
+import { Alert, FormField, SearchableSelect } from "../../components";
 
 function getApiBaseUrl(): string | null {
   if (typeof window === "undefined") return null;
@@ -38,8 +39,6 @@ const EditSitePage: React.FC = () => {
   const [logoError, setLogoError] = useState<string | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
-  const [categorySearch, setCategorySearch] = useState("");
-  const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
@@ -130,26 +129,14 @@ const EditSitePage: React.FC = () => {
     img.src = URL.createObjectURL(file);
   };
 
-  const addCategory = (cid: string) => {
-    if (!selectedCategoryIds.includes(cid)) setSelectedCategoryIds([...selectedCategoryIds, cid]);
-    setCategorySearch("");
-    setCategoryDropdownOpen(false);
-  };
-  const removeCategory = (cid: string) => {
-    setSelectedCategoryIds(selectedCategoryIds.filter((x) => x !== cid));
-  };
+  const categoryOptions = categories.map((c) => ({ id: c.id, label: c.name }));
+
   const addTag = () => {
     const t = tagsInput.trim();
     if (t && !tags.includes(t)) setTags([...tags, t]);
     setTagsInput("");
   };
   const removeTag = (t: string) => setTags(tags.filter((x) => x !== t));
-
-  const filteredCategories = categories.filter(
-    (c) =>
-      !selectedCategoryIds.includes(c.id) &&
-      (!categorySearch.trim() || (c.name || "").toLowerCase().includes(categorySearch.toLowerCase()))
-  );
 
   const handleGenerateDescription = async () => {
     const u = url.trim();
@@ -309,7 +296,7 @@ const EditSitePage: React.FC = () => {
     return (
       <div className="space-y-6">
         <AdminPageHeader title="Edit Site" />
-        <div className="rounded-md border border-red-500/60 bg-red-500/10 px-3 py-2 text-sm text-red-200">{error}</div>
+        <Alert variant="error">{error}</Alert>
       </div>
     );
   }
@@ -330,8 +317,7 @@ const EditSitePage: React.FC = () => {
       />
 
       <form className="card p-6 space-y-4 max-w-xl" onSubmit={handleSubmit}>
-        <div>
-          <label className="block text-sm font-medium text-text-primary mb-1">URL *</label>
+        <FormField label="URL *">
           <input
             type="url"
             value={url}
@@ -339,18 +325,16 @@ const EditSitePage: React.FC = () => {
             required
             className="input-field"
           />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-text-primary mb-1">Title</label>
+        </FormField>
+        <FormField label="Title">
           <input
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             className="input-field"
           />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-text-primary mb-1">Description</label>
+        </FormField>
+        <FormField label="Description">
           <textarea
             value={description}
             onChange={(e) => {
@@ -380,9 +364,8 @@ const EditSitePage: React.FC = () => {
             />
             AI-generated summary
           </label>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-text-primary mb-1">Logo</label>
+        </FormField>
+        <FormField label="Logo">
           {logoUrl && !deleteLogo && !logoPreview && (
             <div className="mb-2 flex items-center gap-2">
               <img src={logoUrl} alt="Current logo" className="h-12 w-12 rounded-lg border border-border-hover object-cover" />
@@ -415,55 +398,11 @@ const EditSitePage: React.FC = () => {
             </div>
           )}
           {logoError && <p className="mt-1 text-xs text-red-400">{logoError}</p>}
-        </div>
-        <div className="relative">
-          <label className="block text-sm font-medium text-text-primary mb-1">Categories</label>
-          <input
-            type="text"
-            value={categorySearch}
-            onChange={(e) => setCategorySearch(e.target.value)}
-            onFocus={() => setCategoryDropdownOpen(true)}
-            placeholder="Search and select…"
-            className="input-field w-full"
-            autoComplete="off"
-          />
-          {categoryDropdownOpen && (
-            <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-48 overflow-auto scrollbar-thin rounded-md border border-border-hover bg-surface-2 shadow-lg">
-              {filteredCategories.length ? (
-                filteredCategories.map((c) => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => addCategory(c.id)}
-                    className="block w-full px-3 py-2 text-left text-sm text-text-primary hover:bg-surface-3"
-                  >
-                    {c.name}
-                  </button>
-                ))
-              ) : (
-                <p className="px-3 py-2 text-xs text-text-primary0">No matches</p>
-              )}
-            </div>
-          )}
-          <div className="mt-2 flex flex-wrap gap-1">
-            {selectedCategoryIds.map((cid) => {
-              const c = categories.find((x) => x.id === cid);
-              return (
-                <span
-                  key={cid}
-                  className="inline-flex items-center gap-1 rounded-full bg-surface-3 px-2 py-0.5 text-xs text-text-primary"
-                >
-                  {c?.name ?? cid}
-                  <button type="button" onClick={() => removeCategory(cid)} className="hover:text-red-400" aria-label="Remove">
-                    ×
-                  </button>
-                </span>
-              );
-            })}
-          </div>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-text-primary mb-1">Tags</label>
+        </FormField>
+        <FormField label="Categories">
+          <SearchableSelect options={categoryOptions} selected={selectedCategoryIds} onChange={setSelectedCategoryIds} />
+        </FormField>
+        <FormField label="Tags">
           <div className="flex flex-wrap gap-1 mb-2">
             {tags.map((t) => (
               <span
@@ -490,9 +429,8 @@ const EditSitePage: React.FC = () => {
               Add
             </button>
           </div>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-text-primary mb-1">Scraped content (optional)</label>
+        </FormField>
+        <FormField label="Scraped content (optional)">
           <textarea
             value={scrapedContent}
             onChange={(e) => setScrapedContent(e.target.value)}
@@ -500,7 +438,7 @@ const EditSitePage: React.FC = () => {
             placeholder="Paste or edit scraped content (e.g. README, about page)"
             className="input-field w-full font-mono resize-y"
           />
-        </div>
+        </FormField>
         <div className="flex flex-wrap gap-3">
           <button
             type="submit"
@@ -518,16 +456,8 @@ const EditSitePage: React.FC = () => {
             {isDeleting ? "Deleting…" : "Delete entry"}
           </button>
         </div>
-        {message && (
-          <div className="rounded-md border border-emerald-500/60 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">
-            {message}
-          </div>
-        )}
-        {error && (
-          <div className="rounded-md border border-red-500/60 bg-red-500/10 px-3 py-2 text-sm text-red-200">
-            {error}
-          </div>
-        )}
+        {message && <Alert variant="success">{message}</Alert>}
+        {error && <Alert variant="error">{error}</Alert>}
       </form>
     </div>
   );

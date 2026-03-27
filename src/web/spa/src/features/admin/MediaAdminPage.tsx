@@ -4,6 +4,7 @@ import { useAuth, hasRole } from "../../shell/AuthContext";
 import { AdminPageHeader } from "./AdminPageHeader";
 import { AdminTabs } from "./AdminTabs";
 import { fetchWithAuth } from "../../utils/api";
+import { Alert, FormField, SearchableSelect } from "../../components";
 
 function getApiBaseUrl(): string | null {
   if (typeof window === "undefined") return null;
@@ -57,12 +58,9 @@ const MediaAdminPage: React.FC = () => {
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [showThumbnailDialog, setShowThumbnailDialog] = useState(false);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
-  const [categorySearch, setCategorySearch] = useState("");
-  const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const categoryDropdownRef = useRef<HTMLDivElement>(null);
 
   // Categories tab state
   const [categoriesLoading, setCategoriesLoading] = useState(true);
@@ -101,23 +99,7 @@ const MediaAdminPage: React.FC = () => {
     })();
   }, [canAccess]);
 
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(e.target as Node)) {
-        setCategoryDropdownOpen(false);
-      }
-    }
-    if (categoryDropdownOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-      return () => document.removeEventListener("mousedown", handleClickOutside);
-    }
-  }, [categoryDropdownOpen]);
-
-  const filteredCategories = categories.filter(
-    (c) =>
-      !selectedCategoryIds.includes(c.id) &&
-      (!categorySearch.trim() || (c.name || "").toLowerCase().includes(categorySearch.toLowerCase()))
-  );
+  const categoryOptions = categories.map((c) => ({ id: c.id, label: c.name }));
 
   const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -143,14 +125,6 @@ const MediaAdminPage: React.FC = () => {
       setShowThumbnailDialog(false);
     }
     e.target.value = "";
-  };
-
-  const addCategory = (id: string) => {
-    if (!selectedCategoryIds.includes(id)) setSelectedCategoryIds([...selectedCategoryIds, id]);
-    setCategorySearch("");
-  };
-  const removeCategory = (id: string) => {
-    setSelectedCategoryIds(selectedCategoryIds.filter((x) => x !== id));
   };
 
   const loadCategories = async () => {
@@ -405,8 +379,7 @@ const MediaAdminPage: React.FC = () => {
 
       {activeTab === "add" && (
         <form className="card p-6 space-y-4 max-w-xl" onSubmit={handleSubmit}>
-          <div>
-            <label className="block text-sm font-medium text-text-primary mb-1">Title (optional)</label>
+          <FormField label="Title (optional)">
             <input
               type="text"
               value={title}
@@ -414,9 +387,8 @@ const MediaAdminPage: React.FC = () => {
               placeholder="Untitled"
               className="input-field"
             />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-text-primary mb-1">Description (optional)</label>
+          </FormField>
+          <FormField label="Description (optional)">
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -424,9 +396,8 @@ const MediaAdminPage: React.FC = () => {
               rows={3}
               className="input-field resize-y"
             />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-text-primary mb-1">Image or video *</label>
+          </FormField>
+          <FormField label="Image or video" required>
             <input
               type="file"
               accept="image/png,image/jpeg,image/gif,image/webp,video/mp4,video/webm"
@@ -493,63 +464,22 @@ const MediaAdminPage: React.FC = () => {
                 )}
               </div>
             )}
-          </div>
-          <div ref={categoryDropdownRef} className="relative">
-            <label className="block text-sm font-medium text-text-primary mb-1">Media categories (optional)</label>
-            <input
-              type="text"
-              value={categorySearch}
-              onChange={(e) => setCategorySearch(e.target.value)}
-              onFocus={() => setCategoryDropdownOpen(true)}
-              placeholder="Search and select…"
-              className="input-field w-full"
-              autoComplete="off"
+          </FormField>
+          <FormField label="Media categories (optional)">
+            <SearchableSelect
+              options={categoryOptions}
+              selected={selectedCategoryIds}
+              onChange={setSelectedCategoryIds}
             />
-            {categoryDropdownOpen && (
-              <>
-                <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-48 overflow-auto scrollbar-thin rounded-md border border-border-hover bg-surface-2 shadow-lg">
-                  {filteredCategories.length ? (
-                    filteredCategories.map((c) => (
-                      <button
-                        key={c.id}
-                        type="button"
-                        onClick={() => addCategory(c.id)}
-                        className="block w-full px-3 py-2 text-left text-sm text-text-primary hover:bg-surface-3"
-                      >
-                        {c.name}
-                      </button>
-                    ))
-                  ) : (
-                    <p className="px-3 py-2 text-xs text-text-primary0">No matches</p>
-                  )}
-                </div>
-                {categories.length === 0 && (
-                  <p className="mt-1 text-xs text-text-primary0">
-                    No categories.{" "}
-                    <button type="button" onClick={() => setTab("categories")} className="text-accent-500 hover:underline">
-                      Create media categories
-                    </button>
-                  </p>
-                )}
-              </>
+            {categories.length === 0 && (
+              <p className="mt-1 text-xs text-text-tertiary">
+                No categories.{" "}
+                <button type="button" onClick={() => setTab("categories")} className="text-accent-500 hover:underline">
+                  Create media categories
+                </button>
+              </p>
             )}
-            <div className="mt-2 flex flex-wrap gap-1">
-              {selectedCategoryIds.map((id) => {
-                const c = categories.find((x) => x.id === id);
-                return (
-                  <span
-                    key={id}
-                    className="inline-flex items-center gap-1 rounded-full bg-surface-3 px-2 py-0.5 text-xs text-text-primary"
-                  >
-                    {c?.name ?? id}
-                    <button type="button" onClick={() => removeCategory(id)} className="hover:text-red-400" aria-label="Remove">
-                      ×
-                    </button>
-                  </span>
-                );
-              })}
-            </div>
-          </div>
+          </FormField>
           <button
             type="submit"
             disabled={isSubmitting || !file}
@@ -557,20 +487,15 @@ const MediaAdminPage: React.FC = () => {
           >
             {isSubmitting ? "Uploading…" : "Add Media"}
           </button>
-          {message && (
-            <div className="rounded-md border border-emerald-500/60 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">{message}</div>
-          )}
-          {error && (
-            <div className="rounded-md border border-red-500/60 bg-red-500/10 px-3 py-2 text-sm text-red-200">{error}</div>
-          )}
+          {message && <Alert variant="success">{message}</Alert>}
+          {error && <Alert variant="error">{error}</Alert>}
         </form>
       )}
 
       {activeTab === "categories" && (
         <>
           <form className="card p-6 space-y-3 max-w-md" onSubmit={handleCreateCategory}>
-            <div>
-              <label className="block text-sm font-medium text-text-primary mb-1">New category name</label>
+            <FormField label="New category name">
               <input
                 type="text"
                 value={newName}
@@ -578,9 +503,8 @@ const MediaAdminPage: React.FC = () => {
                 placeholder="e.g. Tutorials"
                 className="input-field w-full"
               />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-text-primary mb-1">Description (optional)</label>
+            </FormField>
+            <FormField label="Description (optional)">
               <input
                 type="text"
                 value={newDescription}
@@ -588,7 +512,7 @@ const MediaAdminPage: React.FC = () => {
                 placeholder="Optional description"
                 className="input-field w-full"
               />
-            </div>
+            </FormField>
             <button
               type="submit"
               disabled={isCatSubmitting || !newName.trim()}
@@ -596,12 +520,8 @@ const MediaAdminPage: React.FC = () => {
             >
               {isCatSubmitting ? "Creating…" : "Create media category"}
             </button>
-            {catMessage && (
-              <div className="rounded-md border border-emerald-500/60 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">{catMessage}</div>
-            )}
-            {categoriesError && (
-              <div className="rounded-md border border-red-500/60 bg-red-500/10 px-3 py-2 text-sm text-red-200">{categoriesError}</div>
-            )}
+            {catMessage && <Alert variant="success">{catMessage}</Alert>}
+            {categoriesError && <Alert variant="error">{categoriesError}</Alert>}
           </form>
 
           <section className="card p-6 mt-6">

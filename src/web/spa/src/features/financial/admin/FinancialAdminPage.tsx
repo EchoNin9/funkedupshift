@@ -4,6 +4,7 @@ import { useAuth, canAccessFinancialAdmin } from "../../../shell/AuthContext";
 import { AdminPageHeader } from "../../admin/AdminPageHeader";
 import { AdminTabs } from "../../admin/AdminTabs";
 import { fetchWithAuth } from "../../../utils/api";
+import { Alert } from "../../../components";
 
 function getApiBaseUrl(): string | null {
   if (typeof window === "undefined") return null;
@@ -219,14 +220,10 @@ const FinancialAdminPage: React.FC = () => {
           </button>
 
           {symbolsMessage && (
-            <div className="rounded-md border border-emerald-500/60 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">
-              {symbolsMessage}
-            </div>
+            <Alert variant="success">{symbolsMessage}</Alert>
           )}
           {symbolsError && (
-            <div className="rounded-md border border-red-500/60 bg-red-500/10 px-3 py-2 text-sm text-red-200">
-              {symbolsError}
-            </div>
+            <Alert variant="error">{symbolsError}</Alert>
           )}
         </div>
       )}

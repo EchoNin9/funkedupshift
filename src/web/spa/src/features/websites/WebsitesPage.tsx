@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useAuth } from "../../shell/AuthContext";
 import { fetchWithAuthOptional } from "../../utils/api";
+import { Alert } from "../../components";
 
 interface SiteCategory {
   id: string;
@@ -380,9 +381,7 @@ const WebsitesPage: React.FC = () => {
 
       {/* ── Error ── */}
       {error && (
-        <div className="rounded-xl border border-red-500/60 bg-red-500/10 px-4 py-3 text-xs text-red-200">
-          {error}
-        </div>
+        <Alert variant="error" className="text-xs">{error}</Alert>
       )}
 
       {/* ── Skeleton loading ── */}

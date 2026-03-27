@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth, canSaveFinancialWatchlist, canAccessFinancialAdmin } from "../../shell/AuthContext";
 import { fetchWithAuth, fetchWithAuthOptional } from "../../utils/api";
+import { Alert } from "../../components";
 
 function getApiBaseUrl(): string | null {
   if (typeof window === "undefined") return null;
@@ -298,14 +299,10 @@ const FinancialPage: React.FC = () => {
       )}
 
       {message && (
-        <div className="rounded-md border border-emerald-500/60 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">
-          {message}
-        </div>
+        <Alert variant="success">{message}</Alert>
       )}
       {error && (
-        <div className="rounded-md border border-red-500/60 bg-red-500/10 px-3 py-2 text-sm text-red-200">
-          {error}
-        </div>
+        <Alert variant="error">{error}</Alert>
       )}
     </div>
   );

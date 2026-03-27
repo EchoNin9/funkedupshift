@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth, hasRole } from "../../shell/AuthContext";
 import { fetchWithAuthOptional } from "../../utils/api";
+import { Alert } from "../../components";
 
 const CACHE_KEY = "funkedupshift_internet_dashboard";
 const CACHE_TTL_MS = 5 * 60 * 1000;
@@ -128,9 +129,7 @@ const DashboardPage: React.FC = () => {
       )}
 
       {error && !sites.length && (
-        <div className="rounded-md border border-red-500/60 bg-red-500/10 px-3 py-2 text-xs text-red-200">
-          {error}
-        </div>
+        <Alert variant="error">{error}</Alert>
       )}
 
       <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-3">

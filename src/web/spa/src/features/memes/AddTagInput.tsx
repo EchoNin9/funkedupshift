@@ -1,4 +1,6 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useClickOutside } from "../../components";
+import { Badge } from "../../components";
 
 interface AddTagInputProps {
   tags: string[];
@@ -30,15 +32,8 @@ const AddTagInput: React.FC<AddTagInputProps> = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setDropdownOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  const closeDropdown = useCallback(() => setDropdownOpen(false), []);
+  useClickOutside(containerRef, closeDropdown);
 
   useEffect(() => {
     if (!fetchTags) {
@@ -173,20 +168,7 @@ const AddTagInput: React.FC<AddTagInputProps> = ({
       {tags.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1">
           {tags.map((t) => (
-            <span
-              key={t}
-              className="inline-flex items-center gap-1 rounded-full bg-surface-3 px-2 py-0.5 text-xs text-text-secondary"
-            >
-              {t}
-              <button
-                type="button"
-                onClick={() => removeTag(t)}
-                className="transition-colors hover:text-text-primary"
-                aria-label={`Remove ${t}`}
-              >
-                ×
-              </button>
-            </span>
+            <Badge key={t} label={t} onRemove={() => removeTag(t)} />
           ))}
         </div>
       )}

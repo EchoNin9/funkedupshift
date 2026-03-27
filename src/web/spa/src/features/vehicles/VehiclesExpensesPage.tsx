@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState, useRef } from "react";
 import { useAuth, canAccessExpenses } from "../../shell/AuthContext";
 import { fetchWithAuth } from "../../utils/api";
+import { Alert } from "../../components";
 import { AdminTabs } from "../admin/AdminTabs";
 
 function getApiBaseUrl(): string | null {
@@ -701,14 +702,10 @@ const VehiclesExpensesPage: React.FC = () => {
       )}
 
       {error && (
-        <div className="rounded-md border border-red-500/60 bg-red-500/10 px-3 py-2 text-sm text-red-200">
-          {error}
-        </div>
+        <Alert variant="error">{error}</Alert>
       )}
       {importMessage && (
-        <div className="rounded-md border border-green-500/60 bg-green-500/10 px-3 py-2 text-sm text-green-200">
-          {importMessage}
-        </div>
+        <Alert variant="success">{importMessage}</Alert>
       )}
 
       <AdminTabs

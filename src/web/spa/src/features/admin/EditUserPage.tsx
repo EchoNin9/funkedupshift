@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth, hasRole } from "../../shell/AuthContext";
 import { AdminPageHeader } from "./AdminPageHeader";
+import { Alert, FormField } from "../../components";
 import { fetchWithAuth } from "../../utils/api";
 
 const ROLE_DISPLAY: Record<string, string> = {
@@ -299,9 +300,7 @@ const EditUserPage: React.FC = () => {
     return (
       <div className="space-y-4">
         <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Edit User</h1>
-        <div className="rounded-md border border-red-500/60 bg-red-500/10 px-3 py-2 text-sm text-red-200">
-          {error ?? "Failed to load user"}
-        </div>
+        <Alert variant="error">{error ?? "Failed to load user"}</Alert>
       </div>
     );
   }
@@ -358,8 +357,7 @@ const EditUserPage: React.FC = () => {
           </table>
         </div>
 
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-text-primary">System roles</label>
+        <FormField label="System roles">
           <select
             className="rounded border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary w-full max-w-xs"
             onChange={(e) => {
@@ -400,10 +398,9 @@ const EditUserPage: React.FC = () => {
               );
             })}
           </div>
-        </div>
+        </FormField>
 
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-text-primary">Custom groups</label>
+        <FormField label="Custom groups">
           {allCustomGroups.length === 0 ? (
             <p className="text-sm text-text-primary0">
               No custom groups. <Link to="/admin/membership?tab=groups" className="text-accent-500 hover:underline">Create groups</Link>.
@@ -468,7 +465,7 @@ const EditUserPage: React.FC = () => {
               </div>
             </>
           )}
-        </div>
+        </FormField>
 
         <div className="flex flex-wrap gap-3 items-center">
           <button

@@ -1,7 +1,8 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { PencilSquareIcon, LinkIcon } from "@heroicons/react/24/outline";
 import { useAuth, canAccessMemes, canRateMemes, canCreateMemes, canEditAnyMeme } from "../../shell/AuthContext";
+import { Alert, useClickOutside } from "../../components";
 import ShareMemePopover from "./ShareMemePopover";
 import { fetchWithAuthOptional } from "../../utils/api";
 
@@ -188,17 +189,7 @@ const MemeBrowsePage: React.FC = () => {
     return () => { cancelled = true; };
   }, [tab, search, selectedTags, tagMode, invalidateMyCache, showMyMemes, user]);
 
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (tagDropdownRef.current && !tagDropdownRef.current.contains(e.target as Node)) {
-        setTagDropdownOpen(false);
-      }
-    }
-    if (tagDropdownOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-      return () => document.removeEventListener("mousedown", handleClickOutside);
-    }
-  }, [tagDropdownOpen]);
+  useClickOutside(tagDropdownRef, useCallback(() => setTagDropdownOpen(false), []), tagDropdownOpen);
 
   const filteredTagOptions = useMemo(() => {
     return allTags.filter(
@@ -443,9 +434,7 @@ const MemeBrowsePage: React.FC = () => {
       )}
 
       {error && (
-        <div className="rounded-md border border-red-500/60 bg-red-500/10 px-3 py-2 text-xs text-red-200">
-          {error}
-        </div>
+        <Alert variant="error">{error}</Alert>
       )}
 
       {isLoading ? (
