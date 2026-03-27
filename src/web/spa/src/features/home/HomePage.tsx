@@ -1,252 +1,447 @@
-import React, { useEffect, useRef, useState } from "react";
+import React from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ClipboardDocumentIcon } from "@heroicons/react/24/outline";
+import {
+  GlobeAltIcon,
+  StarIcon,
+  AdjustmentsHorizontalIcon,
+  ArrowRightIcon,
+  EyeIcon,
+  UserGroupIcon,
+  ShieldCheckIcon,
+} from "@heroicons/react/24/outline";
 import { useAuth, canAccessSquash, canAccessMemes } from "../../shell/AuthContext";
 import { useBranding } from "../../shell/BrandingContext";
 
-interface HomeMeme {
-  PK: string;
-  title?: string;
-  thumbnailUrl?: string;
-  mediaUrl?: string;
-  averageRating?: number;
-}
+/* ── Animation variants ── */
+const fadeUp = {
+  hidden: { opacity: 0, y: 30 },
+  visible: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.6, delay: i * 0.12, ease: [0.22, 1, 0.36, 1] },
+  }),
+};
 
-function getApiBaseUrl(): string | null {
-  if (typeof window === "undefined") return null;
-  const raw = (window as any).API_BASE_URL as string | undefined;
-  return raw ? raw.replace(/\/$/, "") : null;
-}
+const staggerContainer = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.1 } },
+};
 
-const CARD_MIN_W = 160;
-const CARD_GAP = 16;
-const ROWS_TO_SHOW = 2;
+const scaleIn = {
+  hidden: { opacity: 0, scale: 0.92 },
+  visible: {
+    opacity: 1,
+    scale: 1,
+    transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] },
+  },
+};
+
+/* ── Feature cards data ── */
+const FEATURES = [
+  {
+    icon: GlobeAltIcon,
+    title: "Browse",
+    description:
+      "Explore a curated index of websites and media. Everything is public, searchable, and categorized.",
+    gradient: "from-blue-500/20 via-transparent to-cyan-500/10",
+    accentColor: "text-blue-400",
+    link: "/websites",
+    linkLabel: "Browse websites",
+  },
+  {
+    icon: StarIcon,
+    title: "Rate",
+    description:
+      "Sign in to star your favorites, leave ratings, and shape what rises to the top.",
+    gradient: "from-amber-500/15 via-transparent to-orange-500/10",
+    accentColor: "text-amber-400",
+    link: "/media",
+    linkLabel: "Explore media",
+  },
+  {
+    icon: AdjustmentsHorizontalIcon,
+    title: "Curate",
+    description:
+      "Admins manage categories, groups, and branding from a single surface. Full control, zero friction.",
+    gradient: "from-violet-500/15 via-transparent to-purple-500/10",
+    accentColor: "text-violet-400",
+    link: "/admin",
+    linkLabel: "Admin panel",
+  },
+];
+
+/* ── Role breakdown data ── */
+const ROLES = [
+  {
+    icon: EyeIcon,
+    label: "Everyone",
+    description:
+      "Browse all sites and media without signing in. Ratings and metadata are public by design.",
+    accent: "border-emerald-500/30 bg-emerald-500/5",
+    iconColor: "text-emerald-400",
+    number: "01",
+  },
+  {
+    icon: UserGroupIcon,
+    label: "Users",
+    description:
+      "Sign in to rate sites, add notes, and personalize your view of the internet.",
+    accent: "border-blue-500/30 bg-blue-500/5",
+    iconColor: "text-blue-400",
+    number: "02",
+  },
+  {
+    icon: ShieldCheckIcon,
+    label: "Admins",
+    description:
+      "Curate the corpus, manage categories and groups, and control branding from a single admin surface.",
+    accent: "border-amber-500/30 bg-amber-500/5",
+    iconColor: "text-amber-400",
+    number: "03",
+  },
+];
 
 const HomePage: React.FC = () => {
   const { user } = useAuth();
   const { hero } = useBranding();
   const showSquash = canAccessSquash(user);
   const showMemes = canAccessMemes(user);
-  const [memes, setMemes] = useState<HomeMeme[]>([]);
-  const [cols, setCols] = useState(4);
-  const gridRef = useRef<HTMLDivElement>(null);
-  const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
-
-  /* Fetch cached memes (public, no auth) */
-  useEffect(() => {
-    const apiBase = getApiBaseUrl();
-    if (!apiBase) return;
-    let cancelled = false;
-    fetch(`${apiBase}/memes/cache?limit=20`)
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((data: { memes?: HomeMeme[] }) => {
-        if (!cancelled) setMemes(data.memes ?? []);
-      })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, []);
-
-  /* Measure grid container to calculate column count */
-  useEffect(() => {
-    const el = gridRef.current;
-    if (!el) return;
-    const measure = () => {
-      const w = el.clientWidth;
-      setCols(Math.max(1, Math.floor((w + CARD_GAP) / (CARD_MIN_W + CARD_GAP))));
-    };
-    measure();
-    const ro = new ResizeObserver(() => measure());
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [memes.length]);
-
-  const visibleMemes = memes.slice(0, cols * ROWS_TO_SHOW);
-
-  const handleCopyMediaUrl = async (url: string) => {
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopiedUrl(url);
-      setTimeout(() => setCopiedUrl(null), 2000);
-    } catch {
-      /* fallback */
-    }
-  };
 
   return (
-    <div className="space-y-8">
-      <section className="card relative overflow-hidden px-4 py-8 sm:px-6 sm:py-10">
-        <div className="absolute inset-0 bg-gradient-to-br from-accent-500/10 via-transparent to-accent-400/10 pointer-events-none" />
+    <div className="-mx-4 sm:-mx-6 lg:-mx-8 -mt-6">
+      {/* ════════════════════════════════════════════════
+          SECTION 1 — HERO (full viewport)
+         ════════════════════════════════════════════════ */}
+      <section className="relative min-h-[85vh] flex items-center overflow-hidden">
+        {/* Grain texture overlay */}
+        <div
+          className="pointer-events-none absolute inset-0 z-10 opacity-[0.03]"
+          style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
+          }}
+        />
+
+        {/* Editable hero background image */}
         {hero.imageUrl && (
           <div
-            className="absolute inset-0 bg-cover bg-center pointer-events-none"
+            className="absolute inset-0 bg-cover bg-center"
             style={{
               backgroundImage: `url(${hero.imageUrl})`,
               opacity: (hero.imageOpacity ?? 25) / 100,
             }}
           />
         )}
-        <div className="relative max-w-xl space-y-4">
-          <motion.p
-            className="text-xs font-semibold uppercase tracking-[0.25em] text-text-secondary"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-          >
-            {hero.tagline}
-          </motion.p>
-          <motion.h1
-            className="text-3xl sm:text-4xl font-sans font-bold text-gradient tracking-tight"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-          >
-            {hero.headline}
-          </motion.h1>
-          <motion.p
-            className="text-sm text-text-secondary"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-          >
-            {hero.subtext}
-          </motion.p>
-          <motion.div
-            className="flex flex-wrap gap-3 pt-2"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.4 }}
-          >
-            <Link to="/websites" className="btn-primary text-sm !px-4 !py-2">
-              Browse websites
-            </Link>
-            <Link to="/media" className="btn-secondary text-sm !px-4 !py-2">
-              Explore media
-            </Link>
-            <Link
-              to="/internet-dashboard"
-              className="btn-secondary text-sm !px-4 !py-2"
-            >
-              Internet Dashboard
-            </Link>
-            {showSquash && (
-              <Link to="/squash" className="btn-secondary text-sm !px-4 !py-2">
-                Squash
-              </Link>
-            )}
-            {showMemes && (
-              <Link to="/memes" className="btn-secondary text-sm !px-4 !py-2">
-                Memes
-              </Link>
-            )}
-          </motion.div>
+
+        {/* Atmospheric radial gradients */}
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_20%_80%,rgba(59,130,246,0.12),transparent)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_80%_20%,rgba(139,92,246,0.08),transparent)]" />
+          <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-surface-0 to-transparent" />
         </div>
-        <div className="pointer-events-none absolute inset-y-0 right-0 w-1/2 opacity-60">
-          <div className="absolute -inset-24 bg-[radial-gradient(circle_at_top,_#f97316_0,_transparent_55%),radial-gradient(circle_at_bottom,_#06d6a0_0,_transparent_55%)]" />
+
+        {/* Hero content */}
+        <div className="relative z-20 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 sm:py-32">
+          <div className="max-w-3xl space-y-8">
+            <motion.p
+              className="text-xs sm:text-sm font-medium uppercase tracking-[0.3em] text-accent-400"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+            >
+              {hero.tagline}
+            </motion.p>
+
+            <motion.h1
+              className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[0.95] text-text-primary"
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{
+                duration: 0.7,
+                delay: 0.1,
+                ease: [0.22, 1, 0.36, 1],
+              }}
+            >
+              {hero.headline}
+            </motion.h1>
+
+            <motion.p
+              className="text-base sm:text-lg text-text-secondary max-w-xl leading-relaxed font-light"
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{
+                duration: 0.7,
+                delay: 0.2,
+                ease: [0.22, 1, 0.36, 1],
+              }}
+            >
+              {hero.subtext}
+            </motion.p>
+
+            <motion.div
+              className="flex flex-wrap gap-4 pt-4"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{
+                duration: 0.6,
+                delay: 0.4,
+                ease: [0.22, 1, 0.36, 1],
+              }}
+            >
+              <Link
+                to="/websites"
+                className="group inline-flex items-center gap-2 rounded-full bg-accent-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-accent-500/25 transition-all duration-200 hover:bg-accent-600 hover:shadow-accent-500/40 hover:-translate-y-0.5"
+              >
+                Browse websites
+                <ArrowRightIcon className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+              </Link>
+              <Link
+                to="/media"
+                className="inline-flex items-center gap-2 rounded-full border border-border-hover bg-white/5 px-6 py-3 text-sm font-medium text-text-primary backdrop-blur-sm transition-all duration-200 hover:bg-white/10 hover:border-text-tertiary hover:-translate-y-0.5"
+              >
+                Explore media
+              </Link>
+              <Link
+                to="/internet-dashboard"
+                className="inline-flex items-center gap-2 rounded-full border border-border-hover bg-white/5 px-6 py-3 text-sm font-medium text-text-primary backdrop-blur-sm transition-all duration-200 hover:bg-white/10 hover:border-text-tertiary hover:-translate-y-0.5"
+              >
+                Internet Dashboard
+              </Link>
+              {showSquash && (
+                <Link
+                  to="/squash"
+                  className="inline-flex items-center gap-2 rounded-full border border-border-hover bg-white/5 px-6 py-3 text-sm font-medium text-text-primary backdrop-blur-sm transition-all duration-200 hover:bg-white/10 hover:border-text-tertiary hover:-translate-y-0.5"
+                >
+                  Squash
+                </Link>
+              )}
+              {showMemes && (
+                <Link
+                  to="/memes"
+                  className="inline-flex items-center gap-2 rounded-full border border-border-hover bg-white/5 px-6 py-3 text-sm font-medium text-text-primary backdrop-blur-sm transition-all duration-200 hover:bg-white/10 hover:border-text-tertiary hover:-translate-y-0.5"
+                >
+                  Memes
+                </Link>
+              )}
+            </motion.div>
+          </div>
         </div>
       </section>
 
-      {/* ── Latest Memes Grid ── */}
-      {memes.length > 0 && (
-        <section className="card p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-text-secondary">Latest Memes</h2>
-            <Link to="/memes" className="text-xs text-accent-400 hover:text-accent-300 transition-colors">
-              View all &rarr;
-            </Link>
-          </div>
-          <div
-            ref={gridRef}
-            className="grid gap-4"
-            style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${CARD_MIN_W}px, 1fr))` }}
-          >
-            {visibleMemes.map((m) => {
-              const thumb = m.thumbnailUrl || m.mediaUrl;
-              const title = m.title || "Untitled";
-              const isCopied = copiedUrl === m.mediaUrl;
-              return (
-                <motion.div
-                  key={m.PK}
-                  className="card group overflow-hidden flex flex-col hover:border-accent-500/50 transition-colors"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <Link
-                    to={`/memes/${encodeURIComponent(m.PK)}`}
-                    className="block aspect-square overflow-hidden bg-surface-2"
-                  >
-                    {thumb ? (
-                      <img
-                        src={thumb}
-                        alt={title}
-                        className="h-full w-full object-cover transition-transform group-hover:scale-105"
-                        onError={(e) => { (e.currentTarget as HTMLImageElement).style.visibility = "hidden"; }}
-                      />
-                    ) : (
-                      <div className="flex h-full items-center justify-center text-2xl text-text-tertiary">🖼</div>
-                    )}
-                  </Link>
-                  <div className="p-2 space-y-1 flex-1 flex flex-col">
-                    <Link
-                      to={`/memes/${encodeURIComponent(m.PK)}`}
-                      className="block truncate text-xs font-medium text-text-primary hover:text-accent-400 transition-colors"
-                    >
-                      {title}
-                    </Link>
-                    <div className="flex items-center justify-between mt-auto pt-1">
-                      {typeof m.averageRating === "number" ? (
-                        <span className="text-[11px] text-amber-300">{m.averageRating.toFixed(1)}★</span>
-                      ) : (
-                        <span />
-                      )}
-                      {m.mediaUrl && (
-                        <button
-                          type="button"
-                          onClick={() => handleCopyMediaUrl(m.mediaUrl!)}
-                          className="inline-flex items-center gap-1 text-[10px] text-text-primary0 hover:text-text-secondary transition-colors"
-                          title="Copy media URL"
-                        >
-                          {isCopied ? (
-                            <span className="text-emerald-400">✓ Copied</span>
-                          ) : (
-                            <>
-                              <ClipboardDocumentIcon className="h-3 w-3" />
-                              <span>Copy URL</span>
-                            </>
-                          )}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </motion.div>
-              );
-            })}
-          </div>
-        </section>
-      )}
+      {/* ════════════════════════════════════════════════
+          SECTION 2 — FEATURE CARDS
+         ════════════════════════════════════════════════ */}
+      <section className="relative py-24 sm:py-32">
+        {/* Subtle background gradient */}
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_100%_60%_at_50%_0%,rgba(59,130,246,0.04),transparent)]" />
 
-      <section className="grid gap-4 sm:grid-cols-3">
-        {[
-          { label: "Everyone", desc: "Browse all sites and media without signing in. Ratings and metadata are public by design." },
-          { label: "Users", desc: "Sign in to rate sites, add notes, and personalize your view of the internet." },
-          { label: "Admins", desc: "Curate the corpus, manage categories and groups, and control branding from a single admin surface." },
-        ].map((item, i) => (
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
-            key={item.label}
-            className="card p-4"
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.1 * i }}
+            className="text-center mb-16"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-80px" }}
+            variants={staggerContainer}
           >
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-text-tertiary mb-2">{item.label}</p>
-            <p className="text-sm text-text-primary">{item.desc}</p>
+            <motion.p
+              className="text-xs font-medium uppercase tracking-[0.3em] text-text-tertiary mb-4"
+              variants={fadeUp}
+              custom={0}
+            >
+              How it works
+            </motion.p>
+            <motion.h2
+              className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-text-primary"
+              variants={fadeUp}
+              custom={1}
+            >
+              Three ways to engage
+            </motion.h2>
           </motion.div>
-        ))}
+
+          <motion.div
+            className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-60px" }}
+            variants={staggerContainer}
+          >
+            {FEATURES.map((feature, i) => (
+              <motion.div
+                key={feature.title}
+                variants={scaleIn}
+                className="group relative rounded-2xl border border-border-default bg-surface-1 p-8 transition-all duration-300 hover:border-border-hover hover:-translate-y-1 hover:shadow-2xl hover:shadow-black/20"
+              >
+                {/* Card gradient bg */}
+                <div
+                  className={`pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-br ${feature.gradient} opacity-0 transition-opacity duration-300 group-hover:opacity-100`}
+                />
+
+                <div className="relative">
+                  <div
+                    className={`mb-6 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-surface-3 ${feature.accentColor} transition-colors`}
+                  >
+                    <feature.icon className="h-6 w-6" />
+                  </div>
+
+                  <h3 className="text-xl font-bold text-text-primary mb-3">
+                    {feature.title}
+                  </h3>
+
+                  <p className="text-sm leading-relaxed text-text-secondary mb-6">
+                    {feature.description}
+                  </p>
+
+                  <Link
+                    to={feature.link}
+                    className={`inline-flex items-center gap-1.5 text-sm font-medium ${feature.accentColor} transition-all group-hover:gap-2.5`}
+                  >
+                    {feature.linkLabel}
+                    <ArrowRightIcon className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
+                  </Link>
+                </div>
+              </motion.div>
+            ))}
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ════════════════════════════════════════════════
+          SECTION 3 — ROLE BREAKDOWN (editorial)
+         ════════════════════════════════════════════════ */}
+      <section className="relative py-24 sm:py-32 overflow-hidden">
+        {/* Atmospheric gradient */}
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_80%_50%,rgba(139,92,246,0.06),transparent)]" />
+        </div>
+
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div
+            className="mb-16"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-80px" }}
+            variants={staggerContainer}
+          >
+            <motion.p
+              className="text-xs font-medium uppercase tracking-[0.3em] text-text-tertiary mb-4"
+              variants={fadeUp}
+              custom={0}
+            >
+              Access levels
+            </motion.p>
+            <motion.h2
+              className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-text-primary max-w-lg"
+              variants={fadeUp}
+              custom={1}
+            >
+              Built for everyone, powered by community
+            </motion.h2>
+          </motion.div>
+
+          <div className="space-y-6">
+            {ROLES.map((role, i) => (
+              <motion.div
+                key={role.label}
+                initial={{ opacity: 0, x: i % 2 === 0 ? -30 : 30 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true, margin: "-60px" }}
+                transition={{
+                  duration: 0.6,
+                  delay: i * 0.1,
+                  ease: [0.22, 1, 0.36, 1],
+                }}
+                className={`group flex flex-col sm:flex-row items-start gap-6 rounded-2xl border p-6 sm:p-8 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-black/10 ${role.accent}`}
+              >
+                {/* Number */}
+                <span className="text-5xl sm:text-6xl font-black text-white/[0.04] select-none shrink-0 leading-none">
+                  {role.number}
+                </span>
+
+                <div className="flex-1 space-y-3">
+                  <div className="flex items-center gap-3">
+                    <role.icon className={`h-5 w-5 ${role.iconColor}`} />
+                    <h3 className="text-lg font-bold text-text-primary">
+                      {role.label}
+                    </h3>
+                  </div>
+                  <p className="text-sm leading-relaxed text-text-secondary max-w-lg">
+                    {role.description}
+                  </p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ════════════════════════════════════════════════
+          SECTION 4 — CTA FOOTER
+         ════════════════════════════════════════════════ */}
+      <section className="relative py-24 sm:py-32 overflow-hidden">
+        {/* Grain */}
+        <div
+          className="pointer-events-none absolute inset-0 z-10 opacity-[0.025]"
+          style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
+          }}
+        />
+
+        {/* Gradient mesh */}
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_50%_50%,rgba(59,130,246,0.08),transparent)]" />
+          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border-hover to-transparent" />
+        </div>
+
+        <motion.div
+          className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center"
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-80px" }}
+          variants={staggerContainer}
+        >
+          <motion.h2
+            className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-text-primary mb-6"
+            variants={fadeUp}
+            custom={0}
+          >
+            Ready to explore?
+          </motion.h2>
+
+          <motion.p
+            className="text-base sm:text-lg text-text-secondary max-w-md mx-auto mb-10 font-light"
+            variants={fadeUp}
+            custom={1}
+          >
+            Jump into the index. No sign-up required to browse — create an
+            account when you want to rate and curate.
+          </motion.p>
+
+          <motion.div
+            className="flex flex-wrap justify-center gap-4"
+            variants={fadeUp}
+            custom={2}
+          >
+            <Link
+              to="/websites"
+              className="group inline-flex items-center gap-2 rounded-full bg-accent-500 px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-accent-500/25 transition-all duration-200 hover:bg-accent-600 hover:shadow-accent-500/40 hover:-translate-y-0.5"
+            >
+              Get started
+              <ArrowRightIcon className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+            </Link>
+            {!user && (
+              <Link
+                to="/auth"
+                className="inline-flex items-center gap-2 rounded-full border border-border-hover bg-white/5 px-8 py-3.5 text-sm font-medium text-text-primary backdrop-blur-sm transition-all duration-200 hover:bg-white/10 hover:border-text-tertiary hover:-translate-y-0.5"
+              >
+                Sign in
+              </Link>
+            )}
+          </motion.div>
+        </motion.div>
       </section>
     </div>
   );
 };
 
 export default HomePage;
-
