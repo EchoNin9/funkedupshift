@@ -12,10 +12,11 @@
 
 - [x] **HomePage immersive redesign** — Full-viewport hero (85vh) with grain texture overlay, editable bg image, radial gradient atmospherics, staggered Framer Motion text reveals, pill-shaped CTAs. Feature cards section (Browse/Rate/Curate) with hover-lift micro-interactions and gradient reveals. Role breakdown (Everyone/Users/Admins) with editorial numbered layout and alternating slide-in animations. CTA footer with gradient mesh. References: Human Destroyer, Figma, Revolut.
 
+- [x] **Shared component library extraction** — Created `src/components/` with Alert, FormField, Badge, SearchableSelect, useClickOutside hook, and barrel index. Refactored 22 consumer files across admin, public, meme, financial, and shell pages. Net ~450 lines removed, zero inline alert/dropdown patterns remaining. *(commit c288759)*
+
 ## Upcoming
 
 - [ ] **Analytics dashboard + stats section** — Add site/media/user/rating counts API. Display animated counters on HomePage (scroll-triggered count-up). Requires backend analytics endpoints.
-- [ ] **Shared component library extraction** — Extract repeated patterns into reusable components: Card, DataTable, FormField, Badge, CategoryPills, SearchBar, SkeletonCard, etc.
 - [ ] **Animation & polish pass** — Page transitions, staggered list reveals, skeleton loading states using Framer Motion.
 - [ ] **Dark/light theme toggle** — CSS variables already in place. Needs toggle UI and second set of variable values.
 - [ ] **Accessibility audit** — Focus states, ARIA labels, keyboard navigation, color contrast checks.
