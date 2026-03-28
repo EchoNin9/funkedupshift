@@ -1,5 +1,6 @@
 import React, { lazy, Suspense } from "react";
-import { Link, Navigate, Route, Routes } from "react-router-dom";
+import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { AnimatePresence, motion } from "framer-motion";
 import { useAuth } from "./AuthContext";
 import { useBranding } from "./BrandingContext";
 import { AdminLayout } from "./AdminLayout";
@@ -7,6 +8,7 @@ import { Header } from "./Header";
 import { DesktopHeaderBar } from "./DesktopHeaderBar";
 import { LeftSidebar } from "./LeftSidebar";
 import { getVisibleAdminModules, getVisibleModuleGroups } from "../config/modules";
+import { pageTransition } from "../components/motion";
 
 /* Eager-loaded (above-the-fold) */
 import HomePage from "../features/home/HomePage";
@@ -56,6 +58,7 @@ function PageLoader() {
 const AppLayout: React.FC = () => {
   const { user } = useAuth();
   const { siteName } = useBranding();
+  const location = useLocation();
   const adminModules = getVisibleAdminModules(user);
   const moduleGroups = getVisibleModuleGroups(user);
   const showSidebar = user && (adminModules.length > 0 || moduleGroups.length > 0);
@@ -74,8 +77,16 @@ const AppLayout: React.FC = () => {
         <DesktopHeaderBar />
         <main className="flex-1 min-w-0">
           <div className="container-max py-6">
+            <AnimatePresence mode="wait">
+            <motion.div
+              key={location.pathname.split("/").slice(0, 2).join("/")}
+              variants={pageTransition}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+            >
             <Suspense fallback={<PageLoader />}>
-            <Routes>
+            <Routes location={location}>
               <Route path="/" element={<HomePage />} />
               <Route path="/websites" element={<WebsitesPage />} />
               <Route path="/websites/:id" element={<SiteDetailPage />} />
@@ -111,6 +122,8 @@ const AppLayout: React.FC = () => {
               <Route path="*" element={<div>Not found</div>} />
             </Routes>
             </Suspense>
+            </motion.div>
+            </AnimatePresence>
           </div>
         </main>
 

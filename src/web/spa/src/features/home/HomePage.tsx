@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -12,6 +12,36 @@ import {
 } from "@heroicons/react/24/outline";
 import { useAuth, canAccessSquash, canAccessMemes } from "../../shell/AuthContext";
 import { useBranding } from "../../shell/BrandingContext";
+
+/* ── Animated count-up hook ── */
+function useCountUp(target: number, duration = 1.8, active = true): number {
+  const [value, setValue] = useState(0);
+  useEffect(() => {
+    if (!active) return;
+    let start: number | null = null;
+    let raf: number;
+    const step = (ts: number) => {
+      if (start === null) start = ts;
+      const progress = Math.min((ts - start) / (duration * 1000), 1);
+      // Ease-out cubic
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setValue(Math.round(eased * target));
+      if (progress < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [target, duration, active]);
+  return value;
+}
+
+/* ── Stats data (placeholder — swap with API data later) ── */
+// TODO: Replace with `GET /stats` endpoint when available
+const STATS = [
+  { label: "Curated websites", value: 150, suffix: "+" },
+  { label: "Media items", value: 85, suffix: "+" },
+  { label: "Active users", value: 30, suffix: "+" },
+  { label: "Ratings submitted", value: 1200, suffix: "+" },
+];
 
 /* ── Animation variants ── */
 const fadeUp = {
@@ -101,6 +131,66 @@ const ROLES = [
     number: "03",
   },
 ];
+
+/* ── Stats counter row (scroll-triggered) ── */
+const StatCounter: React.FC<{ label: string; value: number; suffix: string; index: number; active: boolean }> = ({
+  label, value, suffix, index, active,
+}) => {
+  const count = useCountUp(value, 1.8, active);
+  return (
+    <motion.div
+      className="text-center"
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-40px" }}
+      transition={{ duration: 0.5, delay: index * 0.1, ease: [0.22, 1, 0.36, 1] }}
+    >
+      <span className="block text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-text-primary tabular-nums">
+        {count.toLocaleString()}{suffix}
+      </span>
+      <span className="mt-2 block text-sm font-medium text-text-tertiary uppercase tracking-widest">
+        {label}
+      </span>
+    </motion.div>
+  );
+};
+
+const StatsSection: React.FC = () => {
+  const [isVisible, setIsVisible] = useState(false);
+  const callbackRef = React.useCallback((node: HTMLDivElement | null) => {
+    if (!node) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { setIsVisible(true); observer.disconnect(); } },
+      { rootMargin: "-80px" }
+    );
+    observer.observe(node);
+  }, []);
+
+  return (
+    <section ref={callbackRef} className="relative py-20 sm:py-24 overflow-hidden">
+      {/* Divider line */}
+      <div className="pointer-events-none absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border-hover to-transparent" />
+
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 sm:gap-12">
+          {STATS.map((stat, i) => (
+            <StatCounter
+              key={stat.label}
+              label={stat.label}
+              value={stat.value}
+              suffix={stat.suffix}
+              index={i}
+              active={isVisible}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Bottom divider */}
+      <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border-hover to-transparent" />
+    </section>
+  );
+};
 
 const HomePage: React.FC = () => {
   const { user } = useAuth();
@@ -305,6 +395,11 @@ const HomePage: React.FC = () => {
           </motion.div>
         </div>
       </section>
+
+      {/* ════════════════════════════════════════════════
+          SECTION 2.5 — STATS COUNTERS
+         ════════════════════════════════════════════════ */}
+      <StatsSection />
 
       {/* ════════════════════════════════════════════════
           SECTION 3 — ROLE BREAKDOWN (editorial)

@@ -3,6 +3,7 @@ import { Dialog } from "@headlessui/react";
 import { UserCircleIcon } from "@heroicons/react/24/outline";
 import { useImpersonation } from "./ImpersonationContext";
 import { useAuth } from "./AuthContext";
+import { Alert } from "../components";
 import { fetchWithAuth } from "../utils/api";
 
 function getApiBaseUrl(): string | null {
@@ -107,7 +108,7 @@ const ImpersonationSelector: React.FC = () => {
             <Dialog.Title className="text-lg font-semibold text-text-primary">User impersonation</Dialog.Title>
             <p className="mt-1 text-sm text-text-secondary">View the site as another user or a defined role.</p>
             {error && (
-              <div className="mt-2 rounded-md border border-red-500/60 bg-red-500/10 px-3 py-2 text-sm text-red-200">{error}</div>
+              <Alert variant="error" className="mt-2">{error}</Alert>
             )}
             {loading ? (
               <p className="mt-4 text-sm text-text-tertiary">Loading…</p>

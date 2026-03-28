@@ -4,6 +4,7 @@ import { Bars3Icon } from "@heroicons/react/24/outline";
 import { useAuth, hasRole } from "../../shell/AuthContext";
 import { AdminPageHeader } from "./AdminPageHeader";
 import { fetchWithAuth } from "../../utils/api";
+import { Alert } from "../../components";
 
 function getApiBaseUrl(): string | null {
   if (typeof window === "undefined") return null;
@@ -268,14 +269,10 @@ const InternetDashboardAdminPage: React.FC = () => {
         </ul>
 
         {message && (
-          <div className="rounded-md border border-emerald-500/60 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">
-            {message}
-          </div>
+          <Alert variant="success">{message}</Alert>
         )}
         {error && (
-          <div className="rounded-md border border-red-500/60 bg-red-500/10 px-3 py-2 text-sm text-red-200">
-            {error}
-          </div>
+          <Alert variant="error">{error}</Alert>
         )}
       </section>
     </div>

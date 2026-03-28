@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useAuth } from "../../shell/AuthContext";
 import { fetchWithAuthOptional } from "../../utils/api";
+import { Alert, SkeletonGrid } from "../../components";
 
 interface SiteCategory {
   id: string;
@@ -228,12 +229,17 @@ const WebsitesPage: React.FC = () => {
   return (
     <div className="space-y-5">
       {/* ── Header ── */}
-      <header className="space-y-1">
+      <motion.header
+        className="space-y-1"
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+      >
         <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Websites</h1>
         <p className="text-sm text-text-secondary">
           Browse curated sites, see ratings, and jump straight into the interesting corners of the internet.
         </p>
-      </header>
+      </motion.header>
 
       {/* ── Search bar + sort ── */}
       <form
@@ -380,35 +386,11 @@ const WebsitesPage: React.FC = () => {
 
       {/* ── Error ── */}
       {error && (
-        <div className="rounded-xl border border-red-500/60 bg-red-500/10 px-4 py-3 text-xs text-red-200">
-          {error}
-        </div>
+        <Alert variant="error" className="text-xs">{error}</Alert>
       )}
 
       {/* ── Skeleton loading ── */}
-      {isLoading && (
-        <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-4">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="break-inside-avoid mb-4">
-              <div className="overflow-hidden rounded-xl bg-surface-2 border border-border-default">
-                <div className="h-24 bg-surface-3 animate-pulse" />
-                <div className="p-3 space-y-2">
-                  <div className="h-4 w-3/4 rounded bg-surface-3 animate-pulse" />
-                  <div className="h-3 w-1/2 rounded bg-surface-3 animate-pulse" />
-                  <div className="space-y-1">
-                    <div className="h-3 w-full rounded bg-surface-3 animate-pulse" />
-                    <div className="h-3 w-5/6 rounded bg-surface-3 animate-pulse" />
-                  </div>
-                  <div className="flex gap-1 pt-1">
-                    <div className="h-5 w-14 rounded-full bg-surface-3 animate-pulse" />
-                    <div className="h-5 w-10 rounded-full bg-surface-3 animate-pulse" />
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      {isLoading && <SkeletonGrid count={8} heights={["h-24","h-28","h-24","h-32","h-24","h-28"]} />}
 
       {/* ── Empty state ── */}
       {!isLoading && !error && sortedSites.length === 0 && (

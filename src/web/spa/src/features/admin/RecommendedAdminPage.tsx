@@ -6,6 +6,7 @@ import { AdminTabs } from "./AdminTabs";
 import { StarIcon } from "@heroicons/react/24/solid";
 import { useAuth, hasRole } from "../../shell/AuthContext";
 import { fetchWithAuth } from "../../utils/api";
+import { Alert } from "../../components";
 
 function getApiBaseUrl(): string | null {
   if (typeof window === "undefined") return null;
@@ -505,14 +506,10 @@ const ListTab: React.FC<ListTabProps> = ({ config }) => {
         <p className="text-sm text-text-primary0">{config.emptyMessage}</p>
       )}
       {message && (
-        <div className="rounded-md border border-emerald-500/60 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">
-          {message}
-        </div>
+        <Alert variant="success">{message}</Alert>
       )}
       {error && (
-        <div className="rounded-md border border-red-500/60 bg-red-500/10 px-3 py-2 text-sm text-red-200">
-          {error}
-        </div>
+        <Alert variant="error">{error}</Alert>
       )}
     </section>
   );

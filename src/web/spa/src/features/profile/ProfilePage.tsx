@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../shell/AuthContext";
 import { fetchWithAuth } from "../../utils/api";
+import { Alert } from "../../components";
 
 const ROLE_DISPLAY: Record<string, string> = {
   admin: "SuperAdmin",
@@ -396,13 +397,7 @@ const ProfilePage: React.FC = () => {
         <div className="space-y-4">
           <p className="text-sm text-text-secondary">Add or remove yourself from custom groups. Changes take effect immediately.</p>
           {groupsMessage && (
-            <div
-              className={`rounded-md px-3 py-2 text-sm ${
-                groupsMessage.error ? "border-red-500/60 bg-red-500/10 text-red-200" : "border-green-500/40 bg-green-500/10 text-green-200"
-              }`}
-            >
-              {groupsMessage.text}
-            </div>
+            <Alert variant={groupsMessage.error ? "error" : "success"}>{groupsMessage.text}</Alert>
           )}
           {groupsLoading ? (
             <p className="text-sm text-text-primary0">Loading groups…</p>
@@ -463,13 +458,7 @@ const ProfilePage: React.FC = () => {
       </div>
 
       {message && (
-        <div
-          className={`rounded-md px-3 py-2 text-sm ${
-            message.error ? "border-red-500/60 bg-red-500/10 text-red-200" : "border-green-500/40 bg-green-500/10 text-green-200"
-          }`}
-        >
-          {message.text}
-        </div>
+        <Alert variant={message.error ? "error" : "success"}>{message.text}</Alert>
       )}
 
       {profile && (

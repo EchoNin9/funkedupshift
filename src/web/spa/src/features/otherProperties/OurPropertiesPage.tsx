@@ -4,6 +4,7 @@ import { Dialog } from "@headlessui/react";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import { useAuth, hasRole } from "../../shell/AuthContext";
 import { fetchWithAuthOptional } from "../../utils/api";
+import { Alert } from "../../components";
 
 interface OurPropertiesSite {
   url: string;
@@ -107,9 +108,7 @@ const OurPropertiesPage: React.FC = () => {
       )}
 
       {error && !sites.length && (
-        <div className="rounded-md border border-red-500/60 bg-red-500/10 px-3 py-2 text-xs text-red-200">
-          {error}
-        </div>
+        <Alert variant="error">{error}</Alert>
       )}
 
       {!isLoading && sites.length === 0 && !error && (

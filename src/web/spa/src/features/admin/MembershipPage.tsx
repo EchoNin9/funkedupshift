@@ -4,6 +4,7 @@ import { Bars3Icon, UserGroupIcon, Squares2X2Icon, KeyIcon, XMarkIcon } from "@h
 import { useAuth, hasRole } from "../../shell/AuthContext";
 import { AdminPageHeader } from "./AdminPageHeader";
 import { fetchWithAuth } from "../../utils/api";
+import { Alert } from "../../components";
 
 const ROLE_DISPLAY: Record<string, string> = {
   admin: "SuperAdmin",
@@ -631,7 +632,7 @@ const MembershipPage: React.FC = () => {
           </div>
 
           {usersError && (
-            <div className="rounded-md border border-red-500/60 bg-red-500/10 px-3 py-2 text-sm text-red-200">{usersError}</div>
+            <Alert variant="error">{usersError}</Alert>
           )}
 
           <div className="overflow-x-auto rounded-lg border border-border-default">
@@ -724,10 +725,10 @@ const MembershipPage: React.FC = () => {
               {isSubmitting ? "Creating…" : "Create"}
             </button>
             {message && (
-              <div className="rounded-md border border-emerald-500/60 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">{message}</div>
+              <Alert variant="success">{message}</Alert>
             )}
             {groupsError && (
-              <div className="rounded-md border border-red-500/60 bg-red-500/10 px-3 py-2 text-sm text-red-200">{groupsError}</div>
+              <Alert variant="error">{groupsError}</Alert>
             )}
           </form>
 
@@ -876,10 +877,10 @@ const MembershipPage: React.FC = () => {
               {isRoleSubmitting ? "Creating…" : "Create"}
             </button>
             {roleMessage && (
-              <div className="rounded-md border border-emerald-500/60 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">{roleMessage}</div>
+              <Alert variant="success">{roleMessage}</Alert>
             )}
             {rolesError && (
-              <div className="rounded-md border border-red-500/60 bg-red-500/10 px-3 py-2 text-sm text-red-200">{rolesError}</div>
+              <Alert variant="error">{rolesError}</Alert>
             )}
           </form>
 
