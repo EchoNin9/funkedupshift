@@ -1578,6 +1578,22 @@ resource "aws_apigatewayv2_route" "vehiclesExpensesImport" {
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
+resource "aws_apigatewayv2_route" "vehiclesExpensesMaintenanceTags" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /vehicles-expenses/maintenance-tags"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "vehiclesExpensesMaintenanceVendors" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /vehicles-expenses/maintenance-vendors"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
 resource "aws_apigatewayv2_route" "vehiclesExpensesFuelList" {
   api_id             = aws_apigatewayv2_api.main.id
   route_key          = "GET /vehicles-expenses/{vehicleId}/fuel"
@@ -1613,6 +1629,54 @@ resource "aws_apigatewayv2_route" "vehiclesExpensesFuelPut" {
 resource "aws_apigatewayv2_route" "vehiclesExpensesFuelDelete" {
   api_id             = aws_apigatewayv2_api.main.id
   route_key          = "DELETE /vehicles-expenses/{vehicleId}/fuel/{fillupId}"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "vehiclesExpensesMaintenanceList" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /vehicles-expenses/{vehicleId}/maintenance"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "vehiclesExpensesMaintenanceCreate" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /vehicles-expenses/{vehicleId}/maintenance"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "vehiclesExpensesMaintenanceGet" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /vehicles-expenses/{vehicleId}/maintenance/{maintenanceId}"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "vehiclesExpensesMaintenancePut" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "PUT /vehicles-expenses/{vehicleId}/maintenance/{maintenanceId}"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "vehiclesExpensesMaintenanceDelete" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "DELETE /vehicles-expenses/{vehicleId}/maintenance/{maintenanceId}"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "vehiclesExpensesMaintenanceUpload" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /vehicles-expenses/{vehicleId}/maintenance/upload"
   target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
   authorization_type = "JWT"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
