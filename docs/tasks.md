@@ -2,6 +2,16 @@
 
 ## Completed
 
+- [x] **Vehicle expenses: per-vehicle Totals tab with range filtering** — Added a new `Totals` tab alongside `Fuel` and `Maintenance` for each vehicle, showing Fuel total, Maintenance total, and combined total. Added a matching collapsible `Limit results` panel with date-range selection (default all-time) to constrain totals by period.
+
+- [x] **Vehicle maintenance filters: “Limit results” panel parity with fuel** — Added a collapsible `Limit results` drop-shade panel to the Maintenance tab using the same interaction/style pattern as Fuel. Implemented maintenance filtering by start/end date, sort order, vendor query, price threshold, and mileage threshold, plus filtered-count display (`x of y`) and no-match empty-state messaging.
+
+- [x] **Infra fix: expose vehicle maintenance API routes (CORS unblock)** — Added missing API Gateway HTTP API routes in Terraform for maintenance endpoints and metadata (`/vehicles-expenses/{vehicleId}/maintenance*`, `/vehicles-expenses/maintenance-tags`, `/vehicles-expenses/maintenance-vendors`) so requests reach Lambda and return CORS-enabled responses instead of gateway-level route misses.
+
+- [x] **Vehicle maintenance vendors: reusable per-user autocomplete** — Added per-user persistent vendor registry for maintenance expenses with API suggestions endpoint (`/vehicles-expenses/maintenance-vendors` + `?q=` filtering). Wired maintenance vendor inputs (create/edit) to typing dropdown suggestions in `VehiclesExpensesPage`, and save new vendors automatically on maintenance create/update. Added backend tests for vendors endpoint and dedupe/filter behavior.
+
+- [x] **Vehicle expenses: per-vehicle Maintenance tab** — Added nested `Fuel | Maintenance` tabs under each vehicle on `VehiclesExpensesPage`. Kept existing Fuel flow unchanged while introducing Maintenance CRUD with fields: date, price, mileage, description, vendor, tags, and multi-file attachments. Added per-user private maintenance tag registry/suggestions, maintenance attachment presigned upload endpoint, and new maintenance API routes/handlers (`/vehicles-expenses/maintenance-tags`, `/vehicles-expenses/{vehicleId}/maintenance`, `/vehicles-expenses/{vehicleId}/maintenance/upload`). Expanded backend tests for maintenance routes, upload metadata response, and tag dedupe/filter behavior.
+
 - [x] **Shell UI overhaul** — Dark refined theme (Linear/Vercel-inspired), new design system with CSS custom properties, responsive nav. Split Header into MobileHeader + DesktopHeaderBar + UserMenu. Restyled LeftSidebar with brand section and animated accordions. Inter-only typography, near-black zinc palette with blue accent. *(commit c210d69)*
 - [x] **Media & Websites pages — Dribbble-style masonry grid** — Replaced search-first list views with visual-first masonry grids (CSS columns). Auto-load content on mount. Horizontal scrollable category pills, pill-shaped search bar, skeleton loading states, staggered Framer Motion card animations, hover effects. All slate-*/brand-* tokens migrated to semantic design system. *(commit 6d2d9be)*
 

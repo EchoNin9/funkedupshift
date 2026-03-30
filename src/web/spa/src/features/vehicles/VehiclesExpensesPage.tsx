@@ -3,6 +3,7 @@ import { useAuth, canAccessExpenses } from "../../shell/AuthContext";
 import { fetchWithAuth } from "../../utils/api";
 import { Alert } from "../../components";
 import { AdminTabs } from "../admin/AdminTabs";
+import AddTagInput from "../memes/AddTagInput";
 
 function getApiBaseUrl(): string | null {
   if (typeof window === "undefined") return null;
@@ -24,6 +25,27 @@ interface FuelEntry {
   fuel_price?: number; // legacy API key
   fuelLitres?: number;
   odometerKm?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+interface MaintenanceAttachment {
+  key: string;
+  filename?: string;
+  contentType?: string;
+  size?: number;
+  url?: string;
+}
+
+interface MaintenanceEntry {
+  id: string;
+  date?: string;
+  price?: number;
+  mileage?: number;
+  description?: string;
+  vendor?: string;
+  tags?: string[];
+  attachments?: MaintenanceAttachment[];
   createdAt?: string;
   updatedAt?: string;
 }
@@ -167,10 +189,13 @@ const VehiclesExpensesPage: React.FC = () => {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
   const [fuelEntries, setFuelEntries] = useState<FuelEntry[]>([]);
+  const [maintenanceEntries, setMaintenanceEntries] = useState<MaintenanceEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [fuelLoading, setFuelLoading] = useState(false);
+  const [maintenanceLoading, setMaintenanceLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [activeExpenseTab, setActiveExpenseTab] = useState<"fuel" | "maintenance" | "totals">("fuel");
   const [showAddVehicle, setShowAddVehicle] = useState(false);
   const [newVehicleName, setNewVehicleName] = useState("");
   const [fuelForm, setFuelForm] = useState({
@@ -182,6 +207,28 @@ const VehiclesExpensesPage: React.FC = () => {
   const [importing, setImporting] = useState(false);
   const [importMessage, setImportMessage] = useState<string | null>(null);
   const [showImportHelp, setShowImportHelp] = useState(false);
+  const [maintenanceTags, setMaintenanceTags] = useState<string[]>([]);
+  const [maintenanceVendors, setMaintenanceVendors] = useState<string[]>([]);
+  const [maintenanceForm, setMaintenanceForm] = useState({
+    date: new Date().toISOString().slice(0, 10),
+    price: "",
+    mileage: "",
+    description: "",
+    vendor: "",
+    tags: [] as string[],
+    attachments: [] as MaintenanceAttachment[],
+  });
+  const [pendingAttachments, setPendingAttachments] = useState<File[]>([]);
+  const [editingMaintenanceId, setEditingMaintenanceId] = useState<string | null>(null);
+  const [editMaintenanceForm, setEditMaintenanceForm] = useState({
+    date: "",
+    price: "",
+    mileage: "",
+    description: "",
+    vendor: "",
+    tags: [] as string[],
+    attachments: [] as MaintenanceAttachment[],
+  });
   const [renamingVehicleId, setRenamingVehicleId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [editingFuelId, setEditingFuelId] = useState<string | null>(null);
@@ -192,6 +239,8 @@ const VehiclesExpensesPage: React.FC = () => {
     odometerKm: "",
   });
   const [limitResultsOpen, setLimitResultsOpen] = useState(false);
+  const [maintenanceLimitResultsOpen, setMaintenanceLimitResultsOpen] = useState(false);
+  const [totalsLimitResultsOpen, setTotalsLimitResultsOpen] = useState(false);
   const [displayGraphOpen, setDisplayGraphOpen] = useState(false);
   const [filters, setFilters] = useState({
     startDate: "",
@@ -201,6 +250,20 @@ const VehiclesExpensesPage: React.FC = () => {
     fuelPriceVal: "",
     pricePerLOp: "higher" as "higher" | "lower",
     pricePerLVal: "",
+  });
+  const [maintenanceFilters, setMaintenanceFilters] = useState({
+    startDate: "",
+    endDate: "",
+    sortNewestFirst: true,
+    priceOp: "higher" as "higher" | "lower",
+    priceVal: "",
+    mileageOp: "higher" as "higher" | "lower",
+    mileageVal: "",
+    vendorQuery: "",
+  });
+  const [totalsFilters, setTotalsFilters] = useState({
+    startDate: "",
+    endDate: "",
   });
 
   const loadVehicles = useCallback(async () => {
@@ -251,15 +314,135 @@ const VehiclesExpensesPage: React.FC = () => {
     }
   }, []);
 
-  useEffect(() => {
-    if (canAccess) loadVehicles();
-    else setLoading(false);
-  }, [canAccess, loadVehicles]);
+  const loadMaintenanceEntries = useCallback(async (vehicleId: string) => {
+    const apiBase = getApiBaseUrl();
+    if (!apiBase) return;
+    setMaintenanceLoading(true);
+    try {
+      const resp = await fetchWithAuth(
+        `${apiBase}/vehicles-expenses/${encodeURIComponent(vehicleId)}/maintenance`
+      );
+      if (!resp.ok) throw new Error("Failed to load maintenance entries");
+      const data = (await resp.json()) as { entries?: MaintenanceEntry[] };
+      const entries = data.entries ?? [];
+      entries.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+      setMaintenanceEntries(entries);
+    } catch {
+      setMaintenanceEntries([]);
+    } finally {
+      setMaintenanceLoading(false);
+    }
+  }, []);
+
+  const loadMaintenanceTags = useCallback(async () => {
+    const apiBase = getApiBaseUrl();
+    if (!apiBase) return;
+    try {
+      const resp = await fetchWithAuth(`${apiBase}/vehicles-expenses/maintenance-tags`);
+      if (!resp.ok) return;
+      const data = (await resp.json()) as { tags?: string[] };
+      setMaintenanceTags(Array.isArray(data.tags) ? data.tags : []);
+    } catch {
+      setMaintenanceTags([]);
+    }
+  }, []);
+
+  const loadMaintenanceVendors = useCallback(async () => {
+    const apiBase = getApiBaseUrl();
+    if (!apiBase) return;
+    try {
+      const resp = await fetchWithAuth(`${apiBase}/vehicles-expenses/maintenance-vendors`);
+      if (!resp.ok) return;
+      const data = (await resp.json()) as { vendors?: string[] };
+      setMaintenanceVendors(Array.isArray(data.vendors) ? data.vendors : []);
+    } catch {
+      setMaintenanceVendors([]);
+    }
+  }, []);
+
+  const fetchMaintenanceTags = useCallback(async (q: string) => {
+    const apiBase = getApiBaseUrl();
+    if (!apiBase) return [];
+    const resp = await fetchWithAuth(
+      `${apiBase}/vehicles-expenses/maintenance-tags?q=${encodeURIComponent(q)}`
+    );
+    if (!resp.ok) return [];
+    const data = (await resp.json()) as { tags?: string[] };
+    return Array.isArray(data.tags) ? data.tags : [];
+  }, []);
+
+  const fetchMaintenanceVendors = useCallback(async (q: string) => {
+    const apiBase = getApiBaseUrl();
+    if (!apiBase) return [];
+    const resp = await fetchWithAuth(
+      `${apiBase}/vehicles-expenses/maintenance-vendors?q=${encodeURIComponent(q)}`
+    );
+    if (!resp.ok) return [];
+    const data = (await resp.json()) as { vendors?: string[] };
+    const vendors = Array.isArray(data.vendors) ? data.vendors : [];
+    setMaintenanceVendors(vendors);
+    return vendors;
+  }, []);
+
+  const uploadMaintenanceFiles = useCallback(async (vehicleId: string, files: File[]) => {
+    const apiBase = getApiBaseUrl();
+    if (!apiBase || files.length === 0) return [];
+    const uploaded: MaintenanceAttachment[] = [];
+    for (const file of files) {
+      const metaResp = await fetchWithAuth(
+        `${apiBase}/vehicles-expenses/${encodeURIComponent(vehicleId)}/maintenance/upload`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            filename: file.name,
+            contentType: file.type || "application/octet-stream",
+          }),
+        }
+      );
+      if (!metaResp.ok) {
+        throw new Error(`Failed to get upload URL for ${file.name}`);
+      }
+      const uploadMeta = (await metaResp.json()) as { uploadUrl?: string; key?: string; filename?: string; contentType?: string };
+      if (!uploadMeta.uploadUrl || !uploadMeta.key) {
+        throw new Error(`Upload URL missing for ${file.name}`);
+      }
+      const putResp = await fetch(uploadMeta.uploadUrl, {
+        method: "PUT",
+        headers: { "Content-Type": file.type || "application/octet-stream" },
+        body: file,
+      });
+      if (!putResp.ok) {
+        throw new Error(`Upload failed for ${file.name}`);
+      }
+      uploaded.push({
+        key: uploadMeta.key,
+        filename: uploadMeta.filename || file.name,
+        contentType: uploadMeta.contentType || file.type || "application/octet-stream",
+        size: file.size,
+      });
+    }
+    return uploaded;
+  }, []);
 
   useEffect(() => {
-    if (selectedVehicleId) loadFuelEntries(selectedVehicleId);
-    else setFuelEntries([]);
-  }, [selectedVehicleId, loadFuelEntries]);
+    if (canAccess) {
+      loadVehicles();
+      loadMaintenanceTags();
+      loadMaintenanceVendors();
+    }
+    else setLoading(false);
+  }, [canAccess, loadVehicles, loadMaintenanceTags, loadMaintenanceVendors]);
+
+  useEffect(() => {
+    if (selectedVehicleId) {
+      loadFuelEntries(selectedVehicleId);
+      loadMaintenanceEntries(selectedVehicleId);
+    } else {
+      setFuelEntries([]);
+      setMaintenanceEntries([]);
+    }
+  }, [selectedVehicleId, loadFuelEntries, loadMaintenanceEntries]);
 
   useEffect(() => {
     if (renamingVehicleId && renamingVehicleId !== selectedVehicleId) {
@@ -270,6 +453,7 @@ const VehiclesExpensesPage: React.FC = () => {
 
   useEffect(() => {
     setEditingFuelId(null);
+    setEditingMaintenanceId(null);
   }, [selectedVehicleId]);
 
   const pricePerLitreByEntry = React.useMemo(() => {
@@ -309,6 +493,75 @@ const VehiclesExpensesPage: React.FC = () => {
     );
     return list;
   }, [fuelEntries, filters, pricePerLitreByEntry]);
+
+  const filteredMaintenanceEntries = React.useMemo(() => {
+    let list = [...maintenanceEntries];
+    const {
+      startDate,
+      endDate,
+      sortNewestFirst,
+      priceOp,
+      priceVal,
+      mileageOp,
+      mileageVal,
+      vendorQuery,
+    } = maintenanceFilters;
+
+    if (startDate) list = list.filter((e) => (e.date ?? "") >= startDate);
+    if (endDate) list = list.filter((e) => (e.date ?? "") <= endDate);
+
+    const pVal = parseFloat(priceVal);
+    if (!isNaN(pVal) && priceVal) {
+      list = list.filter((e) => {
+        const p = e.price ?? 0;
+        return priceOp === "higher" ? p >= pVal : p <= pVal;
+      });
+    }
+
+    const mVal = parseFloat(mileageVal);
+    if (!isNaN(mVal) && mileageVal) {
+      list = list.filter((e) => {
+        const m = e.mileage ?? 0;
+        return mileageOp === "higher" ? m >= mVal : m <= mVal;
+      });
+    }
+
+    const vq = vendorQuery.trim().toLowerCase();
+    if (vq) {
+      list = list.filter((e) => (e.vendor ?? "").toLowerCase().includes(vq));
+    }
+
+    list.sort((a, b) =>
+      sortNewestFirst
+        ? (b.date || "").localeCompare(a.date || "")
+        : (a.date || "").localeCompare(b.date || "")
+    );
+    return list;
+  }, [maintenanceEntries, maintenanceFilters]);
+
+  const filteredFuelEntriesForTotals = React.useMemo(() => {
+    let list = [...fuelEntries];
+    if (totalsFilters.startDate) list = list.filter((e) => (e.date ?? "") >= totalsFilters.startDate);
+    if (totalsFilters.endDate) list = list.filter((e) => (e.date ?? "") <= totalsFilters.endDate);
+    return list;
+  }, [fuelEntries, totalsFilters]);
+
+  const filteredMaintenanceEntriesForTotals = React.useMemo(() => {
+    let list = [...maintenanceEntries];
+    if (totalsFilters.startDate) list = list.filter((e) => (e.date ?? "") >= totalsFilters.startDate);
+    if (totalsFilters.endDate) list = list.filter((e) => (e.date ?? "") <= totalsFilters.endDate);
+    return list;
+  }, [maintenanceEntries, totalsFilters]);
+
+  const totalsSummary = React.useMemo(() => {
+    const fuelTotal = filteredFuelEntriesForTotals.reduce((sum, e) => sum + (e.fuelPrice ?? e.fuel_price ?? 0), 0);
+    const maintenanceTotal = filteredMaintenanceEntriesForTotals.reduce((sum, e) => sum + (e.price ?? 0), 0);
+    return {
+      fuelTotal,
+      maintenanceTotal,
+      combinedTotal: fuelTotal + maintenanceTotal,
+    };
+  }, [filteredFuelEntriesForTotals, filteredMaintenanceEntriesForTotals]);
 
   const handleAddVehicle = async () => {
     const name = newVehicleName.trim();
@@ -497,6 +750,119 @@ const VehiclesExpensesPage: React.FC = () => {
       loadFuelEntries(selectedVehicleId);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Failed to delete");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleAddMaintenance = async () => {
+    if (!selectedVehicleId) return;
+    const apiBase = getApiBaseUrl();
+    if (!apiBase) return;
+    const price = parseFloat(maintenanceForm.price);
+    const mileage = parseFloat(maintenanceForm.mileage);
+    if (isNaN(price) || isNaN(mileage) || !maintenanceForm.date) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const uploaded = await uploadMaintenanceFiles(selectedVehicleId, pendingAttachments);
+      const resp = await fetchWithAuth(
+        `${apiBase}/vehicles-expenses/${encodeURIComponent(selectedVehicleId)}/maintenance`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            date: maintenanceForm.date,
+            price,
+            mileage,
+            description: maintenanceForm.description.trim(),
+            vendor: maintenanceForm.vendor.trim(),
+            tags: maintenanceForm.tags,
+            attachments: uploaded,
+          }),
+        }
+      );
+      if (!resp.ok) {
+        const d = await resp.json().catch(() => ({}));
+        throw new Error((d as { error?: string }).error || "Failed to add maintenance entry");
+      }
+      setMaintenanceForm({
+        date: new Date().toISOString().slice(0, 10),
+        price: "",
+        mileage: "",
+        description: "",
+        vendor: "",
+        tags: [],
+        attachments: [],
+      });
+      setPendingAttachments([]);
+      loadMaintenanceEntries(selectedVehicleId);
+      loadMaintenanceTags();
+      loadMaintenanceVendors();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed to add maintenance entry");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleUpdateMaintenance = async (maintenanceId: string) => {
+    if (!selectedVehicleId) return;
+    const apiBase = getApiBaseUrl();
+    if (!apiBase) return;
+    const price = parseFloat(editMaintenanceForm.price);
+    const mileage = parseFloat(editMaintenanceForm.mileage);
+    if (isNaN(price) || isNaN(mileage) || !editMaintenanceForm.date) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const resp = await fetchWithAuth(
+        `${apiBase}/vehicles-expenses/${encodeURIComponent(selectedVehicleId)}/maintenance/${encodeURIComponent(maintenanceId)}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            date: editMaintenanceForm.date,
+            price,
+            mileage,
+            description: editMaintenanceForm.description.trim(),
+            vendor: editMaintenanceForm.vendor.trim(),
+            tags: editMaintenanceForm.tags,
+            attachments: editMaintenanceForm.attachments,
+          }),
+        }
+      );
+      if (!resp.ok) {
+        const d = await resp.json().catch(() => ({}));
+        throw new Error((d as { error?: string }).error || "Failed to update maintenance entry");
+      }
+      setEditingMaintenanceId(null);
+      loadMaintenanceEntries(selectedVehicleId);
+      loadMaintenanceTags();
+      loadMaintenanceVendors();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed to update maintenance entry");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteMaintenance = async (maintenanceId: string) => {
+    if (!selectedVehicleId || !window.confirm("Delete this maintenance entry?")) return;
+    const apiBase = getApiBaseUrl();
+    if (!apiBase) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const resp = await fetchWithAuth(
+        `${apiBase}/vehicles-expenses/${encodeURIComponent(selectedVehicleId)}/maintenance/${encodeURIComponent(maintenanceId)}`,
+        { method: "DELETE" }
+      );
+      if (!resp.ok) throw new Error("Failed to delete maintenance entry");
+      setEditingMaintenanceId(null);
+      loadMaintenanceEntries(selectedVehicleId);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed to delete maintenance entry");
     } finally {
       setSaving(false);
     }
@@ -718,6 +1084,7 @@ const VehiclesExpensesPage: React.FC = () => {
           } else {
             setShowAddVehicle(false);
             setSelectedVehicleId(id);
+            setActiveExpenseTab("fuel");
           }
         }}
       />
@@ -807,6 +1174,43 @@ const VehiclesExpensesPage: React.FC = () => {
                 Delete vehicle
               </button>
             </div>
+            <div className="mb-4 flex gap-2 border-b border-border-hover pb-2">
+              <button
+                type="button"
+                onClick={() => setActiveExpenseTab("fuel")}
+                className={`rounded-md px-3 py-1.5 text-sm ${
+                  activeExpenseTab === "fuel"
+                    ? "bg-surface-3 text-text-primary"
+                    : "text-text-secondary hover:text-text-primary"
+                }`}
+              >
+                Fuel
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveExpenseTab("maintenance")}
+                className={`rounded-md px-3 py-1.5 text-sm ${
+                  activeExpenseTab === "maintenance"
+                    ? "bg-surface-3 text-text-primary"
+                    : "text-text-secondary hover:text-text-primary"
+                }`}
+              >
+                Maintenance
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveExpenseTab("totals")}
+                className={`rounded-md px-3 py-1.5 text-sm ${
+                  activeExpenseTab === "totals"
+                    ? "bg-surface-3 text-text-primary"
+                    : "text-text-secondary hover:text-text-primary"
+                }`}
+              >
+                Totals
+              </button>
+            </div>
+            {activeExpenseTab === "fuel" ? (
+              <>
             <h2 className="text-sm font-semibold text-text-secondary mb-3">Add fuel expense</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               <input
@@ -847,8 +1251,102 @@ const VehiclesExpensesPage: React.FC = () => {
             >
               {saving ? "Adding…" : "Add fuel entry"}
             </button>
+              </>
+            ) : activeExpenseTab === "maintenance" ? (
+              <div className="space-y-4">
+                <h2 className="text-sm font-semibold text-text-secondary">Add maintenance expense</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <input
+                    type="date"
+                    value={maintenanceForm.date}
+                    onChange={(e) => setMaintenanceForm((f) => ({ ...f, date: e.target.value }))}
+                    className="rounded-md border border-border-hover bg-surface-3 px-3 py-2 text-text-primary"
+                  />
+                  <input
+                    type="number"
+                    step="0.01"
+                    placeholder="Price ($)"
+                    value={maintenanceForm.price}
+                    onChange={(e) => setMaintenanceForm((f) => ({ ...f, price: e.target.value }))}
+                    className="rounded-md border border-border-hover bg-surface-3 px-3 py-2 text-text-primary"
+                  />
+                  <input
+                    type="number"
+                    step="1"
+                    placeholder="Mileage (km)"
+                    value={maintenanceForm.mileage}
+                    onChange={(e) => setMaintenanceForm((f) => ({ ...f, mileage: e.target.value }))}
+                    className="rounded-md border border-border-hover bg-surface-3 px-3 py-2 text-text-primary"
+                  />
+                  <input
+                    type="text"
+                    list="maintenance-vendors-list"
+                    placeholder="Vendor"
+                    value={maintenanceForm.vendor}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setMaintenanceForm((f) => ({ ...f, vendor: value }));
+                      void fetchMaintenanceVendors(value);
+                    }}
+                    className="rounded-md border border-border-hover bg-surface-3 px-3 py-2 text-text-primary"
+                  />
+                </div>
+                <textarea
+                  rows={3}
+                  placeholder="Description"
+                  value={maintenanceForm.description}
+                  onChange={(e) => setMaintenanceForm((f) => ({ ...f, description: e.target.value }))}
+                  className="w-full rounded-md border border-border-hover bg-surface-3 px-3 py-2 text-text-primary"
+                />
+                <div>
+                  <p className="mb-2 text-xs text-text-primary0">Tags</p>
+                  <AddTagInput
+                    tags={maintenanceForm.tags}
+                    onTagsChange={(tags) => setMaintenanceForm((f) => ({ ...f, tags }))}
+                    allTags={maintenanceTags}
+                    fetchTags={fetchMaintenanceTags}
+                    placeholder="Add maintenance tags"
+                  />
+                </div>
+                <div>
+                  <label className="mb-2 block text-xs text-text-primary0">Attachments</label>
+                  <input
+                    type="file"
+                    multiple
+                    accept=".pdf,.jpg,.jpeg,.png,.txt,.csv,.doc,.docx,.xls,.xlsx,.webp,.gif"
+                    onChange={(e) => setPendingAttachments(Array.from(e.target.files || []))}
+                    className="block w-full text-xs text-text-secondary file:mr-3 file:rounded-md file:border-0 file:bg-surface-3 file:px-3 file:py-1.5 file:text-text-primary"
+                  />
+                  {pendingAttachments.length > 0 && (
+                    <p className="mt-1 text-xs text-text-primary0">
+                      {pendingAttachments.length} file(s) selected: {pendingAttachments.map((f) => f.name).join(", ")}
+                    </p>
+                  )}
+                </div>
+                <button
+                  onClick={handleAddMaintenance}
+                  disabled={saving || !maintenanceForm.date || !maintenanceForm.price || !maintenanceForm.mileage}
+                  className="rounded-md bg-accent-500 px-4 py-2 text-sm font-medium text-white hover:bg-accent-600 disabled:opacity-50"
+                >
+                  {saving ? "Adding…" : "Add maintenance entry"}
+                </button>
+                <datalist id="maintenance-vendors-list">
+                  {maintenanceVendors.map((v) => (
+                    <option key={v} value={v} />
+                  ))}
+                </datalist>
+              </div>
+            ) : (
+              <div className="rounded-lg border border-border-hover bg-surface-3 p-4">
+                <p className="text-sm text-text-secondary">
+                  Totals summary for the selected vehicle. Use the Totals tab filters below to limit the time range.
+                </p>
+              </div>
+            )}
           </div>
 
+          {activeExpenseTab === "fuel" && (
+          <>
           <div className="rounded-lg border border-border-hover bg-surface-3 overflow-hidden">
             <button
               type="button"
@@ -1180,6 +1678,310 @@ const VehiclesExpensesPage: React.FC = () => {
               </div>
             )}
           </div>
+          </>
+          )}
+
+          {activeExpenseTab === "maintenance" && (
+            <>
+            <div className="rounded-lg border border-border-hover bg-surface-3 overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setMaintenanceLimitResultsOpen((o) => !o)}
+                className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-surface-3/30 transition-colors"
+              >
+                <span className="text-sm font-medium text-text-primary">Limit results</span>
+                <span className="text-text-secondary">{maintenanceLimitResultsOpen ? "▼" : "▶"}</span>
+              </button>
+              {maintenanceLimitResultsOpen && (
+                <div className="px-4 pb-4 pt-1 border-t border-border-hover space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div>
+                      <label className="block text-xs text-text-primary0 mb-1">Start date</label>
+                      <input
+                        type="date"
+                        value={maintenanceFilters.startDate}
+                        onChange={(e) => setMaintenanceFilters((f) => ({ ...f, startDate: e.target.value }))}
+                        className="w-full rounded-md border border-border-hover bg-surface-3 px-3 py-2 text-sm text-text-primary"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-text-primary0 mb-1">End date</label>
+                      <input
+                        type="date"
+                        value={maintenanceFilters.endDate}
+                        onChange={(e) => setMaintenanceFilters((f) => ({ ...f, endDate: e.target.value }))}
+                        className="w-full rounded-md border border-border-hover bg-surface-3 px-3 py-2 text-sm text-text-primary"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-text-primary0 mb-1">Sort order</label>
+                      <select
+                        value={maintenanceFilters.sortNewestFirst ? "newest" : "oldest"}
+                        onChange={(e) =>
+                          setMaintenanceFilters((f) => ({ ...f, sortNewestFirst: e.target.value === "newest" }))
+                        }
+                        className="w-full rounded-md border border-border-hover bg-surface-3 px-3 py-2 text-sm text-text-primary"
+                      >
+                        <option value="newest">Newest first</option>
+                        <option value="oldest">Oldest first</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-text-primary0 mb-1">Vendor contains</label>
+                      <input
+                        type="text"
+                        value={maintenanceFilters.vendorQuery}
+                        onChange={(e) => setMaintenanceFilters((f) => ({ ...f, vendorQuery: e.target.value }))}
+                        className="w-full rounded-md border border-border-hover bg-surface-3 px-3 py-2 text-sm text-text-primary"
+                        placeholder="e.g. quick"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="flex gap-2 items-end">
+                      <div className="flex-1">
+                        <label className="block text-xs text-text-primary0 mb-1">Price ($)</label>
+                        <div className="flex gap-2">
+                          <select
+                            value={maintenanceFilters.priceOp}
+                            onChange={(e) =>
+                              setMaintenanceFilters((f) => ({
+                                ...f,
+                                priceOp: e.target.value as "higher" | "lower",
+                              }))
+                            }
+                            className="rounded-md border border-border-hover bg-surface-3 px-2 py-2 text-sm text-text-primary"
+                          >
+                            <option value="higher">Higher than</option>
+                            <option value="lower">Lower than</option>
+                          </select>
+                          <input
+                            type="number"
+                            step="0.01"
+                            placeholder="e.g. 200"
+                            value={maintenanceFilters.priceVal}
+                            onChange={(e) => setMaintenanceFilters((f) => ({ ...f, priceVal: e.target.value }))}
+                            className="flex-1 rounded-md border border-border-hover bg-surface-3 px-3 py-2 text-sm text-text-primary placeholder-text-tertiary"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 items-end">
+                      <div className="flex-1">
+                        <label className="block text-xs text-text-primary0 mb-1">Mileage (km)</label>
+                        <div className="flex gap-2">
+                          <select
+                            value={maintenanceFilters.mileageOp}
+                            onChange={(e) =>
+                              setMaintenanceFilters((f) => ({
+                                ...f,
+                                mileageOp: e.target.value as "higher" | "lower",
+                              }))
+                            }
+                            className="rounded-md border border-border-hover bg-surface-3 px-2 py-2 text-sm text-text-primary"
+                          >
+                            <option value="higher">Higher than</option>
+                            <option value="lower">Lower than</option>
+                          </select>
+                          <input
+                            type="number"
+                            step="1"
+                            placeholder="e.g. 100000"
+                            value={maintenanceFilters.mileageVal}
+                            onChange={(e) => setMaintenanceFilters((f) => ({ ...f, mileageVal: e.target.value }))}
+                            className="flex-1 rounded-md border border-border-hover bg-surface-3 px-3 py-2 text-sm text-text-primary placeholder-text-tertiary"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="rounded-lg border border-border-hover bg-surface-2 overflow-hidden">
+              <h2 className="text-sm font-semibold text-text-secondary px-4 py-3 border-b border-border-hover">
+                Maintenance expenses ({maintenanceFilters.sortNewestFirst ? "newest first" : "oldest first"})
+                {filteredMaintenanceEntries.length !== maintenanceEntries.length && (
+                  <span className="font-normal text-text-primary0 ml-2">
+                    ({filteredMaintenanceEntries.length} of {maintenanceEntries.length})
+                  </span>
+                )}
+              </h2>
+              {maintenanceLoading ? (
+                <div className="p-8 text-center text-text-primary0">Loading…</div>
+              ) : filteredMaintenanceEntries.length === 0 ? (
+                <div className="p-8 text-center text-text-primary0">
+                  {maintenanceEntries.length === 0
+                    ? "No maintenance entries yet. Add one above."
+                    : "No entries match the current filters. Adjust or clear filters."}
+                </div>
+              ) : (
+                <div className="divide-y divide-border-hover">
+                  {filteredMaintenanceEntries.map((entry) => {
+                    const isEditing = editingMaintenanceId === entry.id;
+                    return (
+                      <div key={entry.id} className="p-4">
+                        {isEditing ? (
+                          <div className="space-y-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <input type="date" value={editMaintenanceForm.date} onChange={(e) => setEditMaintenanceForm((f) => ({ ...f, date: e.target.value }))} className="rounded border border-border-hover bg-surface-3 px-2 py-1.5 text-sm text-text-primary" />
+                              <input type="number" step="0.01" value={editMaintenanceForm.price} onChange={(e) => setEditMaintenanceForm((f) => ({ ...f, price: e.target.value }))} className="rounded border border-border-hover bg-surface-3 px-2 py-1.5 text-sm text-text-primary" placeholder="Price" />
+                              <input type="number" step="1" value={editMaintenanceForm.mileage} onChange={(e) => setEditMaintenanceForm((f) => ({ ...f, mileage: e.target.value }))} className="rounded border border-border-hover bg-surface-3 px-2 py-1.5 text-sm text-text-primary" placeholder="Mileage" />
+                              <input
+                                type="text"
+                                list="maintenance-vendors-list"
+                                value={editMaintenanceForm.vendor}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  setEditMaintenanceForm((f) => ({ ...f, vendor: value }));
+                                  void fetchMaintenanceVendors(value);
+                                }}
+                                className="rounded border border-border-hover bg-surface-3 px-2 py-1.5 text-sm text-text-primary"
+                                placeholder="Vendor"
+                              />
+                            </div>
+                            <textarea rows={2} value={editMaintenanceForm.description} onChange={(e) => setEditMaintenanceForm((f) => ({ ...f, description: e.target.value }))} className="w-full rounded border border-border-hover bg-surface-3 px-2 py-1.5 text-sm text-text-primary" placeholder="Description" />
+                            <AddTagInput
+                              tags={editMaintenanceForm.tags}
+                              onTagsChange={(tags) => setEditMaintenanceForm((f) => ({ ...f, tags }))}
+                              allTags={maintenanceTags}
+                              fetchTags={fetchMaintenanceTags}
+                              placeholder="Edit tags"
+                            />
+                            <div className="flex gap-2">
+                              <button onClick={() => handleUpdateMaintenance(entry.id)} disabled={saving} className="text-accent-400 hover:text-accent-300 text-sm">Save</button>
+                              <button onClick={() => setEditingMaintenanceId(null)} disabled={saving} className="text-text-secondary hover:text-text-primary text-sm">Cancel</button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <p className="text-sm text-text-primary">
+                                <span className="font-medium">{formatDate(entry.date)}</span> - ${Number(entry.price || 0).toFixed(2)} - {Math.round(entry.mileage || 0).toLocaleString()} km
+                              </p>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => {
+                                    setEditingMaintenanceId(entry.id);
+                                    setEditMaintenanceForm({
+                                      date: entry.date || "",
+                                      price: String(entry.price ?? ""),
+                                      mileage: String(entry.mileage ?? ""),
+                                      description: entry.description || "",
+                                      vendor: entry.vendor || "",
+                                      tags: entry.tags || [],
+                                      attachments: entry.attachments || [],
+                                    });
+                                  }}
+                                  disabled={saving}
+                                  className="text-text-secondary hover:text-text-primary text-sm"
+                                >
+                                  Edit
+                                </button>
+                                <button onClick={() => handleDeleteMaintenance(entry.id)} disabled={saving} className="text-red-400 hover:text-red-300 text-sm">
+                                  Delete
+                                </button>
+                              </div>
+                            </div>
+                            {entry.vendor && <p className="text-xs text-text-primary0">Vendor: {entry.vendor}</p>}
+                            {entry.description && <p className="text-sm text-text-secondary">{entry.description}</p>}
+                            {(entry.tags || []).length > 0 && (
+                              <p className="text-xs text-text-primary0">Tags: {(entry.tags || []).join(", ")}</p>
+                            )}
+                            {(entry.attachments || []).length > 0 && (
+                              <ul className="text-xs text-text-primary0 space-y-1">
+                                {(entry.attachments || []).map((a) => (
+                                  <li key={a.key}>
+                                    {a.url ? (
+                                      <a href={a.url} target="_blank" rel="noreferrer" className="text-accent-400 hover:text-accent-300">
+                                        {a.filename || a.key}
+                                      </a>
+                                    ) : (
+                                      a.filename || a.key
+                                    )}
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+            </>
+          )}
+
+          {activeExpenseTab === "totals" && (
+            <>
+              <div className="rounded-lg border border-border-hover bg-surface-3 overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setTotalsLimitResultsOpen((o) => !o)}
+                  className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-surface-3/30 transition-colors"
+                >
+                  <span className="text-sm font-medium text-text-primary">Limit results</span>
+                  <span className="text-text-secondary">{totalsLimitResultsOpen ? "▼" : "▶"}</span>
+                </button>
+                {totalsLimitResultsOpen && (
+                  <div className="px-4 pb-4 pt-1 border-t border-border-hover">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                      <div>
+                        <label className="block text-xs text-text-primary0 mb-1">Start date</label>
+                        <input
+                          type="date"
+                          value={totalsFilters.startDate}
+                          onChange={(e) => setTotalsFilters((f) => ({ ...f, startDate: e.target.value }))}
+                          className="w-full rounded-md border border-border-hover bg-surface-3 px-3 py-2 text-sm text-text-primary"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-text-primary0 mb-1">End date</label>
+                        <input
+                          type="date"
+                          value={totalsFilters.endDate}
+                          onChange={(e) => setTotalsFilters((f) => ({ ...f, endDate: e.target.value }))}
+                          className="w-full rounded-md border border-border-hover bg-surface-3 px-3 py-2 text-sm text-text-primary"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="rounded-lg border border-border-hover bg-surface-2 p-4">
+                  <p className="text-xs text-text-primary0 mb-1">Fuel total</p>
+                  <p className="text-2xl font-semibold text-text-primary">
+                    ${totalsSummary.fuelTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                  <p className="text-xs text-text-secondary mt-1">
+                    {filteredFuelEntriesForTotals.length} entries
+                  </p>
+                </div>
+                <div className="rounded-lg border border-border-hover bg-surface-2 p-4">
+                  <p className="text-xs text-text-primary0 mb-1">Maintenance total</p>
+                  <p className="text-2xl font-semibold text-text-primary">
+                    ${totalsSummary.maintenanceTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                  <p className="text-xs text-text-secondary mt-1">
+                    {filteredMaintenanceEntriesForTotals.length} entries
+                  </p>
+                </div>
+                <div className="rounded-lg border border-border-hover bg-surface-2 p-4">
+                  <p className="text-xs text-text-primary0 mb-1">Combined total</p>
+                  <p className="text-2xl font-semibold text-text-primary">
+                    ${totalsSummary.combinedTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                  <p className="text-xs text-text-secondary mt-1">
+                    Range: {totalsFilters.startDate || "All time"} - {totalsFilters.endDate || "Present"}
+                  </p>
+                </div>
+              </div>
+            </>
+          )}
         </>
       ) : loading ? (
         <div className="p-8 text-center text-text-primary0">Loading vehicles…</div>
