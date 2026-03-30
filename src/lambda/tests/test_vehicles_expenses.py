@@ -199,6 +199,18 @@ def test_list_maintenance_tags_endpoint(mock_tags, mock_groups):
     assert data["tags"] == ["oil", "tires"]
 
 
+@patch("api.handler._getUserCustomGroups", return_value=["expenses"])
+@patch("api.vehicles_expenses.list_maintenance_vendors", return_value=["QuickLube", "TireTown"])
+def test_list_maintenance_vendors_endpoint(mock_vendors, mock_groups):
+    """GET /vehicles-expenses/maintenance-vendors returns per-user vendors."""
+    from api.handler import handler
+    event = _expenses_user_event("/vehicles-expenses/maintenance-vendors")
+    resp = handler(event, None)
+    assert resp["statusCode"] == 200
+    data = json.loads(resp["body"])
+    assert data["vendors"] == ["QuickLube", "TireTown"]
+
+
 def test_list_maintenance_tags_dedupes_and_filters():
     """vehicles_expenses.list_maintenance_tags dedupes and supports query filter."""
     from api import vehicles_expenses
@@ -224,3 +236,30 @@ def test_list_maintenance_tags_dedupes_and_filters():
         assert all_tags == ["Brakes", "Oil", "Tires"]
         filtered = vehicles_expenses.list_maintenance_tags("user-1", "oi")
         assert filtered == ["Oil"]
+
+
+def test_list_maintenance_vendors_dedupes_and_filters():
+    """vehicles_expenses.list_maintenance_vendors dedupes and supports query filter."""
+    from api import vehicles_expenses
+
+    class FakeDynamo:
+        def get_item(self, **kwargs):
+            return {
+                "Item": {
+                    "vendors": {
+                        "L": [
+                            {"S": "QuickLube"},
+                            {"S": "quicklube"},
+                            {"S": "TireTown"},
+                            {"S": "  "},
+                            {"S": "Dealer"},
+                        ]
+                    }
+                }
+            }
+
+    with patch.object(vehicles_expenses, "TABLE_NAME", "test-table"), patch("boto3.client", return_value=FakeDynamo()):
+        all_vendors = vehicles_expenses.list_maintenance_vendors("user-1")
+        assert all_vendors == ["Dealer", "QuickLube", "TireTown"]
+        filtered = vehicles_expenses.list_maintenance_vendors("user-1", "quick")
+        assert filtered == ["QuickLube"]

@@ -2,6 +2,8 @@
 
 ## Completed
 
+- [x] **Vehicle maintenance vendors: reusable per-user autocomplete** — Added per-user persistent vendor registry for maintenance expenses with API suggestions endpoint (`/vehicles-expenses/maintenance-vendors` + `?q=` filtering). Wired maintenance vendor inputs (create/edit) to typing dropdown suggestions in `VehiclesExpensesPage`, and save new vendors automatically on maintenance create/update. Added backend tests for vendors endpoint and dedupe/filter behavior.
+
 - [x] **Vehicle expenses: per-vehicle Maintenance tab** — Added nested `Fuel | Maintenance` tabs under each vehicle on `VehiclesExpensesPage`. Kept existing Fuel flow unchanged while introducing Maintenance CRUD with fields: date, price, mileage, description, vendor, tags, and multi-file attachments. Added per-user private maintenance tag registry/suggestions, maintenance attachment presigned upload endpoint, and new maintenance API routes/handlers (`/vehicles-expenses/maintenance-tags`, `/vehicles-expenses/{vehicleId}/maintenance`, `/vehicles-expenses/{vehicleId}/maintenance/upload`). Expanded backend tests for maintenance routes, upload metadata response, and tag dedupe/filter behavior.
 
 - [x] **Shell UI overhaul** — Dark refined theme (Linear/Vercel-inspired), new design system with CSS custom properties, responsive nav. Split Header into MobileHeader + DesktopHeaderBar + UserMenu. Restyled LeftSidebar with brand section and animated accordions. Inter-only typography, near-black zinc palette with blue accent. *(commit c210d69)*

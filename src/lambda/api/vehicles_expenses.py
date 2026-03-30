@@ -395,6 +395,70 @@ def _normalize_maintenance_tags(tags):
     return out
 
 
+def _normalize_maintenance_vendor(vendor):
+    v = str(vendor or "").strip()
+    return v
+
+
+def list_maintenance_vendors(user_id, query=""):
+    """List per-user maintenance vendors for autocomplete."""
+    if not TABLE_NAME or not user_id:
+        return []
+    try:
+        import boto3
+        dynamodb = boto3.client("dynamodb", region_name=AWS_REGION)
+        resp = dynamodb.get_item(
+            TableName=TABLE_NAME,
+            Key={"PK": {"S": _pk(user_id)}, "SK": {"S": "VEHICLE_MAINT_VENDORS#REGISTRY"}},
+        )
+        vendors = []
+        if "Item" in resp and "vendors" in resp["Item"]:
+            vendors = [v.get("S", "").strip() for v in resp["Item"]["vendors"].get("L", []) if v.get("S", "").strip()]
+        deduped = []
+        seen = set()
+        for vendor in vendors:
+            key = vendor.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            deduped.append(vendor)
+        q = (query or "").strip().lower()
+        if q:
+            deduped = [v for v in deduped if q in v.lower()]
+        return sorted(deduped, key=lambda v: v.lower())
+    except Exception as e:
+        logger.warning("list_maintenance_vendors failed: %s", e)
+        return []
+
+
+def _ensure_maintenance_vendor(user_id, vendor):
+    normalized = _normalize_maintenance_vendor(vendor)
+    if not normalized or not TABLE_NAME or not user_id:
+        return
+    try:
+        import boto3
+        from datetime import datetime
+        dynamodb = boto3.client("dynamodb", region_name=AWS_REGION)
+        existing = list_maintenance_vendors(user_id, "")
+        exists = any(v.lower() == normalized.lower() for v in existing)
+        if exists:
+            return
+        combined = [*existing, normalized]
+        now = datetime.utcnow().isoformat() + "Z"
+        dynamodb.put_item(
+            TableName=TABLE_NAME,
+            Item={
+                "PK": {"S": _pk(user_id)},
+                "SK": {"S": "VEHICLE_MAINT_VENDORS#REGISTRY"},
+                "vendors": {"L": [{"S": v} for v in combined]},
+                "createdAt": {"S": now},
+                "updatedAt": {"S": now},
+            },
+        )
+    except Exception as e:
+        logger.warning("_ensure_maintenance_vendor failed: %s", e)
+
+
 def list_maintenance_tags(user_id, query=""):
     """List per-user maintenance tags for autocomplete."""
     if not TABLE_NAME or not user_id:
@@ -520,13 +584,16 @@ def create_maintenance_entry(user_id, vehicle_id, data):
             },
         )
         tags = _normalize_maintenance_tags(data.get("tags") or [])
+        vendor = _normalize_maintenance_vendor(data.get("vendor"))
         _ensure_maintenance_tags(user_id, tags)
+        _ensure_maintenance_vendor(user_id, vendor)
         entry = {
             k: data.get(k)
             for k in ["date", "price", "mileage", "description", "vendor", "attachments"]
             if data.get(k) is not None
         }
         entry["tags"] = tags
+        entry["vendor"] = vendor
         entry["attachments"] = data.get("attachments") or []
         entry["id"] = maintenance_id
         entry["createdAt"] = now
@@ -553,6 +620,7 @@ def update_maintenance_entry(user_id, vehicle_id, maintenance_id, data):
         now = datetime.utcnow().isoformat() + "Z"
         merged = {**existing, **data, "updatedAt": now}
         merged["tags"] = _normalize_maintenance_tags(merged.get("tags") or [])
+        merged["vendor"] = _normalize_maintenance_vendor(merged.get("vendor"))
         merged["attachments"] = merged.get("attachments") or []
         item = _build_maintenance_item(merged, existing.get("createdAt", now), now)
         dynamodb.put_item(
@@ -564,6 +632,7 @@ def update_maintenance_entry(user_id, vehicle_id, maintenance_id, data):
             },
         )
         _ensure_maintenance_tags(user_id, merged["tags"])
+        _ensure_maintenance_vendor(user_id, merged.get("vendor"))
         merged["id"] = maintenance_id
         merged = _normalize_maintenance_entry(merged)
         _add_attachment_urls([merged])

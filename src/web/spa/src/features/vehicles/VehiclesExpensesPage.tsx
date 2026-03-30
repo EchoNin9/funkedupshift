@@ -208,6 +208,7 @@ const VehiclesExpensesPage: React.FC = () => {
   const [importMessage, setImportMessage] = useState<string | null>(null);
   const [showImportHelp, setShowImportHelp] = useState(false);
   const [maintenanceTags, setMaintenanceTags] = useState<string[]>([]);
+  const [maintenanceVendors, setMaintenanceVendors] = useState<string[]>([]);
   const [maintenanceForm, setMaintenanceForm] = useState({
     date: new Date().toISOString().slice(0, 10),
     price: "",
@@ -330,6 +331,19 @@ const VehiclesExpensesPage: React.FC = () => {
     }
   }, []);
 
+  const loadMaintenanceVendors = useCallback(async () => {
+    const apiBase = getApiBaseUrl();
+    if (!apiBase) return;
+    try {
+      const resp = await fetchWithAuth(`${apiBase}/vehicles-expenses/maintenance-vendors`);
+      if (!resp.ok) return;
+      const data = (await resp.json()) as { vendors?: string[] };
+      setMaintenanceVendors(Array.isArray(data.vendors) ? data.vendors : []);
+    } catch {
+      setMaintenanceVendors([]);
+    }
+  }, []);
+
   const fetchMaintenanceTags = useCallback(async (q: string) => {
     const apiBase = getApiBaseUrl();
     if (!apiBase) return [];
@@ -339,6 +353,19 @@ const VehiclesExpensesPage: React.FC = () => {
     if (!resp.ok) return [];
     const data = (await resp.json()) as { tags?: string[] };
     return Array.isArray(data.tags) ? data.tags : [];
+  }, []);
+
+  const fetchMaintenanceVendors = useCallback(async (q: string) => {
+    const apiBase = getApiBaseUrl();
+    if (!apiBase) return [];
+    const resp = await fetchWithAuth(
+      `${apiBase}/vehicles-expenses/maintenance-vendors?q=${encodeURIComponent(q)}`
+    );
+    if (!resp.ok) return [];
+    const data = (await resp.json()) as { vendors?: string[] };
+    const vendors = Array.isArray(data.vendors) ? data.vendors : [];
+    setMaintenanceVendors(vendors);
+    return vendors;
   }, []);
 
   const uploadMaintenanceFiles = useCallback(async (vehicleId: string, files: File[]) => {
@@ -386,9 +413,10 @@ const VehiclesExpensesPage: React.FC = () => {
     if (canAccess) {
       loadVehicles();
       loadMaintenanceTags();
+      loadMaintenanceVendors();
     }
     else setLoading(false);
-  }, [canAccess, loadVehicles, loadMaintenanceTags]);
+  }, [canAccess, loadVehicles, loadMaintenanceTags, loadMaintenanceVendors]);
 
   useEffect(() => {
     if (selectedVehicleId) {
@@ -685,6 +713,7 @@ const VehiclesExpensesPage: React.FC = () => {
       setPendingAttachments([]);
       loadMaintenanceEntries(selectedVehicleId);
       loadMaintenanceTags();
+      loadMaintenanceVendors();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Failed to add maintenance entry");
     } finally {
@@ -725,6 +754,7 @@ const VehiclesExpensesPage: React.FC = () => {
       setEditingMaintenanceId(null);
       loadMaintenanceEntries(selectedVehicleId);
       loadMaintenanceTags();
+      loadMaintenanceVendors();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Failed to update maintenance entry");
     } finally {
@@ -1154,9 +1184,14 @@ const VehiclesExpensesPage: React.FC = () => {
                   />
                   <input
                     type="text"
+                    list="maintenance-vendors-list"
                     placeholder="Vendor"
                     value={maintenanceForm.vendor}
-                    onChange={(e) => setMaintenanceForm((f) => ({ ...f, vendor: e.target.value }))}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setMaintenanceForm((f) => ({ ...f, vendor: value }));
+                      void fetchMaintenanceVendors(value);
+                    }}
                     className="rounded-md border border-border-hover bg-surface-3 px-3 py-2 text-text-primary"
                   />
                 </div>
@@ -1199,6 +1234,11 @@ const VehiclesExpensesPage: React.FC = () => {
                 >
                   {saving ? "Adding…" : "Add maintenance entry"}
                 </button>
+                <datalist id="maintenance-vendors-list">
+                  {maintenanceVendors.map((v) => (
+                    <option key={v} value={v} />
+                  ))}
+                </datalist>
               </div>
             )}
           </div>
@@ -1560,7 +1600,18 @@ const VehiclesExpensesPage: React.FC = () => {
                               <input type="date" value={editMaintenanceForm.date} onChange={(e) => setEditMaintenanceForm((f) => ({ ...f, date: e.target.value }))} className="rounded border border-border-hover bg-surface-3 px-2 py-1.5 text-sm text-text-primary" />
                               <input type="number" step="0.01" value={editMaintenanceForm.price} onChange={(e) => setEditMaintenanceForm((f) => ({ ...f, price: e.target.value }))} className="rounded border border-border-hover bg-surface-3 px-2 py-1.5 text-sm text-text-primary" placeholder="Price" />
                               <input type="number" step="1" value={editMaintenanceForm.mileage} onChange={(e) => setEditMaintenanceForm((f) => ({ ...f, mileage: e.target.value }))} className="rounded border border-border-hover bg-surface-3 px-2 py-1.5 text-sm text-text-primary" placeholder="Mileage" />
-                              <input type="text" value={editMaintenanceForm.vendor} onChange={(e) => setEditMaintenanceForm((f) => ({ ...f, vendor: e.target.value }))} className="rounded border border-border-hover bg-surface-3 px-2 py-1.5 text-sm text-text-primary" placeholder="Vendor" />
+                              <input
+                                type="text"
+                                list="maintenance-vendors-list"
+                                value={editMaintenanceForm.vendor}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  setEditMaintenanceForm((f) => ({ ...f, vendor: value }));
+                                  void fetchMaintenanceVendors(value);
+                                }}
+                                className="rounded border border-border-hover bg-surface-3 px-2 py-1.5 text-sm text-text-primary"
+                                placeholder="Vendor"
+                              />
                             </div>
                             <textarea rows={2} value={editMaintenanceForm.description} onChange={(e) => setEditMaintenanceForm((f) => ({ ...f, description: e.target.value }))} className="w-full rounded border border-border-hover bg-surface-3 px-2 py-1.5 text-sm text-text-primary" placeholder="Description" />
                             <AddTagInput

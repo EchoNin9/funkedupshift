@@ -404,6 +404,8 @@ def handler(event, context):
             return importVehiclesExpenses(event)
         if method == "GET" and path == "/vehicles-expenses/maintenance-tags":
             return listMaintenanceTags(event)
+        if method == "GET" and path == "/vehicles-expenses/maintenance-vendors":
+            return listMaintenanceVendors(event)
         ve_path_params = event.get("pathParameters") or {}
         ve_parts = [p for p in path.split("/") if p]
         if len(ve_parts) >= 2 and ve_parts[0] == "vehicles-expenses" and ve_parts[1] != "import":
@@ -858,6 +860,22 @@ def listMaintenanceTags(event):
     except Exception as e:
         logger.exception("listMaintenanceTags error: %s", e)
         return jsonResponse({"error": str(e), "tags": []}, 500)
+
+
+def listMaintenanceVendors(event):
+    """GET /vehicles-expenses/maintenance-vendors - Per-user maintenance vendors."""
+    user, err = _requireExpensesGroup(event)
+    if err:
+        return err
+    try:
+        from api.vehicles_expenses import list_maintenance_vendors
+        qs = event.get("queryStringParameters") or {}
+        q = (qs.get("q") or "").strip()
+        vendors = list_maintenance_vendors(user["userId"], q)
+        return jsonResponse({"vendors": vendors})
+    except Exception as e:
+        logger.exception("listMaintenanceVendors error: %s", e)
+        return jsonResponse({"error": str(e), "vendors": []}, 500)
 
 
 def listMaintenanceEntries(event, vehicle_id):
