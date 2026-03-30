@@ -2,8 +2,6 @@
 import json
 from unittest.mock import patch
 
-import pytest
-
 # Minimal event with auth (expenses group)
 def _event(path, method="GET", body=None):
     return {
@@ -99,3 +97,130 @@ def test_list_fuel_entries_user_in_expenses(mock_list, mock_groups):
     assert "entries" in data
     assert len(data["entries"]) == 1
     assert data["entries"][0]["fuelPrice"] == 65
+
+
+@patch("api.handler._getUserCustomGroups", return_value=["expenses"])
+@patch("api.vehicles_expenses.list_maintenance_entries", return_value=[
+    {"id": "m1", "date": "2026-03-01", "price": 120.0, "mileage": 123500, "description": "Oil change"}
+])
+def test_list_maintenance_entries_user_in_expenses(mock_list, mock_groups):
+    """GET /vehicles-expenses/{vehicleId}/maintenance returns entries."""
+    from api.handler import handler
+    event = _expenses_user_event("/vehicles-expenses/v1/maintenance")
+    event["pathParameters"] = {"vehicleId": "v1"}
+    resp = handler(event, None)
+    assert resp["statusCode"] == 200
+    data = json.loads(resp["body"])
+    assert len(data["entries"]) == 1
+    assert data["entries"][0]["id"] == "m1"
+
+
+@patch("api.handler._getUserCustomGroups", return_value=["expenses"])
+@patch("api.vehicles_expenses.create_maintenance_entry", return_value={
+    "id": "m1",
+    "date": "2026-03-01",
+    "price": 120.0,
+    "mileage": 123500,
+    "description": "Oil change",
+    "vendor": "QuickLube",
+    "tags": ["oil"],
+    "attachments": [{"key": "k1", "filename": "receipt.pdf"}],
+})
+def test_create_maintenance_entry_success(mock_create, mock_groups):
+    """POST /vehicles-expenses/{vehicleId}/maintenance creates a maintenance entry."""
+    from api.handler import handler
+    event = _expenses_user_event(
+        "/vehicles-expenses/v1/maintenance",
+        method="POST",
+        body={
+            "date": "2026-03-01",
+            "price": 120,
+            "mileage": 123500,
+            "description": "Oil change",
+            "vendor": "QuickLube",
+            "tags": ["oil"],
+            "attachments": [{"key": "k1", "filename": "receipt.pdf"}],
+        },
+    )
+    event["pathParameters"] = {"vehicleId": "v1"}
+    resp = handler(event, None)
+    assert resp["statusCode"] == 201
+    data = json.loads(resp["body"])
+    assert data["id"] == "m1"
+    assert data["price"] == 120.0
+
+
+@patch("api.handler._getUserCustomGroups", return_value=["expenses"])
+@patch("api.vehicles_expenses.update_maintenance_entry", return_value=None)
+def test_update_maintenance_entry_not_found(mock_update, mock_groups):
+    """PUT /vehicles-expenses/{vehicleId}/maintenance/{maintenanceId} returns 404 if missing."""
+    from api.handler import handler
+    event = _expenses_user_event(
+        "/vehicles-expenses/v1/maintenance/missing",
+        method="PUT",
+        body={"date": "2026-03-01", "price": 10, "mileage": 1},
+    )
+    event["pathParameters"] = {"vehicleId": "v1", "maintenanceId": "missing"}
+    resp = handler(event, None)
+    assert resp["statusCode"] == 404
+
+
+@patch("api.handler._getUserCustomGroups", return_value=["expenses"])
+@patch("api.vehicles_expenses.get_maintenance_attachment_upload", return_value={
+    "uploadUrl": "https://example.com/upload",
+    "key": "vehicle-expenses/user/v1/maintenance/file.pdf",
+    "filename": "file.pdf",
+    "contentType": "application/pdf",
+})
+def test_maintenance_upload_url_response_shape(mock_upload, mock_groups):
+    """POST /vehicles-expenses/{vehicleId}/maintenance/upload returns upload metadata."""
+    from api.handler import handler
+    event = _expenses_user_event(
+        "/vehicles-expenses/v1/maintenance/upload",
+        method="POST",
+        body={"filename": "file.pdf", "contentType": "application/pdf"},
+    )
+    event["pathParameters"] = {"vehicleId": "v1"}
+    resp = handler(event, None)
+    assert resp["statusCode"] == 200
+    data = json.loads(resp["body"])
+    assert set(["uploadUrl", "key", "filename", "contentType"]).issubset(set(data.keys()))
+
+
+@patch("api.handler._getUserCustomGroups", return_value=["expenses"])
+@patch("api.vehicles_expenses.list_maintenance_tags", return_value=["oil", "tires"])
+def test_list_maintenance_tags_endpoint(mock_tags, mock_groups):
+    """GET /vehicles-expenses/maintenance-tags returns per-user tags."""
+    from api.handler import handler
+    event = _expenses_user_event("/vehicles-expenses/maintenance-tags")
+    resp = handler(event, None)
+    assert resp["statusCode"] == 200
+    data = json.loads(resp["body"])
+    assert data["tags"] == ["oil", "tires"]
+
+
+def test_list_maintenance_tags_dedupes_and_filters():
+    """vehicles_expenses.list_maintenance_tags dedupes and supports query filter."""
+    from api import vehicles_expenses
+
+    class FakeDynamo:
+        def get_item(self, **kwargs):
+            return {
+                "Item": {
+                    "tags": {
+                        "L": [
+                            {"S": "Oil"},
+                            {"S": "oil"},
+                            {"S": "Tires"},
+                            {"S": "  "},
+                            {"S": "Brakes"},
+                        ]
+                    }
+                }
+            }
+
+    with patch.object(vehicles_expenses, "TABLE_NAME", "test-table"), patch("boto3.client", return_value=FakeDynamo()):
+        all_tags = vehicles_expenses.list_maintenance_tags("user-1")
+        assert all_tags == ["Brakes", "Oil", "Tires"]
+        filtered = vehicles_expenses.list_maintenance_tags("user-1", "oi")
+        assert filtered == ["Oil"]

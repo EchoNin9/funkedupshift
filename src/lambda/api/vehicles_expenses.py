@@ -11,6 +11,7 @@ logger.setLevel(logging.INFO)
 
 TABLE_NAME = os.environ.get("TABLE_NAME", "")
 AWS_REGION = os.environ.get("AWS_REGION", os.environ.get("AWS_DEFAULT_REGION", "us-east-1"))
+MEDIA_BUCKET = os.environ.get("MEDIA_BUCKET", "")
 
 
 def _pk(user_id):
@@ -25,20 +26,44 @@ def _fuel_sk(vehicle_id, fillup_id):
     return f"VEHICLE#{vehicle_id}#FUEL#{fillup_id}"
 
 
+def _maint_sk(vehicle_id, maintenance_id):
+    return f"VEHICLE#{vehicle_id}#MAINT#{maintenance_id}"
+
+
+def _dynamo_value_to_python(value):
+    if "S" in value:
+        return value["S"]
+    if "N" in value:
+        n = value["N"]
+        return int(n) if "." not in n else float(n)
+    if "BOOL" in value:
+        return value["BOOL"]
+    if "L" in value:
+        return [_dynamo_value_to_python(v) for v in value["L"]]
+    if "M" in value:
+        return {k: _dynamo_value_to_python(v) for k, v in value["M"].items()}
+    if "NULL" in value:
+        return None
+    return None
+
+
+def _python_to_dynamo_value(value):
+    if value is None:
+        return {"NULL": True}
+    if isinstance(value, bool):
+        return {"BOOL": value}
+    if isinstance(value, (int, float)):
+        return {"N": str(value)}
+    if isinstance(value, list):
+        return {"L": [_python_to_dynamo_value(v) for v in value]}
+    if isinstance(value, dict):
+        return {"M": {str(k): _python_to_dynamo_value(v) for k, v in value.items() if v is not None}}
+    return {"S": str(value)}
+
+
 def _dynamo_item_to_dict(item):
     """Convert DynamoDB item to plain dict."""
-    out = {}
-    for k, v in item.items():
-        if "S" in v:
-            out[k] = v["S"]
-        elif "N" in v:
-            n = v["N"]
-            out[k] = int(n) if "." not in n else float(n)
-        elif "L" in v:
-            out[k] = [x.get("S", x.get("N", "")) for x in v["L"]]
-        elif "BOOL" in v:
-            out[k] = v["BOOL"]
-    return out
+    return {k: _dynamo_value_to_python(v) for k, v in item.items()}
 
 
 def _normalize_fuel_entry(e):
@@ -170,6 +195,13 @@ def delete_vehicle(user_id, vehicle_id):
             dynamodb.delete_item(
                 TableName=TABLE_NAME,
                 Key={"PK": {"S": _pk(user_id)}, "SK": {"S": _fuel_sk(vehicle_id, f["id"])}},
+            )
+        # Delete all maintenance entries
+        maintenance_items = list_maintenance_entries(user_id, vehicle_id)
+        for m in maintenance_items:
+            dynamodb.delete_item(
+                TableName=TABLE_NAME,
+                Key={"PK": {"S": _pk(user_id)}, "SK": {"S": _maint_sk(vehicle_id, m["id"])}},
             )
         dynamodb.delete_item(
             TableName=TABLE_NAME,
@@ -315,6 +347,280 @@ def delete_fuel_entry(user_id, vehicle_id, fillup_id):
         return False
 
 
+def _normalize_maintenance_entry(entry):
+    if not isinstance(entry.get("tags"), list):
+        entry["tags"] = []
+    if not isinstance(entry.get("attachments"), list):
+        entry["attachments"] = []
+    return entry
+
+
+def _add_attachment_urls(entries):
+    if not entries or not MEDIA_BUCKET:
+        return
+    try:
+        import boto3
+        s3 = boto3.client("s3", region_name=AWS_REGION)
+        for entry in entries:
+            attachments = entry.get("attachments") or []
+            if not isinstance(attachments, list):
+                continue
+            for attachment in attachments:
+                if not isinstance(attachment, dict):
+                    continue
+                key = str(attachment.get("key") or "").strip()
+                if not key:
+                    continue
+                attachment["url"] = s3.generate_presigned_url(
+                    "get_object",
+                    Params={"Bucket": MEDIA_BUCKET, "Key": key},
+                    ExpiresIn=3600,
+                )
+    except Exception as e:
+        logger.warning("_add_attachment_urls failed: %s", e)
+
+
+def _normalize_maintenance_tags(tags):
+    out = []
+    seen = set()
+    for raw in tags or []:
+        t = str(raw).strip()
+        if not t:
+            continue
+        key = t.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(t)
+    return out
+
+
+def list_maintenance_tags(user_id, query=""):
+    """List per-user maintenance tags for autocomplete."""
+    if not TABLE_NAME or not user_id:
+        return []
+    try:
+        import boto3
+        dynamodb = boto3.client("dynamodb", region_name=AWS_REGION)
+        resp = dynamodb.get_item(
+            TableName=TABLE_NAME,
+            Key={"PK": {"S": _pk(user_id)}, "SK": {"S": "VEHICLE_MAINT_TAGS#REGISTRY"}},
+        )
+        tags = []
+        if "Item" in resp and "tags" in resp["Item"]:
+            tags = [v.get("S", "") for v in resp["Item"]["tags"].get("L", []) if v.get("S", "")]
+        tags = _normalize_maintenance_tags(tags)
+        q = (query or "").strip().lower()
+        if q:
+            tags = [t for t in tags if q in t.lower()]
+        return sorted(tags, key=lambda t: t.lower())
+    except Exception as e:
+        logger.warning("list_maintenance_tags failed: %s", e)
+        return []
+
+
+def _ensure_maintenance_tags(user_id, tags):
+    normalized = _normalize_maintenance_tags(tags)
+    if not normalized or not TABLE_NAME or not user_id:
+        return
+    try:
+        import boto3
+        from datetime import datetime
+        dynamodb = boto3.client("dynamodb", region_name=AWS_REGION)
+        existing = list_maintenance_tags(user_id, "")
+        combined = _normalize_maintenance_tags([*existing, *normalized])
+        now = datetime.utcnow().isoformat() + "Z"
+        dynamodb.put_item(
+            TableName=TABLE_NAME,
+            Item={
+                "PK": {"S": _pk(user_id)},
+                "SK": {"S": "VEHICLE_MAINT_TAGS#REGISTRY"},
+                "tags": {"L": [{"S": t} for t in combined]},
+                "createdAt": {"S": now},
+                "updatedAt": {"S": now},
+            },
+        )
+    except Exception as e:
+        logger.warning("_ensure_maintenance_tags failed: %s", e)
+
+
+def list_maintenance_entries(user_id, vehicle_id):
+    """List all maintenance entries for a vehicle. Returns newest first."""
+    if not TABLE_NAME or not user_id or not vehicle_id:
+        return []
+    try:
+        import boto3
+        dynamodb = boto3.client("dynamodb", region_name=AWS_REGION)
+        prefix = _maint_sk(vehicle_id, "")
+        resp = dynamodb.query(
+            TableName=TABLE_NAME,
+            KeyConditionExpression="PK = :pk AND begins_with(SK, :sk)",
+            ExpressionAttributeValues={
+                ":pk": {"S": _pk(user_id)},
+                ":sk": {"S": prefix},
+            },
+        )
+        items = resp.get("Items", [])
+        entries = []
+        for item in items:
+            sk = item.get("SK", {}).get("S", "")
+            maintenance_id = sk.replace(prefix, "") if sk.startswith(prefix) else sk.replace(f"VEHICLE#{vehicle_id}#MAINT#", "")
+            entry = _normalize_maintenance_entry(_dynamo_item_to_dict(item))
+            entry["id"] = maintenance_id
+            entries.append(entry)
+        entries.sort(key=lambda x: x.get("date", ""), reverse=True)
+        _add_attachment_urls(entries)
+        return entries
+    except Exception as e:
+        logger.warning("list_maintenance_entries failed: %s", e)
+        return []
+
+
+def get_maintenance_entry(user_id, vehicle_id, maintenance_id):
+    """Get one maintenance entry."""
+    if not TABLE_NAME or not user_id or not vehicle_id or not maintenance_id:
+        return None
+    try:
+        import boto3
+        dynamodb = boto3.client("dynamodb", region_name=AWS_REGION)
+        resp = dynamodb.get_item(
+            TableName=TABLE_NAME,
+            Key={"PK": {"S": _pk(user_id)}, "SK": {"S": _maint_sk(vehicle_id, maintenance_id)}},
+        )
+        if "Item" not in resp:
+            return None
+        entry = _normalize_maintenance_entry(_dynamo_item_to_dict(resp["Item"]))
+        entry["id"] = maintenance_id
+        _add_attachment_urls([entry])
+        return entry
+    except Exception as e:
+        logger.warning("get_maintenance_entry failed: %s", e)
+        return None
+
+
+def create_maintenance_entry(user_id, vehicle_id, data):
+    """Create one maintenance entry."""
+    if not TABLE_NAME or not user_id or not vehicle_id:
+        return None
+    if not get_vehicle(user_id, vehicle_id):
+        return None
+    try:
+        import boto3
+        from datetime import datetime
+        dynamodb = boto3.client("dynamodb", region_name=AWS_REGION)
+        maintenance_id = str(uuid.uuid4())
+        now = datetime.utcnow().isoformat() + "Z"
+        item = _build_maintenance_item(data, now, now)
+        dynamodb.put_item(
+            TableName=TABLE_NAME,
+            Item={
+                "PK": {"S": _pk(user_id)},
+                "SK": {"S": _maint_sk(vehicle_id, maintenance_id)},
+                **item,
+            },
+        )
+        tags = _normalize_maintenance_tags(data.get("tags") or [])
+        _ensure_maintenance_tags(user_id, tags)
+        entry = {
+            k: data.get(k)
+            for k in ["date", "price", "mileage", "description", "vendor", "attachments"]
+            if data.get(k) is not None
+        }
+        entry["tags"] = tags
+        entry["attachments"] = data.get("attachments") or []
+        entry["id"] = maintenance_id
+        entry["createdAt"] = now
+        entry["updatedAt"] = now
+        entry = _normalize_maintenance_entry(entry)
+        _add_attachment_urls([entry])
+        return entry
+    except Exception as ex:
+        logger.warning("create_maintenance_entry failed: %s", ex)
+        return None
+
+
+def update_maintenance_entry(user_id, vehicle_id, maintenance_id, data):
+    """Update one maintenance entry."""
+    if not TABLE_NAME or not user_id or not vehicle_id or not maintenance_id:
+        return None
+    existing = get_maintenance_entry(user_id, vehicle_id, maintenance_id)
+    if not existing:
+        return None
+    try:
+        import boto3
+        from datetime import datetime
+        dynamodb = boto3.client("dynamodb", region_name=AWS_REGION)
+        now = datetime.utcnow().isoformat() + "Z"
+        merged = {**existing, **data, "updatedAt": now}
+        merged["tags"] = _normalize_maintenance_tags(merged.get("tags") or [])
+        merged["attachments"] = merged.get("attachments") or []
+        item = _build_maintenance_item(merged, existing.get("createdAt", now), now)
+        dynamodb.put_item(
+            TableName=TABLE_NAME,
+            Item={
+                "PK": {"S": _pk(user_id)},
+                "SK": {"S": _maint_sk(vehicle_id, maintenance_id)},
+                **item,
+            },
+        )
+        _ensure_maintenance_tags(user_id, merged["tags"])
+        merged["id"] = maintenance_id
+        merged = _normalize_maintenance_entry(merged)
+        _add_attachment_urls([merged])
+        return merged
+    except Exception as e:
+        logger.warning("update_maintenance_entry failed: %s", e)
+        return None
+
+
+def delete_maintenance_entry(user_id, vehicle_id, maintenance_id):
+    """Delete one maintenance entry."""
+    if not TABLE_NAME or not user_id or not vehicle_id or not maintenance_id:
+        return False
+    try:
+        import boto3
+        dynamodb = boto3.client("dynamodb", region_name=AWS_REGION)
+        dynamodb.delete_item(
+            TableName=TABLE_NAME,
+            Key={"PK": {"S": _pk(user_id)}, "SK": {"S": _maint_sk(vehicle_id, maintenance_id)}},
+        )
+        return True
+    except Exception as e:
+        logger.warning("delete_maintenance_entry failed: %s", e)
+        return False
+
+
+def get_maintenance_attachment_upload(user_id, vehicle_id, filename, content_type):
+    """Return presigned PUT URL for maintenance attachment uploads."""
+    if not TABLE_NAME or not user_id or not vehicle_id or not MEDIA_BUCKET:
+        return None
+    if not get_vehicle(user_id, vehicle_id):
+        return None
+    safe_name = (filename or "attachment").strip() or "attachment"
+    if "/" in safe_name or "\\" in safe_name:
+        safe_name = safe_name.replace("/", "_").replace("\\", "_")
+    ext = ""
+    if "." in safe_name:
+        ext = "." + safe_name.rsplit(".", 1)[-1].lower()
+    key = f"vehicle-expenses/{user_id}/{vehicle_id}/maintenance/{uuid.uuid4()}{ext}"
+    try:
+        import boto3
+        s3 = boto3.client("s3", region_name=AWS_REGION)
+        params = {"Bucket": MEDIA_BUCKET, "Key": key}
+        if content_type:
+            params["ContentType"] = content_type
+        upload_url = s3.generate_presigned_url("put_object", Params=params, ExpiresIn=3600)
+        return {
+            "uploadUrl": upload_url,
+            "key": key,
+            "filename": safe_name,
+            "contentType": content_type or "application/octet-stream",
+        }
+    except Exception as e:
+        logger.warning("get_maintenance_attachment_upload failed: %s", e)
+        return None
+
+
 def import_fuel_entries(user_id, payload):
     """
     Import fuel entries from Excel data.
@@ -421,4 +727,42 @@ def _build_fuel_item(data, created_at, updated_at):
                 item[key] = {"N": str(val)}
             else:
                 item[key] = {"S": str(val)}
+    return item
+
+
+def _build_maintenance_item(data, created_at, updated_at):
+    """Build DynamoDB item for maintenance entry."""
+    item = {
+        "createdAt": {"S": created_at if isinstance(created_at, str) else ""},
+        "updatedAt": {"S": updated_at if isinstance(updated_at, str) else ""},
+    }
+    for key in ["date", "price", "mileage", "description", "vendor"]:
+        val = data.get(key)
+        if val is None:
+            continue
+        if isinstance(val, (int, float)):
+            item[key] = {"N": str(val)}
+        else:
+            item[key] = {"S": str(val)}
+    tags = _normalize_maintenance_tags(data.get("tags") or [])
+    item["tags"] = {"L": [{"S": t} for t in tags]}
+    attachments = data.get("attachments") or []
+    if not isinstance(attachments, list):
+        attachments = []
+    normalized = []
+    for raw in attachments:
+        if not isinstance(raw, dict):
+            continue
+        key = str(raw.get("key") or "").strip()
+        if not key:
+            continue
+        normalized.append(
+            {
+                "key": key,
+                "filename": str(raw.get("filename") or "").strip(),
+                "contentType": str(raw.get("contentType") or "").strip(),
+                "size": raw.get("size"),
+            }
+        )
+    item["attachments"] = _python_to_dynamo_value(normalized)
     return item

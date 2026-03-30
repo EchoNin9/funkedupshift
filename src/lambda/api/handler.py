@@ -402,6 +402,8 @@ def handler(event, context):
             return createVehicleExpense(event)
         if method == "POST" and path == "/vehicles-expenses/import":
             return importVehiclesExpenses(event)
+        if method == "GET" and path == "/vehicles-expenses/maintenance-tags":
+            return listMaintenanceTags(event)
         ve_path_params = event.get("pathParameters") or {}
         ve_parts = [p for p in path.split("/") if p]
         if len(ve_parts) >= 2 and ve_parts[0] == "vehicles-expenses" and ve_parts[1] != "import":
@@ -426,6 +428,22 @@ def handler(event, context):
                     return updateFuelEntry(event, vehicle_id, fillup_id)
                 if method == "DELETE":
                     return deleteFuelEntry(event, vehicle_id, fillup_id)
+            if len(ve_parts) == 3 and ve_parts[2] == "maintenance":
+                if method == "GET":
+                    return listMaintenanceEntries(event, vehicle_id)
+                if method == "POST":
+                    return createMaintenanceEntry(event, vehicle_id)
+            if len(ve_parts) == 4 and ve_parts[2] == "maintenance" and ve_parts[3] == "upload":
+                if method == "POST":
+                    return getMaintenanceUploadUrl(event, vehicle_id)
+            if len(ve_parts) == 4 and ve_parts[2] == "maintenance":
+                maintenance_id = ve_path_params.get("maintenanceId") or ve_path_params.get("id") or ve_parts[3]
+                if method == "GET":
+                    return getMaintenanceEntry(event, vehicle_id, maintenance_id)
+                if method == "PUT":
+                    return updateMaintenanceEntry(event, vehicle_id, maintenance_id)
+                if method == "DELETE":
+                    return deleteMaintenanceEntry(event, vehicle_id, maintenance_id)
         # Admin user/group management routes
         path_params = event.get("pathParameters") or {}
         if method == "GET" and path == "/admin/users":
@@ -823,6 +841,141 @@ def deleteFuelEntry(event, vehicle_id, fillup_id):
         return jsonResponse({"ok": True}, 200)
     except Exception as e:
         logger.exception("deleteFuelEntry error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def listMaintenanceTags(event):
+    """GET /vehicles-expenses/maintenance-tags - Per-user maintenance tags."""
+    user, err = _requireExpensesGroup(event)
+    if err:
+        return err
+    try:
+        from api.vehicles_expenses import list_maintenance_tags
+        qs = event.get("queryStringParameters") or {}
+        q = (qs.get("q") or "").strip()
+        tags = list_maintenance_tags(user["userId"], q)
+        return jsonResponse({"tags": tags})
+    except Exception as e:
+        logger.exception("listMaintenanceTags error: %s", e)
+        return jsonResponse({"error": str(e), "tags": []}, 500)
+
+
+def listMaintenanceEntries(event, vehicle_id):
+    """GET /vehicles-expenses/{vehicleId}/maintenance - List maintenance entries (newest first)."""
+    user, err = _requireExpensesGroup(event)
+    if err:
+        return err
+    try:
+        from api.vehicles_expenses import list_maintenance_entries
+        entries = list_maintenance_entries(user["userId"], vehicle_id)
+        return jsonResponse({"entries": entries})
+    except Exception as e:
+        logger.exception("listMaintenanceEntries error: %s", e)
+        return jsonResponse({"error": str(e), "entries": []}, 500)
+
+
+def createMaintenanceEntry(event, vehicle_id):
+    """POST /vehicles-expenses/{vehicleId}/maintenance - Create maintenance entry."""
+    user, err = _requireExpensesGroup(event)
+    if err:
+        return err
+    try:
+        body = event.get("body")
+        if body and isinstance(body, str):
+            body = json.loads(body)
+        else:
+            body = body or {}
+        from api.vehicles_expenses import create_maintenance_entry
+        entry = create_maintenance_entry(user["userId"], vehicle_id, body)
+        if not entry:
+            return jsonResponse({"error": "Vehicle not found or failed to create entry"}, 404)
+        return jsonResponse(entry, 201)
+    except json.JSONDecodeError:
+        return jsonResponse({"error": "Invalid JSON body"}, 400)
+    except Exception as e:
+        logger.exception("createMaintenanceEntry error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def getMaintenanceEntry(event, vehicle_id, maintenance_id):
+    """GET /vehicles-expenses/{vehicleId}/maintenance/{maintenanceId} - Get maintenance entry."""
+    user, err = _requireExpensesGroup(event)
+    if err:
+        return err
+    try:
+        from api.vehicles_expenses import get_maintenance_entry
+        entry = get_maintenance_entry(user["userId"], vehicle_id, maintenance_id)
+        if not entry:
+            return jsonResponse({"error": "Maintenance entry not found"}, 404)
+        return jsonResponse(entry)
+    except Exception as e:
+        logger.exception("getMaintenanceEntry error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def updateMaintenanceEntry(event, vehicle_id, maintenance_id):
+    """PUT /vehicles-expenses/{vehicleId}/maintenance/{maintenanceId} - Update maintenance entry."""
+    user, err = _requireExpensesGroup(event)
+    if err:
+        return err
+    try:
+        body = event.get("body")
+        if body and isinstance(body, str):
+            body = json.loads(body)
+        else:
+            body = body or {}
+        from api.vehicles_expenses import update_maintenance_entry
+        entry = update_maintenance_entry(user["userId"], vehicle_id, maintenance_id, body)
+        if not entry:
+            return jsonResponse({"error": "Maintenance entry not found or update failed"}, 404)
+        return jsonResponse(entry)
+    except json.JSONDecodeError:
+        return jsonResponse({"error": "Invalid JSON body"}, 400)
+    except Exception as e:
+        logger.exception("updateMaintenanceEntry error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def deleteMaintenanceEntry(event, vehicle_id, maintenance_id):
+    """DELETE /vehicles-expenses/{vehicleId}/maintenance/{maintenanceId} - Delete maintenance entry."""
+    user, err = _requireExpensesGroup(event)
+    if err:
+        return err
+    try:
+        from api.vehicles_expenses import delete_maintenance_entry
+        if not delete_maintenance_entry(user["userId"], vehicle_id, maintenance_id):
+            return jsonResponse({"error": "Maintenance entry not found or delete failed"}, 404)
+        return jsonResponse({"ok": True}, 200)
+    except Exception as e:
+        logger.exception("deleteMaintenanceEntry error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def getMaintenanceUploadUrl(event, vehicle_id):
+    """POST /vehicles-expenses/{vehicleId}/maintenance/upload - Presigned PUT URL for attachment uploads."""
+    user, err = _requireExpensesGroup(event)
+    if err:
+        return err
+    try:
+        body = event.get("body")
+        if body and isinstance(body, str):
+            body = json.loads(body)
+        else:
+            body = body or {}
+        from api.vehicles_expenses import get_maintenance_attachment_upload
+        result = get_maintenance_attachment_upload(
+            user_id=user["userId"],
+            vehicle_id=vehicle_id,
+            filename=(body.get("filename") or "").strip(),
+            content_type=(body.get("contentType") or "").strip(),
+        )
+        if not result:
+            return jsonResponse({"error": "Unable to generate upload URL"}, 400)
+        return jsonResponse(result)
+    except json.JSONDecodeError:
+        return jsonResponse({"error": "Invalid JSON body"}, 400)
+    except Exception as e:
+        logger.exception("getMaintenanceUploadUrl error: %s", e)
         return jsonResponse({"error": str(e)}, 500)
 
 

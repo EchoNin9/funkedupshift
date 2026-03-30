@@ -2,6 +2,8 @@
 
 ## Completed
 
+- [x] **Vehicle expenses: per-vehicle Maintenance tab** — Added nested `Fuel | Maintenance` tabs under each vehicle on `VehiclesExpensesPage`. Kept existing Fuel flow unchanged while introducing Maintenance CRUD with fields: date, price, mileage, description, vendor, tags, and multi-file attachments. Added per-user private maintenance tag registry/suggestions, maintenance attachment presigned upload endpoint, and new maintenance API routes/handlers (`/vehicles-expenses/maintenance-tags`, `/vehicles-expenses/{vehicleId}/maintenance`, `/vehicles-expenses/{vehicleId}/maintenance/upload`). Expanded backend tests for maintenance routes, upload metadata response, and tag dedupe/filter behavior.
+
 - [x] **Shell UI overhaul** — Dark refined theme (Linear/Vercel-inspired), new design system with CSS custom properties, responsive nav. Split Header into MobileHeader + DesktopHeaderBar + UserMenu. Restyled LeftSidebar with brand section and animated accordions. Inter-only typography, near-black zinc palette with blue accent. *(commit c210d69)*
 - [x] **Media & Websites pages — Dribbble-style masonry grid** — Replaced search-first list views with visual-first masonry grids (CSS columns). Auto-load content on mount. Horizontal scrollable category pills, pill-shaped search bar, skeleton loading states, staggered Framer Motion card animations, hover effects. All slate-*/brand-* tokens migrated to semantic design system. *(commit 6d2d9be)*
 
