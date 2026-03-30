@@ -2,6 +2,8 @@
 
 ## Completed
 
+- [x] **Vehicle expenses: per-vehicle Totals tab with range filtering** — Added a new `Totals` tab alongside `Fuel` and `Maintenance` for each vehicle, showing Fuel total, Maintenance total, and combined total. Added a matching collapsible `Limit results` panel with date-range selection (default all-time) to constrain totals by period.
+
 - [x] **Vehicle maintenance filters: “Limit results” panel parity with fuel** — Added a collapsible `Limit results` drop-shade panel to the Maintenance tab using the same interaction/style pattern as Fuel. Implemented maintenance filtering by start/end date, sort order, vendor query, price threshold, and mileage threshold, plus filtered-count display (`x of y`) and no-match empty-state messaging.
 
 - [x] **Infra fix: expose vehicle maintenance API routes (CORS unblock)** — Added missing API Gateway HTTP API routes in Terraform for maintenance endpoints and metadata (`/vehicles-expenses/{vehicleId}/maintenance*`, `/vehicles-expenses/maintenance-tags`, `/vehicles-expenses/maintenance-vendors`) so requests reach Lambda and return CORS-enabled responses instead of gateway-level route misses.

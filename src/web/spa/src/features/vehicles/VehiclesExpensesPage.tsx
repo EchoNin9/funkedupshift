@@ -195,7 +195,7 @@ const VehiclesExpensesPage: React.FC = () => {
   const [maintenanceLoading, setMaintenanceLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [activeExpenseTab, setActiveExpenseTab] = useState<"fuel" | "maintenance">("fuel");
+  const [activeExpenseTab, setActiveExpenseTab] = useState<"fuel" | "maintenance" | "totals">("fuel");
   const [showAddVehicle, setShowAddVehicle] = useState(false);
   const [newVehicleName, setNewVehicleName] = useState("");
   const [fuelForm, setFuelForm] = useState({
@@ -239,6 +239,8 @@ const VehiclesExpensesPage: React.FC = () => {
     odometerKm: "",
   });
   const [limitResultsOpen, setLimitResultsOpen] = useState(false);
+  const [maintenanceLimitResultsOpen, setMaintenanceLimitResultsOpen] = useState(false);
+  const [totalsLimitResultsOpen, setTotalsLimitResultsOpen] = useState(false);
   const [displayGraphOpen, setDisplayGraphOpen] = useState(false);
   const [filters, setFilters] = useState({
     startDate: "",
@@ -248,6 +250,20 @@ const VehiclesExpensesPage: React.FC = () => {
     fuelPriceVal: "",
     pricePerLOp: "higher" as "higher" | "lower",
     pricePerLVal: "",
+  });
+  const [maintenanceFilters, setMaintenanceFilters] = useState({
+    startDate: "",
+    endDate: "",
+    sortNewestFirst: true,
+    priceOp: "higher" as "higher" | "lower",
+    priceVal: "",
+    mileageOp: "higher" as "higher" | "lower",
+    mileageVal: "",
+    vendorQuery: "",
+  });
+  const [totalsFilters, setTotalsFilters] = useState({
+    startDate: "",
+    endDate: "",
   });
 
   const loadVehicles = useCallback(async () => {
@@ -477,6 +493,75 @@ const VehiclesExpensesPage: React.FC = () => {
     );
     return list;
   }, [fuelEntries, filters, pricePerLitreByEntry]);
+
+  const filteredMaintenanceEntries = React.useMemo(() => {
+    let list = [...maintenanceEntries];
+    const {
+      startDate,
+      endDate,
+      sortNewestFirst,
+      priceOp,
+      priceVal,
+      mileageOp,
+      mileageVal,
+      vendorQuery,
+    } = maintenanceFilters;
+
+    if (startDate) list = list.filter((e) => (e.date ?? "") >= startDate);
+    if (endDate) list = list.filter((e) => (e.date ?? "") <= endDate);
+
+    const pVal = parseFloat(priceVal);
+    if (!isNaN(pVal) && priceVal) {
+      list = list.filter((e) => {
+        const p = e.price ?? 0;
+        return priceOp === "higher" ? p >= pVal : p <= pVal;
+      });
+    }
+
+    const mVal = parseFloat(mileageVal);
+    if (!isNaN(mVal) && mileageVal) {
+      list = list.filter((e) => {
+        const m = e.mileage ?? 0;
+        return mileageOp === "higher" ? m >= mVal : m <= mVal;
+      });
+    }
+
+    const vq = vendorQuery.trim().toLowerCase();
+    if (vq) {
+      list = list.filter((e) => (e.vendor ?? "").toLowerCase().includes(vq));
+    }
+
+    list.sort((a, b) =>
+      sortNewestFirst
+        ? (b.date || "").localeCompare(a.date || "")
+        : (a.date || "").localeCompare(b.date || "")
+    );
+    return list;
+  }, [maintenanceEntries, maintenanceFilters]);
+
+  const filteredFuelEntriesForTotals = React.useMemo(() => {
+    let list = [...fuelEntries];
+    if (totalsFilters.startDate) list = list.filter((e) => (e.date ?? "") >= totalsFilters.startDate);
+    if (totalsFilters.endDate) list = list.filter((e) => (e.date ?? "") <= totalsFilters.endDate);
+    return list;
+  }, [fuelEntries, totalsFilters]);
+
+  const filteredMaintenanceEntriesForTotals = React.useMemo(() => {
+    let list = [...maintenanceEntries];
+    if (totalsFilters.startDate) list = list.filter((e) => (e.date ?? "") >= totalsFilters.startDate);
+    if (totalsFilters.endDate) list = list.filter((e) => (e.date ?? "") <= totalsFilters.endDate);
+    return list;
+  }, [maintenanceEntries, totalsFilters]);
+
+  const totalsSummary = React.useMemo(() => {
+    const fuelTotal = filteredFuelEntriesForTotals.reduce((sum, e) => sum + (e.fuelPrice ?? e.fuel_price ?? 0), 0);
+    const maintenanceTotal = filteredMaintenanceEntriesForTotals.reduce((sum, e) => sum + (e.price ?? 0), 0);
+    return {
+      fuelTotal,
+      maintenanceTotal,
+      combinedTotal: fuelTotal + maintenanceTotal,
+    };
+  }, [filteredFuelEntriesForTotals, filteredMaintenanceEntriesForTotals]);
 
   const handleAddVehicle = async () => {
     const name = newVehicleName.trim();
@@ -1112,6 +1197,17 @@ const VehiclesExpensesPage: React.FC = () => {
               >
                 Maintenance
               </button>
+              <button
+                type="button"
+                onClick={() => setActiveExpenseTab("totals")}
+                className={`rounded-md px-3 py-1.5 text-sm ${
+                  activeExpenseTab === "totals"
+                    ? "bg-surface-3 text-text-primary"
+                    : "text-text-secondary hover:text-text-primary"
+                }`}
+              >
+                Totals
+              </button>
             </div>
             {activeExpenseTab === "fuel" ? (
               <>
@@ -1156,7 +1252,7 @@ const VehiclesExpensesPage: React.FC = () => {
               {saving ? "Adding…" : "Add fuel entry"}
             </button>
               </>
-            ) : (
+            ) : activeExpenseTab === "maintenance" ? (
               <div className="space-y-4">
                 <h2 className="text-sm font-semibold text-text-secondary">Add maintenance expense</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1239,6 +1335,12 @@ const VehiclesExpensesPage: React.FC = () => {
                     <option key={v} value={v} />
                   ))}
                 </datalist>
+              </div>
+            ) : (
+              <div className="rounded-lg border border-border-hover bg-surface-3 p-4">
+                <p className="text-sm text-text-secondary">
+                  Totals summary for the selected vehicle. Use the Totals tab filters below to limit the time range.
+                </p>
               </div>
             )}
           </div>
@@ -1580,17 +1682,142 @@ const VehiclesExpensesPage: React.FC = () => {
           )}
 
           {activeExpenseTab === "maintenance" && (
+            <>
+            <div className="rounded-lg border border-border-hover bg-surface-3 overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setMaintenanceLimitResultsOpen((o) => !o)}
+                className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-surface-3/30 transition-colors"
+              >
+                <span className="text-sm font-medium text-text-primary">Limit results</span>
+                <span className="text-text-secondary">{maintenanceLimitResultsOpen ? "▼" : "▶"}</span>
+              </button>
+              {maintenanceLimitResultsOpen && (
+                <div className="px-4 pb-4 pt-1 border-t border-border-hover space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div>
+                      <label className="block text-xs text-text-primary0 mb-1">Start date</label>
+                      <input
+                        type="date"
+                        value={maintenanceFilters.startDate}
+                        onChange={(e) => setMaintenanceFilters((f) => ({ ...f, startDate: e.target.value }))}
+                        className="w-full rounded-md border border-border-hover bg-surface-3 px-3 py-2 text-sm text-text-primary"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-text-primary0 mb-1">End date</label>
+                      <input
+                        type="date"
+                        value={maintenanceFilters.endDate}
+                        onChange={(e) => setMaintenanceFilters((f) => ({ ...f, endDate: e.target.value }))}
+                        className="w-full rounded-md border border-border-hover bg-surface-3 px-3 py-2 text-sm text-text-primary"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-text-primary0 mb-1">Sort order</label>
+                      <select
+                        value={maintenanceFilters.sortNewestFirst ? "newest" : "oldest"}
+                        onChange={(e) =>
+                          setMaintenanceFilters((f) => ({ ...f, sortNewestFirst: e.target.value === "newest" }))
+                        }
+                        className="w-full rounded-md border border-border-hover bg-surface-3 px-3 py-2 text-sm text-text-primary"
+                      >
+                        <option value="newest">Newest first</option>
+                        <option value="oldest">Oldest first</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-text-primary0 mb-1">Vendor contains</label>
+                      <input
+                        type="text"
+                        value={maintenanceFilters.vendorQuery}
+                        onChange={(e) => setMaintenanceFilters((f) => ({ ...f, vendorQuery: e.target.value }))}
+                        className="w-full rounded-md border border-border-hover bg-surface-3 px-3 py-2 text-sm text-text-primary"
+                        placeholder="e.g. quick"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="flex gap-2 items-end">
+                      <div className="flex-1">
+                        <label className="block text-xs text-text-primary0 mb-1">Price ($)</label>
+                        <div className="flex gap-2">
+                          <select
+                            value={maintenanceFilters.priceOp}
+                            onChange={(e) =>
+                              setMaintenanceFilters((f) => ({
+                                ...f,
+                                priceOp: e.target.value as "higher" | "lower",
+                              }))
+                            }
+                            className="rounded-md border border-border-hover bg-surface-3 px-2 py-2 text-sm text-text-primary"
+                          >
+                            <option value="higher">Higher than</option>
+                            <option value="lower">Lower than</option>
+                          </select>
+                          <input
+                            type="number"
+                            step="0.01"
+                            placeholder="e.g. 200"
+                            value={maintenanceFilters.priceVal}
+                            onChange={(e) => setMaintenanceFilters((f) => ({ ...f, priceVal: e.target.value }))}
+                            className="flex-1 rounded-md border border-border-hover bg-surface-3 px-3 py-2 text-sm text-text-primary placeholder-text-tertiary"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 items-end">
+                      <div className="flex-1">
+                        <label className="block text-xs text-text-primary0 mb-1">Mileage (km)</label>
+                        <div className="flex gap-2">
+                          <select
+                            value={maintenanceFilters.mileageOp}
+                            onChange={(e) =>
+                              setMaintenanceFilters((f) => ({
+                                ...f,
+                                mileageOp: e.target.value as "higher" | "lower",
+                              }))
+                            }
+                            className="rounded-md border border-border-hover bg-surface-3 px-2 py-2 text-sm text-text-primary"
+                          >
+                            <option value="higher">Higher than</option>
+                            <option value="lower">Lower than</option>
+                          </select>
+                          <input
+                            type="number"
+                            step="1"
+                            placeholder="e.g. 100000"
+                            value={maintenanceFilters.mileageVal}
+                            onChange={(e) => setMaintenanceFilters((f) => ({ ...f, mileageVal: e.target.value }))}
+                            className="flex-1 rounded-md border border-border-hover bg-surface-3 px-3 py-2 text-sm text-text-primary placeholder-text-tertiary"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
             <div className="rounded-lg border border-border-hover bg-surface-2 overflow-hidden">
               <h2 className="text-sm font-semibold text-text-secondary px-4 py-3 border-b border-border-hover">
-                Maintenance expenses (newest first)
+                Maintenance expenses ({maintenanceFilters.sortNewestFirst ? "newest first" : "oldest first"})
+                {filteredMaintenanceEntries.length !== maintenanceEntries.length && (
+                  <span className="font-normal text-text-primary0 ml-2">
+                    ({filteredMaintenanceEntries.length} of {maintenanceEntries.length})
+                  </span>
+                )}
               </h2>
               {maintenanceLoading ? (
                 <div className="p-8 text-center text-text-primary0">Loading…</div>
-              ) : maintenanceEntries.length === 0 ? (
-                <div className="p-8 text-center text-text-primary0">No maintenance entries yet. Add one above.</div>
+              ) : filteredMaintenanceEntries.length === 0 ? (
+                <div className="p-8 text-center text-text-primary0">
+                  {maintenanceEntries.length === 0
+                    ? "No maintenance entries yet. Add one above."
+                    : "No entries match the current filters. Adjust or clear filters."}
+                </div>
               ) : (
                 <div className="divide-y divide-border-hover">
-                  {maintenanceEntries.map((entry) => {
+                  {filteredMaintenanceEntries.map((entry) => {
                     const isEditing = editingMaintenanceId === entry.id;
                     return (
                       <div key={entry.id} className="p-4">
@@ -1684,6 +1911,76 @@ const VehiclesExpensesPage: React.FC = () => {
                 </div>
               )}
             </div>
+            </>
+          )}
+
+          {activeExpenseTab === "totals" && (
+            <>
+              <div className="rounded-lg border border-border-hover bg-surface-3 overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setTotalsLimitResultsOpen((o) => !o)}
+                  className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-surface-3/30 transition-colors"
+                >
+                  <span className="text-sm font-medium text-text-primary">Limit results</span>
+                  <span className="text-text-secondary">{totalsLimitResultsOpen ? "▼" : "▶"}</span>
+                </button>
+                {totalsLimitResultsOpen && (
+                  <div className="px-4 pb-4 pt-1 border-t border-border-hover">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                      <div>
+                        <label className="block text-xs text-text-primary0 mb-1">Start date</label>
+                        <input
+                          type="date"
+                          value={totalsFilters.startDate}
+                          onChange={(e) => setTotalsFilters((f) => ({ ...f, startDate: e.target.value }))}
+                          className="w-full rounded-md border border-border-hover bg-surface-3 px-3 py-2 text-sm text-text-primary"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-text-primary0 mb-1">End date</label>
+                        <input
+                          type="date"
+                          value={totalsFilters.endDate}
+                          onChange={(e) => setTotalsFilters((f) => ({ ...f, endDate: e.target.value }))}
+                          className="w-full rounded-md border border-border-hover bg-surface-3 px-3 py-2 text-sm text-text-primary"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="rounded-lg border border-border-hover bg-surface-2 p-4">
+                  <p className="text-xs text-text-primary0 mb-1">Fuel total</p>
+                  <p className="text-2xl font-semibold text-text-primary">
+                    ${totalsSummary.fuelTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                  <p className="text-xs text-text-secondary mt-1">
+                    {filteredFuelEntriesForTotals.length} entries
+                  </p>
+                </div>
+                <div className="rounded-lg border border-border-hover bg-surface-2 p-4">
+                  <p className="text-xs text-text-primary0 mb-1">Maintenance total</p>
+                  <p className="text-2xl font-semibold text-text-primary">
+                    ${totalsSummary.maintenanceTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                  <p className="text-xs text-text-secondary mt-1">
+                    {filteredMaintenanceEntriesForTotals.length} entries
+                  </p>
+                </div>
+                <div className="rounded-lg border border-border-hover bg-surface-2 p-4">
+                  <p className="text-xs text-text-primary0 mb-1">Combined total</p>
+                  <p className="text-2xl font-semibold text-text-primary">
+                    ${totalsSummary.combinedTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                  <p className="text-xs text-text-secondary mt-1">
+                    Range: {totalsFilters.startDate || "All time"} - {totalsFilters.endDate || "Present"}
+                  </p>
+                </div>
+              </div>
+            </>
           )}
         </>
       ) : loading ? (
