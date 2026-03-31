@@ -1024,7 +1024,7 @@ def export_maintenance_entries(user_id, vehicle_id, export_format, start_date=""
             "",
         ]
         for row in _maintenance_rows(entries):
-            lines.append(f"{row[0]} | ${row[1]} | {row[2]}km | {row[3]} | {row[6]} files")
+            lines.append(f"{row[0]} | ${row[1]} | {row[2]}km | {row[3]} | {row[4]} | {row[6]} files")
         payload = _simple_pdf_bytes(f"Maintenance Export - {vehicle.get('name') or 'Vehicle'}", lines)
         return _upload_export_artifact(user_id, vehicle_id, f"{vehicle_name}-maintenance.pdf", "application/pdf", payload)
     payload = _build_zip_payload(
