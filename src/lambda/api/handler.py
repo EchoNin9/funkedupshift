@@ -4,6 +4,7 @@ API Gateway HTTP API (payload 2.0) handler. Routes by path.
 import json
 import logging
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -32,6 +33,7 @@ MEDIA_BUCKET = os.environ.get("MEDIA_BUCKET", "")
 COGNITO_USER_POOL_ID = os.environ.get("COGNITO_USER_POOL_ID", "")
 
 ROLE_DISPLAY_MAP = {"admin": "SuperAdmin", "manager": "Manager", "user": "User"}
+_DATE_QUERY_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
 def _getSourceIp(event):
@@ -410,6 +412,9 @@ def handler(event, context):
         ve_parts = [p for p in path.split("/") if p]
         if len(ve_parts) >= 2 and ve_parts[0] == "vehicles-expenses" and ve_parts[1] != "import":
             vehicle_id = ve_path_params.get("vehicleId") or ve_path_params.get("id") or ve_parts[1]
+            if len(ve_parts) == 3 and ve_parts[2] == "export-all":
+                if method == "GET":
+                    return exportAllVehicleExpenses(event, vehicle_id)
             if len(ve_parts) == 2:
                 if method == "GET":
                     return getVehicleExpense(event, vehicle_id)
@@ -422,6 +427,9 @@ def handler(event, context):
                     return listFuelEntries(event, vehicle_id)
                 if method == "POST":
                     return createFuelEntry(event, vehicle_id)
+            if len(ve_parts) == 4 and ve_parts[2] == "fuel" and ve_parts[3] == "export":
+                if method == "GET":
+                    return exportFuelEntries(event, vehicle_id)
             if len(ve_parts) == 4 and ve_parts[2] == "fuel":
                 fillup_id = ve_path_params.get("fillupId") or ve_path_params.get("id") or ve_parts[3]
                 if method == "GET":
@@ -435,6 +443,9 @@ def handler(event, context):
                     return listMaintenanceEntries(event, vehicle_id)
                 if method == "POST":
                     return createMaintenanceEntry(event, vehicle_id)
+            if len(ve_parts) == 4 and ve_parts[2] == "maintenance" and ve_parts[3] == "export":
+                if method == "GET":
+                    return exportMaintenanceEntries(event, vehicle_id)
             if len(ve_parts) == 4 and ve_parts[2] == "maintenance" and ve_parts[3] == "upload":
                 if method == "POST":
                     return getMaintenanceUploadUrl(event, vehicle_id)
@@ -664,6 +675,22 @@ def _requireExpensesGroup(event):
     return None, jsonResponse({"error": "Forbidden: expenses group membership required"}, 403)
 
 
+def _parse_date_limited_export_query(event, allowed_formats):
+    qs = event.get("queryStringParameters") or {}
+    fmt = str(qs.get("format") or "").strip().lower()
+    if fmt not in allowed_formats:
+        return None, None, None, jsonResponse({"error": f"format must be one of: {', '.join(allowed_formats)}"}, 400)
+    start_date = str(qs.get("startDate") or "").strip()
+    end_date = str(qs.get("endDate") or "").strip()
+    if start_date and not _DATE_QUERY_RE.match(start_date):
+        return None, None, None, jsonResponse({"error": "startDate must be YYYY-MM-DD"}, 400)
+    if end_date and not _DATE_QUERY_RE.match(end_date):
+        return None, None, None, jsonResponse({"error": "endDate must be YYYY-MM-DD"}, 400)
+    if start_date and end_date and start_date > end_date:
+        return None, None, None, jsonResponse({"error": "startDate cannot be after endDate"}, 400)
+    return fmt, start_date, end_date, None
+
+
 def listVehiclesExpenses(event):
     """GET /vehicles-expenses - List current user's vehicles (expenses group required)."""
     user, err = _requireExpensesGroup(event)
@@ -767,6 +794,33 @@ def listFuelEntries(event, vehicle_id):
     except Exception as e:
         logger.exception("listFuelEntries error: %s", e)
         return jsonResponse({"error": str(e), "entries": []}, 500)
+
+
+def exportFuelEntries(event, vehicle_id):
+    """GET /vehicles-expenses/{vehicleId}/fuel/export?format=csv|pdf&startDate=&endDate="""
+    user, err = _requireExpensesGroup(event)
+    if err:
+        return err
+    fmt, start_date, end_date, parse_err = _parse_date_limited_export_query(event, ("csv", "pdf"))
+    if parse_err:
+        return parse_err
+    try:
+        from api.vehicles_expenses import export_fuel_entries
+        result = export_fuel_entries(
+            user_id=user["userId"],
+            vehicle_id=vehicle_id,
+            export_format=fmt,
+            start_date=start_date,
+            end_date=end_date,
+        )
+        if not result:
+            return jsonResponse({"error": "Vehicle not found"}, 404)
+        return jsonResponse(result)
+    except ValueError as ve:
+        return jsonResponse({"error": str(ve)}, 400)
+    except Exception as e:
+        logger.exception("exportFuelEntries error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
 
 
 def createFuelEntry(event, vehicle_id):
@@ -890,6 +944,49 @@ def listMaintenanceEntries(event, vehicle_id):
     except Exception as e:
         logger.exception("listMaintenanceEntries error: %s", e)
         return jsonResponse({"error": str(e), "entries": []}, 500)
+
+
+def exportMaintenanceEntries(event, vehicle_id):
+    """GET /vehicles-expenses/{vehicleId}/maintenance/export?format=csv|pdf|zip&startDate=&endDate="""
+    user, err = _requireExpensesGroup(event)
+    if err:
+        return err
+    fmt, start_date, end_date, parse_err = _parse_date_limited_export_query(event, ("csv", "pdf", "zip"))
+    if parse_err:
+        return parse_err
+    try:
+        from api.vehicles_expenses import export_maintenance_entries
+        result = export_maintenance_entries(
+            user_id=user["userId"],
+            vehicle_id=vehicle_id,
+            export_format=fmt,
+            start_date=start_date,
+            end_date=end_date,
+        )
+        if not result:
+            return jsonResponse({"error": "Vehicle not found"}, 404)
+        return jsonResponse(result)
+    except ValueError as ve:
+        return jsonResponse({"error": str(ve)}, 400)
+    except Exception as e:
+        logger.exception("exportMaintenanceEntries error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def exportAllVehicleExpenses(event, vehicle_id):
+    """GET /vehicles-expenses/{vehicleId}/export-all - all-time fuel+maintenance CSVs plus attachments as zip."""
+    user, err = _requireExpensesGroup(event)
+    if err:
+        return err
+    try:
+        from api.vehicles_expenses import export_all_vehicle_expenses
+        result = export_all_vehicle_expenses(user_id=user["userId"], vehicle_id=vehicle_id)
+        if not result:
+            return jsonResponse({"error": "Vehicle not found"}, 404)
+        return jsonResponse(result)
+    except Exception as e:
+        logger.exception("exportAllVehicleExpenses error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
 
 
 def createMaintenanceEntry(event, vehicle_id):

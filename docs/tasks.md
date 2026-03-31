@@ -2,6 +2,10 @@
 
 ## Completed
 
+- [x] **Vehicle expenses exports: downloadable fuel/maintenance + export-all ZIP** — Added backend-generated downloadable exports with presigned URLs and new endpoints for fuel (`csv|pdf`), maintenance (`csv|pdf|zip` with attachments), and all-time export-all ZIP (fuel CSV + maintenance CSV + all maintenance attachments). Wired API Gateway routes, Lambda handler validation (`format`, `startDate`, `endDate`), SPA export controls, and backend tests for filtering/attachment inclusion. *(commit 9ec844f)*
+
+- [x] **Vehicle maintenance PDF export: include description column content** — Updated maintenance PDF row rendering so exported lines include the maintenance description text, matching detail completeness of other export formats. *(commit d86256f)*
+
 - [x] **Vehicle expenses: per-vehicle Totals tab with range filtering** — Added a new `Totals` tab alongside `Fuel` and `Maintenance` for each vehicle, showing Fuel total, Maintenance total, and combined total. Added a matching collapsible `Limit results` panel with date-range selection (default all-time) to constrain totals by period.
 
 - [x] **Vehicle maintenance filters: “Limit results” panel parity with fuel** — Added a collapsible `Limit results` drop-shade panel to the Maintenance tab using the same interaction/style pattern as Fuel. Implemented maintenance filtering by start/end date, sort order, vendor query, price threshold, and mileage threshold, plus filtered-count display (`x of y`) and no-match empty-state messaging.

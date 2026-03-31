@@ -206,6 +206,7 @@ const VehiclesExpensesPage: React.FC = () => {
   });
   const [importing, setImporting] = useState(false);
   const [importMessage, setImportMessage] = useState<string | null>(null);
+  const [exporting, setExporting] = useState<string | null>(null);
   const [showImportHelp, setShowImportHelp] = useState(false);
   const [maintenanceTags, setMaintenanceTags] = useState<string[]>([]);
   const [maintenanceVendors, setMaintenanceVendors] = useState<string[]>([]);
@@ -1002,6 +1003,83 @@ const VehiclesExpensesPage: React.FC = () => {
     }
   };
 
+  const buildDateRangeQuery = (startDate?: string, endDate?: string): string => {
+    const params = new URLSearchParams();
+    if (startDate) params.set("startDate", startDate);
+    if (endDate) params.set("endDate", endDate);
+    const q = params.toString();
+    return q ? `&${q}` : "";
+  };
+
+  const triggerDownloadFromResponse = (payload: { downloadUrl?: string; error?: string }) => {
+    if (!payload.downloadUrl) {
+      throw new Error(payload.error || "Export URL was not returned");
+    }
+    window.open(payload.downloadUrl, "_blank", "noopener,noreferrer");
+  };
+
+  const exportFuel = async (format: "csv" | "pdf") => {
+    if (!selectedVehicleId) return;
+    const apiBase = getApiBaseUrl();
+    if (!apiBase) return;
+    const exportKey = `fuel-${format}`;
+    setExporting(exportKey);
+    setError(null);
+    try {
+      const resp = await fetchWithAuth(
+        `${apiBase}/vehicles-expenses/${encodeURIComponent(selectedVehicleId)}/fuel/export?format=${encodeURIComponent(format)}${buildDateRangeQuery(filters.startDate, filters.endDate)}`
+      );
+      const data = (await resp.json().catch(() => ({}))) as { downloadUrl?: string; error?: string };
+      if (!resp.ok) throw new Error(data.error || "Fuel export failed");
+      triggerDownloadFromResponse(data);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Fuel export failed");
+    } finally {
+      setExporting(null);
+    }
+  };
+
+  const exportMaintenance = async (format: "csv" | "pdf" | "zip") => {
+    if (!selectedVehicleId) return;
+    const apiBase = getApiBaseUrl();
+    if (!apiBase) return;
+    const exportKey = `maintenance-${format}`;
+    setExporting(exportKey);
+    setError(null);
+    try {
+      const resp = await fetchWithAuth(
+        `${apiBase}/vehicles-expenses/${encodeURIComponent(selectedVehicleId)}/maintenance/export?format=${encodeURIComponent(format)}${buildDateRangeQuery(maintenanceFilters.startDate, maintenanceFilters.endDate)}`
+      );
+      const data = (await resp.json().catch(() => ({}))) as { downloadUrl?: string; error?: string };
+      if (!resp.ok) throw new Error(data.error || "Maintenance export failed");
+      triggerDownloadFromResponse(data);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Maintenance export failed");
+    } finally {
+      setExporting(null);
+    }
+  };
+
+  const exportAll = async () => {
+    if (!selectedVehicleId) return;
+    const apiBase = getApiBaseUrl();
+    if (!apiBase) return;
+    setExporting("all");
+    setError(null);
+    try {
+      const resp = await fetchWithAuth(
+        `${apiBase}/vehicles-expenses/${encodeURIComponent(selectedVehicleId)}/export-all`
+      );
+      const data = (await resp.json().catch(() => ({}))) as { downloadUrl?: string; error?: string };
+      if (!resp.ok) throw new Error(data.error || "Export all failed");
+      triggerDownloadFromResponse(data);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Export all failed");
+    } finally {
+      setExporting(null);
+    }
+  };
+
   if (!user) {
     return (
       <div className="space-y-4">
@@ -1168,10 +1246,20 @@ const VehiclesExpensesPage: React.FC = () => {
               </div>
               <button
                 onClick={() => handleDeleteVehicle(selectedVehicleId)}
-                disabled={saving}
+                disabled={saving || !!exporting}
                 className="text-sm text-red-400 hover:text-red-300"
               >
                 Delete vehicle
+              </button>
+            </div>
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={exportAll}
+                disabled={!!exporting || saving}
+                className="rounded-md border border-border-hover bg-surface-3 px-3 py-1.5 text-xs text-text-primary hover:bg-surface-3/80 disabled:opacity-50"
+              >
+                {exporting === "all" ? "Exporting all..." : "Export all (ZIP)"}
               </button>
             </div>
             <div className="mb-4 flex gap-2 border-b border-border-hover pb-2">
@@ -1347,6 +1435,27 @@ const VehiclesExpensesPage: React.FC = () => {
 
           {activeExpenseTab === "fuel" && (
           <>
+          <div className="rounded-lg border border-border-hover bg-surface-3 p-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-text-primary0">Export fuel (uses Limit results date range):</span>
+              <button
+                type="button"
+                onClick={() => exportFuel("csv")}
+                disabled={!!exporting || fuelLoading}
+                className="rounded-md border border-border-hover bg-surface-2 px-3 py-1.5 text-xs text-text-primary hover:bg-surface-3 disabled:opacity-50"
+              >
+                {exporting === "fuel-csv" ? "Exporting CSV..." : "CSV"}
+              </button>
+              <button
+                type="button"
+                onClick={() => exportFuel("pdf")}
+                disabled={!!exporting || fuelLoading}
+                className="rounded-md border border-border-hover bg-surface-2 px-3 py-1.5 text-xs text-text-primary hover:bg-surface-3 disabled:opacity-50"
+              >
+                {exporting === "fuel-pdf" ? "Exporting PDF..." : "PDF"}
+              </button>
+            </div>
+          </div>
           <div className="rounded-lg border border-border-hover bg-surface-3 overflow-hidden">
             <button
               type="button"
@@ -1683,6 +1792,35 @@ const VehiclesExpensesPage: React.FC = () => {
 
           {activeExpenseTab === "maintenance" && (
             <>
+            <div className="rounded-lg border border-border-hover bg-surface-3 p-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs text-text-primary0">Export maintenance (uses Limit results date range):</span>
+                <button
+                  type="button"
+                  onClick={() => exportMaintenance("csv")}
+                  disabled={!!exporting || maintenanceLoading}
+                  className="rounded-md border border-border-hover bg-surface-2 px-3 py-1.5 text-xs text-text-primary hover:bg-surface-3 disabled:opacity-50"
+                >
+                  {exporting === "maintenance-csv" ? "Exporting CSV..." : "CSV"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => exportMaintenance("pdf")}
+                  disabled={!!exporting || maintenanceLoading}
+                  className="rounded-md border border-border-hover bg-surface-2 px-3 py-1.5 text-xs text-text-primary hover:bg-surface-3 disabled:opacity-50"
+                >
+                  {exporting === "maintenance-pdf" ? "Exporting PDF..." : "PDF"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => exportMaintenance("zip")}
+                  disabled={!!exporting || maintenanceLoading}
+                  className="rounded-md border border-border-hover bg-surface-2 px-3 py-1.5 text-xs text-text-primary hover:bg-surface-3 disabled:opacity-50"
+                >
+                  {exporting === "maintenance-zip" ? "Exporting ZIP..." : "ZIP + attachments"}
+                </button>
+              </div>
+            </div>
             <div className="rounded-lg border border-border-hover bg-surface-3 overflow-hidden">
               <button
                 type="button"
