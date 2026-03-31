@@ -1602,6 +1602,14 @@ resource "aws_apigatewayv2_route" "vehiclesExpensesFuelList" {
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
+resource "aws_apigatewayv2_route" "vehiclesExpensesFuelExport" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /vehicles-expenses/{vehicleId}/fuel/export"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
 resource "aws_apigatewayv2_route" "vehiclesExpensesFuelCreate" {
   api_id             = aws_apigatewayv2_api.main.id
   route_key          = "POST /vehicles-expenses/{vehicleId}/fuel"
@@ -1642,6 +1650,14 @@ resource "aws_apigatewayv2_route" "vehiclesExpensesMaintenanceList" {
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
+resource "aws_apigatewayv2_route" "vehiclesExpensesMaintenanceExport" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /vehicles-expenses/{vehicleId}/maintenance/export"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
 resource "aws_apigatewayv2_route" "vehiclesExpensesMaintenanceCreate" {
   api_id             = aws_apigatewayv2_api.main.id
   route_key          = "POST /vehicles-expenses/{vehicleId}/maintenance"
@@ -1677,6 +1693,14 @@ resource "aws_apigatewayv2_route" "vehiclesExpensesMaintenanceDelete" {
 resource "aws_apigatewayv2_route" "vehiclesExpensesMaintenanceUpload" {
   api_id             = aws_apigatewayv2_api.main.id
   route_key          = "POST /vehicles-expenses/{vehicleId}/maintenance/upload"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "vehiclesExpensesExportAll" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /vehicles-expenses/{vehicleId}/export-all"
   target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
   authorization_type = "JWT"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id

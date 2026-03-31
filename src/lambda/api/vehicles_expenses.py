@@ -4,7 +4,12 @@ Requires user to be in 'expenses' custom group. Data is private to each user.
 """
 import logging
 import os
+import csv
+import io
+import re
 import uuid
+import zipfile
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -12,6 +17,7 @@ logger.setLevel(logging.INFO)
 TABLE_NAME = os.environ.get("TABLE_NAME", "")
 AWS_REGION = os.environ.get("AWS_REGION", os.environ.get("AWS_DEFAULT_REGION", "us-east-1"))
 MEDIA_BUCKET = os.environ.get("MEDIA_BUCKET", "")
+_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
 def _pk(user_id):
@@ -765,6 +771,287 @@ def import_fuel_entries(user_id, payload):
         logger.exception("import_fuel_entries failed: %s", e)
         errors.append(str(e))
     return {"created": created, "errors": errors}
+
+
+def _valid_date_or_empty(date_value):
+    s = str(date_value or "").strip()
+    if not s:
+        return ""
+    if not _DATE_RE.match(s):
+        return ""
+    return s
+
+
+def _filter_entries_by_date(entries, start_date="", end_date=""):
+    start = _valid_date_or_empty(start_date)
+    end = _valid_date_or_empty(end_date)
+    out = []
+    for entry in entries or []:
+        date_value = _valid_date_or_empty(entry.get("date"))
+        if start and date_value and date_value < start:
+            continue
+        if end and date_value and date_value > end:
+            continue
+        out.append(entry)
+    return out
+
+
+def _format_number(value, decimals=2):
+    try:
+        return f"{float(value):.{decimals}f}"
+    except Exception:
+        return ""
+
+
+def _render_csv_bytes(headers, rows):
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(headers)
+    for row in rows:
+        writer.writerow(row)
+    return buf.getvalue().encode("utf-8")
+
+
+def _fuel_rows(entries):
+    rows = []
+    for e in entries or []:
+        rows.append(
+            [
+                e.get("date", ""),
+                _format_number(e.get("fuelPrice", e.get("fuel_price", "")), 2),
+                _format_number(e.get("fuelLitres", ""), 3),
+                _format_number(e.get("odometerKm", ""), 0),
+            ]
+        )
+    return rows
+
+
+def _maintenance_rows(entries):
+    rows = []
+    for e in entries or []:
+        rows.append(
+            [
+                e.get("date", ""),
+                _format_number(e.get("price", ""), 2),
+                _format_number(e.get("mileage", ""), 0),
+                e.get("vendor", "") or "",
+                (e.get("description", "") or "").replace("\n", " ").replace("\r", " "),
+                ", ".join([str(t) for t in (e.get("tags") or []) if str(t).strip()]),
+                len(e.get("attachments") or []),
+            ]
+        )
+    return rows
+
+
+def _escape_pdf_text(text):
+    return str(text or "").replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
+
+
+def _simple_pdf_bytes(title, lines):
+    # Minimal single-page PDF writer using built-in Helvetica font.
+    max_lines = 48
+    usable_lines = [title, ""] + [str(line) for line in (lines or [])]
+    usable_lines = usable_lines[:max_lines]
+    commands = ["BT", "/F1 10 Tf", "50 790 Td"]
+    for idx, line in enumerate(usable_lines):
+        if idx == 0:
+            commands.append(f"({_escape_pdf_text(line)}) Tj")
+        else:
+            commands.append("0 -14 Td")
+            commands.append(f"({_escape_pdf_text(line)}) Tj")
+    commands.append("ET")
+    stream = "\n".join(commands).encode("utf-8")
+
+    objs = []
+    objs.append(b"1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n")
+    objs.append(b"2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj\n")
+    objs.append(
+        b"3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >> endobj\n"
+    )
+    objs.append(b"4 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj\n")
+    objs.append(f"5 0 obj << /Length {len(stream)} >> stream\n".encode("utf-8") + stream + b"\nendstream endobj\n")
+
+    pdf = io.BytesIO()
+    pdf.write(b"%PDF-1.4\n")
+    offsets = [0]
+    for obj in objs:
+        offsets.append(pdf.tell())
+        pdf.write(obj)
+    xref_pos = pdf.tell()
+    count = len(offsets)
+    pdf.write(f"xref\n0 {count}\n".encode("utf-8"))
+    pdf.write(b"0000000000 65535 f \n")
+    for off in offsets[1:]:
+        pdf.write(f"{off:010d} 00000 n \n".encode("utf-8"))
+    pdf.write(
+        f"trailer << /Size {count} /Root 1 0 R >>\nstartxref\n{xref_pos}\n%%EOF".encode("utf-8")
+    )
+    return pdf.getvalue()
+
+
+def _safe_filename_part(name):
+    raw = str(name or "").strip() or "file"
+    safe = re.sub(r"[^A-Za-z0-9._-]+", "_", raw).strip("._")
+    return safe or "file"
+
+
+def _upload_export_artifact(user_id, vehicle_id, file_name, content_type, payload):
+    if not MEDIA_BUCKET:
+        raise ValueError("MEDIA_BUCKET is not configured")
+    import boto3
+    s3 = boto3.client("s3", region_name=AWS_REGION)
+    key = f"vehicle-expenses/{user_id}/{vehicle_id}/exports/{uuid.uuid4()}-{_safe_filename_part(file_name)}"
+    s3.put_object(
+        Bucket=MEDIA_BUCKET,
+        Key=key,
+        Body=payload,
+        ContentType=content_type,
+    )
+    download_url = s3.generate_presigned_url(
+        "get_object",
+        Params={"Bucket": MEDIA_BUCKET, "Key": key},
+        ExpiresIn=3600,
+    )
+    return {
+        "filename": file_name,
+        "contentType": content_type,
+        "key": key,
+        "downloadUrl": download_url,
+        "expiresIn": 3600,
+    }
+
+
+def _build_maintenance_attachment_zip_entries(entries):
+    out = []
+    used_paths = set()
+    for entry in entries or []:
+        entry_id = _safe_filename_part(entry.get("id") or "entry")
+        entry_date = _safe_filename_part(entry.get("date") or "unknown-date")
+        for idx, attachment in enumerate(entry.get("attachments") or []):
+            if not isinstance(attachment, dict):
+                continue
+            key = str(attachment.get("key") or "").strip()
+            if not key:
+                continue
+            base_name = _safe_filename_part(attachment.get("filename") or key.rsplit("/", 1)[-1] or f"attachment-{idx + 1}")
+            rel_path = f"attachments/{entry_date}_{entry_id}/{base_name}"
+            dedupe = 1
+            while rel_path in used_paths:
+                dedupe += 1
+                rel_path = f"attachments/{entry_date}_{entry_id}/{dedupe}_{base_name}"
+            used_paths.add(rel_path)
+            out.append((rel_path, key))
+    return out
+
+
+def _build_zip_payload(user_id, fuel_entries, maintenance_entries, include_fuel_csv, include_maintenance_csv):
+    import boto3
+    s3 = boto3.client("s3", region_name=AWS_REGION)
+    out = io.BytesIO()
+    with zipfile.ZipFile(out, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
+        if include_fuel_csv:
+            zf.writestr(
+                "fuel.csv",
+                _render_csv_bytes(["Date", "Fuel Price", "Fuel Litres", "Odometer (km)"], _fuel_rows(fuel_entries)),
+            )
+        if include_maintenance_csv:
+            zf.writestr(
+                "maintenance.csv",
+                _render_csv_bytes(
+                    ["Date", "Price", "Mileage (km)", "Vendor", "Description", "Tags", "Attachment Count"],
+                    _maintenance_rows(maintenance_entries),
+                ),
+            )
+        attachment_paths = _build_maintenance_attachment_zip_entries(maintenance_entries)
+        errors = []
+        for rel_path, key in attachment_paths:
+            try:
+                obj = s3.get_object(Bucket=MEDIA_BUCKET, Key=key)
+                body = obj.get("Body")
+                data = body.read() if body else b""
+                zf.writestr(rel_path, data)
+            except Exception as ex:
+                errors.append(f"{key}: {ex}")
+        if errors:
+            zf.writestr("attachments_errors.txt", "\n".join(errors).encode("utf-8"))
+    return out.getvalue()
+
+
+def export_fuel_entries(user_id, vehicle_id, export_format, start_date="", end_date=""):
+    vehicle = get_vehicle(user_id, vehicle_id)
+    if not vehicle:
+        return None
+    fmt = (export_format or "").strip().lower()
+    if fmt not in ("csv", "pdf"):
+        raise ValueError("format must be csv or pdf")
+    entries = _filter_entries_by_date(list_fuel_entries(user_id, vehicle_id), start_date, end_date)
+    vehicle_name = _safe_filename_part(vehicle.get("name") or "vehicle")
+    if fmt == "csv":
+        payload = _render_csv_bytes(["Date", "Fuel Price", "Fuel Litres", "Odometer (km)"], _fuel_rows(entries))
+        return _upload_export_artifact(user_id, vehicle_id, f"{vehicle_name}-fuel.csv", "text/csv", payload)
+    lines = [
+        f"Vehicle: {vehicle.get('name') or 'Vehicle'}",
+        f"Date range: {start_date or 'all'} to {end_date or 'all'}",
+        f"Rows: {len(entries)}",
+        "",
+    ]
+    for row in _fuel_rows(entries):
+        lines.append(f"{row[0]} | ${row[1]} | {row[2]}L | {row[3]}km")
+    payload = _simple_pdf_bytes(f"Fuel Export - {vehicle.get('name') or 'Vehicle'}", lines)
+    return _upload_export_artifact(user_id, vehicle_id, f"{vehicle_name}-fuel.pdf", "application/pdf", payload)
+
+
+def export_maintenance_entries(user_id, vehicle_id, export_format, start_date="", end_date=""):
+    vehicle = get_vehicle(user_id, vehicle_id)
+    if not vehicle:
+        return None
+    fmt = (export_format or "").strip().lower()
+    if fmt not in ("csv", "pdf", "zip"):
+        raise ValueError("format must be csv, pdf, or zip")
+    entries = _filter_entries_by_date(list_maintenance_entries(user_id, vehicle_id), start_date, end_date)
+    vehicle_name = _safe_filename_part(vehicle.get("name") or "vehicle")
+    if fmt == "csv":
+        payload = _render_csv_bytes(
+            ["Date", "Price", "Mileage (km)", "Vendor", "Description", "Tags", "Attachment Count"],
+            _maintenance_rows(entries),
+        )
+        return _upload_export_artifact(user_id, vehicle_id, f"{vehicle_name}-maintenance.csv", "text/csv", payload)
+    if fmt == "pdf":
+        lines = [
+            f"Vehicle: {vehicle.get('name') or 'Vehicle'}",
+            f"Date range: {start_date or 'all'} to {end_date or 'all'}",
+            f"Rows: {len(entries)}",
+            "",
+        ]
+        for row in _maintenance_rows(entries):
+            lines.append(f"{row[0]} | ${row[1]} | {row[2]}km | {row[3]} | {row[6]} files")
+        payload = _simple_pdf_bytes(f"Maintenance Export - {vehicle.get('name') or 'Vehicle'}", lines)
+        return _upload_export_artifact(user_id, vehicle_id, f"{vehicle_name}-maintenance.pdf", "application/pdf", payload)
+    payload = _build_zip_payload(
+        user_id=user_id,
+        fuel_entries=[],
+        maintenance_entries=entries,
+        include_fuel_csv=False,
+        include_maintenance_csv=True,
+    )
+    return _upload_export_artifact(user_id, vehicle_id, f"{vehicle_name}-maintenance.zip", "application/zip", payload)
+
+
+def export_all_vehicle_expenses(user_id, vehicle_id):
+    vehicle = get_vehicle(user_id, vehicle_id)
+    if not vehicle:
+        return None
+    fuel_entries = list_fuel_entries(user_id, vehicle_id)
+    maintenance_entries = list_maintenance_entries(user_id, vehicle_id)
+    vehicle_name = _safe_filename_part(vehicle.get("name") or "vehicle")
+    payload = _build_zip_payload(
+        user_id=user_id,
+        fuel_entries=fuel_entries,
+        maintenance_entries=maintenance_entries,
+        include_fuel_csv=True,
+        include_maintenance_csv=True,
+    )
+    return _upload_export_artifact(user_id, vehicle_id, f"{vehicle_name}-all-expenses.zip", "application/zip", payload)
 
 
 def _build_item(data, created_at, updated_at):

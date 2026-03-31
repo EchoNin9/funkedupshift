@@ -1,5 +1,7 @@
 """Unit tests for vehicles expenses handlers."""
+import io
 import json
+import zipfile
 from unittest.mock import patch
 
 # Minimal event with auth (expenses group)
@@ -296,3 +298,150 @@ def test_list_vehicles_excludes_maintenance_and_fuel_entries():
         assert len(vehicles) == 1
         assert vehicles[0]["id"] == "v1"
         assert vehicles[0]["name"] == "G70"
+
+
+@patch("api.handler._getUserCustomGroups", return_value=["expenses"])
+@patch("api.vehicles_expenses.export_fuel_entries", return_value={"downloadUrl": "https://example.com/fuel.csv", "filename": "fuel.csv"})
+def test_fuel_export_endpoint_uses_time_filters(mock_export, mock_groups):
+    from api.handler import handler
+    event = _expenses_user_event("/vehicles-expenses/v1/fuel/export")
+    event["pathParameters"] = {"vehicleId": "v1"}
+    event["queryStringParameters"] = {
+        "format": "csv",
+        "startDate": "2026-01-01",
+        "endDate": "2026-01-31",
+    }
+    resp = handler(event, None)
+    assert resp["statusCode"] == 200
+    mock_export.assert_called_once_with(
+        user_id="user-expenses-123",
+        vehicle_id="v1",
+        export_format="csv",
+        start_date="2026-01-01",
+        end_date="2026-01-31",
+    )
+
+
+@patch("api.handler._getUserCustomGroups", return_value=["expenses"])
+def test_maintenance_export_endpoint_rejects_invalid_format(mock_groups):
+    from api.handler import handler
+    event = _expenses_user_event("/vehicles-expenses/v1/maintenance/export")
+    event["pathParameters"] = {"vehicleId": "v1"}
+    event["queryStringParameters"] = {"format": "xlsx"}
+    resp = handler(event, None)
+    assert resp["statusCode"] == 400
+    data = json.loads(resp["body"])
+    assert "format must be one of" in data["error"]
+
+
+@patch("api.handler._getUserCustomGroups", return_value=["expenses"])
+@patch("api.vehicles_expenses.export_all_vehicle_expenses", return_value={"downloadUrl": "https://example.com/all.zip", "filename": "all.zip"})
+def test_export_all_endpoint(mock_export_all, mock_groups):
+    from api.handler import handler
+    event = _expenses_user_event("/vehicles-expenses/v1/export-all")
+    event["pathParameters"] = {"vehicleId": "v1"}
+    resp = handler(event, None)
+    assert resp["statusCode"] == 200
+    mock_export_all.assert_called_once_with(user_id="user-expenses-123", vehicle_id="v1")
+
+
+class _FakeBody:
+    def __init__(self, payload):
+        self._payload = payload
+
+    def read(self):
+        return self._payload
+
+
+class _FakeS3:
+    def __init__(self, objects=None):
+        self.objects = objects or {}
+        self.put_calls = []
+
+    def put_object(self, **kwargs):
+        self.put_calls.append(kwargs)
+        return {"ok": True}
+
+    def generate_presigned_url(self, *_args, **kwargs):
+        key = kwargs.get("Params", {}).get("Key", "file")
+        return f"https://example.com/{key}"
+
+    def get_object(self, **kwargs):
+        key = kwargs["Key"]
+        return {"Body": _FakeBody(self.objects.get(key, b""))}
+
+
+def test_export_maintenance_zip_includes_filtered_attachments_only():
+    from api import vehicles_expenses
+
+    fake_s3 = _FakeS3(
+        objects={
+            "vehicle-expenses/u1/v1/maintenance/a.pdf": b"A-PDF",
+            "vehicle-expenses/u1/v1/maintenance/b.pdf": b"B-PDF",
+        }
+    )
+    maintenance_entries = [
+        {
+            "id": "m1",
+            "date": "2026-01-15",
+            "attachments": [{"key": "vehicle-expenses/u1/v1/maintenance/a.pdf", "filename": "a.pdf"}],
+        },
+        {
+            "id": "m2",
+            "date": "2026-02-15",
+            "attachments": [{"key": "vehicle-expenses/u1/v1/maintenance/b.pdf", "filename": "b.pdf"}],
+        },
+    ]
+
+    with patch.object(vehicles_expenses, "MEDIA_BUCKET", "media-bucket"), \
+         patch("boto3.client", return_value=fake_s3), \
+         patch.object(vehicles_expenses, "get_vehicle", return_value={"id": "v1", "name": "My Car"}), \
+         patch.object(vehicles_expenses, "list_maintenance_entries", return_value=maintenance_entries):
+        result = vehicles_expenses.export_maintenance_entries(
+            user_id="u1",
+            vehicle_id="v1",
+            export_format="zip",
+            start_date="2026-01-01",
+            end_date="2026-01-31",
+        )
+
+    assert result and result.get("downloadUrl")
+    assert len(fake_s3.put_calls) == 1
+    uploaded_zip = fake_s3.put_calls[0]["Body"]
+    with zipfile.ZipFile(io.BytesIO(uploaded_zip), "r") as zf:
+        names = set(zf.namelist())
+    assert "maintenance.csv" in names
+    assert any(name.endswith("/a.pdf") for name in names)
+    assert not any(name.endswith("/b.pdf") for name in names)
+
+
+def test_export_all_zip_contains_csvs_and_all_attachments():
+    from api import vehicles_expenses
+
+    fake_s3 = _FakeS3(
+        objects={
+            "vehicle-expenses/u1/v1/maintenance/a.pdf": b"A-PDF",
+            "vehicle-expenses/u1/v1/maintenance/b.pdf": b"B-PDF",
+        }
+    )
+    fuel_entries = [{"id": "f1", "date": "2026-01-10", "fuelPrice": 50, "fuelLitres": 40, "odometerKm": 1000}]
+    maintenance_entries = [
+        {"id": "m1", "date": "2026-01-15", "attachments": [{"key": "vehicle-expenses/u1/v1/maintenance/a.pdf", "filename": "a.pdf"}]},
+        {"id": "m2", "date": "2026-02-15", "attachments": [{"key": "vehicle-expenses/u1/v1/maintenance/b.pdf", "filename": "b.pdf"}]},
+    ]
+
+    with patch.object(vehicles_expenses, "MEDIA_BUCKET", "media-bucket"), \
+         patch("boto3.client", return_value=fake_s3), \
+         patch.object(vehicles_expenses, "get_vehicle", return_value={"id": "v1", "name": "My Car"}), \
+         patch.object(vehicles_expenses, "list_fuel_entries", return_value=fuel_entries), \
+         patch.object(vehicles_expenses, "list_maintenance_entries", return_value=maintenance_entries):
+        result = vehicles_expenses.export_all_vehicle_expenses("u1", "v1")
+
+    assert result and result.get("downloadUrl")
+    uploaded_zip = fake_s3.put_calls[0]["Body"]
+    with zipfile.ZipFile(io.BytesIO(uploaded_zip), "r") as zf:
+        names = set(zf.namelist())
+    assert "fuel.csv" in names
+    assert "maintenance.csv" in names
+    assert any(name.endswith("/a.pdf") for name in names)
+    assert any(name.endswith("/b.pdf") for name in names)
