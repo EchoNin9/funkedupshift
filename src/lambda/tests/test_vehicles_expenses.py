@@ -263,3 +263,36 @@ def test_list_maintenance_vendors_dedupes_and_filters():
         assert all_vendors == ["Dealer", "QuickLube", "TireTown"]
         filtered = vehicles_expenses.list_maintenance_vendors("user-1", "quick")
         assert filtered == ["QuickLube"]
+
+
+def test_list_vehicles_excludes_maintenance_and_fuel_entries():
+    """vehicles_expenses.list_vehicles returns only true vehicle records."""
+    from api import vehicles_expenses
+
+    class FakeDynamo:
+        def query(self, **kwargs):
+            return {
+                "Items": [
+                    {
+                        "PK": {"S": "USER#u1"},
+                        "SK": {"S": "VEHICLE#v1"},
+                        "name": {"S": "G70"},
+                    },
+                    {
+                        "PK": {"S": "USER#u1"},
+                        "SK": {"S": "VEHICLE#v1#FUEL#f1"},
+                        "date": {"S": "2026-03-01"},
+                    },
+                    {
+                        "PK": {"S": "USER#u1"},
+                        "SK": {"S": "VEHICLE#v1#MAINT#m1"},
+                        "date": {"S": "2026-03-02"},
+                    },
+                ]
+            }
+
+    with patch.object(vehicles_expenses, "TABLE_NAME", "test-table"), patch("boto3.client", return_value=FakeDynamo()):
+        vehicles = vehicles_expenses.list_vehicles("u1")
+        assert len(vehicles) == 1
+        assert vehicles[0]["id"] == "v1"
+        assert vehicles[0]["name"] == "G70"

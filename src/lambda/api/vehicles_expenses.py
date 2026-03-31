@@ -92,8 +92,8 @@ def list_vehicles(user_id):
         vehicles = []
         for item in items:
             sk = item.get("SK", {}).get("S", "")
-            if "#FUEL#" in sk:
-                continue  # Skip fuel entries; only return actual vehicle records
+            if "#FUEL#" in sk or "#MAINT#" in sk:
+                continue  # Skip expense entries; only return actual vehicle records
             v = _dynamo_item_to_dict(item)
             v["id"] = sk.replace("VEHICLE#", "")
             vehicles.append(v)
