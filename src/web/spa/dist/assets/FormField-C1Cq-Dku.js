@@ -1,0 +1,1 @@
+import{j as e}from"./index-6wHRKvYw.js";function i({label:s,required:t,htmlFor:l,children:m,className:r=""}){return e.jsxs("div",{className:r,children:[e.jsxs("label",{htmlFor:l,className:"block text-sm font-medium text-slate-200 mb-1",children:[s,t&&e.jsx("span",{className:"text-red-400 ml-0.5",children:"*"})]}),m]})}export{i as F};

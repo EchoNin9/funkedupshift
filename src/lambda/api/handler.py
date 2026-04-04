@@ -457,6 +457,42 @@ def handler(event, context):
                     return updateMaintenanceEntry(event, vehicle_id, maintenance_id)
                 if method == "DELETE":
                     return deleteMaintenanceEntry(event, vehicle_id, maintenance_id)
+        # General expenses routes (expenses group required)
+        ge_parts = [p for p in path.split("/") if p]
+        if len(ge_parts) >= 1 and ge_parts[0] == "general-expenses":
+            ge_params = event.get("pathParameters") or {}
+            if len(ge_parts) == 1:
+                if method == "GET":
+                    return listGeneralExpenseSections(event)
+                if method == "POST":
+                    return createGeneralExpenseSection(event)
+            elif len(ge_parts) == 2:
+                section_id = ge_params.get("sectionId") or ge_params.get("id") or ge_parts[1]
+                if method == "GET":
+                    return getGeneralExpenseSection(event, section_id)
+                if method == "PUT":
+                    return updateGeneralExpenseSection(event, section_id)
+                if method == "DELETE":
+                    return deleteGeneralExpenseSection(event, section_id)
+            elif len(ge_parts) == 3 and ge_parts[2] == "entries":
+                section_id = ge_params.get("sectionId") or ge_parts[1]
+                if method == "GET":
+                    return listGeneralExpenseEntries(event, section_id)
+                if method == "POST":
+                    return createGeneralExpenseEntry(event, section_id)
+            elif len(ge_parts) == 4 and ge_parts[2] == "entries" and ge_parts[3] == "upload":
+                section_id = ge_params.get("sectionId") or ge_parts[1]
+                if method == "POST":
+                    return getGeneralExpenseUploadUrl(event, section_id)
+            elif len(ge_parts) == 4 and ge_parts[2] == "entries":
+                section_id = ge_params.get("sectionId") or ge_parts[1]
+                entry_id = ge_params.get("entryId") or ge_params.get("id") or ge_parts[3]
+                if method == "GET":
+                    return getGeneralExpenseEntry(event, section_id, entry_id)
+                if method == "PUT":
+                    return updateGeneralExpenseEntry(event, section_id, entry_id)
+                if method == "DELETE":
+                    return deleteGeneralExpenseEntry(event, section_id, entry_id)
         # Admin user/group management routes
         path_params = event.get("pathParameters") or {}
         if method == "GET" and path == "/admin/users":
@@ -1133,6 +1169,230 @@ def importVehiclesExpenses(event):
             pass
         # #endregion
         logger.exception("importVehiclesExpenses error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def listGeneralExpenseSections(event):
+    """GET /general-expenses - List sections."""
+    user, err = _requireExpensesGroup(event)
+    if err:
+        return err
+    try:
+        from api.general_expenses import list_sections
+
+        sections = list_sections(user["userId"])
+        return jsonResponse({"sections": sections})
+    except Exception as e:
+        logger.exception("listGeneralExpenseSections error: %s", e)
+        return jsonResponse({"error": str(e), "sections": []}, 500)
+
+
+def createGeneralExpenseSection(event):
+    """POST /general-expenses - Create section."""
+    user, err = _requireExpensesGroup(event)
+    if err:
+        return err
+    try:
+        body = event.get("body")
+        if body and isinstance(body, str):
+            body = json.loads(body)
+        else:
+            body = body or {}
+        from api.general_expenses import create_section
+
+        section = create_section(user["userId"], body)
+        if not section:
+            return jsonResponse({"error": "name is required"}, 400)
+        return jsonResponse(section, 201)
+    except json.JSONDecodeError:
+        return jsonResponse({"error": "Invalid JSON body"}, 400)
+    except Exception as e:
+        logger.exception("createGeneralExpenseSection error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def getGeneralExpenseSection(event, section_id):
+    """GET /general-expenses/{sectionId}."""
+    user, err = _requireExpensesGroup(event)
+    if err:
+        return err
+    try:
+        from api.general_expenses import get_section
+
+        section = get_section(user["userId"], section_id)
+        if not section:
+            return jsonResponse({"error": "Section not found"}, 404)
+        return jsonResponse(section)
+    except Exception as e:
+        logger.exception("getGeneralExpenseSection error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def updateGeneralExpenseSection(event, section_id):
+    """PUT /general-expenses/{sectionId}."""
+    user, err = _requireExpensesGroup(event)
+    if err:
+        return err
+    try:
+        body = event.get("body")
+        if body and isinstance(body, str):
+            body = json.loads(body)
+        else:
+            body = body or {}
+        from api.general_expenses import update_section
+
+        section = update_section(user["userId"], section_id, body)
+        if not section:
+            return jsonResponse({"error": "Section not found or invalid name"}, 404)
+        return jsonResponse(section)
+    except json.JSONDecodeError:
+        return jsonResponse({"error": "Invalid JSON body"}, 400)
+    except Exception as e:
+        logger.exception("updateGeneralExpenseSection error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def deleteGeneralExpenseSection(event, section_id):
+    """DELETE /general-expenses/{sectionId}."""
+    user, err = _requireExpensesGroup(event)
+    if err:
+        return err
+    try:
+        from api.general_expenses import delete_section
+
+        if not delete_section(user["userId"], section_id):
+            return jsonResponse({"error": "Section not found"}, 404)
+        return jsonResponse({"ok": True}, 200)
+    except Exception as e:
+        logger.exception("deleteGeneralExpenseSection error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def listGeneralExpenseEntries(event, section_id):
+    """GET /general-expenses/{sectionId}/entries."""
+    user, err = _requireExpensesGroup(event)
+    if err:
+        return err
+    try:
+        from api.general_expenses import list_entries
+
+        entries = list_entries(user["userId"], section_id)
+        return jsonResponse({"entries": entries})
+    except Exception as e:
+        logger.exception("listGeneralExpenseEntries error: %s", e)
+        return jsonResponse({"error": str(e), "entries": []}, 500)
+
+
+def createGeneralExpenseEntry(event, section_id):
+    """POST /general-expenses/{sectionId}/entries."""
+    user, err = _requireExpensesGroup(event)
+    if err:
+        return err
+    try:
+        body = event.get("body")
+        if body and isinstance(body, str):
+            body = json.loads(body)
+        else:
+            body = body or {}
+        from api.general_expenses import create_entry
+
+        entry, msg = create_entry(user["userId"], section_id, body)
+        if not entry:
+            status = 404 if msg == "Section not found" else 400
+            return jsonResponse({"error": msg or "Create failed"}, status)
+        return jsonResponse(entry, 201)
+    except json.JSONDecodeError:
+        return jsonResponse({"error": "Invalid JSON body"}, 400)
+    except Exception as e:
+        logger.exception("createGeneralExpenseEntry error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def getGeneralExpenseEntry(event, section_id, entry_id):
+    """GET /general-expenses/{sectionId}/entries/{entryId}."""
+    user, err = _requireExpensesGroup(event)
+    if err:
+        return err
+    try:
+        from api.general_expenses import get_entry
+
+        entry = get_entry(user["userId"], section_id, entry_id)
+        if not entry:
+            return jsonResponse({"error": "Entry not found"}, 404)
+        return jsonResponse(entry)
+    except Exception as e:
+        logger.exception("getGeneralExpenseEntry error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def updateGeneralExpenseEntry(event, section_id, entry_id):
+    """PUT /general-expenses/{sectionId}/entries/{entryId}."""
+    user, err = _requireExpensesGroup(event)
+    if err:
+        return err
+    try:
+        body = event.get("body")
+        if body and isinstance(body, str):
+            body = json.loads(body)
+        else:
+            body = body or {}
+        from api.general_expenses import update_entry
+
+        entry, msg = update_entry(user["userId"], section_id, entry_id, body)
+        if not entry:
+            status = 404 if (msg or "") == "Entry not found" else 400
+            return jsonResponse({"error": msg or "Update failed"}, status)
+        return jsonResponse(entry)
+    except json.JSONDecodeError:
+        return jsonResponse({"error": "Invalid JSON body"}, 400)
+    except Exception as e:
+        logger.exception("updateGeneralExpenseEntry error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def deleteGeneralExpenseEntry(event, section_id, entry_id):
+    """DELETE /general-expenses/{sectionId}/entries/{entryId}."""
+    user, err = _requireExpensesGroup(event)
+    if err:
+        return err
+    try:
+        from api.general_expenses import delete_entry, get_entry
+
+        if not get_entry(user["userId"], section_id, entry_id):
+            return jsonResponse({"error": "Entry not found"}, 404)
+        delete_entry(user["userId"], section_id, entry_id)
+        return jsonResponse({"ok": True}, 200)
+    except Exception as e:
+        logger.exception("deleteGeneralExpenseEntry error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def getGeneralExpenseUploadUrl(event, section_id):
+    """POST /general-expenses/{sectionId}/entries/upload."""
+    user, err = _requireExpensesGroup(event)
+    if err:
+        return err
+    try:
+        body = event.get("body")
+        if body and isinstance(body, str):
+            body = json.loads(body)
+        else:
+            body = body or {}
+        from api.general_expenses import get_attachment_upload
+
+        result = get_attachment_upload(
+            user_id=user["userId"],
+            section_id=section_id,
+            filename=(body.get("filename") or "").strip(),
+            content_type=(body.get("contentType") or "").strip(),
+        )
+        if not result:
+            return jsonResponse({"error": "Unable to generate upload URL"}, 400)
+        return jsonResponse(result)
+    except json.JSONDecodeError:
+        return jsonResponse({"error": "Invalid JSON body"}, 400)
+    except Exception as e:
+        logger.exception("getGeneralExpenseUploadUrl error: %s", e)
         return jsonResponse({"error": str(e)}, 500)
 
 

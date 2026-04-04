@@ -56,6 +56,7 @@ export const PUBLIC_MODULES: PublicModule[] = [
   { id: "financial", label: "Financial", path: "/financial", section: "financial", minRole: "guest", visibility: canAccessFinancial },
   { id: "financial-admin", label: "Financial Admin", path: "/admin/financial", section: "financial", minRole: "superadmin", visibility: canAccessFinancialAdmin },
   { id: "vehicles-expenses", label: "Vehicles Expenses", path: "/vehicles-expenses", section: "vehicles", minRole: "user", visibility: canAccessExpenses },
+  { id: "general-expenses", label: "General expenses", path: "/general-expenses", section: "vehicles", minRole: "user", visibility: canAccessExpenses },
   { id: "highlights", label: "Highlights", path: "/recommended/highlights", section: "recommended", minRole: "guest" },
   { id: "highest-rated", label: "Highest Rated", path: "/recommended/highest-rated", section: "recommended", minRole: "guest" },
 ];
@@ -144,7 +145,10 @@ const MODULE_GROUPS: ModuleGroup[] = [
     label: "Expenses",
     icon: TruckIcon,
     isVisible: canAccessExpenses,
-    getLinks: () => [{ path: "/vehicles-expenses", label: "Vehicle Expenses" }],
+    getLinks: () => [
+      { path: "/vehicles-expenses", label: "Vehicle expenses" },
+      { path: "/general-expenses", label: "General expenses" },
+    ],
   },
   {
     id: "squash",
