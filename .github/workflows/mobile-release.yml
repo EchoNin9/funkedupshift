@@ -1,0 +1,80 @@
+name: Build & Release Android
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: "Version name (e.g., 1.0.0)"
+        required: true
+      version_code:
+        description: "Version code (integer, must increment each release)"
+        required: true
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/web/spa
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN_PRODUCTION }}
+          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: src/web/spa/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate mobile config
+        run: node scripts/write-mobile-config.js
+        env:
+          API_BASE_URL: ${{ vars.API_BASE_URL_PRODUCTION }}
+          COGNITO_POOL_ID: ${{ vars.COGNITO_POOL_ID_PRODUCTION }}
+          COGNITO_CLIENT_ID: ${{ vars.COGNITO_CLIENT_ID_PRODUCTION }}
+
+      - name: Build web + sync native
+        run: npm run build:mobile
+
+      - name: Decode keystore
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/upload.keystore
+
+      - name: Build Android App Bundle
+        working-directory: src/web/spa/android
+        run: ./gradlew bundleRelease
+        env:
+          ANDROID_VERSION_CODE: ${{ github.event.inputs.version_code }}
+          ANDROID_VERSION_NAME: ${{ github.event.inputs.version_name }}
+          ANDROID_KEYSTORE_PATH: upload.keystore
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+
+      - name: Upload AAB artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: funkedupshift-${{ github.event.inputs.version_name }}.aab
+          path: src/web/spa/android/app/build/outputs/bundle/release/*.aab
+          retention-days: 30

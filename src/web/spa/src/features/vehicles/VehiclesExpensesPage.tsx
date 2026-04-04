@@ -1,9 +1,13 @@
-import React, { useCallback, useEffect, useState, useRef } from "react";
+import React, { useCallback, useEffect, useState, useRef, lazy, Suspense } from "react";
 import { useAuth, canAccessExpenses } from "../../shell/AuthContext";
+import { usePlatform } from "../../shell/PlatformContext";
 import { fetchWithAuth } from "../../utils/api";
 import { Alert } from "../../components";
 import { AdminTabs } from "../admin/AdminTabs";
 import AddTagInput from "../memes/AddTagInput";
+import { CameraIcon } from "@heroicons/react/24/outline";
+
+const ReceiptScanner = lazy(() => import("./ReceiptScanner"));
 
 function getApiBaseUrl(): string | null {
   if (typeof window === "undefined") return null;
@@ -183,8 +187,10 @@ function calcFuelMetrics(
 
 const VehiclesExpensesPage: React.FC = () => {
   const { user } = useAuth();
+  const { isNative } = usePlatform();
   const canAccess = canAccessExpenses(user);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showReceiptScanner, setShowReceiptScanner] = useState(false);
 
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
@@ -1299,7 +1305,36 @@ const VehiclesExpensesPage: React.FC = () => {
             </div>
             {activeExpenseTab === "fuel" ? (
               <>
-            <h2 className="text-sm font-semibold text-text-secondary mb-3">Add fuel expense</h2>
+            <div className="flex items-center gap-3 mb-3">
+              <h2 className="text-sm font-semibold text-text-secondary">Add fuel expense</h2>
+              {isNative && (
+                <button
+                  type="button"
+                  onClick={() => setShowReceiptScanner(true)}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-border-hover bg-surface-3 px-2.5 py-1 text-xs font-medium text-text-primary hover:bg-surface-2"
+                >
+                  <CameraIcon className="w-4 h-4" />
+                  Scan Receipt
+                </button>
+              )}
+            </div>
+            {showReceiptScanner && getApiBaseUrl() && (
+              <Suspense fallback={null}>
+                <ReceiptScanner
+                  apiBase={getApiBaseUrl()!}
+                  onFieldsExtracted={(fields) => {
+                    setFuelForm((f) => ({
+                      ...f,
+                      date: fields.date || f.date,
+                      fuelPrice: fields.fuelPrice != null ? String(fields.fuelPrice) : f.fuelPrice,
+                      fuelLitres: fields.fuelLitres != null ? String(fields.fuelLitres) : f.fuelLitres,
+                      odometerKm: fields.odometerKm != null ? String(fields.odometerKm) : f.odometerKm,
+                    }));
+                  }}
+                  onClose={() => setShowReceiptScanner(false)}
+                />
+              </Suspense>
+            )}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               <input
                 type="date"
