@@ -97,9 +97,16 @@ const GeneralExpensesPage: React.FC = () => {
     attachments: [] as GenAttachment[],
   });
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const pendingFilesRef = useRef<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  /** Only reset add/edit draft when the user switches section, not when loadEntries ref or other deps retrigger the effect. */
+  const prevSectionForDraftRef = useRef<string | null>(null);
 
   const [preview, setPreview] = useState<{ url: string; filename: string; isPdf: boolean } | null>(null);
+
+  useEffect(() => {
+    pendingFilesRef.current = pendingFiles;
+  }, [pendingFiles]);
 
   const loadSections = useCallback(async () => {
     const apiBase = getApiBaseUrl();
@@ -147,10 +154,14 @@ const GeneralExpensesPage: React.FC = () => {
   useEffect(() => {
     if (selectedSectionId) {
       loadEntries(selectedSectionId);
-      setEditingId(null);
-      setAddOpen(false);
-      setPendingFiles([]);
+      if (prevSectionForDraftRef.current !== selectedSectionId) {
+        prevSectionForDraftRef.current = selectedSectionId;
+        setEditingId(null);
+        setAddOpen(false);
+        setPendingFiles([]);
+      }
     } else {
+      prevSectionForDraftRef.current = null;
       setEntries([]);
     }
   }, [selectedSectionId, loadEntries]);
@@ -167,6 +178,7 @@ const GeneralExpensesPage: React.FC = () => {
     if (!apiBase || files.length === 0) return [];
     const uploaded: GenAttachment[] = [];
     for (const file of files) {
+      const declaredType = file.type || "application/octet-stream";
       const metaResp = await fetchWithAuth(
         `${apiBase}/general-expenses/${encodeURIComponent(sectionId)}/entries/upload`,
         {
@@ -174,7 +186,7 @@ const GeneralExpensesPage: React.FC = () => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             filename: file.name,
-            contentType: file.type || "application/octet-stream",
+            contentType: declaredType,
           }),
         }
       );
@@ -186,16 +198,20 @@ const GeneralExpensesPage: React.FC = () => {
         contentType?: string;
       };
       if (!uploadMeta.uploadUrl || !uploadMeta.key) throw new Error(`Upload URL missing for ${file.name}`);
+      // Presigned PUT must use the same Content-Type the URL was signed with (S3 returns 403 on mismatch).
+      const putContentType = (uploadMeta.contentType && uploadMeta.contentType.trim()) || declaredType;
       const putResp = await fetch(uploadMeta.uploadUrl, {
         method: "PUT",
-        headers: { "Content-Type": file.type || "application/octet-stream" },
+        headers: { "Content-Type": putContentType },
         body: file,
       });
-      if (!putResp.ok) throw new Error(`Upload failed for ${file.name}`);
+      if (!putResp.ok) {
+        throw new Error(`Upload failed for ${file.name} (HTTP ${putResp.status})`);
+      }
       uploaded.push({
         key: uploadMeta.key,
         filename: uploadMeta.filename || file.name,
-        contentType: uploadMeta.contentType || file.type || "application/octet-stream",
+        contentType: putContentType,
         size: file.size,
       });
     }
@@ -322,8 +338,9 @@ const GeneralExpensesPage: React.FC = () => {
     setError(null);
     try {
       let attachments = [...form.attachments];
-      if (pendingFiles.length > 0) {
-        const up = await uploadFiles(selectedSectionId, pendingFiles);
+      const filesToUpload = [...pendingFilesRef.current];
+      if (filesToUpload.length > 0) {
+        const up = await uploadFiles(selectedSectionId, filesToUpload);
         attachments = [...attachments, ...up];
         setPendingFiles([]);
       }
@@ -731,6 +748,7 @@ const GeneralExpensesPage: React.FC = () => {
                         ref={fileInputRef}
                         type="file"
                         multiple
+                        accept=".pdf,.jpg,.jpeg,.png,.txt,.csv,.doc,.docx,.xls,.xlsx,.webp,.gif"
                         className="hidden"
                         onChange={(e) => {
                           const fl = e.target.files;

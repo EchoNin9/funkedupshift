@@ -1,0 +1,1 @@
+import{j as e}from"./index-D7KaUIZ3.js";function a({label:s,onRemove:t,className:n=""}){return e.jsxs("span",{className:`inline-flex items-center gap-1 rounded-full bg-slate-800 px-2 py-0.5 text-xs text-slate-200 ${n}`,children:[s,t&&e.jsx("button",{type:"button",onClick:t,className:"hover:text-red-400",children:"×"})]})}export{a as B};
