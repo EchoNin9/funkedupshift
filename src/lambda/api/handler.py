@@ -4620,31 +4620,12 @@ def listAdminUsers(event):
 
 def _getUserCustomGroups(user_id):
     """Fetch user's custom group memberships from DynamoDB."""
-    # #region agent log
-    import json
-    try:
-        with open('/Users/adam/Github/EchoNin9/funkedupshift/.cursor/debug.log', 'a') as f:
-            f.write(json.dumps({"id":"log_getcustomgroups_entry","timestamp":int(__import__('time').time()*1000),"location":"handler.py:2361","message":"_getUserCustomGroups called","data":{"userId":user_id,"tableName":TABLE_NAME if 'TABLE_NAME' in globals() else None},"runId":"run1","hypothesisId":"B"}) + '\n')
-    except: pass
-    # #endregion
     if not TABLE_NAME or not user_id:
-        # #region agent log
-        try:
-            with open('/Users/adam/Github/EchoNin9/funkedupshift/.cursor/debug.log', 'a') as f:
-                f.write(json.dumps({"id":"log_getcustomgroups_empty","timestamp":int(__import__('time').time()*1000),"location":"handler.py:2364","message":"_getUserCustomGroups early return","data":{"userId":user_id,"hasTable":bool(TABLE_NAME)},"runId":"run1","hypothesisId":"B"}) + '\n')
-        except: pass
-        # #endregion
         return []
     try:
         import boto3
         dynamodb = boto3.client("dynamodb")
         pk = f"USER#{user_id}"
-        # #region agent log
-        try:
-            with open('/Users/adam/Github/EchoNin9/funkedupshift/.cursor/debug.log', 'a') as f:
-                f.write(json.dumps({"id":"log_getcustomgroups_query","timestamp":int(__import__('time').time()*1000),"location":"handler.py:2369","message":"_getUserCustomGroups querying","data":{"pk":pk},"runId":"run1","hypothesisId":"B"}) + '\n')
-        except: pass
-        # #endregion
         result = dynamodb.query(
             TableName=TABLE_NAME,
             KeyConditionExpression="PK = :pk AND begins_with(SK, :sk)",
@@ -4653,31 +4634,13 @@ def _getUserCustomGroups(user_id):
                 ":sk": {"S": "MEMBERSHIP#"},
             },
         )
-        # #region agent log
-        try:
-            with open('/Users/adam/Github/EchoNin9/funkedupshift/.cursor/debug.log', 'a') as f:
-                f.write(json.dumps({"id":"log_getcustomgroups_result","timestamp":int(__import__('time').time()*1000),"location":"handler.py:2377","message":"_getUserCustomGroups query result","data":{"itemCount":len(result.get("Items",[])),"items":result.get("Items",[])},"runId":"run1","hypothesisId":"B"}) + '\n')
-        except: pass
-        # #endregion
         groups = []
         for item in result.get("Items", []):
             group_name = item.get("groupName", {}).get("S", "")
             if group_name:
                 groups.append(group_name)
-        # #region agent log
-        try:
-            with open('/Users/adam/Github/EchoNin9/funkedupshift/.cursor/debug.log', 'a') as f:
-                f.write(json.dumps({"id":"log_getcustomgroups_return","timestamp":int(__import__('time').time()*1000),"location":"handler.py:2382","message":"_getUserCustomGroups returning","data":{"groups":groups,"squashInGroups":"Squash" in groups},"runId":"run1","hypothesisId":"B"}) + '\n')
-        except: pass
-        # #endregion
         return groups
     except Exception as e:
-        # #region agent log
-        try:
-            with open('/Users/adam/Github/EchoNin9/funkedupshift/.cursor/debug.log', 'a') as f:
-                f.write(json.dumps({"id":"log_getcustomgroups_error","timestamp":int(__import__('time').time()*1000),"location":"handler.py:2383","message":"_getUserCustomGroups error","data":{"error":str(e)},"runId":"run1","hypothesisId":"B"}) + '\n')
-        except: pass
-        # #endregion
         return []
 
 

@@ -162,11 +162,9 @@ def list_sections(user_id):
         resp = dynamodb.query(
             TableName=TABLE_NAME,
             KeyConditionExpression="PK = :pk AND begins_with(SK, :sk)",
-            FilterExpression="NOT contains(SK, :item)",
             ExpressionAttributeValues={
                 ":pk": {"S": _pk(user_id)},
                 ":sk": {"S": "GENEXP#"},
-                ":item": {"S": "#ITEM#"},
             },
         )
         sections = []
