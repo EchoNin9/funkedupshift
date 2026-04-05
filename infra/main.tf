@@ -1706,6 +1706,95 @@ resource "aws_apigatewayv2_route" "vehiclesExpensesExportAll" {
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
+# General expenses (expenses group required, JWT)
+resource "aws_apigatewayv2_route" "generalExpensesSectionsList" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /general-expenses"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "generalExpensesSectionsCreate" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /general-expenses"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "generalExpensesSectionGet" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /general-expenses/{sectionId}"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "generalExpensesSectionPut" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "PUT /general-expenses/{sectionId}"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "generalExpensesSectionDelete" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "DELETE /general-expenses/{sectionId}"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "generalExpensesEntriesList" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /general-expenses/{sectionId}/entries"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "generalExpensesEntriesCreate" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /general-expenses/{sectionId}/entries"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "generalExpensesEntryGet" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /general-expenses/{sectionId}/entries/{entryId}"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "generalExpensesEntryPut" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "PUT /general-expenses/{sectionId}/entries/{entryId}"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "generalExpensesEntryDelete" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "DELETE /general-expenses/{sectionId}/entries/{entryId}"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "generalExpensesEntryUpload" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /general-expenses/{sectionId}/entries/upload"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
 # Admin user & group management (SuperAdmin or Manager)
 resource "aws_apigatewayv2_route" "adminUsersGet" {
   api_id             = aws_apigatewayv2_api.main.id
