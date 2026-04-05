@@ -752,7 +752,10 @@ const GeneralExpensesPage: React.FC = () => {
                         className="hidden"
                         onChange={(e) => {
                           const fl = e.target.files;
-                          if (fl?.length) setPendingFiles((p) => [...p, ...Array.from(fl)]);
+                          if (fl?.length) {
+                            const files = Array.from(fl);
+                            setPendingFiles((p) => [...p, ...files]);
+                          }
                           e.target.value = "";
                         }}
                       />
