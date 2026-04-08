@@ -692,6 +692,29 @@ resource "aws_lambda_layer_version" "pillow" {
   depends_on          = [null_resource.pillow_layer]
 }
 
+resource "null_resource" "stripe_layer" {
+  triggers = {
+    requirements = file("${path.module}/stripe_layer_requirements.txt")
+  }
+  provisioner "local-exec" {
+    command     = "mkdir -p build/stripe_layer/python/lib/python3.12/site-packages && python3 -m pip install -r ${path.module}/stripe_layer_requirements.txt -t build/stripe_layer/python/lib/python3.12/site-packages --quiet && cd build/stripe_layer && zip -r ../stripe_layer.zip python"
+    working_dir = path.module
+  }
+}
+
+resource "aws_lambda_layer_version" "stripe" {
+  filename            = "${path.module}/build/stripe_layer.zip"
+  layer_name          = "fus-stripe-layer"
+  compatible_runtimes = ["python3.12"]
+  depends_on          = [null_resource.stripe_layer]
+}
+
+resource "aws_sqs_queue" "merch_fulfillment" {
+  name                       = "fus-merch-fulfillment"
+  visibility_timeout_seconds = 300
+  message_retention_seconds  = 1209600
+}
+
 resource "aws_iam_role" "lambdaApi" {
   name = "fus-api-lambda-role"
 
@@ -743,9 +766,21 @@ resource "aws_iam_role_policy" "lambdaApi" {
           "cognito-idp:AdminRemoveUserFromGroup",
           "cognito-idp:ListUsers",
           "cognito-idp:AdminGetUser",
-          "cognito-idp:ListGroups"
+          "cognito-idp:ListGroups",
+          "cognito-idp:GetUser"
         ]
         Resource = [aws_cognito_user_pool.main.arn]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "sqs:SendMessage",
+          "sqs:ReceiveMessage",
+          "sqs:DeleteMessage",
+          "sqs:GetQueueAttributes",
+          "sqs:ChangeMessageVisibility"
+        ]
+        Resource = aws_sqs_queue.merch_fulfillment.arn
       },
       {
         Effect   = "Allow"
@@ -769,17 +804,31 @@ resource "aws_lambda_function" "api" {
   source_code_hash = data.archive_file.api.output_base64sha256
   runtime          = "python3.12"
   timeout          = 60
-  layers           = [aws_lambda_layer_version.pillow.arn]
+  layers = [aws_lambda_layer_version.pillow.arn, aws_lambda_layer_version.stripe.arn]
 
   environment {
     variables = {
-      TABLE_NAME               = aws_dynamodb_table.main.name
-      MEDIA_BUCKET             = aws_s3_bucket.media.id
-      COGNITO_USER_POOL_ID     = aws_cognito_user_pool.main.id
-      THUMB_FUNCTION_NAME      = aws_lambda_function.thumb.function_name
-      ALPHA_VANTAGE_API_KEY    = var.alphaVantageApiKey
+      TABLE_NAME                   = aws_dynamodb_table.main.name
+      MEDIA_BUCKET                 = aws_s3_bucket.media.id
+      COGNITO_USER_POOL_ID         = aws_cognito_user_pool.main.id
+      THUMB_FUNCTION_NAME          = aws_lambda_function.thumb.function_name
+      ALPHA_VANTAGE_API_KEY        = var.alphaVantageApiKey
+      STRIPE_SECRET_KEY            = var.stripeSecretKey
+      STRIPE_WEBHOOK_SECRET        = var.stripeWebhookSecret
+      MERCH_FRONTEND_BASE_URL      = trimsuffix(var.merchFrontendBaseUrl != "" ? var.merchFrontendBaseUrl : "https://${var.domainCom}", "/")
+      MERCH_FULFILLMENT_QUEUE_URL  = aws_sqs_queue.merch_fulfillment.url
+      GELATO_API_KEY               = var.gelatoApiKey
+      GELATO_SHIPMENT_METHOD_UID   = var.gelatoShipmentMethodUid
+      GELATO_ORDER_PHONE           = var.gelatoOrderPhone
     }
   }
+}
+
+resource "aws_lambda_event_source_mapping" "merch_fulfillment" {
+  event_source_arn = aws_sqs_queue.merch_fulfillment.arn
+  function_name    = aws_lambda_function.api.arn
+  batch_size       = 1
+  enabled          = true
 }
 
 # ------------------------------------------------------------------------------
@@ -1960,6 +2009,62 @@ resource "aws_apigatewayv2_route" "adminHighestRatedSitesPut" {
 resource "aws_apigatewayv2_route" "adminHighestRatedGenerate" {
   api_id             = aws_apigatewayv2_api.main.id
   route_key          = "POST /admin/recommended/highest-rated/generate"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "merchProductsGet" {
+  api_id    = aws_apigatewayv2_api.main.id
+  route_key = "GET /merch/products"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+}
+
+resource "aws_apigatewayv2_route" "merchCheckoutSessionPost" {
+  api_id    = aws_apigatewayv2_api.main.id
+  route_key = "POST /merch/checkout/session"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+}
+
+resource "aws_apigatewayv2_route" "merchWebhookPost" {
+  api_id    = aws_apigatewayv2_api.main.id
+  route_key = "POST /merch/webhook"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+}
+
+resource "aws_apigatewayv2_route" "merchOrderStatusGet" {
+  api_id    = aws_apigatewayv2_api.main.id
+  route_key = "GET /merch/order-status"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+}
+
+resource "aws_apigatewayv2_route" "adminMerchProductsGet" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /admin/merch/products"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "adminMerchProductsPost" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /admin/merch/products"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "adminMerchProductsPut" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "PUT /admin/merch/products"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "adminMerchProductsDelete" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "DELETE /admin/merch/products"
   target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
   authorization_type = "JWT"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id

@@ -19,6 +19,7 @@ import {
   Cog6ToothIcon,
   UserGroupIcon,
   TruckIcon,
+  ShoppingBagIcon,
 } from "@heroicons/react/24/outline";
 
 /** Public nav modules (sidebar/header links). */
@@ -59,6 +60,8 @@ export const PUBLIC_MODULES: PublicModule[] = [
   { id: "general-expenses", label: "General expenses", path: "/general-expenses", section: "vehicles", minRole: "user", visibility: canAccessExpenses },
   { id: "highlights", label: "Highlights", path: "/recommended/highlights", section: "recommended", minRole: "guest" },
   { id: "highest-rated", label: "Highest Rated", path: "/recommended/highest-rated", section: "recommended", minRole: "guest" },
+  { id: "merch-store", label: "Merch store", path: "/merch", section: "discover", minRole: "guest" },
+  { id: "merch-support", label: "Merch help & returns", path: "/merch/support", section: "discover", minRole: "guest" },
 ];
 
 export const ADMIN_MODULES: AdminModule[] = [
@@ -69,6 +72,7 @@ export const ADMIN_MODULES: AdminModule[] = [
   { id: "membership", label: "Membership", path: "/admin/membership", description: "Manage custom groups and member access.", icon: UserGroupIcon, minRole: "manager" },
   { id: "branding", label: "Branding", path: "/admin/branding", description: "Set global logo and branding assets.", icon: Cog6ToothIcon, minRole: "superadmin" },
   { id: "financial", label: "Financial", path: "/admin/financial", description: "Manage default symbols and financial config.", icon: CurrencyDollarIcon, minRole: "superadmin" },
+  { id: "merch", label: "Merch", path: "/admin/merch", description: "Manage merch catalog and Gelato product UIDs.", icon: ShoppingBagIcon, minRole: "superadmin" },
   { id: "squash", label: "Squash", path: "/squash-admin", description: "Manage squash players and matches.", icon: TrophyIcon, minRole: "manager" },
 ];
 
@@ -108,7 +112,7 @@ export interface ModuleLink {
 }
 
 /** Admin Home sidebar modules (Branding, Membership, Websites, etc.) – excludes Squash/Financial which live under Modules. */
-const ADMIN_HOME_IDS = ["branding", "membership", "websites", "media", "internet-dashboard", "recommended"] as const;
+const ADMIN_HOME_IDS = ["branding", "membership", "websites", "media", "internet-dashboard", "recommended", "merch"] as const;
 
 /** Admin modules for the Admin Home sidebar section, in display order. */
 export function getAdminHomeModules(user: AuthUser | null): AdminModule[] {

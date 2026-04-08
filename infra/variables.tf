@@ -102,3 +102,42 @@ variable "alphaVantageApiKey" {
   default     = ""
   sensitive   = true
 }
+
+variable "merchFrontendBaseUrl" {
+  description = "Public SPA origin for Stripe Checkout success/cancel redirects (no trailing slash)."
+  type        = string
+  default     = ""
+}
+
+variable "stripeSecretKey" {
+  description = "Stripe secret API key (sk_test_... or sk_live_...)."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "stripeWebhookSecret" {
+  description = "Stripe webhook signing secret (whsec_...)."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "gelatoApiKey" {
+  description = "Gelato API key (X-API-KEY) for order.gelatoapis.com fulfillment (optional)."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "gelatoShipmentMethodUid" {
+  description = "Gelato shipmentMethodUid for API orders (e.g. express, standard). See Gelato API docs."
+  type        = string
+  default     = "express"
+}
+
+variable "gelatoOrderPhone" {
+  description = "Phone sent on Gelato orders when Stripe does not collect phone (placeholder ok)."
+  type        = string
+  default     = "0000000000"
+}

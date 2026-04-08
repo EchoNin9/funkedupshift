@@ -231,6 +231,13 @@ def getEffectiveUserInfo(event):
 def handler(event, context):
     """Route request by path; return JSON with CORS headers."""
     try:
+        if isinstance(event, dict) and event.get("Records"):
+            rec0 = event["Records"][0]
+            if isinstance(rec0, dict) and rec0.get("eventSource") == "aws:sqs":
+                from api.merch import process_fulfillment_sqs
+
+                process_fulfillment_sqs(event, context)
+                return {}
         # Avoid logging huge bodies (can cause memory/serialization issues with large imports)
         body = event.get("body") or ""
         body_len = len(body) if isinstance(body, str) else 0
@@ -367,6 +374,39 @@ def handler(event, context):
             return generateMemeTitle(event)
         if method == "POST" and path == "/memes/stars":
             return setMemeStar(event)
+        # Merch store (public catalog + Stripe; superadmin catalog CRUD)
+        if method == "GET" and path == "/merch/products":
+            from api.merch import list_merch_products_public
+
+            return list_merch_products_public(event)
+        if method == "POST" and path == "/merch/checkout/session":
+            from api.merch import create_merch_checkout_session
+
+            return create_merch_checkout_session(event)
+        if method == "POST" and path == "/merch/webhook":
+            from api.merch import merch_stripe_webhook
+
+            return merch_stripe_webhook(event)
+        if method == "GET" and path == "/merch/order-status":
+            from api.merch import get_merch_order_status
+
+            return get_merch_order_status(event)
+        if method == "GET" and path == "/admin/merch/products":
+            from api.merch import list_merch_products_admin
+
+            return list_merch_products_admin(event)
+        if method == "POST" and path == "/admin/merch/products":
+            from api.merch import create_merch_product
+
+            return create_merch_product(event)
+        if method == "PUT" and path == "/admin/merch/products":
+            from api.merch import update_merch_product
+
+            return update_merch_product(event)
+        if method == "DELETE" and path == "/admin/merch/products":
+            from api.merch import delete_merch_product
+
+            return delete_merch_product(event)
         # Squash section routes
         if method == "GET" and path == "/squash/players":
             return listSquashPlayers(event)
