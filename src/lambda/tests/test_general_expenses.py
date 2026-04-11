@@ -40,7 +40,7 @@ def test_list_general_expenses_forbidden_without_group(mock_groups):
     assert resp["statusCode"] == 403
 
 
-@patch("api.handler._getUserCustomGroups", return_value=["expenses"])
+@patch("api.handler._getUserCustomGroups", return_value=["Expenses"])
 @patch("api.general_expenses.list_sections", return_value=[{"id": "s1", "name": "Office"}])
 def test_list_general_expense_sections_ok(mock_list, mock_groups):
     from api.handler import handler
@@ -52,7 +52,7 @@ def test_list_general_expense_sections_ok(mock_list, mock_groups):
     assert data["sections"] == [{"id": "s1", "name": "Office"}]
 
 
-@patch("api.handler._getUserCustomGroups", return_value=["expenses"])
+@patch("api.handler._getUserCustomGroups", return_value=["Expenses"])
 @patch("api.general_expenses.create_section", return_value={"id": "s1", "name": "Travel", "createdAt": "t", "updatedAt": "t"})
 def test_create_general_expense_section_ok(mock_create, mock_groups):
     from api.handler import handler
@@ -65,7 +65,7 @@ def test_create_general_expense_section_ok(mock_create, mock_groups):
     assert data["name"] == "Travel"
 
 
-@patch("api.handler._getUserCustomGroups", return_value=["expenses"])
+@patch("api.handler._getUserCustomGroups", return_value=["Expenses"])
 @patch("api.general_expenses.list_entries", return_value=[
     {"id": "e1", "date": "2026-04-01", "price": 42.5, "vendor": "Acme", "description": "Supplies", "reimbursed": False, "attachments": []},
 ])
@@ -81,7 +81,7 @@ def test_list_general_expense_entries_ok(mock_list, mock_groups):
     assert data["entries"][0]["vendor"] == "Acme"
 
 
-@patch("api.handler._getUserCustomGroups", return_value=["expenses"])
+@patch("api.handler._getUserCustomGroups", return_value=["Expenses"])
 @patch("api.general_expenses.create_entry", return_value=(None, "date must be YYYY-MM-DD"))
 def test_create_general_expense_entry_validation(mock_create, mock_groups):
     from api.handler import handler
@@ -98,7 +98,7 @@ def test_create_general_expense_entry_validation(mock_create, mock_groups):
     assert "date" in data["error"].lower()
 
 
-@patch("api.handler._getUserCustomGroups", return_value=["expenses"])
+@patch("api.handler._getUserCustomGroups", return_value=["Expenses"])
 @patch("api.general_expenses.get_attachment_upload", return_value={
     "uploadUrl": "https://example.com/put",
     "key": "general-expenses/u/s1/f.pdf",
@@ -121,7 +121,7 @@ def test_general_expense_upload_url(mock_upload, mock_groups):
     assert "key" in data
 
 
-@patch("api.handler._getUserCustomGroups", return_value=["expenses"])
+@patch("api.handler._getUserCustomGroups", return_value=["Expenses"])
 @patch("api.general_expenses.get_entry", return_value=None)
 def test_delete_general_expense_entry_not_found(mock_get, mock_groups):
     from api.handler import handler

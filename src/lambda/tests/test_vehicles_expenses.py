@@ -48,7 +48,7 @@ def _admin_event(path, method="GET", body=None):
     return event
 
 
-@patch("api.handler._getUserCustomGroups", return_value=["expenses"])
+@patch("api.handler._getUserCustomGroups", return_value=["Expenses"])
 @patch("api.vehicles_expenses.list_vehicles", return_value=[])
 def test_list_vehicles_expenses_user_in_group(mock_list, mock_groups):
     """GET /vehicles-expenses as user in expenses group returns list."""
@@ -83,7 +83,7 @@ def test_create_vehicle_admin_can_access(mock_create, mock_groups):
     assert data["name"] == "Car"
 
 
-@patch("api.handler._getUserCustomGroups", return_value=["expenses"])
+@patch("api.handler._getUserCustomGroups", return_value=["Expenses"])
 @patch("api.vehicles_expenses.list_fuel_entries", return_value=[
     {"id": "f1", "date": "2026-02-15", "fuelPrice": 65, "fuelLitres": 45.5, "odometerKm": 123456}
 ])
@@ -101,7 +101,7 @@ def test_list_fuel_entries_user_in_expenses(mock_list, mock_groups):
     assert data["entries"][0]["fuelPrice"] == 65
 
 
-@patch("api.handler._getUserCustomGroups", return_value=["expenses"])
+@patch("api.handler._getUserCustomGroups", return_value=["Expenses"])
 @patch("api.vehicles_expenses.list_maintenance_entries", return_value=[
     {"id": "m1", "date": "2026-03-01", "price": 120.0, "mileage": 123500, "description": "Oil change"}
 ])
@@ -117,7 +117,7 @@ def test_list_maintenance_entries_user_in_expenses(mock_list, mock_groups):
     assert data["entries"][0]["id"] == "m1"
 
 
-@patch("api.handler._getUserCustomGroups", return_value=["expenses"])
+@patch("api.handler._getUserCustomGroups", return_value=["Expenses"])
 @patch("api.vehicles_expenses.create_maintenance_entry", return_value={
     "id": "m1",
     "date": "2026-03-01",
@@ -152,7 +152,7 @@ def test_create_maintenance_entry_success(mock_create, mock_groups):
     assert data["price"] == 120.0
 
 
-@patch("api.handler._getUserCustomGroups", return_value=["expenses"])
+@patch("api.handler._getUserCustomGroups", return_value=["Expenses"])
 @patch("api.vehicles_expenses.update_maintenance_entry", return_value=None)
 def test_update_maintenance_entry_not_found(mock_update, mock_groups):
     """PUT /vehicles-expenses/{vehicleId}/maintenance/{maintenanceId} returns 404 if missing."""
@@ -167,7 +167,7 @@ def test_update_maintenance_entry_not_found(mock_update, mock_groups):
     assert resp["statusCode"] == 404
 
 
-@patch("api.handler._getUserCustomGroups", return_value=["expenses"])
+@patch("api.handler._getUserCustomGroups", return_value=["Expenses"])
 @patch("api.vehicles_expenses.get_maintenance_attachment_upload", return_value={
     "uploadUrl": "https://example.com/upload",
     "key": "vehicle-expenses/user/v1/maintenance/file.pdf",
@@ -189,7 +189,7 @@ def test_maintenance_upload_url_response_shape(mock_upload, mock_groups):
     assert set(["uploadUrl", "key", "filename", "contentType"]).issubset(set(data.keys()))
 
 
-@patch("api.handler._getUserCustomGroups", return_value=["expenses"])
+@patch("api.handler._getUserCustomGroups", return_value=["Expenses"])
 @patch("api.vehicles_expenses.list_maintenance_tags", return_value=["oil", "tires"])
 def test_list_maintenance_tags_endpoint(mock_tags, mock_groups):
     """GET /vehicles-expenses/maintenance-tags returns per-user tags."""
@@ -201,7 +201,7 @@ def test_list_maintenance_tags_endpoint(mock_tags, mock_groups):
     assert data["tags"] == ["oil", "tires"]
 
 
-@patch("api.handler._getUserCustomGroups", return_value=["expenses"])
+@patch("api.handler._getUserCustomGroups", return_value=["Expenses"])
 @patch("api.vehicles_expenses.list_maintenance_vendors", return_value=["QuickLube", "TireTown"])
 def test_list_maintenance_vendors_endpoint(mock_vendors, mock_groups):
     """GET /vehicles-expenses/maintenance-vendors returns per-user vendors."""
@@ -300,7 +300,7 @@ def test_list_vehicles_excludes_maintenance_and_fuel_entries():
         assert vehicles[0]["name"] == "G70"
 
 
-@patch("api.handler._getUserCustomGroups", return_value=["expenses"])
+@patch("api.handler._getUserCustomGroups", return_value=["Expenses"])
 @patch("api.vehicles_expenses.export_fuel_entries", return_value={"downloadUrl": "https://example.com/fuel.csv", "filename": "fuel.csv"})
 def test_fuel_export_endpoint_uses_time_filters(mock_export, mock_groups):
     from api.handler import handler
@@ -322,7 +322,7 @@ def test_fuel_export_endpoint_uses_time_filters(mock_export, mock_groups):
     )
 
 
-@patch("api.handler._getUserCustomGroups", return_value=["expenses"])
+@patch("api.handler._getUserCustomGroups", return_value=["Expenses"])
 def test_maintenance_export_endpoint_rejects_invalid_format(mock_groups):
     from api.handler import handler
     event = _expenses_user_event("/vehicles-expenses/v1/maintenance/export")
@@ -334,7 +334,7 @@ def test_maintenance_export_endpoint_rejects_invalid_format(mock_groups):
     assert "format must be one of" in data["error"]
 
 
-@patch("api.handler._getUserCustomGroups", return_value=["expenses"])
+@patch("api.handler._getUserCustomGroups", return_value=["Expenses"])
 @patch("api.vehicles_expenses.export_all_vehicle_expenses", return_value={"downloadUrl": "https://example.com/all.zip", "filename": "all.zip"})
 def test_export_all_endpoint(mock_export_all, mock_groups):
     from api.handler import handler

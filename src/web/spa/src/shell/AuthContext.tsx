@@ -205,6 +205,6 @@ export function canEditAnyMeme(user: AuthUser | null): boolean {
 export function canAccessExpenses(user: AuthUser | null): boolean {
   if (!user?.userId) return false;
   if (user.role === "superadmin") return true;
-  return (user.customGroups ?? []).includes("expenses");
+  return (user.customGroups ?? []).includes("Expenses");
 }
 
