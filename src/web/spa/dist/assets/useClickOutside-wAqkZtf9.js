@@ -1,0 +1,1 @@
+import{r as o}from"./index-Bfi2os1y.js";function s(t,e,n=!0){o.useEffect(()=>{if(!n)return;function r(u){t.current&&!t.current.contains(u.target)&&e()}return document.addEventListener("mousedown",r),()=>document.removeEventListener("mousedown",r)},[t,e,n])}export{s as u};

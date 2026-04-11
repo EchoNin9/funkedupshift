@@ -706,7 +706,7 @@ def _requireExpensesGroup(event):
         return None, err
     groups = user.get("groups", [])
     custom_groups = user.get("customGroups", []) or []
-    if "admin" in groups or "expenses" in custom_groups:
+    if "admin" in groups or "Expenses" in custom_groups:
         return user, None
     return None, jsonResponse({"error": "Forbidden: expenses group membership required"}, 403)
 
