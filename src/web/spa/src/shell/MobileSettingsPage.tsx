@@ -1,10 +1,10 @@
 import React from "react";
 import { useAuth } from "./AuthContext";
-import { useMobileModules } from "../hooks/useMobileModules";
+import { useMobileModulesCtx } from "./MobileModulesContext";
 
 export default function MobileSettingsPage() {
   const { user, signOut } = useAuth();
-  const { accessible, toggleModule, isEnabled } = useMobileModules(user);
+  const { accessible, toggleModule, isEnabled } = useMobileModulesCtx();
 
   const modules = accessible.filter(
     (m) => m.id !== "profile" && !m.id.includes("admin")
