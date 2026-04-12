@@ -2,6 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import AppLayout from "./shell/AppLayout";
+import { PlatformProvider } from "./shell/PlatformContext";
 import { ImpersonationProvider } from "./shell/ImpersonationContext";
 import { AuthProvider } from "./shell/AuthContext";
 import { BrandingProvider } from "./shell/BrandingContext";
@@ -14,13 +15,15 @@ if (rootEl) {
   root.render(
     <React.StrictMode>
       <BrowserRouter>
-        <ImpersonationProvider>
-          <AuthProvider>
-            <BrandingProvider>
-              <AppLayout />
-            </BrandingProvider>
-          </AuthProvider>
-        </ImpersonationProvider>
+        <PlatformProvider>
+          <ImpersonationProvider>
+            <AuthProvider>
+              <BrandingProvider>
+                <AppLayout />
+              </BrandingProvider>
+            </AuthProvider>
+          </ImpersonationProvider>
+        </PlatformProvider>
       </BrowserRouter>
     </React.StrictMode>
   );

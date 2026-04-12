@@ -3,10 +3,12 @@ import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { useAuth } from "./AuthContext";
 import { useBranding } from "./BrandingContext";
+import { usePlatform } from "./PlatformContext";
 import { AdminLayout } from "./AdminLayout";
 import { Header } from "./Header";
 import { DesktopHeaderBar } from "./DesktopHeaderBar";
 import { LeftSidebar } from "./LeftSidebar";
+import { MobileAppShell } from "./MobileAppShell";
 import { getVisibleAdminModules, getVisibleModuleGroups } from "../config/modules";
 import { pageTransition } from "../components/motion";
 
@@ -59,6 +61,7 @@ function PageLoader() {
 const AppLayout: React.FC = () => {
   const { user } = useAuth();
   const { siteName } = useBranding();
+  const { isNative } = usePlatform();
   const location = useLocation();
   const adminModules = getVisibleAdminModules(user);
   const moduleGroups = getVisibleModuleGroups(user);
@@ -67,6 +70,10 @@ const AppLayout: React.FC = () => {
   React.useEffect(() => {
     if (siteName) document.title = siteName;
   }, [siteName]);
+
+  if (isNative) {
+    return <MobileAppShell />;
+  }
 
   return (
     <div className="min-h-screen bg-surface-0 text-text-primary flex flex-col">

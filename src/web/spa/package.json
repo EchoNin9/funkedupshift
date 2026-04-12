@@ -12,9 +12,11 @@
   },
   "dependencies": {
     "@capacitor/android": "^8.1.0",
+    "@capacitor/camera": "^8.0.2",
     "@capacitor/cli": "^8.1.0",
     "@capacitor/core": "^8.1.0",
     "@capacitor/ios": "^8.1.0",
+    "@capacitor/preferences": "^8.0.1",
     "@headlessui/react": "^1.7.18",
     "@heroicons/react": "^2.1.5",
     "framer-motion": "^11.11.17",
