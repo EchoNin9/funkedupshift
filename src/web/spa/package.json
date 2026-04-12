@@ -4,7 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "vite",
+    "predev": "cp node_modules/amazon-cognito-identity-js/dist/amazon-cognito-identity.min.js public/",
     "build": "vite build",
+    "prebuild": "cp node_modules/amazon-cognito-identity-js/dist/amazon-cognito-identity.min.js public/",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "build:mobile": "cp ../auth.js public/auth.js 2>/dev/null || true && npm run build && npx cap sync",
@@ -29,6 +31,7 @@
     "@types/react": "^18.2.64",
     "@types/react-dom": "^18.2.21",
     "@vitejs/plugin-react-swc": "^3.7.0",
+    "amazon-cognito-identity-js": "^6.3.0",
     "autoprefixer": "^10.4.17",
     "postcss": "^8.4.35",
     "tailwindcss": "^3.4.3",
