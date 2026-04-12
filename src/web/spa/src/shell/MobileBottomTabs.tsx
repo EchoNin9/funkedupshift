@@ -3,22 +3,18 @@ import { NavLink } from "react-router-dom";
 import {
   HomeIcon,
   TruckIcon,
-  UserCircleIcon,
-  Cog6ToothIcon,
   GlobeAltIcon,
   PhotoIcon,
   TrophyIcon,
   CurrencyDollarIcon,
   SparklesIcon,
+  Squares2X2Icon,
 } from "@heroicons/react/24/outline";
 import {
   HomeIcon as HomeIconSolid,
-  TruckIcon as TruckIconSolid,
-  UserCircleIcon as UserCircleIconSolid,
-  Cog6ToothIcon as Cog6ToothIconSolid,
+  Squares2X2Icon as Squares2X2IconSolid,
 } from "@heroicons/react/24/solid";
-import { useAuth } from "./AuthContext";
-import { useMobileModules } from "../hooks/useMobileModules";
+import { useMobileModulesCtx } from "./MobileModulesContext";
 
 const MODULE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   websites: GlobeAltIcon,
@@ -26,6 +22,7 @@ const MODULE_ICONS: Record<string, React.ComponentType<{ className?: string }>> 
   squash: TrophyIcon,
   financial: CurrencyDollarIcon,
   "vehicles-expenses": TruckIcon,
+  "general-expenses": TruckIcon,
   memes: PhotoIcon,
   highlights: SparklesIcon,
   "highest-rated": SparklesIcon,
@@ -39,14 +36,13 @@ interface TabDef {
 }
 
 export function MobileBottomTabs() {
-  const { user } = useAuth();
-  const { enabledModules } = useMobileModules(user);
+  const { enabledModules } = useMobileModulesCtx();
 
   const tabs: TabDef[] = [
     { path: "/", label: "Home", icon: HomeIcon, activeIcon: HomeIconSolid },
   ];
 
-  // Add enabled modules as tabs (max 3 module tabs to keep 5 total with home + settings)
+  // Add enabled modules as tabs (max 3 to keep total at 5 with Home + More)
   const moduleTabs = enabledModules
     .filter((m) => m.id !== "profile" && !m.id.includes("admin"))
     .slice(0, 3);
@@ -60,25 +56,19 @@ export function MobileBottomTabs() {
     });
   }
 
-  if (user) {
-    tabs.push({
-      path: "/profile",
-      label: "Profile",
-      icon: UserCircleIcon,
-      activeIcon: UserCircleIconSolid,
-    });
-  }
-
+  // Always show "More" tab for full module navigation
   tabs.push({
-    path: "/mobile-settings",
-    label: "Settings",
-    icon: Cog6ToothIcon,
-    activeIcon: Cog6ToothIconSolid,
+    path: "/more",
+    label: "More",
+    icon: Squares2X2Icon,
+    activeIcon: Squares2X2IconSolid,
   });
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-surface-1 border-t border-border-default"
-         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+    <nav
+      className="fixed bottom-0 left-0 right-0 z-50 bg-surface-1 border-t border-border-default"
+      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+    >
       <div className="flex items-center justify-around h-14">
         {tabs.map((tab) => (
           <NavLink
