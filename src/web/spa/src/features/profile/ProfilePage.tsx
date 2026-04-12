@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../shell/AuthContext";
+import { usePlatform } from "../../shell/PlatformContext";
 import { fetchWithAuth } from "../../utils/api";
+import { takePhoto, base64ToBlob } from "../../hooks/useCamera";
+import { CameraIcon } from "@heroicons/react/24/outline";
 import { Alert } from "../../components";
 
 const ROLE_DISPLAY: Record<string, string> = {
@@ -84,6 +87,7 @@ interface GroupInfo {
 
 const ProfilePage: React.FC = () => {
   const { user, refreshAuth } = useAuth();
+  const { isNative } = usePlatform();
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get("tab");
   const initialTab = tabParam === "groups" ? "groups" : "profile";
@@ -330,6 +334,48 @@ const ProfilePage: React.FC = () => {
     }
   };
 
+  const handleCameraCapture = async () => {
+    if (!apiBase) return;
+    setAvatarError(null);
+    try {
+      const photo = await takePhoto();
+      if (!photo.base64String) throw new Error("No image captured");
+      const contentType = `image/${photo.format || "jpeg"}`;
+      const blob = base64ToBlob(photo.base64String, contentType);
+      const uploadResp = await fetchWithAuth(`${apiBase}/profile/avatar-upload`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contentType })
+      });
+      if (!uploadResp.ok) {
+        const d = await uploadResp.json();
+        throw new Error(d.error || "Upload failed");
+      }
+      const { uploadUrl, key } = (await uploadResp.json()) as { uploadUrl: string; key: string };
+      const putResp = await fetch(uploadUrl, {
+        method: "PUT",
+        body: blob,
+        headers: { "Content-Type": contentType }
+      });
+      if (!putResp.ok) throw new Error("Upload failed");
+      const updateResp = await fetchWithAuth(`${apiBase}/profile`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ avatarKey: key })
+      });
+      if (!updateResp.ok) {
+        const d = await updateResp.json();
+        throw new Error(d.error || "Failed");
+      }
+      const fresh = await fetchWithAuth(`${apiBase}/profile`).then((r) => r.json());
+      setProfile(fresh);
+    } catch (e: any) {
+      if (e?.message !== "User cancelled photos app") {
+        setAvatarError(`Error: ${e?.message ?? "Unknown"}`);
+      }
+    }
+  };
+
   if (!user) {
     return (
       <div className="space-y-4">
@@ -537,6 +583,16 @@ const ProfilePage: React.FC = () => {
                     </div>
                   )}
                   <div className="flex flex-col gap-2">
+                    {isNative && (
+                      <button
+                        type="button"
+                        onClick={handleCameraCapture}
+                        className="inline-flex items-center gap-2 self-start rounded-md border border-border-hover bg-surface-3 px-3 py-1.5 text-xs font-medium text-text-primary hover:bg-surface-2"
+                      >
+                        <CameraIcon className="w-4 h-4" />
+                        Take Photo
+                      </button>
+                    )}
                     <input
                       type="file"
                       accept="image/png,image/jpeg,image/gif,image/webp"

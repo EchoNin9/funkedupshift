@@ -756,6 +756,11 @@ resource "aws_iam_role_policy" "lambdaApi" {
         Effect   = "Allow"
         Action   = ["lambda:InvokeFunction"]
         Resource = aws_lambda_function.thumb.arn
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["textract:AnalyzeExpense"]
+        Resource = "*"
       }
     ]
   })

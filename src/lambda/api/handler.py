@@ -404,6 +404,10 @@ def handler(event, context):
             return createVehicleExpense(event)
         if method == "POST" and path == "/vehicles-expenses/import":
             return importVehiclesExpenses(event)
+        if method == "POST" and path == "/vehicles-expenses/receipt-upload":
+            return getReceiptUploadUrl(event)
+        if method == "POST" and path == "/vehicles-expenses/scan-receipt":
+            return scanReceipt(event)
         if method == "GET" and path == "/vehicles-expenses/maintenance-tags":
             return listMaintenanceTags(event)
         if method == "GET" and path == "/vehicles-expenses/maintenance-vendors":
@@ -1393,6 +1397,63 @@ def getGeneralExpenseUploadUrl(event, section_id):
         return jsonResponse({"error": "Invalid JSON body"}, 400)
     except Exception as e:
         logger.exception("getGeneralExpenseUploadUrl error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def getReceiptUploadUrl(event):
+    """POST /vehicles-expenses/receipt-upload - Presigned PUT URL for receipt image."""
+    user, err = _requireExpensesGroup(event)
+    if err:
+        return err
+    try:
+        body = event.get("body")
+        if body and isinstance(body, str):
+            body = json.loads(body)
+        else:
+            body = body or {}
+        from api.receipt_scanner import get_receipt_upload_url
+        result = get_receipt_upload_url(
+            user_id=user["userId"],
+            content_type=(body.get("contentType") or "image/jpeg").strip(),
+        )
+        if not result:
+            return jsonResponse({"error": "Unable to generate upload URL"}, 400)
+        return jsonResponse(result)
+    except json.JSONDecodeError:
+        return jsonResponse({"error": "Invalid JSON body"}, 400)
+    except Exception as e:
+        logger.exception("getReceiptUploadUrl error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def scanReceipt(event):
+    """POST /vehicles-expenses/scan-receipt - Scan receipt image with Textract."""
+    user, err = _requireExpensesGroup(event)
+    if err:
+        return err
+    try:
+        body = event.get("body")
+        if body and isinstance(body, str):
+            body = json.loads(body)
+        else:
+            body = body or {}
+        image_key = (body.get("imageKey") or "").strip()
+        if not image_key:
+            return jsonResponse({"error": "imageKey is required"}, 400)
+        # Verify the key belongs to this user
+        if not image_key.startswith(f"receipts/{user['userId']}/"):
+            return jsonResponse({"error": "Forbidden"}, 403)
+        from api.receipt_scanner import scan_fuel_receipt
+        result = scan_fuel_receipt(image_key)
+        if result is None:
+            return jsonResponse({"error": "Failed to scan receipt"}, 500)
+        if "error" in result:
+            return jsonResponse({"error": result["error"]}, 500)
+        return jsonResponse(result)
+    except json.JSONDecodeError:
+        return jsonResponse({"error": "Invalid JSON body"}, 400)
+    except Exception as e:
+        logger.exception("scanReceipt error: %s", e)
         return jsonResponse({"error": str(e)}, 500)
 
 
