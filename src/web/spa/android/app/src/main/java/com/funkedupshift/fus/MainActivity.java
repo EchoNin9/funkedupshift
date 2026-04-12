@@ -1,4 +1,4 @@
-package com.funkedupshift.app;
+package com.funkedupshift.fus;
 
 import com.getcapacitor.BridgeActivity;
 

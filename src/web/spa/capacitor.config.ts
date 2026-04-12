@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.funkedupshift.app',
+  appId: 'com.funkedupshift.fus',
   appName: 'Funkedupshift',
   webDir: 'dist',
   // For live reload during dev, uncomment and set your machine's local IP:
