@@ -759,7 +759,7 @@ resource "aws_iam_role_policy" "lambdaApi" {
       },
       {
         Effect   = "Allow"
-        Action   = ["textract:AnalyzeExpense"]
+        Action   = ["textract:AnalyzeExpense", "textract:AnalyzeDocument"]
         Resource = "*"
       }
     ]
