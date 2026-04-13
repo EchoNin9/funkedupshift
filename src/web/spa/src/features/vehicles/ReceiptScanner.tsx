@@ -9,6 +9,11 @@ interface ScannedFields {
   fuelPrice: number | null;
   fuelLitres: number | null;
   odometerKm: number | null;
+  _debug?: {
+    expenseText?: string;
+    queryAnswers?: Record<string, string>;
+    rawLines?: string[];
+  };
 }
 
 interface ReceiptScannerProps {
@@ -161,6 +166,28 @@ export default function ReceiptScanner({ apiBase, onFieldsExtracted, onClose }: 
                 <Field label="Odometer" value={fields.odometerKm != null ? `${fields.odometerKm} km` : null} />
               </div>
             </div>
+            {/* Debug: show what Textract actually read (temporary) */}
+            {fields._debug && (fields.fuelLitres == null || fields.odometerKm == null) && (
+              <details className="rounded-lg bg-surface-2 p-3 text-xs text-text-tertiary">
+                <summary className="cursor-pointer font-medium text-text-secondary">
+                  Textract debug info (some fields not found)
+                </summary>
+                <div className="mt-2 space-y-2 max-h-48 overflow-y-auto">
+                  {fields._debug.queryAnswers && Object.keys(fields._debug.queryAnswers).length > 0 && (
+                    <div>
+                      <p className="font-medium">Query answers:</p>
+                      <pre className="whitespace-pre-wrap">{JSON.stringify(fields._debug.queryAnswers, null, 2)}</pre>
+                    </div>
+                  )}
+                  {fields._debug.rawLines && fields._debug.rawLines.length > 0 && (
+                    <div>
+                      <p className="font-medium">Raw text lines:</p>
+                      <pre className="whitespace-pre-wrap">{fields._debug.rawLines.join("\n")}</pre>
+                    </div>
+                  )}
+                </div>
+              </details>
+            )}
             <div className="flex gap-2">
               <button
                 onClick={handleUseValues}
