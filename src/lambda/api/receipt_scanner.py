@@ -55,6 +55,10 @@ def scan_fuel_receipt(image_key):
         # --- Pass 1: AnalyzeExpense for date and total price ---
         expense_resp = textract.analyze_expense(Document=doc)
         result = parse_fuel_receipt(expense_resp)
+        # Log what AnalyzeExpense found
+        expense_text = _get_all_text(expense_resp.get("ExpenseDocuments", [{}])[0]) if expense_resp.get("ExpenseDocuments") else ""
+        logger.info("AnalyzeExpense text: %s", expense_text[:1000])
+        logger.info("AnalyzeExpense result: %s", result)
 
         # --- Pass 2: AnalyzeDocument with QUERIES for fuel-specific fields ---
         # Also extracts all raw LINE text blocks for regex fallback.
@@ -92,16 +96,25 @@ def scan_fuel_receipt(image_key):
 
         # Final fallback: regex over all raw LINE blocks (catches pump formats
         # like "46.234L" and handwritten odometer numbers that queries missed).
-        if result["fuelLitres"] is None or result["odometerKm"] is None:
-            raw_text = " ".join(
-                b["Text"]
-                for b in doc_resp.get("Blocks", [])
-                if b.get("BlockType") == "LINE" and b.get("Text")
-            ).lower()
-            if result["fuelLitres"] is None:
-                result["fuelLitres"] = _extract_litres_from_text(raw_text)
-            if result["odometerKm"] is None:
-                result["odometerKm"] = _extract_odometer_from_text(raw_text)
+        raw_lines = [
+            b["Text"]
+            for b in doc_resp.get("Blocks", [])
+            if b.get("BlockType") == "LINE" and b.get("Text")
+        ]
+        raw_text = " ".join(raw_lines).lower()
+        logger.info("AnalyzeDocument raw lines: %s", raw_lines[:30])
+
+        if result["fuelLitres"] is None:
+            result["fuelLitres"] = _extract_litres_from_text(raw_text)
+        if result["odometerKm"] is None:
+            result["odometerKm"] = _extract_odometer_from_text(raw_text)
+
+        # Include raw text for frontend debugging (temporary — can remove later)
+        result["_debug"] = {
+            "expenseText": expense_text[:500] if expense_text else "",
+            "queryAnswers": query_answers,
+            "rawLines": raw_lines[:30],
+        }
 
         return result
     except Exception as e:
@@ -207,12 +220,13 @@ def parse_fuel_receipt(textract_response):
 
     # Try to extract litres from all text if not found in structured fields
     if result["fuelLitres"] is None:
-        all_text = _get_all_text(doc)
+        all_text = _get_all_text(doc).lower()
         result["fuelLitres"] = _extract_litres_from_text(all_text)
 
     # Try to extract odometer from all text (often handwritten)
-    all_text = _get_all_text(doc)
-    result["odometerKm"] = _extract_odometer_from_text(all_text)
+    if result["odometerKm"] is None:
+        all_text = _get_all_text(doc).lower()
+        result["odometerKm"] = _extract_odometer_from_text(all_text)
 
     return result
 
