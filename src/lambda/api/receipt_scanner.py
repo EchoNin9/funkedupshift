@@ -55,20 +55,26 @@ def scan_fuel_receipt(image_key):
         # --- Pass 1: AnalyzeExpense for date and total price ---
         expense_resp = textract.analyze_expense(Document=doc)
         result = parse_fuel_receipt(expense_resp)
+        # Log what AnalyzeExpense found
+        expense_text = _get_all_text(expense_resp.get("ExpenseDocuments", [{}])[0]) if expense_resp.get("ExpenseDocuments") else ""
+        logger.info("AnalyzeExpense text: %s", expense_text[:1000])
+        logger.info("AnalyzeExpense result: %s", result)
 
         # --- Pass 2: AnalyzeDocument with QUERIES for fuel-specific fields ---
         # Also extracts all raw LINE text blocks for regex fallback.
         queries = [
-            {"Text": "How many litres or liters of fuel were pumped or purchased?",
+            # Specific to Canadian pump format: "51.309L AT $2.339/L"
+            {"Text": "How many litres of fuel were pumped? Look for a number followed by L.",
              "Alias": "FUEL_LITRES"},
-            {"Text": "What is the odometer reading, mileage, or km reading?",
+            # Odometer is often a bare handwritten number at the top of the receipt
+            {"Text": "What is the handwritten number at the top of the receipt?",
              "Alias": "ODOMETER"},
         ]
         # Only ask for date/price if pass 1 didn't find them.
         if not result["date"]:
             queries.append({"Text": "What is the date on this receipt?", "Alias": "DATE"})
         if result["fuelPrice"] is None:
-            queries.append({"Text": "What is the total fuel cost or amount paid?",
+            queries.append({"Text": "What is the total amount or fuel sales amount?",
                             "Alias": "TOTAL"})
 
         doc_resp = textract.analyze_document(
@@ -84,24 +90,40 @@ def scan_fuel_receipt(image_key):
         if result["fuelLitres"] is None and "FUEL_LITRES" in query_answers:
             result["fuelLitres"] = _parse_number(query_answers["FUEL_LITRES"])
         if result["odometerKm"] is None and "ODOMETER" in query_answers:
-            result["odometerKm"] = _parse_number(query_answers["ODOMETER"])
+            parsed = _parse_number(query_answers["ODOMETER"])
+            if parsed is not None and 1_000 <= parsed <= 9_999_999:
+                result["odometerKm"] = parsed
         if not result["date"] and "DATE" in query_answers:
             result["date"] = _parse_date(query_answers["DATE"])
         if result["fuelPrice"] is None and "TOTAL" in query_answers:
             result["fuelPrice"] = _parse_number(query_answers["TOTAL"])
 
-        # Final fallback: regex over all raw LINE blocks (catches pump formats
-        # like "46.234L" and handwritten odometer numbers that queries missed).
-        if result["fuelLitres"] is None or result["odometerKm"] is None:
-            raw_text = " ".join(
-                b["Text"]
-                for b in doc_resp.get("Blocks", [])
-                if b.get("BlockType") == "LINE" and b.get("Text")
-            ).lower()
-            if result["fuelLitres"] is None:
-                result["fuelLitres"] = _extract_litres_from_text(raw_text)
-            if result["odometerKm"] is None:
-                result["odometerKm"] = _extract_odometer_from_text(raw_text)
+        # --- Extract from raw blocks with special handling ---
+        blocks = doc_resp.get("Blocks", [])
+        raw_lines = [
+            b["Text"]
+            for b in blocks
+            if b.get("BlockType") == "LINE" and b.get("Text")
+        ]
+        raw_text = " ".join(raw_lines).lower()
+        logger.info("AnalyzeDocument raw lines: %s", raw_lines[:30])
+
+        # Fuel litres: regex over all text
+        if result["fuelLitres"] is None:
+            result["fuelLitres"] = _extract_litres_from_text(raw_text)
+
+        # Odometer: first try handwriting detection, then regex fallback
+        if result["odometerKm"] is None:
+            result["odometerKm"] = _extract_handwritten_odometer(blocks)
+        if result["odometerKm"] is None:
+            result["odometerKm"] = _extract_odometer_from_text(raw_text)
+
+        # Include raw text for frontend debugging (temporary — can remove later)
+        result["_debug"] = {
+            "expenseText": expense_text[:500] if expense_text else "",
+            "queryAnswers": query_answers,
+            "rawLines": raw_lines[:30],
+        }
 
         return result
     except Exception as e:
@@ -207,12 +229,13 @@ def parse_fuel_receipt(textract_response):
 
     # Try to extract litres from all text if not found in structured fields
     if result["fuelLitres"] is None:
-        all_text = _get_all_text(doc)
+        all_text = _get_all_text(doc).lower()
         result["fuelLitres"] = _extract_litres_from_text(all_text)
 
     # Try to extract odometer from all text (often handwritten)
-    all_text = _get_all_text(doc)
-    result["odometerKm"] = _extract_odometer_from_text(all_text)
+    if result["odometerKm"] is None:
+        all_text = _get_all_text(doc).lower()
+        result["odometerKm"] = _extract_odometer_from_text(all_text)
 
     return result
 
@@ -362,6 +385,47 @@ def _extract_litres_from_text(text):
             if parsed is not None and 0.5 <= parsed <= 500:
                 return parsed
     return None
+
+
+def _extract_handwritten_odometer(blocks):
+    """Find odometer from handwritten text detected by Textract.
+
+    On many fuel receipts the odometer is a bare handwritten number (no label)
+    at the top or bottom of the receipt.  Textract marks these blocks with
+    ``TextType: "HANDWRITING"``.
+
+    We look for LINE blocks flagged as handwriting that contain a standalone
+    5-7 digit number (the typical odometer range 10,000 – 9,999,999).
+    If multiple candidates exist we prefer the one closest to the top of the
+    page (smallest ``Top`` geometry value), since attendants usually write the
+    odometer at the very top.
+    """
+    candidates = []
+    for block in blocks:
+        if block.get("BlockType") != "LINE":
+            continue
+        if block.get("TextType") != "HANDWRITING":
+            continue
+        text = (block.get("Text") or "").strip()
+        if not text:
+            continue
+        # Strip common separators: spaces, commas, periods used as thousands
+        cleaned = re.sub(r"[\s,.]", "", text)
+        # Must be purely digits and in the 5-7 digit odometer range
+        if not cleaned.isdigit():
+            continue
+        value = int(cleaned)
+        if 1_000 <= value <= 9_999_999:
+            top = block.get("Geometry", {}).get("BoundingBox", {}).get("Top", 1.0)
+            candidates.append((top, value))
+
+    if not candidates:
+        return None
+
+    # Pick the candidate closest to the top of the page
+    candidates.sort(key=lambda c: c[0])
+    logger.info("Handwritten odometer candidates: %s", candidates)
+    return candidates[0][1]
 
 
 def _extract_odometer_from_text(text):
