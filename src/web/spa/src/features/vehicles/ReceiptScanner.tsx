@@ -34,42 +34,60 @@ export default function ReceiptScanner({ apiBase, onFieldsExtracted, onClose }: 
         setState("idle");
         return;
       }
-      setPreview(`data:image/${photo.format || "jpeg"};base64,${photo.base64String}`);
 
-      // Upload
+      const mimeType = `image/${photo.format || "jpeg"}`;
+      setPreview(`data:${mimeType};base64,${photo.base64String}`);
+
+      // Step 1: get a presigned S3 upload URL
       setState("uploading");
-      const contentType = `image/${photo.format || "jpeg"}`;
-      const blob = base64ToBlob(photo.base64String, contentType);
-
-      const urlResp = await fetchWithAuth(`${apiBase}/vehicles-expenses/receipt-upload`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contentType }),
-      });
-      if (!urlResp.ok) throw new Error("Failed to get upload URL");
-      const { uploadUrl, key } = (await urlResp.json()) as { uploadUrl: string; key: string };
-
-      const putResp = await fetch(uploadUrl, {
-        method: "PUT",
-        body: blob,
-        headers: { "Content-Type": contentType },
-      });
-      if (!putResp.ok) throw new Error("Failed to upload receipt image");
-
-      // Scan
-      setState("scanning");
-      const scanResp = await fetchWithAuth(`${apiBase}/vehicles-expenses/scan-receipt`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageKey: key }),
-      });
-      if (!scanResp.ok) {
-        const d = await scanResp.json().catch(() => ({}));
-        throw new Error((d as { error?: string }).error || "Scan failed");
+      let uploadUrl: string;
+      let key: string;
+      try {
+        const urlResp = await fetchWithAuth(`${apiBase}/vehicles-expenses/receipt-upload`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contentType: mimeType }),
+        });
+        if (!urlResp.ok) {
+          const d = await urlResp.json().catch(() => ({}));
+          throw new Error((d as { error?: string }).error || `Server error ${urlResp.status}`);
+        }
+        ({ uploadUrl, key } = (await urlResp.json()) as { uploadUrl: string; key: string });
+      } catch (e: any) {
+        throw new Error(`Could not get upload URL: ${e.message}`);
       }
-      const result = (await scanResp.json()) as ScannedFields;
-      setFields(result);
-      setState("done");
+
+      // Step 2: PUT the image to S3
+      try {
+        const blob = base64ToBlob(photo.base64String, mimeType);
+        const putResp = await fetch(uploadUrl, {
+          method: "PUT",
+          body: blob,
+          headers: { "Content-Type": mimeType },
+        });
+        if (!putResp.ok) throw new Error(`S3 responded ${putResp.status}`);
+      } catch (e: any) {
+        throw new Error(`Image upload failed: ${e.message}`);
+      }
+
+      // Step 3: ask the API to scan the receipt
+      setState("scanning");
+      try {
+        const scanResp = await fetchWithAuth(`${apiBase}/vehicles-expenses/scan-receipt`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ imageKey: key }),
+        });
+        if (!scanResp.ok) {
+          const d = await scanResp.json().catch(() => ({}));
+          throw new Error((d as { error?: string }).error || `Server error ${scanResp.status}`);
+        }
+        const result = (await scanResp.json()) as ScannedFields;
+        setFields(result);
+        setState("done");
+      } catch (e: any) {
+        throw new Error(`Receipt scan failed: ${e.message}`);
+      }
     } catch (e: any) {
       if (e?.message === "User cancelled photos app") {
         setState("idle");
