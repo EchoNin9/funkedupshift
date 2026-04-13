@@ -24,6 +24,7 @@ export async function fetchWithAuth(
   const w = window as any;
   if (!w.auth?.getAccessToken) throw new Error("Not signed in");
   const token: string | null = await new Promise((r) => w.auth.getAccessToken(r));
+  if (!token) throw new Error("Session expired — please sign in again");
   const headers: Record<string, string> = {
     ...(options?.headers as Record<string, string>),
     Authorization: `Bearer ${token}`,
