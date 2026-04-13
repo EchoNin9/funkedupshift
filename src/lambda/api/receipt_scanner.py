@@ -438,6 +438,96 @@ def _extract_handwritten_odometer(blocks):
     return candidates[0][1]
 
 
+def scan_general_receipt(image_key):
+    """Extract general expense fields from a receipt image using Textract.
+
+    Uses AnalyzeExpense for structured extraction of date, total amount,
+    vendor name, and line-item descriptions.
+
+    Returns dict with keys: date, price, vendor, description (all nullable).
+    """
+    if not MEDIA_BUCKET or not image_key:
+        return None
+    try:
+        import boto3
+        textract = boto3.client("textract", region_name=AWS_REGION)
+        doc = {"S3Object": {"Bucket": MEDIA_BUCKET, "Name": image_key}}
+
+        result = {
+            "date": None,
+            "price": None,
+            "vendor": None,
+            "description": None,
+        }
+
+        # --- Pass 1: AnalyzeExpense for structured fields ---
+        expense_resp = textract.analyze_expense(Document=doc)
+        expense_docs = expense_resp.get("ExpenseDocuments", [])
+        if expense_docs:
+            expense_doc = expense_docs[0]
+            item_descriptions = []
+
+            for field in expense_doc.get("SummaryFields", []):
+                ft = _get_field_type(field).upper()
+                fv = _get_field_value(field)
+                if not fv:
+                    continue
+                if ft in ("INVOICE_RECEIPT_DATE", "DATE", "ORDER_DATE") and not result["date"]:
+                    result["date"] = _parse_date(fv)
+                elif ft in ("TOTAL", "AMOUNT_PAID", "AMOUNT_DUE", "SUBTOTAL") and result["price"] is None:
+                    parsed = _parse_number(fv)
+                    if parsed is not None and parsed > 0:
+                        result["price"] = parsed
+                elif ft in ("VENDOR", "VENDOR_NAME", "RECEIVER_NAME", "MERCHANT_NAME") and not result["vendor"]:
+                    result["vendor"] = fv.strip()
+
+            # Build description from line items
+            for group in expense_doc.get("LineItemGroups", []):
+                for item in group.get("LineItems", []):
+                    parts = []
+                    for ef in item.get("LineItemExpenseFields", []):
+                        eft = _get_field_type(ef).upper()
+                        efv = _get_field_value(ef)
+                        if efv and eft in ("ITEM", "DESCRIPTION", "PRODUCT_CODE", "NAME"):
+                            parts.append(efv.strip())
+                    if parts:
+                        item_descriptions.append(", ".join(parts))
+
+            if item_descriptions:
+                result["description"] = "; ".join(item_descriptions[:5])  # cap at 5 items
+
+        logger.info("AnalyzeExpense general result: %s", result)
+
+        # --- Pass 2: AnalyzeDocument QUERIES for anything still missing ---
+        queries = []
+        if not result["date"]:
+            queries.append({"Text": "What is the date on this receipt?", "Alias": "DATE"})
+        if result["price"] is None:
+            queries.append({"Text": "What is the total amount charged?", "Alias": "TOTAL"})
+        if not result["vendor"]:
+            queries.append({"Text": "What is the name of the store or vendor on this receipt?", "Alias": "VENDOR"})
+
+        if queries:
+            doc_resp = textract.analyze_document(
+                Document=doc,
+                FeatureTypes=["QUERIES"],
+                QueriesConfig={"Queries": queries},
+            )
+            query_answers = _extract_query_answers(doc_resp)
+            logger.info("General receipt query answers: %s", query_answers)
+            if not result["date"] and "DATE" in query_answers:
+                result["date"] = _parse_date(query_answers["DATE"])
+            if result["price"] is None and "TOTAL" in query_answers:
+                result["price"] = _parse_number(query_answers["TOTAL"])
+            if not result["vendor"] and "VENDOR" in query_answers:
+                result["vendor"] = query_answers["VENDOR"].strip()
+
+        return result
+    except Exception as e:
+        logger.exception("scan_general_receipt error: %s", e)
+        return {"error": str(e)}
+
+
 def _extract_odometer_from_text(text):
     """Try to find odometer/km reading from text.
 

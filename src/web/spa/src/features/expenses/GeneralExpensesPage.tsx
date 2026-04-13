@@ -1,8 +1,12 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth, canAccessExpenses } from "../../shell/AuthContext";
 import { fetchWithAuth } from "../../utils/api";
 import { Alert } from "../../components";
 import { AdminTabs } from "../admin/AdminTabs";
+import { usePlatform } from "../../shell/PlatformContext";
+import { CameraIcon } from "@heroicons/react/24/outline";
+
+const GeneralReceiptScanner = lazy(() => import("./GeneralReceiptScanner"));
 
 function getApiBaseUrl(): string | null {
   if (typeof window === "undefined") return null;
@@ -63,6 +67,7 @@ function attachmentOpensInModal(a: GenAttachment): boolean {
 const GeneralExpensesPage: React.FC = () => {
   const { user } = useAuth();
   const canAccess = canAccessExpenses(user);
+  const { isNative } = usePlatform();
 
   const [sections, setSections] = useState<ExpenseSection[]>([]);
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
@@ -103,6 +108,7 @@ const GeneralExpensesPage: React.FC = () => {
   const prevSectionForDraftRef = useRef<string | null>(null);
 
   const [preview, setPreview] = useState<{ url: string; filename: string; isPdf: boolean } | null>(null);
+  const [showReceiptScanner, setShowReceiptScanner] = useState(false);
 
   useEffect(() => {
     pendingFilesRef.current = pendingFiles;
@@ -676,16 +682,48 @@ const GeneralExpensesPage: React.FC = () => {
                     )}
                   </p>
                   {!addOpen && !editingId && (
-                    <button
-                      type="button"
-                      onClick={openAdd}
-                      disabled={saving}
-                      className="rounded-md bg-accent-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-accent-600 disabled:opacity-50"
-                    >
-                      Add expense
-                    </button>
+                    <div className="flex items-center gap-2">
+                      {isNative && (
+                        <button
+                          type="button"
+                          onClick={() => { openAdd(); setShowReceiptScanner(true); }}
+                          disabled={saving}
+                          className="inline-flex items-center gap-1.5 rounded-md border border-border-hover bg-surface-3 px-2.5 py-1.5 text-xs font-medium text-text-primary hover:bg-surface-2 disabled:opacity-50"
+                        >
+                          <CameraIcon className="w-4 h-4" />
+                          Scan Receipt
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={openAdd}
+                        disabled={saving}
+                        className="rounded-md bg-accent-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-accent-600 disabled:opacity-50"
+                      >
+                        Add expense
+                      </button>
+                    </div>
                   )}
                 </div>
+
+                {/* Receipt scanner modal */}
+                {showReceiptScanner && getApiBaseUrl() && (
+                  <Suspense fallback={null}>
+                    <GeneralReceiptScanner
+                      apiBase={getApiBaseUrl()!}
+                      onFieldsExtracted={(fields) => {
+                        setForm((f) => ({
+                          ...f,
+                          date: fields.date || f.date,
+                          price: fields.price != null ? String(fields.price) : f.price,
+                          vendor: fields.vendor || f.vendor,
+                          description: fields.description || f.description,
+                        }));
+                      }}
+                      onClose={() => setShowReceiptScanner(false)}
+                    />
+                  </Suspense>
+                )}
 
                 {(addOpen || editingId) && (
                   <div className="rounded-lg border border-accent-500/40 bg-surface-1 p-4 mb-4 space-y-3">
