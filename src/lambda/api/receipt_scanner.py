@@ -37,24 +37,104 @@ def get_receipt_upload_url(user_id, content_type):
 
 
 def scan_fuel_receipt(image_key):
-    """Call Textract AnalyzeExpense on an S3 image and extract fuel receipt fields."""
+    """Extract fuel receipt fields using two Textract passes.
+
+    Pass 1 – AnalyzeExpense: structured fields (date, total).
+    Pass 2 – AnalyzeDocument + QUERIES: fuel litres and odometer.
+             QUERIES handles printed *and* handwritten text, and lets us ask
+             plain-English questions so Textract knows what to look for even
+             in non-standard pump-receipt formats like "46.234L @ $2.159/L".
+    """
     if not MEDIA_BUCKET or not image_key:
         return None
     try:
         import boto3
         textract = boto3.client("textract", region_name=AWS_REGION)
-        response = textract.analyze_expense(
-            Document={
-                "S3Object": {
-                    "Bucket": MEDIA_BUCKET,
-                    "Name": image_key,
-                }
-            }
+        doc = {"S3Object": {"Bucket": MEDIA_BUCKET, "Name": image_key}}
+
+        # --- Pass 1: AnalyzeExpense for date and total price ---
+        expense_resp = textract.analyze_expense(Document=doc)
+        result = parse_fuel_receipt(expense_resp)
+
+        # --- Pass 2: AnalyzeDocument with QUERIES for fuel-specific fields ---
+        # Also extracts all raw LINE text blocks for regex fallback.
+        queries = [
+            {"Text": "How many litres or liters of fuel were pumped or purchased?",
+             "Alias": "FUEL_LITRES"},
+            {"Text": "What is the odometer reading, mileage, or km reading?",
+             "Alias": "ODOMETER"},
+        ]
+        # Only ask for date/price if pass 1 didn't find them.
+        if not result["date"]:
+            queries.append({"Text": "What is the date on this receipt?", "Alias": "DATE"})
+        if result["fuelPrice"] is None:
+            queries.append({"Text": "What is the total fuel cost or amount paid?",
+                            "Alias": "TOTAL"})
+
+        doc_resp = textract.analyze_document(
+            Document=doc,
+            FeatureTypes=["QUERIES"],
+            QueriesConfig={"Queries": queries},
         )
-        return parse_fuel_receipt(response)
+
+        # Pull structured query answers.
+        query_answers = _extract_query_answers(doc_resp)
+        logger.info("Textract query answers: %s", query_answers)
+
+        if result["fuelLitres"] is None and "FUEL_LITRES" in query_answers:
+            result["fuelLitres"] = _parse_number(query_answers["FUEL_LITRES"])
+        if result["odometerKm"] is None and "ODOMETER" in query_answers:
+            result["odometerKm"] = _parse_number(query_answers["ODOMETER"])
+        if not result["date"] and "DATE" in query_answers:
+            result["date"] = _parse_date(query_answers["DATE"])
+        if result["fuelPrice"] is None and "TOTAL" in query_answers:
+            result["fuelPrice"] = _parse_number(query_answers["TOTAL"])
+
+        # Final fallback: regex over all raw LINE blocks (catches pump formats
+        # like "46.234L" and handwritten odometer numbers that queries missed).
+        if result["fuelLitres"] is None or result["odometerKm"] is None:
+            raw_text = " ".join(
+                b["Text"]
+                for b in doc_resp.get("Blocks", [])
+                if b.get("BlockType") == "LINE" and b.get("Text")
+            ).lower()
+            if result["fuelLitres"] is None:
+                result["fuelLitres"] = _extract_litres_from_text(raw_text)
+            if result["odometerKm"] is None:
+                result["odometerKm"] = _extract_odometer_from_text(raw_text)
+
+        return result
     except Exception as e:
         logger.exception("scan_fuel_receipt error: %s", e)
         return {"error": str(e)}
+
+
+def _extract_query_answers(doc_response):
+    """Parse QUERY_RESULT blocks from an AnalyzeDocument response.
+
+    Returns a dict of {alias: answer_text} for results with high confidence.
+    """
+    blocks = doc_response.get("Blocks", [])
+    # Build id→block lookup.
+    by_id = {b["Id"]: b for b in blocks}
+    answers = {}
+    for block in blocks:
+        if block.get("BlockType") != "QUERY":
+            continue
+        alias = block.get("Query", {}).get("Alias", "")
+        if not alias:
+            continue
+        for rel in block.get("Relationships", []):
+            if rel.get("Type") != "ANSWER":
+                continue
+            for answer_id in rel.get("Ids", []):
+                answer_block = by_id.get(answer_id, {})
+                if answer_block.get("BlockType") == "QUERY_RESULT":
+                    confidence = answer_block.get("Confidence", 0)
+                    text = answer_block.get("Text", "").strip()
+                    if text and confidence >= 50:
+                        answers[alias] = text
+    return answers
 
 
 def parse_fuel_receipt(textract_response):
@@ -256,16 +336,27 @@ def _get_all_text(doc):
 
 
 def _extract_litres_from_text(text):
-    """Try to find litres value from text using keyword proximity."""
-    text_lower = text.lower()
-    # Look for patterns like "42.3 L" or "42.3 litres" or "litres: 42.3"
+    """Try to find litres value from text using keyword proximity.
+
+    Handles pump-receipt formats like:
+      - "46.234L @ $2.159/L"   (no space before L)
+      - "46.234 L"
+      - "46.234 litres"
+      - "litres: 46.234"
+    Input is expected to already be lowercased.
+    """
     patterns = [
-        r"(\d+[.,]?\d*)\s*(?:l(?:itres?|iters?)?)\b",
+        # "46.234l" or "46.234 l" or "46.234 litres" — number then L/litres
+        r"(\d+[.,]\d+)\s*l(?:itres?|iters?)?\b",
+        # Whole-number litres with unit: "50 L"
+        r"(\d+)\s*l(?:itres?|iters?)\b",
+        # Keyword first: "litres: 46.234"
         r"(?:litres?|liters?)[:\s]+(\d+[.,]?\d*)",
-        r"(\d+[.,]?\d*)\s*(?:gal(?:lons?)?)\b",
+        # Gallons fallback
+        r"(\d+[.,]?\d*)\s*gal(?:lons?)?\b",
     ]
     for pattern in patterns:
-        match = re.search(pattern, text_lower)
+        match = re.search(pattern, text)
         if match:
             parsed = _parse_number(match.group(1))
             if parsed is not None and 0.5 <= parsed <= 500:
@@ -274,17 +365,38 @@ def _extract_litres_from_text(text):
 
 
 def _extract_odometer_from_text(text):
-    """Try to find odometer/km reading from text."""
-    text_lower = text.lower()
-    # Look for patterns like "odometer: 123456" or "km: 123456" or "123456 km"
-    patterns = [
-        r"(?:odometer|odo|mileage|km|kms)[:\s]+(\d{4,7})",
-        r"(\d{4,7})\s*(?:km|kms|miles?)\b",
+    """Try to find odometer/km reading from text.
+
+    Handles:
+      - Labelled:   "odometer: 123456", "odo 123,456", "km: 123456"
+      - Suffixed:   "123456 km", "123,456 kms"
+      - Bare number written in a context line (e.g. handwritten "123456")
+        — only accepted when on a line that also contains a label keyword.
+    Input is expected to already be lowercased.
+    """
+    # Labelled patterns (highest confidence)
+    labelled_patterns = [
+        r"(?:odometer|odo(?:meter)?|mileage)[:\s#]+(\d[\d,. ]{3,8})",
+        r"(?:km|kms|klm)[:\s]+(\d[\d,. ]{3,8})",
     ]
-    for pattern in patterns:
-        match = re.search(pattern, text_lower)
+    for pattern in labelled_patterns:
+        match = re.search(pattern, text)
         if match:
-            parsed = _parse_number(match.group(1))
-            if parsed is not None and parsed >= 100:
+            raw = re.sub(r"[\s,]", "", match.group(1))
+            parsed = _parse_number(raw)
+            if parsed is not None and 1_000 <= parsed <= 9_999_999:
                 return parsed
+
+    # Suffixed patterns
+    suffixed_patterns = [
+        r"(\d[\d,]{3,7})\s*(?:km|kms|klm|miles?)\b",
+    ]
+    for pattern in suffixed_patterns:
+        match = re.search(pattern, text)
+        if match:
+            raw = re.sub(r"[\s,]", "", match.group(1))
+            parsed = _parse_number(raw)
+            if parsed is not None and 1_000 <= parsed <= 9_999_999:
+                return parsed
+
     return None
