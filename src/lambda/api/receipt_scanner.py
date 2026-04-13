@@ -88,7 +88,7 @@ def scan_fuel_receipt(image_key):
         logger.info("Textract query answers: %s", query_answers)
 
         if result["fuelLitres"] is None and "FUEL_LITRES" in query_answers:
-            result["fuelLitres"] = _parse_number(query_answers["FUEL_LITRES"])
+            result["fuelLitres"] = _parse_number(query_answers["FUEL_LITRES"], decimals=3)
         if result["odometerKm"] is None and "ODOMETER" in query_answers:
             parsed = _parse_number(query_answers["ODOMETER"])
             if parsed is not None and 1_000 <= parsed <= 9_999_999:
@@ -211,7 +211,7 @@ def parse_fuel_receipt(textract_response):
 
                 # Look for litres/liters in quantity or description
                 if field_type.upper() == "QUANTITY":
-                    parsed = _parse_number(field_value)
+                    parsed = _parse_number(field_value, decimals=3)
                     if parsed is not None and parsed > 0:
                         # Heuristic: fuel litres almost always have decimals (51.309)
                         # while pump numbers (04, 7) don't.  Require a '.' in the
@@ -255,8 +255,13 @@ def _get_field_value(field):
     return (value_obj.get("Text", "") if isinstance(value_obj, dict) else "").strip()
 
 
-def _parse_number(text):
-    """Parse a number from text, handling currency symbols and EU/US formats."""
+def _parse_number(text, decimals=2):
+    """Parse a number from text, handling currency symbols and EU/US formats.
+
+    Args:
+        text: Raw text possibly containing a number.
+        decimals: Number of decimal places to round to (default 2 for currency).
+    """
     if not text:
         return None
     cleaned = re.sub(r"[^\d.,\-]", "", text)
@@ -276,7 +281,7 @@ def _parse_number(text):
         else:
             cleaned = cleaned.replace(",", ".")
     try:
-        return round(float(cleaned), 2)
+        return round(float(cleaned), decimals)
     except ValueError:
         return None
 
@@ -335,11 +340,11 @@ def _matches_fuel_keywords(text):
     return any(kw in text for kw in keywords)
 
 
-def _extract_numbers(text):
+def _extract_numbers(text, decimals=3):
     """Extract all numbers from text."""
     nums = []
     for match in re.finditer(r"\d+[.,]?\d*", text):
-        parsed = _parse_number(match.group())
+        parsed = _parse_number(match.group(), decimals=decimals)
         if parsed is not None:
             nums.append(parsed)
     return nums
@@ -386,7 +391,7 @@ def _extract_litres_from_text(text):
     for pattern in patterns:
         match = re.search(pattern, text)
         if match:
-            parsed = _parse_number(match.group(1))
+            parsed = _parse_number(match.group(1), decimals=3)
             if parsed is not None and 0.5 <= parsed <= 500:
                 return parsed
     return None
