@@ -118,6 +118,57 @@
           callback(email ? email.Value : null);
         });
       });
+    },
+
+    changePassword: function (oldPassword, newPassword, callback) {
+      var user = getCurrentUser();
+      if (!user) {
+        callback(new Error('Not signed in'));
+        return;
+      }
+      user.getSession(function (err, session) {
+        if (err || !session || !session.isValid()) {
+          callback(new Error('Session expired. Please sign in again.'));
+          return;
+        }
+        user.changePassword(oldPassword, newPassword, function (err, result) {
+          if (err) {
+            callback(err);
+            return;
+          }
+          callback(null, result);
+        });
+      });
+    },
+
+    forgotPassword: function (email, callback) {
+      var cognitoUser = new CognitoUser({
+        Username: email,
+        Pool: userPool
+      });
+      cognitoUser.forgotPassword({
+        onSuccess: function (result) {
+          callback(null, result);
+        },
+        onFailure: function (err) {
+          callback(err);
+        }
+      });
+    },
+
+    confirmForgotPassword: function (email, code, newPassword, callback) {
+      var cognitoUser = new CognitoUser({
+        Username: email,
+        Pool: userPool
+      });
+      cognitoUser.confirmPassword(code, newPassword, {
+        onSuccess: function () {
+          callback(null);
+        },
+        onFailure: function (err) {
+          callback(err);
+        }
+      });
     }
   };
 })();

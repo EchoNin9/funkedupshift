@@ -90,8 +90,8 @@ const ProfilePage: React.FC = () => {
   const { isNative } = usePlatform();
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get("tab");
-  const initialTab = tabParam === "groups" ? "groups" : "profile";
-  const [activeTab, setActiveTab] = useState<"profile" | "groups">(initialTab);
+  const initialTab = tabParam === "groups" ? "groups" : tabParam === "security" ? "security" : "profile";
+  const [activeTab, setActiveTab] = useState<"profile" | "groups" | "security">(initialTab);
 
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [description, setDescription] = useState("");
@@ -103,6 +103,13 @@ const ProfilePage: React.FC = () => {
   const [isAvatarUrlLoading, setIsAvatarUrlLoading] = useState(false);
   const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
 
+  // Security tab state
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newSecurityPassword, setNewSecurityPassword] = useState("");
+  const [confirmSecurityPassword, setConfirmSecurityPassword] = useState("");
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [securityMessage, setSecurityMessage] = useState<{ text: string; error: boolean } | null>(null);
+
   // Groups tab state
   const [availableGroups, setAvailableGroups] = useState<GroupInfo[]>([]);
   const [groupsLoading, setGroupsLoading] = useState(false);
@@ -113,13 +120,15 @@ const ProfilePage: React.FC = () => {
 
   useEffect(() => {
     if (tabParam === "groups") setActiveTab("groups");
+    else if (tabParam === "security") setActiveTab("security");
     else setActiveTab("profile");
   }, [tabParam]);
 
-  const setTab = (tab: "profile" | "groups") => {
+  const setTab = (tab: "profile" | "groups" | "security") => {
     setActiveTab(tab);
     const next = new URLSearchParams(searchParams);
     if (tab === "groups") next.set("tab", "groups");
+    else if (tab === "security") next.set("tab", "security");
     else next.delete("tab");
     setSearchParams(next);
   };
@@ -209,6 +218,44 @@ const ProfilePage: React.FC = () => {
       setGroupsMessage({ text: `Error: ${(e as Error)?.message ?? "Unknown"}`, error: true });
     } finally {
       setTogglingGroup(null);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    setSecurityMessage(null);
+    if (!currentPassword || !newSecurityPassword || !confirmSecurityPassword) {
+      setSecurityMessage({ text: "All fields are required.", error: true });
+      return;
+    }
+    if (newSecurityPassword.length < 8) {
+      setSecurityMessage({ text: "New password must be at least 8 characters.", error: true });
+      return;
+    }
+    if (newSecurityPassword !== confirmSecurityPassword) {
+      setSecurityMessage({ text: "New passwords do not match.", error: true });
+      return;
+    }
+    const w = window as any;
+    if (!w.auth?.changePassword) {
+      setSecurityMessage({ text: "Auth module not available.", error: true });
+      return;
+    }
+    setIsChangingPassword(true);
+    try {
+      await new Promise<void>((resolve, reject) => {
+        w.auth.changePassword(currentPassword, newSecurityPassword, (err: any) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+      setSecurityMessage({ text: "Password changed successfully.", error: false });
+      setCurrentPassword("");
+      setNewSecurityPassword("");
+      setConfirmSecurityPassword("");
+    } catch (e: any) {
+      setSecurityMessage({ text: e?.message || "Failed to change password.", error: true });
+    } finally {
+      setIsChangingPassword(false);
     }
   };
 
@@ -437,6 +484,13 @@ const ProfilePage: React.FC = () => {
         >
           Custom groups
         </button>
+        <button
+          type="button"
+          onClick={() => setTab("security")}
+          className={`px-4 py-2 rounded-md text-sm font-medium ${activeTab === "security" ? "bg-surface-3 text-text-primary" : "text-text-secondary hover:text-text-primary"}`}
+        >
+          Security
+        </button>
       </div>
 
       {activeTab === "groups" && (
@@ -479,6 +533,68 @@ const ProfilePage: React.FC = () => {
               })}
             </ul>
           )}
+        </div>
+      )}
+
+      {activeTab === "security" && (
+        <div className="space-y-4 max-w-md">
+          <p className="text-sm text-text-secondary">Update the password for your account.</p>
+          {securityMessage && (
+            <Alert variant={securityMessage.error ? "error" : "success"}>{securityMessage.text}</Alert>
+          )}
+          <section className="rounded-xl border border-border-default bg-surface-1 p-4 space-y-4">
+            <h2 className="text-sm font-semibold text-text-primary">Change password</h2>
+            <div className="space-y-1">
+              <label htmlFor="current-password" className="block text-xs font-medium text-text-secondary">
+                Current password
+              </label>
+              <input
+                id="current-password"
+                type="password"
+                autoComplete="current-password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                className="w-full rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-primary0 focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
+                placeholder="Your current password"
+              />
+            </div>
+            <div className="space-y-1">
+              <label htmlFor="new-password" className="block text-xs font-medium text-text-secondary">
+                New password
+              </label>
+              <input
+                id="new-password"
+                type="password"
+                autoComplete="new-password"
+                value={newSecurityPassword}
+                onChange={(e) => setNewSecurityPassword(e.target.value)}
+                className="w-full rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-primary0 focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
+                placeholder="At least 8 characters"
+              />
+            </div>
+            <div className="space-y-1">
+              <label htmlFor="confirm-password" className="block text-xs font-medium text-text-secondary">
+                Confirm new password
+              </label>
+              <input
+                id="confirm-password"
+                type="password"
+                autoComplete="new-password"
+                value={confirmSecurityPassword}
+                onChange={(e) => setConfirmSecurityPassword(e.target.value)}
+                className="w-full rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-primary0 focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
+                placeholder="Repeat new password"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={handleChangePassword}
+              disabled={isChangingPassword}
+              className="rounded-md bg-accent-500 px-4 py-2 text-sm font-semibold text-surface-0 hover:bg-orange-500 disabled:opacity-50"
+            >
+              {isChangingPassword ? "Changing…" : "Change password"}
+            </button>
+          </section>
         </div>
       )}
 

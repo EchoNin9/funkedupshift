@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useAuth } from "../../shell/AuthContext";
 
-type AuthMode = "signin" | "signup";
+type AuthMode = "signin" | "signup" | "forgot" | "forgot-confirm";
 
 const AuthPage: React.FC = () => {
   const { user, refreshAuth } = useAuth();
@@ -12,6 +12,8 @@ const AuthPage: React.FC = () => {
   const [mode, setMode] = useState<AuthMode>("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [code, setCode] = useState("");
+  const [newPassword, setNewPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -20,6 +22,8 @@ const AuthPage: React.FC = () => {
     setMode(next);
     setError(null);
     setMessage(null);
+    setCode("");
+    setNewPassword("");
   };
 
   const handleSubmit: React.FormEventHandler = async (e) => {
@@ -27,17 +31,70 @@ const AuthPage: React.FC = () => {
     setError(null);
     setMessage(null);
 
-    const trimmedEmail = email.trim();
-    const trimmedPassword = password.trim();
-
-    if (!trimmedEmail || !trimmedPassword) {
-      setError("Email and password are required.");
-      return;
-    }
-
     const w = window as any;
     if (!w.auth) {
       setError("Auth is not configured. Check Cognito frontend setup.");
+      return;
+    }
+
+    const trimmedEmail = email.trim();
+
+    if (mode === "forgot") {
+      if (!trimmedEmail) {
+        setError("Email is required.");
+        return;
+      }
+      setIsSubmitting(true);
+      try {
+        await new Promise<void>((resolve, reject) => {
+          w.auth.forgotPassword(trimmedEmail, (err: any) => {
+            if (err) reject(err);
+            else resolve();
+          });
+        });
+        setMessage("Verification code sent to your email.");
+        setMode("forgot-confirm");
+      } catch (err: any) {
+        setError(err?.message || "Failed to send reset code. Please try again.");
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
+    }
+
+    if (mode === "forgot-confirm") {
+      const trimmedCode = code.trim();
+      if (!trimmedEmail || !trimmedCode || !newPassword) {
+        setError("All fields are required.");
+        return;
+      }
+      if (newPassword.length < 8) {
+        setError("New password must be at least 8 characters.");
+        return;
+      }
+      setIsSubmitting(true);
+      try {
+        await new Promise<void>((resolve, reject) => {
+          w.auth.confirmForgotPassword(trimmedEmail, trimmedCode, newPassword, (err: any) => {
+            if (err) reject(err);
+            else resolve();
+          });
+        });
+        setMessage("Password reset successfully. You can now sign in.");
+        setCode("");
+        setNewPassword("");
+        setMode("signin");
+      } catch (err: any) {
+        setError(err?.message || "Password reset failed. Please try again.");
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
+    }
+
+    const trimmedPassword = password.trim();
+    if (!trimmedEmail || !trimmedPassword) {
+      setError("Email and password are required.");
       return;
     }
 
@@ -74,6 +131,8 @@ const AuthPage: React.FC = () => {
     }
   };
 
+  const isForgotFlow = mode === "forgot" || mode === "forgot-confirm";
+
   return (
     <div className="space-y-6">
       <motion.header
@@ -104,28 +163,55 @@ const AuthPage: React.FC = () => {
         transition={{ duration: 0.5, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
       >
         <section className="rounded-2xl border border-border-default bg-surface-1 p-5 shadow-lg shadow-black/40">
-          <div className="mb-4 flex gap-2 rounded-full bg-surface-2 p-1 text-xs font-medium text-text-secondary">
-            <button
-              type="button"
-              onClick={() => switchMode("signin")}
-              className={[
-                "flex-1 rounded-full px-3 py-1.5 transition-colors",
-                mode === "signin" ? "bg-white text-surface-0" : "hover:bg-surface-3"
-              ].join(" ")}
-            >
-              Sign in
-            </button>
-            <button
-              type="button"
-              onClick={() => switchMode("signup")}
-              className={[
-                "flex-1 rounded-full px-3 py-1.5 transition-colors",
-                mode === "signup" ? "bg-white text-surface-0" : "hover:bg-surface-3"
-              ].join(" ")}
-            >
-              Sign up
-            </button>
-          </div>
+          {!isForgotFlow && (
+            <div className="mb-4 flex gap-2 rounded-full bg-surface-2 p-1 text-xs font-medium text-text-secondary">
+              <button
+                type="button"
+                onClick={() => switchMode("signin")}
+                className={[
+                  "flex-1 rounded-full px-3 py-1.5 transition-colors",
+                  mode === "signin" ? "bg-white text-surface-0" : "hover:bg-surface-3"
+                ].join(" ")}
+              >
+                Sign in
+              </button>
+              <button
+                type="button"
+                onClick={() => switchMode("signup")}
+                className={[
+                  "flex-1 rounded-full px-3 py-1.5 transition-colors",
+                  mode === "signup" ? "bg-white text-surface-0" : "hover:bg-surface-3"
+                ].join(" ")}
+              >
+                Sign up
+              </button>
+            </div>
+          )}
+
+          {isForgotFlow && (
+            <div className="mb-4">
+              <button
+                type="button"
+                onClick={() => switchMode("signin")}
+                className="text-xs text-text-secondary hover:text-text-primary"
+              >
+                ← Back to sign in
+              </button>
+              <h2 className="mt-2 text-sm font-semibold text-text-primary">
+                {mode === "forgot" ? "Reset your password" : "Enter verification code"}
+              </h2>
+              {mode === "forgot" && (
+                <p className="mt-1 text-xs text-text-secondary">
+                  We&apos;ll send a verification code to your email address.
+                </p>
+              )}
+              {mode === "forgot-confirm" && (
+                <p className="mt-1 text-xs text-text-secondary">
+                  Check your email for the code, then set a new password.
+                </p>
+              )}
+            </div>
+          )}
 
           <form className="space-y-4" onSubmit={handleSubmit}>
             <div className="space-y-1">
@@ -138,31 +224,73 @@ const AuthPage: React.FC = () => {
                 autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-primary0 focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
+                readOnly={mode === "forgot-confirm"}
+                className={[
+                  "w-full rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-primary0 focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500",
+                  mode === "forgot-confirm" ? "opacity-60 cursor-default" : ""
+                ].join(" ")}
                 placeholder="you@example.com"
                 required
               />
             </div>
 
-            <div className="space-y-1">
-              <label
-                htmlFor="authPassword"
-                className="text-xs font-medium uppercase tracking-[0.18em] text-text-secondary"
-              >
-                Password
-              </label>
-              <input
-                id="authPassword"
-                type="password"
-                autoComplete={mode === "signin" ? "current-password" : "new-password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-primary0 focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
-                placeholder={mode === "signup" ? "At least 8 characters" : "Your password"}
-                minLength={8}
-                required
-              />
-            </div>
+            {mode === "forgot-confirm" && (
+              <>
+                <div className="space-y-1">
+                  <label htmlFor="authCode" className="text-xs font-medium uppercase tracking-[0.18em] text-text-secondary">
+                    Verification code
+                  </label>
+                  <input
+                    id="authCode"
+                    type="text"
+                    autoComplete="one-time-code"
+                    value={code}
+                    onChange={(e) => setCode(e.target.value)}
+                    className="w-full rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-primary0 focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
+                    placeholder="123456"
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label htmlFor="authNewPassword" className="text-xs font-medium uppercase tracking-[0.18em] text-text-secondary">
+                    New password
+                  </label>
+                  <input
+                    id="authNewPassword"
+                    type="password"
+                    autoComplete="new-password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="w-full rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-primary0 focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
+                    placeholder="At least 8 characters"
+                    minLength={8}
+                    required
+                  />
+                </div>
+              </>
+            )}
+
+            {(mode === "signin" || mode === "signup") && (
+              <div className="space-y-1">
+                <label
+                  htmlFor="authPassword"
+                  className="text-xs font-medium uppercase tracking-[0.18em] text-text-secondary"
+                >
+                  Password
+                </label>
+                <input
+                  id="authPassword"
+                  type="password"
+                  autoComplete={mode === "signin" ? "current-password" : "new-password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-primary0 focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
+                  placeholder={mode === "signup" ? "At least 8 characters" : "Your password"}
+                  minLength={8}
+                  required
+                />
+              </div>
+            )}
 
             {error && (
               <div className="rounded-md border border-red-500/70 bg-red-500/10 px-3 py-2 text-xs text-red-200">
@@ -181,8 +309,26 @@ const AuthPage: React.FC = () => {
               disabled={isSubmitting}
               className="inline-flex w-full items-center justify-center rounded-full bg-accent-500 px-4 py-2.5 text-sm font-semibold text-surface-0 shadow-md shadow-orange-500/40 transition hover:bg-orange-500 disabled:cursor-not-allowed disabled:opacity-70"
             >
-              {isSubmitting ? (mode === "signin" ? "Signing in…" : "Creating account…") : mode === "signin" ? "Sign in" : "Create account"}
+              {isSubmitting
+                ? mode === "signin" ? "Signing in…"
+                  : mode === "signup" ? "Creating account…"
+                  : mode === "forgot" ? "Sending code…"
+                  : "Resetting password…"
+                : mode === "signin" ? "Sign in"
+                  : mode === "signup" ? "Create account"
+                  : mode === "forgot" ? "Send verification code"
+                  : "Reset password"}
             </button>
+
+            {mode === "signin" && (
+              <button
+                type="button"
+                onClick={() => switchMode("forgot")}
+                className="w-full text-center text-xs text-text-secondary hover:text-text-primary"
+              >
+                Forgot your password?
+              </button>
+            )}
           </form>
         </section>
 
@@ -215,4 +361,3 @@ const AuthPage: React.FC = () => {
 };
 
 export default AuthPage;
-
