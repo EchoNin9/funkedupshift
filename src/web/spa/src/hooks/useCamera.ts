@@ -2,12 +2,13 @@ import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 
 export async function takePhoto(source: CameraSource = CameraSource.Prompt) {
   const image = await Camera.getPhoto({
-    quality: 80,
-    allowEditing: true,
+    quality: 85,
+    allowEditing: false,
     resultType: CameraResultType.Base64,
     source,
-    width: 1024,
-    height: 1024,
+    width: 1920,
+    height: 1920,
+    correctOrientation: true,
   });
   return image;
 }
