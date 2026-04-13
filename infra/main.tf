@@ -1727,6 +1727,23 @@ resource "aws_apigatewayv2_route" "vehiclesExpensesExportAll" {
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
+# General expenses receipt scanning
+resource "aws_apigatewayv2_route" "generalExpensesReceiptUpload" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /general-expenses/receipt-upload"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "generalExpensesScanReceipt" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /general-expenses/scan-receipt"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
 # General expenses (expenses group required, JWT)
 resource "aws_apigatewayv2_route" "generalExpensesSectionsList" {
   api_id             = aws_apigatewayv2_api.main.id

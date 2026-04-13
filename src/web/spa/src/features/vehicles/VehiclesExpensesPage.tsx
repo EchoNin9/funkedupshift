@@ -1340,7 +1340,7 @@ const VehiclesExpensesPage: React.FC = () => {
                 type="date"
                 value={fuelForm.date}
                 onChange={(e) => setFuelForm((f) => ({ ...f, date: e.target.value }))}
-                className="rounded-md border border-border-hover bg-surface-3 px-3 py-2 text-text-primary"
+                className="w-full min-w-0 rounded-md border border-border-hover bg-surface-3 px-3 py-2 text-text-primary"
               />
               <input
                 type="number"
