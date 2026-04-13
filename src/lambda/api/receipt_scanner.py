@@ -213,8 +213,11 @@ def parse_fuel_receipt(textract_response):
                 if field_type.upper() == "QUANTITY":
                     parsed = _parse_number(field_value)
                     if parsed is not None and parsed > 0:
-                        # Heuristic: if quantity is reasonable for fuel (1-200L), treat as litres
-                        if 0.5 <= parsed <= 500 and result["fuelLitres"] is None:
+                        # Heuristic: fuel litres almost always have decimals (51.309)
+                        # while pump numbers (04, 7) don't.  Require a '.' in the
+                        # raw value to avoid grabbing the pump number as litres.
+                        has_decimal = "." in field_value or "," in field_value
+                        if has_decimal and 0.5 <= parsed <= 500 and result["fuelLitres"] is None:
                             result["fuelLitres"] = parsed
 
                 # Check description fields for litre/odometer keywords
@@ -369,6 +372,8 @@ def _extract_litres_from_text(text):
     Input is expected to already be lowercased.
     """
     patterns = [
+        # Canadian pump format: "51.309l at $2.339/l" — most specific, highest priority
+        r"(\d+[.,]\d+)\s*l\s+at\s+\$",
         # "46.234l" or "46.234 l" or "46.234 litres" — number then L/litres
         r"(\d+[.,]\d+)\s*l(?:itres?|iters?)?\b",
         # Whole-number litres with unit: "50 L"
