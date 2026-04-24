@@ -2,8 +2,13 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { ClipboardDocumentIcon } from "@heroicons/react/24/outline";
 import { Alert, fadeUpStaggered, stagger } from "../../components";
+import { fetchWithAuthOptional } from "../../utils/api";
 
-const IP_WHO_URL = "https://ipwho.is/";
+function getApiBaseUrl(): string | null {
+  if (typeof window === "undefined") return null;
+  const raw = (window as { API_BASE_URL?: string }).API_BASE_URL;
+  return raw ? raw.replace(/\/$/, "") : null;
+}
 
 interface IpWhoConnection {
   asn?: number;
@@ -133,10 +138,24 @@ const MyInfoPage: React.FC = () => {
     (async () => {
       setIpLoading(true);
       setIpError(null);
+      const apiBase = getApiBaseUrl();
+      if (!apiBase) {
+        if (!cancelled) {
+          setIpError("API URL not set.");
+          setIpData(null);
+          setIpLoading(false);
+        }
+        return;
+      }
       try {
-        const resp = await fetch(IP_WHO_URL, { credentials: "omit" });
-        const json = (await resp.json()) as IpWhoResponse;
+        const resp = await fetchWithAuthOptional(`${apiBase}/visitor-network-info`);
+        const json = (await resp.json().catch(() => ({}))) as IpWhoResponse & { error?: string };
         if (cancelled) return;
+        if (!resp.ok) {
+          setIpError(json.message || json.error || `HTTP ${resp.status}`);
+          setIpData(null);
+          return;
+        }
         if (!json.success) {
           setIpError(json.message || "Could not load network location.");
           setIpData(null);
@@ -145,7 +164,7 @@ const MyInfoPage: React.FC = () => {
         }
       } catch {
         if (!cancelled) {
-          setIpError("Network lookup failed (offline, blocked, or ad blocker).");
+          setIpError("Network lookup failed.");
           setIpData(null);
         }
       } finally {
@@ -315,42 +334,6 @@ const MyInfoPage: React.FC = () => {
         </button>
       </div>
 
-      <motion.div
-        className="rounded-xl border border-teal-800/60 bg-gradient-to-br from-teal-900/40 to-teal-950/60 p-4 shadow-lg"
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.06, ease: [0.22, 1, 0.36, 1] }}
-      >
-        <p className="text-sm font-medium text-teal-100">
-          Connection, location, and this browser
-        </p>
-        <p className="mt-1 text-xs text-teal-200/80 leading-relaxed">
-          Browser and device details are read locally in your browser (similar to{" "}
-          <a
-            href="https://getmybrowser.com/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-accent-400 hover:underline"
-          >
-            getmybrowser.com
-          </a>
-          ). Public IP and approximate location are requested over HTTPS from{" "}
-          <a href={IP_WHO_URL} target="_blank" rel="noopener noreferrer" className="text-accent-400 hover:underline">
-            ipwho.is
-          </a>{" "}
-          so we can mirror what tools like{" "}
-          <a
-            href="https://www.whatismyip.com/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-accent-400 hover:underline"
-          >
-            whatismyip.com
-          </a>{" "}
-          show, without sending that data through our servers.
-        </p>
-      </motion.div>
-
       {ipError && <Alert variant="error">{ipError}</Alert>}
 
       <motion.div
@@ -362,7 +345,7 @@ const MyInfoPage: React.FC = () => {
         <motion.div variants={fadeUpStaggered} custom={0}>
           <SectionCard
             title="Network & location"
-            subtitle="From your public IP (HTTPS lookup)"
+            subtitle="Public IP and geo (server-side lookup)"
             accent="teal"
           >
             {ipLoading && (
