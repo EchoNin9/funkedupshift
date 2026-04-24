@@ -264,6 +264,8 @@ def handler(event, context):
             return deleteBrandingHeroImage(event)
         if method == "GET" and path == "/internet-dashboard":
             return getInternetDashboard(event)
+        if method == "GET" and path == "/visitor-network-info":
+            return getVisitorNetworkInfo(event)
         if method == "GET" and path == "/recommended/highlights":
             return getOurProperties(event)
         if method == "GET" and path == "/recommended/highest-rated":
@@ -588,6 +590,25 @@ def getInternetDashboard(event):
     except Exception as e:
         logger.exception("getInternetDashboard error: %s", e)
         return jsonResponse({"error": str(e), "sites": []}, 500)
+
+
+def getVisitorNetworkInfo(event):
+    """GET /visitor-network-info: ipwho.is payload for API caller IP (public, no auth)."""
+    logger.info("getVisitorNetworkInfo event: %s", json.dumps(event))
+    ip = _getSourceIp(event)
+    if not ip:
+        return jsonResponse({"success": False, "message": "No client IP"}, 503)
+    try:
+        from api.visitor_network import fetch_ipwho_for_ip
+
+        data = fetch_ipwho_for_ip(ip)
+        return jsonResponse(data)
+    except ValueError as e:
+        logger.warning("getVisitorNetworkInfo invalid ip: %s", e)
+        return jsonResponse({"success": False, "message": str(e)}, 400)
+    except Exception as e:
+        logger.exception("getVisitorNetworkInfo error: %s", e)
+        return jsonResponse({"success": False, "message": str(e)}, 502)
 
 
 # ------------------------------------------------------------------------------

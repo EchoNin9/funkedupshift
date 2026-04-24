@@ -22,7 +22,7 @@ export function MobileHeader() {
   const location = useLocation();
 
   const bySection = getPublicModulesBySection(user);
-  const discoverIds = ["websites", "media", "memes", "internet-dashboard"] as const;
+  const discoverIds = ["websites", "media", "memes", "internet-dashboard", "my-info"] as const;
   const allForDiscover = [...(bySection.discover ?? []), ...(bySection.memes ?? [])];
   const discoverItems = discoverIds
     .map((id) => allForDiscover.find((m) => m.id === id))

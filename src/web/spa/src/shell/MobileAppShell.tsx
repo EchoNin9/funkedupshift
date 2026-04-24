@@ -22,6 +22,7 @@ const SiteDetailPage = lazy(() => import("../features/websites/SiteDetailPage"))
 const MediaPage = lazy(() => import("../features/media/MediaPage"));
 const MediaDetailPage = lazy(() => import("../features/media/MediaDetailPage"));
 const DashboardPage = lazy(() => import("../features/dashboard/DashboardPage"));
+const MyInfoPage = lazy(() => import("../features/myinfo/MyInfoPage"));
 const OurPropertiesPage = lazy(() => import("../features/otherProperties/OurPropertiesPage"));
 const HighestRatedPage = lazy(() => import("../features/otherProperties/HighestRatedPage"));
 const AdminDashboard = lazy(() =>
@@ -118,6 +119,7 @@ export function MobileAppShell() {
                     <Route path="/media" element={<MediaPage />} />
                     <Route path="/media/:id" element={<MediaDetailPage />} />
                     <Route path="/internet-dashboard" element={<DashboardPage />} />
+                    <Route path="/my-info" element={<MyInfoPage />} />
                     <Route path="/recommended/highlights" element={<OurPropertiesPage />} />
                     <Route path="/recommended/highest-rated" element={<HighestRatedPage />} />
                     <Route path="/squash" element={<SquashPage />} />

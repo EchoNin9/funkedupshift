@@ -8,6 +8,7 @@ import {
   TruckIcon,
   SparklesIcon,
   ChartBarIcon,
+  IdentificationIcon,
   Cog6ToothIcon,
   ShieldCheckIcon,
 } from "@heroicons/react/24/outline";
@@ -21,6 +22,7 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   websites: GlobeAltIcon,
   media: PhotoIcon,
   "internet-dashboard": ChartBarIcon,
+  "my-info": IdentificationIcon,
   squash: TrophyIcon,
   "squash-admin": ShieldCheckIcon,
   memes: PhotoIcon,

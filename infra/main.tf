@@ -1035,6 +1035,13 @@ resource "aws_apigatewayv2_route" "internetDashboard" {
   target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
 }
 
+# My Info page: server-side ipwho.is (browser free plan blocks direct calls)
+resource "aws_apigatewayv2_route" "visitorNetworkInfo" {
+  api_id    = aws_apigatewayv2_api.main.id
+  route_key = "GET /visitor-network-info"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+}
+
 resource "aws_apigatewayv2_route" "ourProperties" {
   api_id    = aws_apigatewayv2_api.main.id
   route_key = "GET /recommended/highlights"
