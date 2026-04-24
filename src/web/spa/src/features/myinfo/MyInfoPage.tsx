@@ -99,18 +99,21 @@ function formatKv(rows: { label: string; value: string | number | boolean | null
 const SectionCard: React.FC<{
   title: string;
   subtitle?: string;
-  accent: "teal" | "slate" | "violet";
+  accent: "teal" | "slate" | "violet" | "orange";
+  className?: string;
   children: React.ReactNode;
-}> = ({ title, subtitle, accent, children }) => {
+}> = ({ title, subtitle, accent, className, children }) => {
   const border =
     accent === "teal"
       ? "border-teal-800/60 from-teal-900/40 to-teal-950/60"
       : accent === "violet"
       ? "border-violet-800/50 from-violet-900/35 to-violet-950/55"
+      : accent === "orange"
+      ? "border-orange-800/55 from-orange-900/35 to-orange-950/55"
       : "border-border-default from-surface-2/80 to-surface-1/90";
   return (
     <div
-      className={`rounded-xl border bg-gradient-to-br p-4 shadow-lg ${border}`}
+      className={`rounded-xl border bg-gradient-to-br p-4 shadow-lg ${border} ${className ?? ""}`}
     >
       <h2 className="text-sm font-semibold text-text-primary">{title}</h2>
       {subtitle && <p className="mt-0.5 text-xs text-text-tertiary">{subtitle}</p>}
@@ -342,11 +345,12 @@ const MyInfoPage: React.FC = () => {
         animate="visible"
         variants={stagger(0.05)}
       >
-        <motion.div variants={fadeUpStaggered} custom={0}>
+        <motion.div variants={fadeUpStaggered} custom={0} className="h-full">
           <SectionCard
             title="Network & location"
             subtitle="Public IP and geo (server-side lookup)"
             accent="teal"
+            className="h-full"
           >
             {ipLoading && (
               <div className="space-y-2 py-1">
@@ -365,8 +369,13 @@ const MyInfoPage: React.FC = () => {
           </SectionCard>
         </motion.div>
 
-        <motion.div variants={fadeUpStaggered} custom={1}>
-          <SectionCard title="Browser & engine" subtitle="Navigator, client hints, connectivity" accent="slate">
+        <motion.div variants={fadeUpStaggered} custom={1} className="h-full">
+          <SectionCard
+            title="Browser & engine"
+            subtitle="Navigator, client hints, connectivity"
+            accent="teal"
+            className="h-full"
+          >
             {formatKv([
               { label: "User-Agent", value: browserBlock.userAgent },
               { label: "Client hint brands", value: browserBlock.brands },
@@ -395,8 +404,8 @@ const MyInfoPage: React.FC = () => {
           </SectionCard>
         </motion.div>
 
-        <motion.div variants={fadeUpStaggered} custom={2}>
-          <SectionCard title="Screen & display" accent="slate">
+        <motion.div variants={fadeUpStaggered} custom={2} className="h-full">
+          <SectionCard title="Screen & display" accent="violet" className="h-full">
             {formatKv([
               { label: "Screen (CSS px)", value: screenBlock.screen },
               { label: "Available viewport", value: screenBlock.available },
@@ -410,8 +419,8 @@ const MyInfoPage: React.FC = () => {
           </SectionCard>
         </motion.div>
 
-        <motion.div variants={fadeUpStaggered} custom={3}>
-          <SectionCard title="Device & input" accent="violet">
+        <motion.div variants={fadeUpStaggered} custom={3} className="h-full">
+          <SectionCard title="Device & input" accent="violet" className="h-full">
             {formatKv([
               { label: "Logical CPU cores", value: browserBlock.hardwareConcurrency },
               { label: "Device memory (GB est.)", value: browserBlock.deviceMemory },
@@ -423,7 +432,7 @@ const MyInfoPage: React.FC = () => {
         </motion.div>
 
         <motion.div variants={fadeUpStaggered} custom={4} className="md:col-span-2">
-          <SectionCard title="Date & time" subtitle="From this device clock" accent="slate">
+          <SectionCard title="Date & time" subtitle="From this device clock" accent="orange">
             {formatKv([
               { label: "IANA time zone", value: timeBlock.timeZone },
               { label: "UTC offset (minutes)", value: timeBlock.offsetMinutes },
