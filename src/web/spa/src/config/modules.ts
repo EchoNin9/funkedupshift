@@ -48,6 +48,7 @@ export const PUBLIC_MODULES: PublicModule[] = [
   { id: "websites", label: "Websites", path: "/websites", section: "discover", minRole: "guest" },
   { id: "media", label: "Media", path: "/media", section: "discover", minRole: "guest" },
   { id: "internet-dashboard", label: "Internet Dashboard", path: "/internet-dashboard", section: "discover", minRole: "guest" },
+  { id: "my-info", label: "My Info", path: "/my-info", section: "discover", minRole: "guest" },
   { id: "profile", label: "Profile", path: "/profile", section: "discover", minRole: "user", authOnly: true },
   { id: "squash", label: "Squash", path: "/squash", section: "squash", minRole: "user", visibility: canAccessSquash },
   { id: "squash-admin", label: "Squash Admin", path: "/squash-admin", section: "squash", minRole: "manager", visibility: canModifySquash },

@@ -297,6 +297,12 @@ const HomePage: React.FC = () => {
               >
                 Internet Dashboard
               </Link>
+              <Link
+                to="/my-info"
+                className="inline-flex items-center gap-2 rounded-full border border-border-hover bg-white/5 px-6 py-3 text-sm font-medium text-text-primary backdrop-blur-sm transition-all duration-200 hover:bg-white/10 hover:border-text-tertiary hover:-translate-y-0.5"
+              >
+                My Info
+              </Link>
               {showSquash && (
                 <Link
                   to="/squash"
