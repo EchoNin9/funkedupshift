@@ -4,152 +4,473 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Funkedupshift</title>
-  <link rel="stylesheet" href="pop.css">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      line-height: 1.5;
+      color: #1a1a1a;
+      overflow-x: hidden;
+      background: #ffffff;
+      transition: background 0.3s ease, color 0.3s ease;
+    }
+    .hero {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(circle at top, #fef3f2 0%, #ffffff 55%, #f2f6ff 100%);
+    }
+    .hero-logo-container {
+      position: relative;
+      perspective: 1000px;
+      transition: transform 0.1s ease-out;
+    }
+    .hero-logo {
+      font-size: clamp(3rem, 8vw, 6rem);
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      position: relative;
+      display: inline-block;
+      background: linear-gradient(to bottom, #ff3b3b 0%, #ff6b35 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      text-shadow: 0 4px 10px rgba(0,0,0,0.08);
+      white-space: nowrap;
+    }
+    .hero-logo::after {
+      content: '';
+      position: absolute;
+      bottom: -0.7rem;
+      left: 0;
+      width: 100%;
+      height: 4px;
+      background: linear-gradient(90deg, #ff6b35 0%, #004e89 100%);
+      transform-origin: left;
+      transition: transform 0.15s ease-out;
+    }
+    .hero-subtitle {
+      position: absolute;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.9rem;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      opacity: 0.9;
+    }
+    .nav-section {
+      min-height: 50vh;
+      padding: 4rem 1.5rem;
+      max-width: 48rem;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2rem;
+    }
+    .nav-heading {
+      font-size: 1.4rem;
+      font-weight: 600;
+      text-align: center;
+    }
+    .nav-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      justify-content: center;
+    }
+    .nav-links a {
+      display: inline-block;
+      padding: 1rem 2rem;
+      background: #1a1a1a;
+      color: white;
+      text-decoration: none;
+      border-radius: 0.5rem;
+      font-size: 1rem;
+      font-weight: 500;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    .nav-links a::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+      transition: left 0.5s ease;
+    }
+    .nav-links a:hover::before {
+      left: 100%;
+    }
+    .nav-links a:nth-child(1) {
+      background: linear-gradient(135deg, #ff6b35 0%, #ff8c5a 100%);
+    }
+    .nav-links a:nth-child(1):hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 16px rgba(255, 107, 53, 0.3);
+    }
+    .nav-links a:nth-child(2) {
+      background: linear-gradient(135deg, #004e89 0%, #0066cc 100%);
+    }
+    .nav-links a:nth-child(2):hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 16px rgba(0, 78, 137, 0.3);
+    }
+    .nav-links a:nth-child(3) {
+      background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%);
+    }
+    .nav-links a:nth-child(3):hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 16px rgba(13, 148, 136, 0.3);
+    }
+    .nav-links a:nth-child(4) {
+      background: #1a1a1a;
+    }
+    .nav-links a:nth-child(4):hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+    }
+    .theme-toggle {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      z-index: 10000;
+      border: none;
+      border-radius: 999px;
+      padding: 0.4rem 0.9rem;
+      font-size: 0.9rem;
+      cursor: pointer;
+      background: rgba(0, 0, 0, 0.7);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .theme-toggle span {
+      font-size: 1rem;
+    }
+    .custom-cursor {
+      position: fixed;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      pointer-events: none;
+      transform: translate(-50%, -50%);
+      z-index: 9999;
+      mix-blend-mode: multiply;
+      background: #ff6b35;
+      box-shadow: 0 0 12px rgba(0,0,0,0.25);
+    }
+    .theme-dark {
+      background: #050608;
+      color: #f5f5f5;
+    }
+    .theme-dark .hero {
+      background: radial-gradient(circle at top, #1a1a2e 0%, #050608 55%, #000000 100%);
+    }
+    .theme-dark .hero-logo::after {
+      background: linear-gradient(90deg, #ff6b35 0%, #ffd166 50%, #06d6a0 100%);
+    }
+    .theme-dark .nav-section {
+      background: #050608;
+    }
+    .theme-dark .nav-heading {
+      color: #f5f5f5;
+    }
+    .theme-dark .nav-links a:nth-child(1) {
+      background: linear-gradient(135deg, #ff6b35 0%, #ff9f1c 100%);
+    }
+    .theme-dark .nav-links a:nth-child(2) {
+      background: linear-gradient(135deg, #06d6a0 0%, #118ab2 100%);
+    }
+    .theme-dark .nav-links a:nth-child(3) {
+      background: linear-gradient(135deg, #2dd4bf 0%, #0d9488 100%);
+    }
+    .theme-dark .nav-links a:nth-child(4) {
+      background: #1e293b;
+    }
+    .auth-link-signed-in { background: #dc2626 !important; color: #fff !important; }
+    .auth-link-signed-in:hover { background: #b91c1c !important; color: #fff !important; }
+    .theme-dark .auth-link-signed-in { background: #ef4444 !important; }
+    .theme-dark .auth-link-signed-in:hover { background: #dc2626 !important; }
+    .theme-dark .theme-toggle {
+      background: rgba(255, 255, 255, 0.9);
+      color: #050608;
+    }
+    .site-footer {
+      max-width: 48rem;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 3rem;
+      border-top: 1px solid #e5e7eb;
+      font-size: 0.9rem;
+      color: #6b7280;
+    }
+    .site-footer nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      justify-content: center;
+    }
+    .site-footer a {
+      color: inherit;
+      text-decoration: none;
+    }
+    .site-footer a:hover {
+      text-decoration: underline;
+    }
+    .theme-dark .site-footer {
+      border-top-color: #374151;
+      color: #9ca3af;
+    }
+    @media (max-width: 768px) {
+      .hero-logo {
+        font-size: clamp(2.3rem, 10vw, 3.6rem);
+      }
+      .nav-section {
+        padding: 2.5rem 1rem;
+      }
+      .nav-links {
+        flex-direction: column;
+        width: 100%;
+      }
+      .nav-links a {
+        width: 100%;
+        text-align: center;
+      }
+      .custom-cursor {
+        display: none;
+      }
+    }
+  </style>
 </head>
 <body>
-  <div class="pop-content pop-wrap">
-    <!-- Hero -->
-    <section class="pop-hero" id="hero">
-      <div class="pop-hero__stage" id="heroStage">
-        <div class="pop-wordmark" id="wordmark">
-          <span class="pop-wordmark__base">FUNKED<br>UP SHIFT</span>
-          <span class="pop-wordmark__ghost pop-wordmark__ghost--cyan" aria-hidden="true">FUNKED<br>UP SHIFT</span>
-          <span class="pop-wordmark__ghost pop-wordmark__ghost--lime" aria-hidden="true">FUNKED<br>UP SHIFT</span>
-        </div>
-      </div>
-      <p class="pop-hero__subtitle">A funky stash of mini-apps</p>
-      <a class="pop-btn pop-btn--magenta pop-hero__cta" href="#works" id="enterFunk">Enter the funk ↓</a>
+  <button class="theme-toggle" id="themeToggle" type="button" aria-label="Toggle light/dark mode">
+    <span id="themeIcon">☾</span>
+    <span id="themeLabel">Dark</span>
+  </button>
+  <div class="custom-cursor" id="customCursor"></div>
 
-      <span class="pop-badge pop-badge--sticker pop-sticker pop-sticker--tl accent-n2" style="--accent:var(--n2)">★ daily-driven</span>
-      <span class="pop-badge pop-badge--sticker pop-sticker pop-sticker--tr" style="--accent:var(--n3)">est. funk</span>
-      <span class="pop-badge pop-badge--sticker pop-sticker pop-sticker--bl" style="--accent:var(--n4)">made with chaos</span>
-    </section>
-
-    <!-- The Works -->
-    <h2 class="pop-section-title" id="works">The Works</h2>
-    <div class="pop-works" id="worksGrid"></div>
+  <div class="hero" id="hero">
+    <div class="hero-logo-container" id="logoContainer">
+      <div class="hero-logo" id="heroLogo">FUNKED UP SHIFT</div>
+    </div>
+    <div class="hero-subtitle">Move your mouse</div>
   </div>
 
-  <div class="pop-cursor" id="popCursor"></div>
+  <div class="nav-section">
+    <div class="nav-heading">Explore the Funked Up Shift</div>
+    <div class="nav-links">
+      <a href="websites.html">Browse Websites</a>
+      <a href="media.html">Browse Media</a>
+      <a href="internet-dashboard.html">Internet Dashboard</a>
+      <a href="squash.html" id="navSquashLink" style="display:none;">Squash</a>
+      <a href="squash-admin.html" id="navSquashAdminLink" style="display:none;">Squash Admin</a>
+      <a href="auth.html" class="auth-link">Sign in / Sign up</a>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="websites.html">Browse Websites</a>
+      <a href="media.html">Browse Media</a>
+      <a href="internet-dashboard.html">Internet Dashboard</a>
+      <a href="add-site.html">Add Site</a>
+      <a href="add-media.html">Add Media</a>
+      <a href="categories.html">Categories</a>
+      <a href="media-categories.html">Media Categories</a>
+      <a href="users.html">User Management</a>
+      <a href="groups.html">Groups</a>
+      <a href="squash.html" id="footerSquashLink" style="display:none;">Squash</a>
+      <a href="squash-admin.html" id="footerSquashAdminLink" style="display:none;">Squash Admin</a>
+      <a href="profile.html" class="profile-link" style="display:none;">Profile</a>
+      <a href="auth.html" class="auth-link">Sign in / Sign up</a>
+    </nav>
+  </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/amazon-cognito-identity-js@6.3.0/dist/amazon-cognito-identity.min.js"></script>
   <script src="config.js"></script>
   <script src="auth.js"></script>
   <script src="auth-button.js"></script>
   <script src="profile-box.js"></script>
-  <script src="pop-chrome.js"></script>
   <script>
-    (function () {
-      var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      var fine = window.matchMedia && window.matchMedia('(pointer: fine)').matches;
+    (function() {
+      var body = document.body;
+      var hero = document.getElementById('hero');
+      var logoContainer = document.getElementById('logoContainer');
+      var heroLogo = document.getElementById('heroLogo');
+      var cursor = document.getElementById('customCursor');
+      var themeToggle = document.getElementById('themeToggle');
+      var themeIcon = document.getElementById('themeIcon');
+      var themeLabel = document.getElementById('themeLabel');
 
-      // ---- Works grid (squash gated like before) ----
-      var WORKS = [
-        { title: 'Expense Tracker',     blurb: 'Every dollar, logged daily.',        status: 'LIVE',     tag: 'money' },
-        { title: 'Financial App',       blurb: 'Budgets, forecasts & net worth.',    status: 'BUILDING', tag: 'money' },
-        { title: 'Merch Store',         blurb: 'Funky goods, dropping soon.',         status: 'SOON',     tag: 'shop' },
-        { title: 'Site Catalog',        blurb: 'A curated stash of the web.',         status: 'LIVE',     tag: 'web',   href: 'websites.html' },
-        { title: 'Media Library',       blurb: 'Films, shows & music, all tagged.',   status: 'LIVE',     tag: 'media', href: 'media.html' },
-        { title: 'Internet Dashboard',  blurb: 'My corner of the net at a glance.',   status: 'LIVE',     tag: 'net',   href: 'internet-dashboard.html' },
-        { title: 'Squash Tracker',      blurb: 'Matches, ladders & stats.',           status: 'LIVE',     tag: 'sport', href: 'squash.html', squash: true },
-        { title: 'Something New',       blurb: 'Cooking up the next funky thing.',    status: 'SOON',     tag: 'tbd' }
-      ];
-      var ACCENTS = ['--n1', '--n2', '--n3', '--n4'];
+      // Floating logo effect with mouse movement
+      hero.addEventListener('mousemove', function(e) {
+        var rect = hero.getBoundingClientRect();
+        var x = e.clientX - rect.left;
+        var y = e.clientY - rect.top;
+        var centerX = rect.width / 2;
+        var centerY = rect.height / 2;
 
-      function statusClass(s) { return s === 'LIVE' ? '--n4' : s === 'BUILDING' ? '--n2' : '--n3'; }
+        var moveX = (x - centerX) / centerX;
+        var moveY = (y - centerY) / centerY;
 
-      function render(canSquash) {
-        var grid = document.getElementById('worksGrid');
-        grid.innerHTML = '';
-        var visible = WORKS.filter(function (w) { return w.squash ? canSquash : true; });
-        visible.forEach(function (w, i) {
-          var accent = ACCENTS[i % ACCENTS.length];
-          var tilt = (i % 2 ? 1.5 : -1.5) + 'deg';
-          var card = document.createElement(w.href ? 'a' : 'div');
-          card.className = 'pop-card pop-card--tilt pop-work';
-          card.style.setProperty('--accent', 'var(' + accent + ')');
-          card.style.setProperty('--tilt', tilt);
-          if (w.href) card.href = w.href;
-          var idx = ('0' + (i + 1)).slice(-2);
-          card.innerHTML =
-            '<div class="pop-work__top">' +
-              '<span class="pop-work__idx">' + idx + '</span>' +
-              '<span class="pop-badge" style="--accent:var(' + statusClass(w.status) + ')">' + w.status + '</span>' +
-            '</div>' +
-            '<div class="pop-work__title">' + w.title + '</div>' +
-            '<div class="pop-work__blurb">' + w.blurb + '</div>' +
-            '<div class="pop-work__foot"><span class="pop-tag">' + w.tag + '</span>' +
-              (w.href ? '<span>Open ↗</span>' : '<span style="color:var(--muted)">—</span>') +
-            '</div>';
-          grid.appendChild(card);
-        });
+        var rotateX = moveY * 15;
+        var rotateY = moveX * -15;
+        var translateX = moveX * 20;
+        var translateY = moveY * 20;
+
+        logoContainer.style.transform =
+          'perspective(1000px) ' +
+          'rotateX(' + rotateX + 'deg) ' +
+          'rotateY(' + rotateY + 'deg) translateZ(0)';
+        heroLogo.style.transform =
+          'translateX(' + translateX + 'px) translateY(' + translateY + 'px)';
+      });
+
+      hero.addEventListener('mouseleave', function() {
+        logoContainer.style.transform = 'perspective(1000px) rotateX(0) rotateY(0) translateZ(0)';
+        heroLogo.style.transform = 'translateX(0) translateY(0)';
+      });
+
+      // Custom cursor: enlarged circle with rainbow hue
+      var hue = 0;
+      function updateCursorColor() {
+        cursor.style.backgroundColor = 'hsl(' + hue + ', 85%, 55%)';
       }
-      render(false);
 
-      // reveal the squash card only for authorized users (same /me check as before)
-      function checkSquash() {
-        if (!window.auth) return;
-        window.auth.isAuthenticated(function (isAuth) {
-          if (!isAuth) return;
+      document.addEventListener('mousemove', function(e) {
+        if (!cursor) return;
+        cursor.style.left = e.clientX + 'px';
+        cursor.style.top = e.clientY + 'px';
+        hue = (hue + 4) % 360;
+        updateCursorColor();
+      });
+
+      // Light/Dark mode toggle
+      var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      var dark = prefersDark;
+      function applyTheme() {
+        if (dark) {
+          body.classList.add('theme-dark');
+          themeIcon.textContent = '☀';
+          themeLabel.textContent = 'Light';
+        } else {
+          body.classList.remove('theme-dark');
+          themeIcon.textContent = '☾';
+          themeLabel.textContent = 'Dark';
+        }
+      }
+      applyTheme();
+
+      themeToggle.addEventListener('click', function() {
+        dark = !dark;
+        applyTheme();
+      });
+
+      function updateSquashLinks() {
+        var navLink = document.getElementById('navSquashLink');
+        var footerLink = document.getElementById('footerSquashLink');
+        var navAdminLink = document.getElementById('navSquashAdminLink');
+        var footerAdminLink = document.getElementById('footerSquashAdminLink');
+        if (!navLink && !footerLink) return;
+        if (!window.auth) {
+          if (navLink) navLink.style.display = 'none';
+          if (footerLink) footerLink.style.display = 'none';
+          if (navAdminLink) navAdminLink.style.display = 'none';
+          if (footerAdminLink) footerAdminLink.style.display = 'none';
+          return;
+        }
+        window.auth.isAuthenticated(function(isAuth) {
+          if (!isAuth) {
+            if (navLink) navLink.style.display = 'none';
+            if (footerLink) footerLink.style.display = 'none';
+            if (navAdminLink) navAdminLink.style.display = 'none';
+            if (footerAdminLink) footerAdminLink.style.display = 'none';
+            return;
+          }
           var base = (window.API_BASE_URL || '').replace(/\/$/, '');
           if (!base) return;
-          window.auth.getAccessToken(function (token) {
-            fetch(base + '/me', { headers: token ? { Authorization: 'Bearer ' + token } : {} })
-              .then(function (r) { return r.ok ? r.json() : null; })
-              .then(function (user) {
-                if (!user) return;
+          window.auth.getAccessToken(function(token) {
+            var headers = {};
+            if (token) headers['Authorization'] = 'Bearer ' + token;
+            fetch(base + '/me', { headers: headers })
+              .then(function(r) { return r.ok ? r.json() : null; })
+              .then(function(user) {
+                // #region agent log
+                fetch('http://127.0.0.1:7243/ingest/51517f45-4cb4-45b6-9d26-950ab96994fd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:408',message:'updateSquashLinks user received',data:{hasUser:!!user,groups:user?user.groups:[],customGroups:user?user.customGroups:undefined,customGroupsType:user?typeof user.customGroups:'undefined'},timestamp:Date.now(),runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+                // #endregion
+                if (!user) {
+                  if (navLink) navLink.style.display = 'none';
+                  if (footerLink) footerLink.style.display = 'none';
+                  if (navAdminLink) navAdminLink.style.display = 'none';
+                  if (footerAdminLink) footerAdminLink.style.display = 'none';
+                  return;
+                }
                 var groups = user.groups || [];
                 var customGroups = user.customGroups || [];
-                var squashInCustom = customGroups.some(function (g) { return (g || '').trim() === 'Squash'; });
-                if (squashInCustom || groups.indexOf('admin') !== -1) render(true);
+                // #region agent log
+                fetch('http://127.0.0.1:7243/ingest/51517f45-4cb4-45b6-9d26-950ab96994fd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:417',message:'updateSquashLinks before check',data:{groups:groups,customGroups:customGroups,customGroupsLength:customGroups.length},timestamp:Date.now(),runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+                // #endregion
+                var squashInCustomGroups = customGroups.some(function(g) { return (g || '').trim() === 'Squash'; });
+                var canAccess = squashInCustomGroups || groups.indexOf('admin') !== -1;
+                var canModify = groups.indexOf('admin') !== -1 || (groups.indexOf('manager') !== -1 && squashInCustomGroups);
+                // #region agent log
+                fetch('http://127.0.0.1:7243/ingest/51517f45-4cb4-45b6-9d26-950ab96994fd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:419',message:'updateSquashLinks access check',data:{squashInCustomGroups:squashInCustomGroups,canAccess:canAccess,canModify:canModify,isAdmin:groups.indexOf('admin')!==-1},timestamp:Date.now(),runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+                // #endregion
+                if (canAccess) {
+                  if (navLink) navLink.style.display = '';
+                  if (footerLink) footerLink.style.display = '';
+                } else {
+                  if (navLink) navLink.style.display = 'none';
+                  if (footerLink) footerLink.style.display = 'none';
+                }
+                if (canModify) {
+                  if (navAdminLink) navAdminLink.style.display = '';
+                  if (footerAdminLink) footerAdminLink.style.display = '';
+                } else {
+                  if (navAdminLink) navAdminLink.style.display = 'none';
+                  if (footerAdminLink) footerAdminLink.style.display = 'none';
+                }
               })
-              .catch(function () {});
+              .catch(function() {
+                if (navLink) navLink.style.display = 'none';
+                if (footerLink) footerLink.style.display = 'none';
+                if (navAdminLink) navAdminLink.style.display = 'none';
+                if (footerAdminLink) footerAdminLink.style.display = 'none';
+              });
           });
         });
       }
-      function initSquash() {
-        if (!window.auth) { setTimeout(initSquash, 100); return; }
-        checkSquash();
+      function initSquashLinks() {
+        if (!window.auth) {
+          setTimeout(initSquashLinks, 100);
+          return;
+        }
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', updateSquashLinks);
+        } else {
+          updateSquashLinks();
+        }
       }
-      initSquash();
+      initSquashLinks();
 
-      // ---- Hero parallax (skip on touch / reduced motion) ----
-      var stage = document.getElementById('heroStage');
-      var wordmark = document.getElementById('wordmark');
-      var hero = document.getElementById('hero');
-      if (!reduce && fine) {
-        hero.addEventListener('mousemove', function (e) {
-          var r = hero.getBoundingClientRect();
-          var mx = (e.clientX - r.left) / r.width - .5;
-          var my = (e.clientY - r.top) / r.height - .5;
-          stage.style.transform = 'rotateX(' + (-my * 10) + 'deg) rotateY(' + (mx * 10) + 'deg)';
-          wordmark.style.transform = 'translate(' + (mx * 14) + 'px,' + (my * 14) + 'px)';
-        });
-        hero.addEventListener('mouseleave', function () {
-          stage.style.transform = '';
-          wordmark.style.transform = '';
-        });
-      }
-
-      // ---- CTA smooth scroll ----
-      document.getElementById('enterFunk').addEventListener('click', function (e) {
-        e.preventDefault();
-        document.getElementById('works').scrollIntoView({ behavior: reduce ? 'auto' : 'smooth' });
+      window.addEventListener('resize', function() {
+        if (window.innerWidth <= 768) {
+          if (cursor) cursor.style.display = 'none';
+        } else if (cursor) {
+          cursor.style.display = 'block';
+        }
       });
-
-      // ---- Custom rainbow cursor (fine pointers only) ----
-      var cursor = document.getElementById('popCursor');
-      if (!reduce && fine) {
-        var hue = 0;
-        document.addEventListener('mousemove', function (e) {
-          cursor.style.left = e.clientX + 'px';
-          cursor.style.top = e.clientY + 'px';
-          hue = (hue + 4) % 360;
-          cursor.style.background = 'hsl(' + hue + ',85%,55%)';
-        });
-      } else if (cursor) {
-        cursor.style.display = 'none';
-      }
     })();
   </script>
 </body>
