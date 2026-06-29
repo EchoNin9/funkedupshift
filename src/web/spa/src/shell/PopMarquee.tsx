@@ -1,8 +1,9 @@
 import React from "react";
 
-/** Default banner string; FUNK-11 will feed the live value from BrandingContext. */
+/** Default marquee string (client fallback). Keep in sync with the API's
+ *  DEFAULT_BANNER_TEXT in src/lambda/api/handler.py. */
 export const DEFAULT_BANNER =
-  "EXPENSES ✦ FINANCE ✦ MERCH ✦ MEDIA ✦ SQUASH ✦ DASHBOARD ✦ CATALOG";
+  "WELCOME TO FUNKED UP SHIFT ✦ FRESH DROPS DAILY ✦ RATE ✦ CURATE ✦ VIBE";
 
 /** Full-bleed neon marquee. Items split on ✦ and duplicated for a seamless -50% loop. (FUNK-3) */
 export function PopMarquee({ text }: { text?: string }) {

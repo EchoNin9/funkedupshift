@@ -2640,8 +2640,10 @@ def deleteProfileAvatar(event):
         return jsonResponse({"error": str(e)}, 500)
 
 
+# Keep in sync with PopMarquee.DEFAULT_BANNER (src/web/spa/src/shell/PopMarquee.tsx).
+# Items are split on "✦" by the marquee, so use that separator.
 DEFAULT_BANNER_TEXT = (
-    "WELCOME TO FUNKED UP SHIFT ★ FRESH DROPS DAILY ★ RATE • CURATE • VIBE ★"
+    "WELCOME TO FUNKED UP SHIFT ✦ FRESH DROPS DAILY ✦ RATE ✦ CURATE ✦ VIBE"
 )
 BANNER_MAX_LEN = 500
 
