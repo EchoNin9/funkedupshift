@@ -611,7 +611,7 @@ const GeneralExpensesPage: React.FC = () => {
                   {limitOpen && (
                     <div className="px-4 pb-4 pt-1 border-t border-border-hover grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                       <div>
-                        <label className="block text-xs text-text-primary0 mb-1">Start date</label>
+                        <label className="block text-xs text-text-tertiary mb-1">Start date</label>
                         <input
                           type="date"
                           value={filters.startDate}
@@ -620,7 +620,7 @@ const GeneralExpensesPage: React.FC = () => {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-text-primary0 mb-1">End date</label>
+                        <label className="block text-xs text-text-tertiary mb-1">End date</label>
                         <input
                           type="date"
                           value={filters.endDate}
@@ -629,7 +629,7 @@ const GeneralExpensesPage: React.FC = () => {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-text-primary0 mb-1">Search (vendor / description)</label>
+                        <label className="block text-xs text-text-tertiary mb-1">Search (vendor / description)</label>
                         <input
                           type="text"
                           value={filters.search}
@@ -639,7 +639,7 @@ const GeneralExpensesPage: React.FC = () => {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-text-primary0 mb-1">Reimbursed</label>
+                        <label className="block text-xs text-text-tertiary mb-1">Reimbursed</label>
                         <select
                           value={filters.reimbursed}
                           onChange={(e) =>
@@ -656,7 +656,7 @@ const GeneralExpensesPage: React.FC = () => {
                         </select>
                       </div>
                       <div>
-                        <label className="block text-xs text-text-primary0 mb-1">Sort</label>
+                        <label className="block text-xs text-text-tertiary mb-1">Sort</label>
                         <select
                           value={filters.sortNewestFirst ? "newest" : "oldest"}
                           onChange={(e) =>
@@ -676,7 +676,7 @@ const GeneralExpensesPage: React.FC = () => {
                   <p className="text-sm text-text-secondary">
                     Expenses ({filters.sortNewestFirst ? "newest first" : "oldest first"})
                     {filteredEntries.length !== entries.length && (
-                      <span className="text-text-primary0 ml-1">
+                      <span className="text-text-tertiary ml-1">
                         ({filteredEntries.length} of {entries.length})
                       </span>
                     )}
@@ -730,7 +730,7 @@ const GeneralExpensesPage: React.FC = () => {
                     <h3 className="text-sm font-semibold text-text-primary">{editingId ? "Edit expense" : "New expense"}</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-xs text-text-primary0 mb-1">Date</label>
+                        <label className="block text-xs text-text-tertiary mb-1">Date</label>
                         <input
                           type="date"
                           value={form.date}
@@ -739,7 +739,7 @@ const GeneralExpensesPage: React.FC = () => {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-text-primary0 mb-1">Price</label>
+                        <label className="block text-xs text-text-tertiary mb-1">Price</label>
                         <input
                           type="text"
                           inputMode="decimal"
@@ -750,7 +750,7 @@ const GeneralExpensesPage: React.FC = () => {
                         />
                       </div>
                       <div className="sm:col-span-2">
-                        <label className="block text-xs text-text-primary0 mb-1">Vendor</label>
+                        <label className="block text-xs text-text-tertiary mb-1">Vendor</label>
                         <input
                           type="text"
                           value={form.vendor}
@@ -759,7 +759,7 @@ const GeneralExpensesPage: React.FC = () => {
                         />
                       </div>
                       <div className="sm:col-span-2">
-                        <label className="block text-xs text-text-primary0 mb-1">Description</label>
+                        <label className="block text-xs text-text-tertiary mb-1">Description</label>
                         <textarea
                           value={form.description}
                           onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
@@ -781,7 +781,7 @@ const GeneralExpensesPage: React.FC = () => {
                       </div>
                     </div>
                     <div>
-                      <label className="block text-xs text-text-primary0 mb-1">Attachments</label>
+                      <label className="block text-xs text-text-tertiary mb-1">Attachments</label>
                       <input
                         ref={fileInputRef}
                         type="file"
@@ -900,13 +900,13 @@ const GeneralExpensesPage: React.FC = () => {
                               </div>
                             </div>
                             {entry.vendor && (
-                              <p className="text-xs text-text-primary0">Vendor: {entry.vendor}</p>
+                              <p className="text-xs text-text-tertiary">Vendor: {entry.vendor}</p>
                             )}
                             {entry.description && (
                               <p className="text-sm text-text-secondary">{entry.description}</p>
                             )}
                             {(entry.attachments || []).length > 0 && (
-                              <ul className="text-xs text-text-primary0 space-y-1">
+                              <ul className="text-xs text-text-tertiary space-y-1">
                                 {(entry.attachments || []).map((a) => (
                                   <li key={a.key}>
                                     <button

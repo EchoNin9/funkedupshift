@@ -359,7 +359,7 @@ const ListTab: React.FC<ListTabProps> = ({ config }) => {
             {config.listLabel} ({sites.length})
           </h2>
           {formattedDate && (
-            <span className="text-xs text-text-primary0">Cache was last updated {formattedDate}</span>
+            <span className="text-xs text-text-tertiary">Cache was last updated {formattedDate}</span>
           )}
         </div>
         <div className="flex items-center gap-2">
@@ -406,7 +406,7 @@ const ListTab: React.FC<ListTabProps> = ({ config }) => {
             value={newUrl}
             onChange={(e) => setNewUrl(e.target.value)}
             placeholder="https://example.com or example.com"
-            className="w-full rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-primary0 focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
+            className="w-full rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
           />
         </div>
         <button
@@ -437,7 +437,7 @@ const ListTab: React.FC<ListTabProps> = ({ config }) => {
           >
             <div className="flex items-center gap-2">
               {displayOrder === "custom" && (
-                <Bars3Icon className="h-4 w-4 flex-shrink-0 text-text-primary0" aria-hidden />
+                <Bars3Icon className="h-4 w-4 flex-shrink-0 text-text-tertiary" aria-hidden />
               )}
               {editingIndex === index ? (
                 <input
@@ -495,15 +495,15 @@ const ListTab: React.FC<ListTabProps> = ({ config }) => {
                 maxLength={255}
                 placeholder="One-line description (255 chars max)"
                 disabled={isSaving}
-                className="w-full rounded-md border border-border-hover bg-surface-1 px-2 py-1 text-sm text-text-primary placeholder:text-text-primary0 focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500 disabled:opacity-50"
+                className="w-full rounded-md border border-border-hover bg-surface-1 px-2 py-1 text-sm text-text-primary placeholder:text-text-tertiary focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500 disabled:opacity-50"
               />
-              <span className="text-[10px] text-text-primary0">{entry.description.length}/255</span>
+              <span className="text-[10px] text-text-tertiary">{entry.description.length}/255</span>
             </div>
           </li>
         ))}
       </ul>
       {displayedSites.length === 0 && (
-        <p className="text-sm text-text-primary0">{config.emptyMessage}</p>
+        <p className="text-sm text-text-tertiary">{config.emptyMessage}</p>
       )}
       {message && (
         <Alert variant="success">{message}</Alert>

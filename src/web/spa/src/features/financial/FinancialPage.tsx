@@ -207,7 +207,7 @@ const FinancialPage: React.FC = () => {
         <>
           <div className="flex flex-wrap gap-2 items-end">
             <div>
-              <label htmlFor="newSymbol" className="block text-xs text-text-primary0 mb-1">
+              <label htmlFor="newSymbol" className="block text-xs text-text-tertiary mb-1">
                 Add symbol
               </label>
               <input
@@ -230,7 +230,7 @@ const FinancialPage: React.FC = () => {
             </button>
             {availableSources.length > 1 && (
               <div className="ml-4">
-                <label className="block text-xs text-text-primary0 mb-1">Data source</label>
+                <label className="block text-xs text-text-tertiary mb-1">Data source</label>
                 <select
                   value={source}
                   onChange={(e) => setSource(e.target.value)}
@@ -279,14 +279,14 @@ const FinancialPage: React.FC = () => {
                               {q.changePercent.toFixed(2)}%)
                             </span>
                           ) : (
-                            <span className="text-text-primary0">—</span>
+                            <span className="text-text-tertiary">—</span>
                           )}
                         </td>
                         <td className="px-4 py-3">
                           <button
                             type="button"
                             onClick={() => handleRemoveSymbol(sym)}
-                            className="text-text-primary0 hover:text-red-400"
+                            className="text-text-tertiary hover:text-red-400"
                             aria-label={`Remove ${sym}`}
                           >
                             ×
@@ -312,13 +312,13 @@ const FinancialPage: React.FC = () => {
           )}
 
           {!canSave && (
-            <p className="text-sm text-text-primary0">
+            <p className="text-sm text-text-tertiary">
               Sign in to save your watchlist. Guest symbols are temporary and expire when you close the browser.
             </p>
           )}
 
           {symbols.length === 0 && (
-            <p className="text-sm text-text-primary0">
+            <p className="text-sm text-text-tertiary">
               Add symbols above to build your watchlist. Default symbols from admin may appear when you first load.
             </p>
           )}

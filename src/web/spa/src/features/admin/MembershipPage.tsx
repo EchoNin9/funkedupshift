@@ -292,7 +292,7 @@ const MembershipPage: React.FC = () => {
         </span>
       );
     });
-    return items.length ? items : <span className="text-text-primary0">—</span>;
+    return items.length ? items : <span className="text-text-tertiary">—</span>;
   };
 
   const startEdit = (g: Group) => {
@@ -614,7 +614,7 @@ const MembershipPage: React.FC = () => {
       {activeTab === "users" && (
         <>
           <div className="flex items-center gap-2 text-sm">
-            <label htmlFor="tz-select" className="text-text-primary0">
+            <label htmlFor="tz-select" className="text-text-tertiary">
               Last login timezone:
             </label>
             <select
@@ -649,13 +649,13 @@ const MembershipPage: React.FC = () => {
               <tbody className="divide-y divide-border-default">
                 {usersLoading && users.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-text-primary0">
+                    <td colSpan={5} className="px-4 py-8 text-center text-text-tertiary">
                       Loading…
                     </td>
                   </tr>
                 ) : users.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-text-primary0">
+                    <td colSpan={5} className="px-4 py-8 text-center text-text-tertiary">
                       No users found.
                     </td>
                   </tr>
@@ -701,21 +701,21 @@ const MembershipPage: React.FC = () => {
               onChange={(e) => setNewName(e.target.value)}
               placeholder="Name (alphanumeric, underscore, hyphen)"
               required
-              className="w-full rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-primary0 focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
+              className="w-full rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
             />
             <input
               type="text"
               value={newDescription}
               onChange={(e) => setNewDescription(e.target.value)}
               placeholder="Description (optional)"
-              className="w-full rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-primary0 focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
+              className="w-full rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
             />
             <input
               type="text"
               value={newPermissions}
               onChange={(e) => setNewPermissions(e.target.value)}
               placeholder="Permissions (comma-separated, e.g. media:edit, sites:add)"
-              className="w-full rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-primary0 focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
+              className="w-full rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
             />
             <button
               type="submit"
@@ -735,9 +735,9 @@ const MembershipPage: React.FC = () => {
           <section>
             <h2 className="text-sm font-medium text-text-secondary mb-2">Custom groups</h2>
             {groupsLoading ? (
-              <p className="text-sm text-text-primary0">Loading…</p>
+              <p className="text-sm text-text-tertiary">Loading…</p>
             ) : groups.length === 0 ? (
-              <p className="text-sm text-text-primary0">No custom groups yet. Create one above.</p>
+              <p className="text-sm text-text-tertiary">No custom groups yet. Create one above.</p>
             ) : (
               <ul className="space-y-2">
                 {groups.map((g) => (
@@ -750,14 +750,14 @@ const MembershipPage: React.FC = () => {
                           value={editDescription}
                           onChange={(e) => setEditDescription(e.target.value)}
                           placeholder="Description (optional)"
-                          className="w-full rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-primary0 focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
+                          className="w-full rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
                         />
                         <input
                           type="text"
                           value={editPermissions}
                           onChange={(e) => setEditPermissions(e.target.value)}
                           placeholder="Permissions (comma-separated)"
-                          className="w-full rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-primary0 focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
+                          className="w-full rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
                         />
                         <div className="flex gap-2 flex-wrap">
                           <button
@@ -789,9 +789,9 @@ const MembershipPage: React.FC = () => {
                       <div className="flex items-center justify-between gap-2 flex-wrap">
                         <div className="flex-1 min-w-0">
                           <span className="font-medium text-text-primary">{g.name}</span>
-                          {g.description && <span className="text-text-primary0 ml-2">{g.description}</span>}
+                          {g.description && <span className="text-text-tertiary ml-2">{g.description}</span>}
                           {g.permissions && g.permissions.length > 0 && (
-                            <div className="text-xs text-text-primary0 mt-1">Permissions: {g.permissions.join(", ")}</div>
+                            <div className="text-xs text-text-tertiary mt-1">Permissions: {g.permissions.join(", ")}</div>
                           )}
                         </div>
                         <div className="flex gap-2 shrink-0">
@@ -825,14 +825,14 @@ const MembershipPage: React.FC = () => {
         <>
           <form className="space-y-3 max-w-md" onSubmit={handleCreateRole}>
             <h2 className="text-sm font-medium text-text-secondary">Create role</h2>
-            <p className="text-xs text-text-primary0">Define a named role by selecting Cognito groups and custom groups. Use for impersonation.</p>
+            <p className="text-xs text-text-tertiary">Define a named role by selecting Cognito groups and custom groups. Use for impersonation.</p>
             <input
               type="text"
               value={newRoleName}
               onChange={(e) => setNewRoleName(e.target.value)}
               placeholder="Role name (e.g. Squash Manager)"
               required
-              className="w-full rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-primary0 focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
+              className="w-full rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
             />
             <div>
               <label className="block text-xs font-medium text-text-secondary mb-1">Cognito groups</label>
@@ -866,7 +866,7 @@ const MembershipPage: React.FC = () => {
                     {g.name}
                   </button>
                 ))}
-                {groups.length === 0 && <span className="text-xs text-text-primary0">Create groups first.</span>}
+                {groups.length === 0 && <span className="text-xs text-text-tertiary">Create groups first.</span>}
               </div>
             </div>
             <button
@@ -887,9 +887,9 @@ const MembershipPage: React.FC = () => {
           <section>
             <h2 className="text-sm font-medium text-text-secondary mb-2">Defined roles</h2>
             {rolesLoading ? (
-              <p className="text-sm text-text-primary0">Loading…</p>
+              <p className="text-sm text-text-tertiary">Loading…</p>
             ) : roles.length === 0 ? (
-              <p className="text-sm text-text-primary0">No roles yet. Create one above.</p>
+              <p className="text-sm text-text-tertiary">No roles yet. Create one above.</p>
             ) : (
               <ul className="space-y-2">
                 {roles.map((r) => (
@@ -898,7 +898,7 @@ const MembershipPage: React.FC = () => {
                       <form onSubmit={handleUpdateRole} className="space-y-2">
                         <span className="font-medium text-text-primary">{r.name}</span>
                         <div>
-                          <label className="block text-xs text-text-primary0 mb-1">Cognito groups</label>
+                          <label className="block text-xs text-text-tertiary mb-1">Cognito groups</label>
                           <div className="flex flex-wrap gap-2">
                             {COGNITO_SYSTEM_GROUPS.map((g) => (
                               <button
@@ -913,7 +913,7 @@ const MembershipPage: React.FC = () => {
                           </div>
                         </div>
                         <div>
-                          <label className="block text-xs text-text-primary0 mb-1">Custom groups</label>
+                          <label className="block text-xs text-text-tertiary mb-1">Custom groups</label>
                           <div className="flex flex-wrap gap-2">
                             {groups.map((g) => (
                               <button
@@ -1022,8 +1022,8 @@ const UserRow: React.FC<UserRowProps> = ({ user, tzOffset, formatLastLogin, rend
       <td className="px-4 py-3 text-sm text-text-primary">{user.email || user.username || "—"}</td>
       <td className="px-4 py-3 text-sm text-text-secondary">{user.status || "—"}</td>
       <td className="px-4 py-3 text-sm text-text-secondary">{formatLastLogin(user.lastLoginAt ?? "", tzOffset, user.lastLoginIp)}</td>
-      <td className="px-4 py-3 text-sm">{groups ? renderGroupBadges(groups.cognitoGroups, []) : <span className="text-text-primary0">…</span>}</td>
-      <td className="px-4 py-3 text-sm">{groups ? renderGroupBadges([], groups.customGroups) : <span className="text-text-primary0">…</span>}</td>
+      <td className="px-4 py-3 text-sm">{groups ? renderGroupBadges(groups.cognitoGroups, []) : <span className="text-text-tertiary">…</span>}</td>
+      <td className="px-4 py-3 text-sm">{groups ? renderGroupBadges([], groups.customGroups) : <span className="text-text-tertiary">…</span>}</td>
     </tr>
   );
 };

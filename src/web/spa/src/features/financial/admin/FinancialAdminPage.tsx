@@ -136,7 +136,7 @@ const FinancialAdminPage: React.FC = () => {
       {activeTab === "overview" && (
         <div className="rounded-xl border border-border-default bg-surface-1 p-6 text-sm text-text-secondary">
           <p className="mb-2">Admin configuration:</p>
-          <ul className="list-disc list-inside space-y-1 text-text-primary0">
+          <ul className="list-disc list-inside space-y-1 text-text-tertiary">
             <li>
               <strong>Tracked symbols</strong> – Default symbols for new users&apos; watchlists
             </li>
@@ -151,7 +151,7 @@ const FinancialAdminPage: React.FC = () => {
         <div className="space-y-4">
           <div className="flex flex-wrap gap-2 items-end">
             <div>
-              <label htmlFor="newSymbol" className="block text-xs text-text-primary0 mb-1">
+              <label htmlFor="newSymbol" className="block text-xs text-text-tertiary mb-1">
                 Add symbol
               </label>
               <input
@@ -175,7 +175,7 @@ const FinancialAdminPage: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs text-text-primary0 mb-1">Default data source</label>
+            <label className="block text-xs text-text-tertiary mb-1">Default data source</label>
             <select
               value={source}
               onChange={(e) => setSource(e.target.value)}
@@ -200,7 +200,7 @@ const FinancialAdminPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => handleRemoveSymbol(s)}
-                    className="text-text-primary0 hover:text-red-400"
+                    className="text-text-tertiary hover:text-red-400"
                     aria-label={`Remove ${s}`}
                   >
                     ×

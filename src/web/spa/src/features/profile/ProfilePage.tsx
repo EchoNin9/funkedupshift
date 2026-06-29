@@ -500,9 +500,9 @@ const ProfilePage: React.FC = () => {
             <Alert variant={groupsMessage.error ? "error" : "success"}>{groupsMessage.text}</Alert>
           )}
           {groupsLoading ? (
-            <p className="text-sm text-text-primary0">Loading groups…</p>
+            <p className="text-sm text-text-tertiary">Loading groups…</p>
           ) : availableGroups.length === 0 ? (
-            <p className="text-sm text-text-primary0">No custom groups available. Admins can create groups in Membership.</p>
+            <p className="text-sm text-text-tertiary">No custom groups available. Admins can create groups in Membership.</p>
           ) : (
             <ul className="space-y-2">
               {availableGroups.map((g) => {
@@ -514,7 +514,7 @@ const ProfilePage: React.FC = () => {
                   >
                     <div>
                       <span className="font-medium text-text-primary">{g.name}</span>
-                      {g.description && <span className="text-text-primary0 ml-2 text-sm">{g.description}</span>}
+                      {g.description && <span className="text-text-tertiary ml-2 text-sm">{g.description}</span>}
                     </div>
                     <button
                       type="button"
@@ -554,7 +554,7 @@ const ProfilePage: React.FC = () => {
                 autoComplete="current-password"
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
-                className="w-full rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-primary0 focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
+                className="w-full rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
                 placeholder="Your current password"
               />
             </div>
@@ -568,7 +568,7 @@ const ProfilePage: React.FC = () => {
                 autoComplete="new-password"
                 value={newSecurityPassword}
                 onChange={(e) => setNewSecurityPassword(e.target.value)}
-                className="w-full rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-primary0 focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
+                className="w-full rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
                 placeholder="At least 8 characters"
               />
             </div>
@@ -582,7 +582,7 @@ const ProfilePage: React.FC = () => {
                 autoComplete="new-password"
                 value={confirmSecurityPassword}
                 onChange={(e) => setConfirmSecurityPassword(e.target.value)}
-                className="w-full rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-primary0 focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
+                className="w-full rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
                 placeholder="Repeat new password"
               />
             </div>
@@ -676,7 +676,7 @@ const ProfilePage: React.FC = () => {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-text-primary0">Not in any custom groups.</p>
+              <p className="text-sm text-text-tertiary">Not in any custom groups.</p>
             )}
           </section>
 
@@ -694,7 +694,7 @@ const ProfilePage: React.FC = () => {
                       className="h-24 w-24 rounded-full border-2 border-border-hover object-cover"
                     />
                   ) : (
-                    <div className="h-24 w-24 rounded-full border-2 border-border-hover bg-surface-3 flex items-center justify-center text-2xl text-text-primary0">
+                    <div className="h-24 w-24 rounded-full border-2 border-border-hover bg-surface-3 flex items-center justify-center text-2xl text-text-tertiary">
                       ?
                     </div>
                   )}
@@ -715,14 +715,14 @@ const ProfilePage: React.FC = () => {
                       onChange={handleAvatarChange}
                       className="block w-full text-xs text-text-secondary file:mr-3 file:rounded-md file:border-0 file:bg-surface-3 file:px-3 file:py-1.5 file:text-text-primary"
                     />
-                    <p className="text-xs text-text-primary0">Or paste image URL (min 48×48, max 5 MB):</p>
+                    <p className="text-xs text-text-tertiary">Or paste image URL (min 48×48, max 5 MB):</p>
                     <div className="flex gap-2">
                       <input
                         type="url"
                         value={avatarImageUrl}
                         onChange={(e) => setAvatarImageUrl(e.target.value)}
                         placeholder="https://example.com/avatar.png"
-                        className="flex-1 rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-primary0 focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
+                        className="flex-1 rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
                       />
                       <button
                         type="button"
@@ -744,7 +744,7 @@ const ProfilePage: React.FC = () => {
                     )}
                   </div>
                 </div>
-                <p className="mt-1 text-xs text-text-primary0">PNG, JPEG, GIF, or WebP. Same constraints as thumbnail uploads.</p>
+                <p className="mt-1 text-xs text-text-tertiary">PNG, JPEG, GIF, or WebP. Same constraints as thumbnail uploads.</p>
                 {avatarError && <p className="mt-1 text-xs text-red-400">{avatarError}</p>}
               </div>
 
@@ -759,9 +759,9 @@ const ProfilePage: React.FC = () => {
                   maxLength={100}
                   placeholder="About you (max 100 characters)"
                   rows={4}
-                  className="w-full max-w-md rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-primary0 focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
+                  className="w-full max-w-md rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
                 />
-                <div className={`mt-1 text-xs ${description.length >= 100 ? "text-red-400" : "text-text-primary0"}`}>
+                <div className={`mt-1 text-xs ${description.length >= 100 ? "text-red-400" : "text-text-tertiary"}`}>
                   {description.length} / 100
                 </div>
               </div>
