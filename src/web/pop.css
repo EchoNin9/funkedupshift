@@ -269,14 +269,58 @@
 }
 @media (pointer: coarse) { .pop-cursor { display: none; } }
 
-/* ---- 11. Footer ---- */
-.pop-footer {
-  border-top: 2px solid var(--fg);
-  background: color-mix(in srgb, var(--bg) 92%, black);
-  font-family: var(--font-display);
-  font-weight: 800;
-  text-transform: uppercase;
-  font-size: 12px;
+/* ---- 11. Shared chrome (nav + footer), injected by pop-chrome.js ---- */
+.pop-chrome-top { position: fixed; top: 0; left: 0; right: 0; z-index: 100; }
+/* offset page content below the fixed nav + marquee */
+.pop body, body.pop { padding-top: 96px; }
+
+.pop-nav {
+  height: 60px;
+  backdrop-filter: blur(12px);
+  background: color-mix(in srgb, var(--bg) 70%, transparent);
+  border-bottom: 2px solid var(--fg);
+}
+.pop-nav__inner {
+  max-width: 1180px;
+  height: 100%;
+  margin: 0 auto;
+  padding: 0 clamp(14px, 3vw, 32px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.pop-nav__center { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.pop-brand { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; color: var(--fg); }
+.pop-brand__dot { width: 12px; height: 12px; border-radius: 50%; background: var(--n1); box-shadow: 0 0 10px var(--n1); }
+.pop-brand__name { font-family: var(--font-display); font-weight: 800; font-size: 20px; letter-spacing: -.02em; }
+.pop-theme-toggle {
+  display: inline-flex; align-items: center; gap: 6px;
+  cursor: pointer;
+  background: transparent;
+  color: var(--fg);
+  border: 2px solid var(--line);
+  border-radius: 999px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  padding: 5px 12px;
+}
+
+.pop-footer { border-top: 2px solid var(--fg); background: color-mix(in srgb, var(--bg) 92%, black); margin-top: 48px; }
+.pop-footer__inner {
+  display: flex; flex-wrap: wrap; gap: 12px;
+  align-items: center; justify-content: space-between;
+  padding-top: 18px; padding-bottom: 18px;
+  font-family: var(--font-display); font-weight: 800; text-transform: uppercase; font-size: 12px;
+}
+.pop-footer__links { display: flex; flex-wrap: wrap; gap: 14px; }
+.pop-footer__links a { text-decoration: none; color: var(--muted); }
+.pop-footer__links a:hover { color: var(--fg); }
+
+@media (max-width: 640px) {
+  .pop-nav { height: auto; }
+  .pop-nav__inner { flex-wrap: wrap; padding-top: 8px; padding-bottom: 8px; }
+  .pop body, body.pop { padding-top: 140px; }
 }
 
 /* ---- Motion ---- */
