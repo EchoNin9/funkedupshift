@@ -1011,6 +1011,15 @@ resource "aws_apigatewayv2_route" "brandingHeroPut" {
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
+# Branding: admin/manager-only marquee banner text
+resource "aws_apigatewayv2_route" "brandingBannerPut" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "PUT /branding/banner"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
 # Branding: admin-only hero image upload
 resource "aws_apigatewayv2_route" "brandingHeroImagePost" {
   api_id             = aws_apigatewayv2_api.main.id
