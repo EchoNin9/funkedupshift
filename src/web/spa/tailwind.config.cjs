@@ -20,6 +20,7 @@ module.exports = {
         "text-secondary": "rgb(var(--color-text-secondary) / <alpha-value>)",
         "text-tertiary": "rgb(var(--color-text-tertiary) / <alpha-value>)",
         accent: {
+          DEFAULT: "rgb(var(--color-accent) / <alpha-value>)",
           400: "rgb(var(--color-accent-light) / <alpha-value>)",
           500: "rgb(var(--color-accent) / <alpha-value>)",
           600: "rgb(var(--color-accent-hover) / <alpha-value>)",
