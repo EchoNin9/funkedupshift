@@ -64,7 +64,7 @@ function PageLoader() {
 
 const AppLayout: React.FC = () => {
   const { user } = useAuth();
-  const { siteName } = useBranding();
+  const { siteName, bannerText } = useBranding();
   const { isNative } = usePlatform();
   const location = useLocation();
   const adminModules = getVisibleAdminModules(user);
@@ -89,7 +89,7 @@ const AppLayout: React.FC = () => {
       {/* Content area - offset by sidebar width on desktop */}
       <div className={`flex-1 min-w-0 flex flex-col ${showSidebar ? "md:pl-60" : ""}`}>
         <DesktopHeaderBar />
-        <PopMarquee />
+        <PopMarquee text={bannerText} />
         <main className="flex-1 min-w-0">
           <div className="container-max py-6">
             <AnimatePresence mode="wait">

@@ -64,7 +64,7 @@ function PageLoader() {
 
 export function MobileAppShell() {
   const { user } = useAuth();
-  const { logo, siteName } = useBranding();
+  const { logo, siteName, bannerText } = useBranding();
   const location = useLocation();
 
   return (
@@ -105,7 +105,7 @@ export function MobileAppShell() {
           </div>
         </header>
 
-        <PopMarquee />
+        <PopMarquee text={bannerText} />
 
         {/* Content area — bottom padding for tab bar */}
         <main className="flex-1 min-w-0 pb-20">

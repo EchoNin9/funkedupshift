@@ -3,12 +3,15 @@ import { useAuth, hasRole } from "../../shell/AuthContext";
 import { AdminPageHeader } from "./AdminPageHeader";
 import { fetchWithAuth } from "../../utils/api";
 import { Alert } from "../../components";
+import { PopMarquee, DEFAULT_BANNER } from "../../shell/PopMarquee";
 import {
   useBranding,
   DEFAULT_HERO_TAGLINE,
   DEFAULT_HERO_HEADLINE,
   DEFAULT_HERO_SUBTEXT,
 } from "../../shell/BrandingContext";
+
+const BANNER_MAX_LEN = 500;
 
 function getApiBaseUrl(): string | null {
   if (typeof window === "undefined") return null;
@@ -26,7 +29,7 @@ const allowedTypes = [
 
 const BrandingPage: React.FC = () => {
   const { user } = useAuth();
-  const { logo, hero, refreshBranding } = useBranding();
+  const { logo, hero, bannerText, refreshBranding } = useBranding();
   const [file, setFile] = useState<File | null>(null);
   const [alt, setAlt] = useState("Funkedupshift");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -45,6 +48,11 @@ const BrandingPage: React.FC = () => {
   const [heroMessage, setHeroMessage] = useState<string | null>(null);
   const [heroError, setHeroError] = useState<string | null>(null);
 
+  const [bannerDraft, setBannerDraft] = useState(bannerText);
+  const [bannerSaving, setBannerSaving] = useState(false);
+  const [bannerMessage, setBannerMessage] = useState<string | null>(null);
+  const [bannerError, setBannerError] = useState<string | null>(null);
+
   useEffect(() => {
     setHeroTagline(hero.tagline);
     setHeroHeadline(hero.headline);
@@ -55,6 +63,48 @@ const BrandingPage: React.FC = () => {
   useEffect(() => {
     if (logo?.alt) setAlt(logo.alt);
   }, [logo?.alt]);
+
+  useEffect(() => {
+    setBannerDraft(bannerText);
+  }, [bannerText]);
+
+  const onBannerSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBannerError(null);
+    setBannerMessage(null);
+    const trimmed = bannerDraft.trim();
+    if (!trimmed) {
+      setBannerError("Banner text must not be empty.");
+      return;
+    }
+    if (trimmed.length > BANNER_MAX_LEN) {
+      setBannerError(`Banner text must be ${BANNER_MAX_LEN} characters or fewer.`);
+      return;
+    }
+    const apiBase = getApiBaseUrl();
+    if (!apiBase) {
+      setBannerError("API URL not configured.");
+      return;
+    }
+    setBannerSaving(true);
+    try {
+      const resp = await fetchWithAuth(`${apiBase}/branding/banner`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bannerText: trimmed }),
+      });
+      if (!resp.ok) {
+        const txt = await resp.text();
+        throw new Error(txt || `Save failed with ${resp.status}`);
+      }
+      setBannerMessage("Banner saved. Marquees update across the app.");
+      refreshBranding();
+    } catch (err: any) {
+      setBannerError(err?.message ?? "Failed to save banner.");
+    } finally {
+      setBannerSaving(false);
+    }
+  };
 
   const isSuperAdmin = hasRole(user ?? null, "superadmin");
 
@@ -491,22 +541,47 @@ const BrandingPage: React.FC = () => {
         )}
       </form>
 
-      {/* Reserved slot for the editable Scrolling Banner — wired up in FUNK-11. */}
-      <section className="card p-6 space-y-3 max-w-2xl opacity-70" aria-disabled>
-        <h2 className="text-lg font-display font-extrabold uppercase tracking-tight text-text-primary">
-          Scrolling Banner
-        </h2>
-        <p className="text-sm text-text-secondary">
-          Edit the marquee text shown under the header on every page. Coming soon.
-        </p>
-        <textarea
-          disabled
-          rows={2}
-          placeholder="Banner editor arrives in the next release."
-          className="input-field font-mono opacity-60 cursor-not-allowed"
-        />
-        <span className="pop-pill">Coming soon</span>
-      </section>
+      {/* Editable Scrolling Banner (admin/manager). */}
+      {hasRole(user ?? null, "manager") && (
+        <form className="card p-6 space-y-4 max-w-2xl" onSubmit={onBannerSave}>
+          <div>
+            <h2 className="text-lg font-display font-extrabold uppercase tracking-tight text-text-primary">
+              Scrolling Banner
+            </h2>
+            <p className="mt-1 text-sm text-text-secondary">
+              The marquee shown under the header on every page. Separate items with{" "}
+              <span className="font-mono">✦</span>. Max {BANNER_MAX_LEN} characters.
+            </p>
+          </div>
+
+          <textarea
+            value={bannerDraft}
+            onChange={(e) => setBannerDraft(e.target.value)}
+            rows={3}
+            maxLength={BANNER_MAX_LEN}
+            placeholder={DEFAULT_BANNER}
+            className="input-field font-mono"
+          />
+          <div className="text-right text-xs text-text-tertiary">
+            {bannerDraft.trim().length}/{BANNER_MAX_LEN}
+          </div>
+
+          {/* Live preview — re-renders on each keystroke */}
+          <div className="space-y-1">
+            <span className="text-xs font-display font-extrabold uppercase tracking-tight text-text-tertiary">
+              Live preview
+            </span>
+            <PopMarquee text={bannerDraft.trim() || DEFAULT_BANNER} />
+          </div>
+
+          <button type="submit" disabled={bannerSaving} className="btn-primary disabled:opacity-50">
+            {bannerSaving ? "Saving…" : "Save banner"}
+          </button>
+
+          {bannerMessage && <Alert variant="success">{bannerMessage}</Alert>}
+          {bannerError && <Alert variant="error">{bannerError}</Alert>}
+        </form>
+      )}
     </div>
   );
 };
