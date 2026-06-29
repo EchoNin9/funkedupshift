@@ -30,6 +30,30 @@ function getApiBaseUrl(): string | null {
   return raw ? raw.replace(/\/$/, "") : null;
 }
 
+/* ── 5-star row from an average rating ── */
+const Stars: React.FC<{ avg?: number }> = ({ avg }) => {
+  const filled = Math.round(avg ?? 0);
+  return (
+    <span className="pop-stars text-sm" aria-label={avg ? `${avg.toFixed(1)} out of 5` : "unrated"}>
+      {"★★★★★".slice(0, filled)}
+      <span className="empty">{"★★★★★".slice(filled)}</span>
+    </span>
+  );
+};
+
+/* Diagonal-striped neon placeholder for posters with no artwork. */
+const STRIPE_BG =
+  "repeating-linear-gradient(45deg, rgb(var(--color-surface-3)) 0 14px, rgb(var(--color-surface-2)) 14px 28px)";
+
+/* Real media types in this app are image/video (the spec's Film/Shows/Albums model doesn't exist).
+   ponytail: client-side type filter over the fetched list; server still does search/category filtering. */
+const TYPE_FILTERS = [
+  { key: "all", label: "All" },
+  { key: "image", label: "Image" },
+  { key: "video", label: "Video" },
+] as const;
+type TypeFilter = (typeof TYPE_FILTERS)[number]["key"];
+
 const MediaPage: React.FC = () => {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -46,6 +70,7 @@ const MediaPage: React.FC = () => {
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const [categorySearch, setCategorySearch] = useState("");
   const [sort, setSort] = useState<SortKey>("avgDesc");
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -184,6 +209,14 @@ const MediaPage: React.FC = () => {
     return copy;
   }, [items, sort]);
 
+  /* ── Client-side type filter (image/video) over the sorted list ── */
+  const displayedItems = useMemo(() => {
+    if (typeFilter === "all") return sortedItems;
+    return sortedItems.filter((m) =>
+      typeFilter === "video" ? m.mediaType === "video" : m.mediaType !== "video"
+    );
+  }, [sortedItems, typeFilter]);
+
   /* ── Rate handler ── */
   const handleRate = async (mediaId: string, rating: number) => {
     const apiBase = getApiBaseUrl();
@@ -211,26 +244,16 @@ const MediaPage: React.FC = () => {
     );
   };
 
-  /* ── Skeleton cards for loading state ── */
-  const skeletonCards = Array.from({ length: 12 }).map((_, i) => {
-    const heights = ["h-40", "h-56", "h-48", "h-64", "h-44", "h-52"];
-    const h = heights[i % heights.length];
-    return (
-      <div key={i} className="break-inside-avoid mb-4">
-        <div className="overflow-hidden rounded-xl bg-surface-2 border border-border-default">
-          <div className={`${h} w-full animate-pulse bg-surface-3`} />
-          <div className="p-3 space-y-2">
-            <div className="h-4 w-3/4 animate-pulse rounded bg-surface-3" />
-            <div className="h-3 w-1/2 animate-pulse rounded bg-surface-3" />
-            <div className="flex gap-1">
-              <div className="h-5 w-12 animate-pulse rounded-full bg-surface-3" />
-              <div className="h-5 w-16 animate-pulse rounded-full bg-surface-3" />
-            </div>
-          </div>
-        </div>
+  /* ── Skeleton poster cards for loading state ── */
+  const skeletonCards = Array.from({ length: 12 }).map((_, i) => (
+    <div key={i} className="overflow-hidden rounded-lg border-[3px] border-border-default bg-surface-2">
+      <div className="aspect-[2/3] w-full animate-pulse bg-surface-3" />
+      <div className="p-2.5 space-y-2">
+        <div className="h-3.5 w-3/4 animate-pulse rounded bg-surface-3" />
+        <div className="h-3 w-1/2 animate-pulse rounded bg-surface-3" />
       </div>
-    );
-  });
+    </div>
+  ));
 
   /* ── Card entrance animation variants ── */
   const cardVariants = {
@@ -246,15 +269,36 @@ const MediaPage: React.FC = () => {
     <div className="space-y-5">
       {/* ── Header ── */}
       <motion.header
-        className="space-y-1"
+        className="space-y-3"
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
       >
-        <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Media</h1>
-        <p className="text-sm text-text-secondary">
-          Images and videos attached to sites and experiments across Funkedupshift.
-        </p>
+        <div className="space-y-1">
+          <h1 className="text-3xl sm:text-4xl font-display font-extrabold uppercase tracking-tight text-text-primary">
+            The Library
+          </h1>
+          <p className="text-sm text-text-secondary">
+            {displayedItems.length} {displayedItems.length === 1 ? "item" : "items"} — images and videos from across Funkedupshift.
+          </p>
+        </div>
+        {/* Type filter pills */}
+        <div className="flex flex-wrap gap-2">
+          {TYPE_FILTERS.map((t) => (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => setTypeFilter(t.key)}
+              className={`rounded-full border-2 px-3.5 py-1 text-xs font-display font-extrabold uppercase tracking-tight transition-colors ${
+                typeFilter === t.key
+                  ? "border-ink bg-accent text-ink"
+                  : "border-border-default text-text-secondary hover:border-n3 hover:text-text-primary"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
       </motion.header>
 
       {/* ── Search bar (pill-shaped) ── */}
@@ -270,8 +314,8 @@ const MediaPage: React.FC = () => {
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search media by title or description..."
-          className="w-full rounded-full border border-border-default bg-surface-2 py-2.5 pl-11 pr-4 text-sm text-text-primary placeholder:text-text-tertiary focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500 transition-colors"
+          placeholder="Search the library by title or description..."
+          className="input-field pl-11"
         />
       </form>
 
@@ -282,7 +326,7 @@ const MediaPage: React.FC = () => {
           <select
             value={sort}
             onChange={(e) => setSort(e.target.value as SortKey)}
-            className="rounded-md border border-border-default bg-surface-2 px-2 py-1 text-xs text-text-primary focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
+            className="input-field w-auto text-xs"
           >
             <option value="avgDesc">Avg stars (high first)</option>
             <option value="avgAsc">Avg stars (low first)</option>
@@ -318,7 +362,7 @@ const MediaPage: React.FC = () => {
         )}
 
         <span className="text-text-tertiary">
-          {sortedItems.length === 0 && !isLoading ? "" : `${sortedItems.length} items`}
+          {displayedItems.length === 0 && !isLoading ? "" : `${displayedItems.length} items`}
         </span>
       </div>
 
@@ -330,10 +374,10 @@ const MediaPage: React.FC = () => {
             <button
               type="button"
               onClick={() => setSelectedCategoryIds([])}
-              className={`flex-shrink-0 rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors ${
+              className={`flex-shrink-0 rounded-full border-2 px-3.5 py-1 text-xs font-display font-extrabold uppercase tracking-tight transition-colors ${
                 selectedCategoryIds.length === 0
-                  ? "bg-accent-500 text-surface-1"
-                  : "bg-surface-2 text-text-secondary border border-border-default hover:border-border-hover hover:text-text-primary"
+                  ? "border-ink bg-accent text-ink"
+                  : "border-border-default text-text-secondary hover:border-n3 hover:text-text-primary"
               }`}
             >
               All
@@ -345,10 +389,10 @@ const MediaPage: React.FC = () => {
                   key={c.id}
                   type="button"
                   onClick={() => toggleCategory(c.id)}
-                  className={`flex-shrink-0 rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors ${
+                  className={`flex-shrink-0 rounded-full border-2 px-3.5 py-1 text-xs font-display font-extrabold uppercase tracking-tight transition-colors ${
                     isActive
-                      ? "bg-accent-500 text-surface-1"
-                      : "bg-surface-2 text-text-secondary border border-border-default hover:border-border-hover hover:text-text-primary"
+                      ? "border-ink bg-accent text-ink"
+                      : "border-border-default text-text-secondary hover:border-n3 hover:text-text-primary"
                   }`}
                 >
                   {c.name}
@@ -365,7 +409,7 @@ const MediaPage: React.FC = () => {
             onChange={(e) => setCategorySearch(e.target.value)}
             onFocus={() => setCategoryDropdownOpen(true)}
             placeholder="Search categories..."
-            className="mt-2 w-full max-w-xs rounded-full border border-border-default bg-surface-2 px-3 py-1.5 text-xs text-text-primary placeholder:text-text-tertiary focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500 transition-colors"
+            className="input-field mt-2 max-w-xs text-xs"
             autoComplete="off"
           />
           {categoryDropdownOpen && (
@@ -404,12 +448,12 @@ const MediaPage: React.FC = () => {
         <Alert variant="error" className="text-xs">{error}</Alert>
       )}
 
-      {/* ── Content: skeleton / empty / masonry grid ── */}
+      {/* ── Content: skeleton / empty / poster grid ── */}
       {isLoading ? (
-        <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-4">
+        <div className="grid gap-4 grid-cols-[repeat(auto-fill,minmax(180px,1fr))]">
           {skeletonCards}
         </div>
-      ) : sortedItems.length === 0 ? (
+      ) : displayedItems.length === 0 ? (
         <div className="flex items-center justify-center min-h-[280px]">
           <p className="text-lg font-light text-text-tertiary tracking-wide">
             {items.length === 0 && !error
@@ -418,8 +462,8 @@ const MediaPage: React.FC = () => {
           </p>
         </div>
       ) : (
-        <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-4">
-          {sortedItems.map((m, index) => {
+        <div className="grid gap-4 grid-cols-[repeat(auto-fill,minmax(180px,1fr))]">
+          {displayedItems.map((m, index) => {
             const thumb = m.thumbnailUrl || (m.mediaType === "image" ? m.mediaUrl : undefined);
             const title = m.title || m.PK || "Untitled";
             const mediaTypeLabel = m.mediaType === "video" ? "Video" : "Image";
@@ -428,7 +472,7 @@ const MediaPage: React.FC = () => {
             return (
               <motion.div
                 key={m.PK}
-                className="break-inside-avoid mb-4 group"
+                className="group flex flex-col"
                 variants={cardVariants}
                 initial="hidden"
                 animate="visible"
@@ -436,42 +480,42 @@ const MediaPage: React.FC = () => {
               >
                 <Link
                   to={detailLink}
-                  className="block overflow-hidden rounded-xl bg-surface-2 border border-border-default hover:border-border-hover transition-all hover:shadow-lg hover:shadow-black/20"
+                  className="card overflow-hidden p-0 no-underline"
                 >
-                  {/* ── Image ── */}
-                  <div className="overflow-hidden">
+                  {/* ── Poster (aspect 2/3) ── */}
+                  <div className="relative aspect-[2/3] overflow-hidden">
                     {thumb ? (
                       <img
                         src={thumb}
                         alt={title}
-                        className="w-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                         onError={(e) => {
                           (e.currentTarget as HTMLImageElement).style.display = "none";
                         }}
                       />
                     ) : (
-                      <div className="flex items-center justify-center h-40 bg-surface-3 text-3xl text-text-tertiary">
+                      <div
+                        className="absolute inset-0 flex items-center justify-center text-3xl text-text-tertiary"
+                        style={{ background: STRIPE_BG }}
+                      >
                         {m.mediaType === "video" ? "\u25B6" : "\uD83D\uDCF7"}
                       </div>
                     )}
+                    {/* Type badge */}
+                    <span className="pop-badge absolute left-2 top-2 !px-2 !py-0.5 text-[10px]">
+                      {mediaTypeLabel}
+                    </span>
                   </div>
 
                   {/* ── Card body ── */}
-                  <div className="p-3 space-y-1.5">
-                    <h2 className="text-sm font-semibold text-text-primary line-clamp-2 group-hover:text-accent-400 transition-colors">
+                  <div className="p-2.5 space-y-1.5 border-t-[3px] border-text-primary">
+                    <h2 className="text-sm font-display font-extrabold uppercase tracking-tight text-text-primary line-clamp-2">
                       {title}
                     </h2>
 
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      {typeof m.averageRating === "number" && (
-                        <span className="inline-flex items-center rounded-full bg-surface-3 px-2 py-0.5 text-[11px] text-amber-300">
-                          {m.averageRating.toFixed(1)}{"\u2605"}
-                        </span>
-                      )}
-                      <span className="inline-flex items-center rounded-full bg-surface-3 px-2 py-0.5 text-[10px] uppercase tracking-wide text-text-secondary">
-                        {mediaTypeLabel}
-                      </span>
-                    </div>
+                    {typeof m.averageRating === "number"
+                      ? <Stars avg={m.averageRating} />
+                      : <span className="text-[11px] text-text-tertiary">Unrated</span>}
 
                     {m.categories && m.categories.length > 0 && (
                       <div className="flex flex-wrap gap-1">
