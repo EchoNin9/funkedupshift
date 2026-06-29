@@ -132,92 +132,59 @@ const AuthPage: React.FC = () => {
   };
 
   const isForgotFlow = mode === "forgot" || mode === "forgot-confirm";
+  const heading =
+    mode === "signin" ? "Sign in"
+      : mode === "signup" ? "Sign up"
+      : mode === "forgot" ? "Reset password"
+      : "New password";
+  const subText =
+    mode === "signin" ? "Welcome back to the funk."
+      : mode === "signup" ? "Join the funk — it's free."
+      : mode === "forgot" ? "We'll email you a verification code."
+      : "Enter the code, then set a new password.";
+  const submitLabel = isSubmitting
+    ? mode === "signin" ? "Entering…"
+      : mode === "signup" ? "Creating…"
+      : mode === "forgot" ? "Sending…"
+      : "Resetting…"
+    : mode === "signin" ? "Enter the funk →"
+      : mode === "signup" ? "Create account →"
+      : mode === "forgot" ? "Send code →"
+      : "Reset password →";
+
+  const labelClass = "block font-display font-extrabold uppercase tracking-tight text-xs text-text-primary mb-1.5";
 
   return (
-    <div className="space-y-6">
-      <motion.header
-        className="space-y-2"
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-      >
-        <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Sign in / Sign up</h1>
-        <p className="text-sm text-text-secondary">
-          Use your Funkedupshift account to rate sites, add notes, and manage curated content (based on your role).
-        </p>
-      </motion.header>
-
-      {user && (
-        <div className="rounded-xl border border-emerald-600/60 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
-          You&apos;re currently signed in as{" "}
-          <span className="font-semibold text-emerald-200">{user.email}</span> (
-          {user.role === "superadmin" ? "SuperAdmin" : user.role}). You can safely close this page or continue
-          browsing websites and media.
-        </div>
-      )}
-
+    <div className="flex justify-center py-8">
       <motion.div
-        className="grid gap-6 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] items-start"
+        className="relative w-full max-w-[430px]"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
       >
-        <section className="rounded-2xl border border-border-default bg-surface-1 p-5 shadow-lg shadow-black/40">
-          {!isForgotFlow && (
-            <div className="mb-4 flex gap-2 rounded-full bg-surface-2 p-1 text-xs font-medium text-text-secondary">
-              <button
-                type="button"
-                onClick={() => switchMode("signin")}
-                className={[
-                  "flex-1 rounded-full px-3 py-1.5 transition-colors",
-                  mode === "signin" ? "bg-white text-surface-0" : "hover:bg-surface-3"
-                ].join(" ")}
-              >
-                Sign in
-              </button>
-              <button
-                type="button"
-                onClick={() => switchMode("signup")}
-                className={[
-                  "flex-1 rounded-full px-3 py-1.5 transition-colors",
-                  mode === "signup" ? "bg-white text-surface-0" : "hover:bg-surface-3"
-                ].join(" ")}
-              >
-                Sign up
-              </button>
-            </div>
-          )}
+        {/* Floating sticker badge */}
+        <span aria-hidden className="pop-badge pop-pulse absolute -top-4 -right-3 z-10 rotate-6">
+          Howdy!
+        </span>
 
-          {isForgotFlow && (
-            <div className="mb-4">
-              <button
-                type="button"
-                onClick={() => switchMode("signin")}
-                className="text-xs text-text-secondary hover:text-text-primary"
-              >
-                ← Back to sign in
-              </button>
-              <h2 className="mt-2 text-sm font-semibold text-text-primary">
-                {mode === "forgot" ? "Reset your password" : "Enter verification code"}
-              </h2>
-              {mode === "forgot" && (
-                <p className="mt-1 text-xs text-text-secondary">
-                  We&apos;ll send a verification code to your email address.
-                </p>
-              )}
-              {mode === "forgot-confirm" && (
-                <p className="mt-1 text-xs text-text-secondary">
-                  Check your email for the code, then set a new password.
-                </p>
-              )}
+        <section className="card p-6 sm:p-8">
+          <header className="mb-6 space-y-1">
+            <h1 className="text-3xl font-display font-extrabold uppercase tracking-tight text-text-primary">
+              {heading}
+            </h1>
+            <p className="text-sm text-text-secondary">{subText}</p>
+          </header>
+
+          {user && (
+            <div className="mb-5 rounded-lg border-2 border-nav bg-surface-3 px-4 py-3 text-sm text-text-primary">
+              Signed in as <span className="font-semibold">{user.email}</span> (
+              {user.role === "superadmin" ? "SuperAdmin" : user.role}). Close this page or keep browsing.
             </div>
           )}
 
           <form className="space-y-4" onSubmit={handleSubmit}>
-            <div className="space-y-1">
-              <label htmlFor="authEmail" className="text-xs font-medium uppercase tracking-[0.18em] text-text-secondary">
-                Email
-              </label>
+            <div>
+              <label htmlFor="authEmail" className={labelClass}>Email</label>
               <input
                 id="authEmail"
                 type="email"
@@ -225,10 +192,7 @@ const AuthPage: React.FC = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 readOnly={mode === "forgot-confirm"}
-                className={[
-                  "w-full rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-primary0 focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500",
-                  mode === "forgot-confirm" ? "opacity-60 cursor-default" : ""
-                ].join(" ")}
+                className={`input-field ${mode === "forgot-confirm" ? "opacity-60 cursor-default" : ""}`}
                 placeholder="you@example.com"
                 required
               />
@@ -236,32 +200,28 @@ const AuthPage: React.FC = () => {
 
             {mode === "forgot-confirm" && (
               <>
-                <div className="space-y-1">
-                  <label htmlFor="authCode" className="text-xs font-medium uppercase tracking-[0.18em] text-text-secondary">
-                    Verification code
-                  </label>
+                <div>
+                  <label htmlFor="authCode" className={labelClass}>Verification code</label>
                   <input
                     id="authCode"
                     type="text"
                     autoComplete="one-time-code"
                     value={code}
                     onChange={(e) => setCode(e.target.value)}
-                    className="w-full rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-primary0 focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
+                    className="input-field"
                     placeholder="123456"
                     required
                   />
                 </div>
-                <div className="space-y-1">
-                  <label htmlFor="authNewPassword" className="text-xs font-medium uppercase tracking-[0.18em] text-text-secondary">
-                    New password
-                  </label>
+                <div>
+                  <label htmlFor="authNewPassword" className={labelClass}>New password</label>
                   <input
                     id="authNewPassword"
                     type="password"
                     autoComplete="new-password"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    className="w-full rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-primary0 focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
+                    className="input-field"
                     placeholder="At least 8 characters"
                     minLength={8}
                     required
@@ -271,20 +231,15 @@ const AuthPage: React.FC = () => {
             )}
 
             {(mode === "signin" || mode === "signup") && (
-              <div className="space-y-1">
-                <label
-                  htmlFor="authPassword"
-                  className="text-xs font-medium uppercase tracking-[0.18em] text-text-secondary"
-                >
-                  Password
-                </label>
+              <div>
+                <label htmlFor="authPassword" className={labelClass}>Password</label>
                 <input
                   id="authPassword"
                   type="password"
                   autoComplete={mode === "signin" ? "current-password" : "new-password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-primary0 focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
+                  className="input-field"
                   placeholder={mode === "signup" ? "At least 8 characters" : "Your password"}
                   minLength={8}
                   required
@@ -293,31 +248,19 @@ const AuthPage: React.FC = () => {
             )}
 
             {error && (
-              <div className="rounded-md border border-red-500/70 bg-red-500/10 px-3 py-2 text-xs text-red-200">
+              <div className="rounded-lg border-2 border-red-500/70 bg-red-500/10 px-3 py-2 text-xs text-red-300">
                 {error}
               </div>
             )}
 
             {message && !error && (
-              <div className="rounded-md border border-emerald-500/70 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-100">
+              <div className="rounded-lg border-2 border-nav bg-surface-3 px-3 py-2 text-xs text-text-primary">
                 {message}
               </div>
             )}
 
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="inline-flex w-full items-center justify-center rounded-full bg-accent-500 px-4 py-2.5 text-sm font-semibold text-surface-0 shadow-md shadow-orange-500/40 transition hover:bg-orange-500 disabled:cursor-not-allowed disabled:opacity-70"
-            >
-              {isSubmitting
-                ? mode === "signin" ? "Signing in…"
-                  : mode === "signup" ? "Creating account…"
-                  : mode === "forgot" ? "Sending code…"
-                  : "Resetting password…"
-                : mode === "signin" ? "Sign in"
-                  : mode === "signup" ? "Create account"
-                  : mode === "forgot" ? "Send verification code"
-                  : "Reset password"}
+            <button type="submit" disabled={isSubmitting} className="btn-primary w-full disabled:opacity-60">
+              {submitLabel}
             </button>
 
             {mode === "signin" && (
@@ -330,31 +273,32 @@ const AuthPage: React.FC = () => {
               </button>
             )}
           </form>
-        </section>
 
-        <aside className="space-y-3 rounded-2xl border border-border-default bg-surface-1 p-4 text-xs text-text-secondary">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-text-primary0">
-            How access works
-          </p>
-          <ul className="space-y-2">
-            <li>
-              <span className="font-semibold text-text-primary">Guests</span> can browse all websites and media without
-              signing in.
-            </li>
-            <li>
-              <span className="font-semibold text-text-primary">Signed-in users</span> can star sites and media, and later
-              add their own metadata and comments.
-            </li>
-            <li>
-              <span className="font-semibold text-text-primary">Managers & admins</span> can curate sites, media, and
-              categories, with extra tooling in the admin area.
-            </li>
-          </ul>
-          <p className="text-text-primary0">
-            If you don&apos;t see expected admin controls after signing in, confirm your Cognito group membership in
-            the AWS Console.
-          </p>
-        </aside>
+          {/* Toggle line at the bottom */}
+          <div className="mt-6 border-t-2 border-border-subtle pt-4 text-center text-sm text-text-secondary">
+            {mode === "signin" && (
+              <>
+                New here?{" "}
+                <button type="button" onClick={() => switchMode("signup")} className="font-display font-extrabold uppercase tracking-tight text-accent hover:underline">
+                  Sign up
+                </button>
+              </>
+            )}
+            {mode === "signup" && (
+              <>
+                Already funky?{" "}
+                <button type="button" onClick={() => switchMode("signin")} className="font-display font-extrabold uppercase tracking-tight text-accent hover:underline">
+                  Sign in
+                </button>
+              </>
+            )}
+            {isForgotFlow && (
+              <button type="button" onClick={() => switchMode("signin")} className="font-display font-extrabold uppercase tracking-tight text-accent hover:underline">
+                ← Back to sign in
+              </button>
+            )}
+          </div>
+        </section>
       </motion.div>
     </div>
   );
