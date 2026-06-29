@@ -211,9 +211,9 @@ def save_our_properties_sites(sites):
         return False
     try:
         import boto3
-        from datetime import datetime
+        from datetime import datetime, timezone
         dynamodb = boto3.client("dynamodb")
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
         to_save = []
         for s in sites:
             if isinstance(s, dict):
@@ -538,9 +538,9 @@ def save_highest_rated_sites(sites):
         return False
     try:
         import boto3
-        from datetime import datetime
+        from datetime import datetime, timezone
         dynamodb = boto3.client("dynamodb")
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
         to_save = []
         for s in sites:
             if not isinstance(s, dict):

@@ -136,9 +136,9 @@ def save_user_watchlist(user_id, symbols):
         return False
     try:
         import boto3
-        from datetime import datetime
+        from datetime import datetime, timezone
         dynamodb = boto3.client("dynamodb")
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
         symbols_clean = [str(s).strip().upper() for s in symbols if str(s).strip()]
         dynamodb.put_item(
             TableName=TABLE_NAME,
@@ -186,9 +186,9 @@ def save_financial_config(symbols, source="yahoo"):
         return False
     try:
         import boto3
-        from datetime import datetime
+        from datetime import datetime, timezone
         dynamodb = boto3.client("dynamodb")
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
         symbols_clean = [str(s).strip().upper() for s in symbols if str(s).strip()]
         if source not in AVAILABLE_SOURCES:
             source = "yahoo"

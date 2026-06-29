@@ -96,7 +96,7 @@ def _process_image(bucket, key, media_id):
             UpdateExpression="SET thumbnailKey = :tk, updatedAt = :now",
             ExpressionAttributeValues={
                 ":tk": {"S": thumb_key},
-                ":now": {"S": __import__("datetime").datetime.utcnow().isoformat() + "Z"},
+                ":now": {"S": __import__("datetime").datetime.now(__import__("datetime").timezone.utc).replace(tzinfo=None).isoformat() + "Z"},
             },
         )
         logger.info("Image thumbnail: %s -> %s", key, thumb_key)
@@ -267,7 +267,7 @@ def _handle_regenerate(event):
             Key={"PK": {"S": media_id}, "SK": {"S": "METADATA"}},
             UpdateExpression="REMOVE thumbnailKey SET updatedAt = :now",
             ExpressionAttributeValues={
-                ":now": {"S": __import__("datetime").datetime.utcnow().isoformat() + "Z"},
+                ":now": {"S": __import__("datetime").datetime.now(__import__("datetime").timezone.utc).replace(tzinfo=None).isoformat() + "Z"},
             },
         )
         _process_video(MEDIA_BUCKET, media_key, media_id)
@@ -378,7 +378,7 @@ def _handle_mediaconvert_event(event):
             UpdateExpression="SET thumbnailKey = :tk, updatedAt = :now",
             ExpressionAttributeValues={
                 ":tk": {"S": thumbnail_key},
-                ":now": {"S": __import__("datetime").datetime.utcnow().isoformat() + "Z"},
+                ":now": {"S": __import__("datetime").datetime.now(__import__("datetime").timezone.utc).replace(tzinfo=None).isoformat() + "Z"},
             },
         )
         logger.info("Video thumbnail updated: %s", thumbnail_key)

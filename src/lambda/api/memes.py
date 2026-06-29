@@ -9,7 +9,7 @@ import re
 import urllib.error
 import urllib.parse
 import urllib.request
-from datetime import datetime
+from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -337,7 +337,7 @@ def _ensure_tags_in_registry(dynamodb, new_tags):
     if "Item" in resp and "tags" in resp["Item"]:
         existing = [v.get("S", "") for v in resp["Item"]["tags"].get("L", [])]
     combined = sorted(set(existing) | set(new_tags))
-    now = datetime.utcnow().isoformat() + "Z"
+    now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
     dynamodb.put_item(
         TableName=TABLE_NAME,
         Item={
@@ -360,7 +360,7 @@ def _update_meme_cache(dynamodb, meme_id):
         ids = [v.get("S", "") for v in resp["Item"]["memeIds"].get("L", [])]
     ids = [meme_id] + [i for i in ids if i != meme_id]
     ids = ids[:MEME_CACHE_MAX]
-    now = datetime.utcnow().isoformat() + "Z"
+    now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
     dynamodb.put_item(
         TableName=TABLE_NAME,
         Item={
@@ -387,7 +387,7 @@ def create_meme(event, user, json_response):
         import boto3
         import uuid as uuid_mod
         meme_id = f"MEME#{uuid_mod.uuid4()}"
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
         user_id = user["userId"]
         title = (body.get("title") or "").strip() or generate_meme_title()
         description = (body.get("description") or "").strip() or ""
@@ -451,7 +451,7 @@ def update_meme(event, user, json_response):
         if not can_edit:
             return json_response({"error": "Forbidden: cannot edit this meme"}, 403)
 
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
         set_parts = ["updatedAt = :now"]
         names = {}
         values = {":now": {"S": now}}
