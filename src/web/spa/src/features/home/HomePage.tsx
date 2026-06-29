@@ -1,17 +1,72 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import {
-  GlobeAltIcon,
-  StarIcon,
-  AdjustmentsHorizontalIcon,
   ArrowRightIcon,
   EyeIcon,
   UserGroupIcon,
   ShieldCheckIcon,
 } from "@heroicons/react/24/outline";
-import { useAuth, canAccessSquash, canAccessMemes } from "../../shell/AuthContext";
+import {
+  useAuth,
+  canAccessSquash,
+  canAccessMemes,
+  canAccessExpenses,
+} from "../../shell/AuthContext";
 import { useBranding } from "../../shell/BrandingContext";
+
+/* ── Pointer parallax (disabled on touch / reduced-motion) ── */
+function useParallax(active: boolean): { x: number; y: number } {
+  const [tilt, setTilt] = useState({ x: 0, y: 0 });
+  useEffect(() => {
+    if (!active) return;
+    const onMove = (e: MouseEvent) => {
+      setTilt({
+        x: (e.clientX / window.innerWidth - 0.5) * 14,
+        y: (e.clientY / window.innerHeight - 0.5) * 14,
+      });
+    };
+    window.addEventListener("mousemove", onMove);
+    return () => window.removeEventListener("mousemove", onMove);
+  }, [active]);
+  return active ? tilt : { x: 0, y: 0 };
+}
+
+/* ── RGB-split glitch wordmark ── */
+const GlitchWordmark: React.FC<{ text: string; tilt: { x: number; y: number }; animate: boolean }> = ({
+  text, tilt, animate,
+}) => {
+  const layer = "absolute inset-0 select-none";
+  return (
+    <div className="relative inline-block font-display font-extrabold uppercase leading-[0.82] tracking-tight text-text-primary text-[clamp(3rem,13vw,9rem)]">
+      <span
+        aria-hidden
+        className={layer}
+        style={{
+          color: "rgb(var(--color-n1))",
+          mixBlendMode: "screen",
+          transform: `translate(${-5 - tilt.x}px, ${tilt.y}px)`,
+          animation: animate ? "pop-glitch-a 2.6s steps(2) infinite" : undefined,
+        }}
+      >
+        {text}
+      </span>
+      <span
+        aria-hidden
+        className={layer}
+        style={{
+          color: "rgb(var(--color-n3))",
+          mixBlendMode: "screen",
+          transform: `translate(${5 + tilt.x}px, ${-tilt.y}px)`,
+          animation: animate ? "pop-glitch-b 2.6s steps(2) infinite" : undefined,
+        }}
+      >
+        {text}
+      </span>
+      <span className="relative">{text}</span>
+    </div>
+  );
+};
 
 /* ── Animated count-up hook ── */
 function useCountUp(target: number, duration = 1.8, active = true): number {
@@ -67,39 +122,20 @@ const scaleIn = {
   },
 };
 
-/* ── Feature cards data ── */
-const FEATURES = [
-  {
-    icon: GlobeAltIcon,
-    title: "Browse",
-    description:
-      "Explore a curated index of websites and media. Everything is public, searchable, and categorized.",
-    gradient: "from-blue-500/20 via-transparent to-cyan-500/10",
-    accentColor: "text-blue-400",
-    link: "/websites",
-    linkLabel: "Browse websites",
-  },
-  {
-    icon: StarIcon,
-    title: "Rate",
-    description:
-      "Sign in to star your favorites, leave ratings, and shape what rises to the top.",
-    gradient: "from-amber-500/15 via-transparent to-orange-500/10",
-    accentColor: "text-amber-400",
-    link: "/media",
-    linkLabel: "Explore media",
-  },
-  {
-    icon: AdjustmentsHorizontalIcon,
-    title: "Curate",
-    description:
-      "Admins manage categories, groups, and branding from a single surface. Full control, zero friction.",
-    gradient: "from-violet-500/15 via-transparent to-purple-500/10",
-    accentColor: "text-violet-400",
-    link: "/admin",
-    linkLabel: "Admin panel",
-  },
-];
+/* ── "The Works" cards. `show` (optional) role-gates via canAccess* helpers. ── */
+type Work = { title: string; blurb: string; to: string; status: string; accent: string; show?: boolean };
+function buildWorks(showSquash: boolean, showMemes: boolean, showExpenses: boolean): Work[] {
+  return [
+    { title: "Websites", blurb: "The curated index. Browse, rate, and rank the sites that matter.", to: "/websites", status: "LIVE", accent: "" },
+    { title: "Media", blurb: "A living gallery of clips, tracks, and oddities — all rateable.", to: "/media", status: "LIVE", accent: "card-accent-n3" },
+    { title: "Internet Dashboard", blurb: "Live pulse of the domains we track, all on one screen.", to: "/internet-dashboard", status: "LIVE", accent: "card-accent-n2" },
+    { title: "Financial", blurb: "Watchlists and market data for the symbols you care about.", to: "/financial", status: "LIVE", accent: "card-accent-n4" },
+    { title: "Memes", blurb: "Browse, rate, and generate the freshest dank.", to: "/memes", status: "MEMBERS", accent: "card-accent-n2", show: showMemes },
+    { title: "Squash", blurb: "Ladder, players, and match results for the crew.", to: "/squash", status: "MEMBERS", accent: "card-accent-n3", show: showSquash },
+    { title: "Vehicle Expenses", blurb: "Log and track what your rides cost you.", to: "/vehicles-expenses", status: "MEMBERS", accent: "card-accent-n4", show: showExpenses },
+    { title: "General Expenses", blurb: "Everything else that hits the books.", to: "/general-expenses", status: "MEMBERS", accent: "", show: showExpenses },
+  ].filter((w) => w.show !== false);
+}
 
 /* ── Role breakdown data ── */
 const ROLES = [
@@ -194,19 +230,30 @@ const StatsSection: React.FC = () => {
 
 const HomePage: React.FC = () => {
   const { user } = useAuth();
-  const { hero } = useBranding();
+  const { hero, siteName } = useBranding();
   const showSquash = canAccessSquash(user);
   const showMemes = canAccessMemes(user);
+  const showExpenses = canAccessExpenses(user);
+  const works = buildWorks(showSquash, showMemes, showExpenses);
+
+  const reduce = useReducedMotion();
+  // Parallax/glitch only with a fine pointer (mouse) and motion allowed — off on touch/reduced-motion.
+  const [finePointer, setFinePointer] = useState(false);
+  useEffect(() => {
+    setFinePointer(window.matchMedia("(hover: hover) and (pointer: fine)").matches);
+  }, []);
+  const motionOk = !reduce && finePointer;
+  const tilt = useParallax(motionOk);
 
   return (
     <div className="-mx-4 sm:-mx-6 lg:-mx-8 -mt-6">
       {/* ════════════════════════════════════════════════
           SECTION 1 — HERO (full viewport)
          ════════════════════════════════════════════════ */}
-      <section className="relative min-h-[85vh] flex items-center overflow-hidden">
+      <section className="relative min-h-[74vh] flex items-center overflow-hidden">
         {/* Grain texture overlay */}
         <div
-          className="pointer-events-none absolute inset-0 z-10 opacity-[0.03]"
+          className="pointer-events-none absolute inset-0 z-10 opacity-[0.04]"
           style={{
             backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
           }}
@@ -223,18 +270,18 @@ const HomePage: React.FC = () => {
           />
         )}
 
-        {/* Atmospheric radial gradients */}
-        <div className="pointer-events-none absolute inset-0">
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_20%_80%,rgba(59,130,246,0.12),transparent)]" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_80%_20%,rgba(139,92,246,0.08),transparent)]" />
-          <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-surface-0 to-transparent" />
+        {/* Floating sticker badges (decorative) */}
+        <div aria-hidden className="pointer-events-none absolute inset-0 z-20 hidden sm:block">
+          <span className="pop-badge pop-pulse absolute left-[8%] top-[22%] -rotate-12">Fresh</span>
+          <span className="pop-badge pop-pulse absolute right-[10%] top-[30%] rotate-6" style={{ background: "rgb(var(--color-n3))", animationDelay: ".4s" }}>Loud</span>
+          <span className="pop-badge pop-pulse absolute right-[22%] bottom-[16%] -rotate-6" style={{ background: "rgb(var(--color-n2))", animationDelay: ".8s" }}>Funky</span>
         </div>
 
         {/* Hero content */}
-        <div className="relative z-20 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 sm:py-32">
-          <div className="max-w-3xl space-y-8">
+        <div className="relative z-30 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-28">
+          <div className="max-w-3xl space-y-7">
             <motion.p
-              className="text-xs sm:text-sm font-medium uppercase tracking-[0.3em] text-accent-400"
+              className="text-xs sm:text-sm font-display font-extrabold uppercase tracking-[0.3em] text-accent"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
@@ -242,160 +289,116 @@ const HomePage: React.FC = () => {
               {hero.tagline}
             </motion.p>
 
-            <motion.h1
-              className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[0.95] text-text-primary"
+            <motion.div
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{
-                duration: 0.7,
-                delay: 0.1,
-                ease: [0.22, 1, 0.36, 1],
-              }}
+              transition={{ duration: 0.7, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
             >
-              {hero.headline}
-            </motion.h1>
+              <h1 className="sr-only">{siteName}</h1>
+              <GlitchWordmark text={siteName} tilt={tilt} animate={motionOk} />
+            </motion.div>
 
             <motion.p
-              className="text-base sm:text-lg text-text-secondary max-w-xl leading-relaxed font-light"
+              className="text-xl sm:text-2xl font-display font-bold tracking-tight text-text-primary max-w-xl"
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{
-                duration: 0.7,
-                delay: 0.2,
-                ease: [0.22, 1, 0.36, 1],
-              }}
+              transition={{ duration: 0.7, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
+            >
+              {hero.headline}
+            </motion.p>
+
+            <motion.p
+              className="text-base sm:text-lg text-text-secondary max-w-xl leading-relaxed"
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
             >
               {hero.subtext}
             </motion.p>
 
             <motion.div
-              className="flex flex-wrap gap-4 pt-4"
+              className="flex flex-wrap items-center gap-4 pt-4"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{
-                duration: 0.6,
-                delay: 0.4,
-                ease: [0.22, 1, 0.36, 1],
-              }}
+              transition={{ duration: 0.6, delay: 0.45, ease: [0.22, 1, 0.36, 1] }}
             >
-              <Link
-                to="/websites"
-                className="group inline-flex items-center gap-2 rounded-full bg-accent-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-accent-500/25 transition-all duration-200 hover:bg-accent-600 hover:shadow-accent-500/40 hover:-translate-y-0.5"
+              <button
+                type="button"
+                onClick={() => document.getElementById("works")?.scrollIntoView({ behavior: "smooth" })}
+                className="btn-primary"
               >
+                Enter the funk
+                <span aria-hidden>↓</span>
+              </button>
+              <Link to="/websites" className="btn-secondary">
                 Browse websites
-                <ArrowRightIcon className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                <ArrowRightIcon className="h-4 w-4" />
               </Link>
-              <Link
-                to="/media"
-                className="inline-flex items-center gap-2 rounded-full border border-border-hover bg-white/5 px-6 py-3 text-sm font-medium text-text-primary backdrop-blur-sm transition-all duration-200 hover:bg-white/10 hover:border-text-tertiary hover:-translate-y-0.5"
-              >
-                Explore media
-              </Link>
-              <Link
-                to="/internet-dashboard"
-                className="inline-flex items-center gap-2 rounded-full border border-border-hover bg-white/5 px-6 py-3 text-sm font-medium text-text-primary backdrop-blur-sm transition-all duration-200 hover:bg-white/10 hover:border-text-tertiary hover:-translate-y-0.5"
-              >
-                Internet Dashboard
-              </Link>
-              <Link
-                to="/my-info"
-                className="inline-flex items-center gap-2 rounded-full border border-border-hover bg-white/5 px-6 py-3 text-sm font-medium text-text-primary backdrop-blur-sm transition-all duration-200 hover:bg-white/10 hover:border-text-tertiary hover:-translate-y-0.5"
-              >
-                My Info
-              </Link>
-              {showSquash && (
-                <Link
-                  to="/squash"
-                  className="inline-flex items-center gap-2 rounded-full border border-border-hover bg-white/5 px-6 py-3 text-sm font-medium text-text-primary backdrop-blur-sm transition-all duration-200 hover:bg-white/10 hover:border-text-tertiary hover:-translate-y-0.5"
-                >
-                  Squash
-                </Link>
-              )}
-              {showMemes && (
-                <Link
-                  to="/memes"
-                  className="inline-flex items-center gap-2 rounded-full border border-border-hover bg-white/5 px-6 py-3 text-sm font-medium text-text-primary backdrop-blur-sm transition-all duration-200 hover:bg-white/10 hover:border-text-tertiary hover:-translate-y-0.5"
-                >
-                  Memes
-                </Link>
-              )}
             </motion.div>
           </div>
         </div>
       </section>
 
       {/* ════════════════════════════════════════════════
-          SECTION 2 — FEATURE CARDS
+          SECTION 2 — "THE WORKS" GRID
          ════════════════════════════════════════════════ */}
-      <section className="relative py-24 sm:py-32">
-        {/* Subtle background gradient */}
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_100%_60%_at_50%_0%,rgba(59,130,246,0.04),transparent)]" />
-
+      <section id="works" className="relative py-24 sm:py-32 scroll-mt-20">
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
-            className="text-center mb-16"
+            className="mb-14"
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: "-80px" }}
             variants={staggerContainer}
           >
             <motion.p
-              className="text-xs font-medium uppercase tracking-[0.3em] text-text-tertiary mb-4"
+              className="text-xs font-display font-extrabold uppercase tracking-[0.3em] text-accent mb-4"
               variants={fadeUp}
               custom={0}
             >
-              How it works
+              The Works
             </motion.p>
             <motion.h2
-              className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-text-primary"
+              className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-text-primary"
               variants={fadeUp}
               custom={1}
             >
-              Three ways to engage
+              Everything in the shift
             </motion.h2>
           </motion.div>
 
           <motion.div
-            className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3"
+            className="grid gap-7 grid-cols-[repeat(auto-fill,minmax(260px,1fr))]"
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: "-60px" }}
             variants={staggerContainer}
           >
-            {FEATURES.map((feature, i) => (
-              <motion.div
-                key={feature.title}
-                variants={scaleIn}
-                className="group relative rounded-2xl border border-border-default bg-surface-1 p-8 transition-all duration-300 hover:border-border-hover hover:-translate-y-1 hover:shadow-2xl hover:shadow-black/20"
-              >
-                {/* Card gradient bg */}
-                <div
-                  className={`pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-br ${feature.gradient} opacity-0 transition-opacity duration-300 group-hover:opacity-100`}
-                />
-
-                <div className="relative">
-                  <div
-                    className={`mb-6 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-surface-3 ${feature.accentColor} transition-colors`}
-                  >
-                    <feature.icon className="h-6 w-6" />
+            {works.map((w, i) => (
+              <motion.div key={w.title} variants={scaleIn} style={{ rotate: i % 2 === 0 ? -1 : 1 }}>
+                <Link
+                  to={w.to}
+                  className={`card ${w.accent} group flex h-full flex-col p-6 no-underline`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-display font-extrabold text-2xl text-text-tertiary tabular-nums">
+                      {String(i + 1).padStart(2, "0")}
+                    </span>
+                    <span className="pop-pill">{w.status}</span>
                   </div>
 
-                  <h3 className="text-xl font-bold text-text-primary mb-3">
-                    {feature.title}
+                  <h3 className="mt-5 text-xl font-display font-extrabold uppercase tracking-tight text-text-primary">
+                    {w.title}
                   </h3>
-
-                  <p className="text-sm leading-relaxed text-text-secondary mb-6">
-                    {feature.description}
+                  <p className="mt-2 flex-1 text-sm leading-relaxed text-text-secondary">
+                    {w.blurb}
                   </p>
 
-                  <Link
-                    to={feature.link}
-                    className={`inline-flex items-center gap-1.5 text-sm font-medium ${feature.accentColor} transition-all group-hover:gap-2.5`}
-                  >
-                    {feature.linkLabel}
-                    <ArrowRightIcon className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
-                  </Link>
-                </div>
+                  <span className="mt-6 inline-flex items-center gap-1.5 text-sm font-display font-extrabold uppercase tracking-tight text-accent transition-all group-hover:gap-2.5">
+                    Open
+                    <ArrowRightIcon className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                  </span>
+                </Link>
               </motion.div>
             ))}
           </motion.div>
