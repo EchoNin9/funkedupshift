@@ -17,7 +17,7 @@ const sectionHeadingClass =
 const navLinkBase =
   "flex items-center gap-3 px-4 py-2 text-sm rounded-md mx-2 transition-colors duration-150";
 const navLinkActive =
-  "bg-surface-3 text-text-primary font-medium";
+  "bg-surface-3 text-nav font-medium border-l-2 border-nav";
 const navLinkInactive =
   "text-text-secondary hover:bg-surface-2 hover:text-text-primary";
 

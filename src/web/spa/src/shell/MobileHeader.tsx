@@ -14,6 +14,7 @@ import type { PublicModule } from "../config/modules";
 import ImpersonationBanner from "./ImpersonationBanner";
 import ImpersonationSelector from "./ImpersonationSelector";
 import { AccordionSection } from "./LeftSidebar";
+import { ThemeToggle } from "./ThemeToggle";
 
 export function MobileHeader() {
   const { user, isLoading, signOut } = useAuth();
@@ -55,7 +56,7 @@ export function MobileHeader() {
 
   const navItemClass = (isActive: boolean) =>
     `flex items-center gap-3 px-4 py-2.5 min-h-[44px] text-sm rounded-md transition-colors duration-150 ${
-      isActive ? "bg-surface-3 text-text-primary font-medium" : "text-text-secondary hover:bg-surface-2 hover:text-text-primary"
+      isActive ? "bg-surface-3 text-nav font-medium border-l-2 border-nav" : "text-text-secondary hover:bg-surface-2 hover:text-text-primary"
     }`;
 
   const adminHomeLinks = [
@@ -87,6 +88,7 @@ export function MobileHeader() {
         </Link>
 
         <div className="flex items-center gap-1">
+          <ThemeToggle />
           {user && <ImpersonationSelector />}
           <button
             type="button"

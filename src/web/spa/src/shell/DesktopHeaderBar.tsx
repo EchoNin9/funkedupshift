@@ -3,12 +3,14 @@ import { Link } from "react-router-dom";
 import { useAuth } from "./AuthContext";
 import ImpersonationSelector from "./ImpersonationSelector";
 import { UserMenu } from "./UserMenu";
+import { ThemeToggle } from "./ThemeToggle";
 
 export function DesktopHeaderBar() {
   const { user, isLoading, signOut } = useAuth();
 
   return (
-    <div className="hidden md:flex items-center justify-end gap-3 px-6 py-2 border-b border-border-subtle bg-surface-0">
+    <div className="hidden md:flex items-center justify-end gap-3 px-6 py-2 border-b border-border-subtle bg-surface-0/80 backdrop-blur">
+      <ThemeToggle />
       {user ? (
         <>
           <ImpersonationSelector />
