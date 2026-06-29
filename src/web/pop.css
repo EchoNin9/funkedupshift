@@ -1,0 +1,299 @@
+/* Neon Pop design system — FUNK-2
+   Single source of truth for the Funkedupshift restyle.
+   Tokens + component classes. Dark is the default theme; set
+   <html data-theme="light"> to switch. See docs/ui_refactor/DESIGN_SYSTEM.md.
+   ponytail: fonts pulled via @import so this file is self-contained (no HTML edits needed). */
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&family=Syne:wght@700;800&display=swap');
+
+/* ---- 1. Tokens ---- */
+:root {
+  /* dark (default) */
+  --bg:    #0c0814;
+  --bg2:   #170d27;
+  --fg:    #fdf6ff;
+  --muted: #9a85b5;
+  --line:  rgba(255,255,255,.16);
+  --n1:    #ff2bd6;
+  --n2:    #ffe600;
+  --n3:    #00e5ff;
+  --n4:    #b6ff3d;
+
+  /* fixed in both themes */
+  --nav:   #39ff7a;   /* nav-button green */
+  --ink:   #14081a;   /* brutalist border / shadow ink */
+
+  /* fonts */
+  --font-display: 'Syne', system-ui, sans-serif;
+  --font-body:    'Space Grotesk', system-ui, sans-serif;
+  --font-mono:    'JetBrains Mono', ui-monospace, monospace;
+
+  /* spring used by every hover */
+  --spring: cubic-bezier(.34, 1.56, .64, 1);
+}
+
+:root[data-theme="light"] {
+  --bg:    #fff7ec;
+  --bg2:   #ffffff;
+  --fg:    #14081a;
+  --muted: #6b5a7a;
+  --line:  #14081a;
+  --n1:    #ff2bd6;
+  --n2:    #ffd400;
+  --n3:    #00b8d4;
+  --n4:    #7bd000;
+}
+
+/* ---- 2. Base ---- */
+.pop body, body.pop {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.5;
+  transition: background .3s ease, color .3s ease;
+}
+.pop h1, .pop h2, .pop h3 {
+  font-family: var(--font-display);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: -.01em;
+  line-height: .92;
+  margin: 0;
+}
+.pop h1 { font-size: clamp(30px, 5vw, 52px); }
+.pop h2 { font-size: 19px; }
+.pop h3 { font-size: 18px; }
+.pop a { color: inherit; }
+.pop-wrap { max-width: 1180px; margin: 0 auto; padding: 0 clamp(14px, 3vw, 32px); }
+
+/* ---- 3. Card ---- */
+.pop-card {
+  --accent: var(--n1);
+  background: var(--bg2);
+  border: 3px solid var(--fg);
+  border-radius: 8px;
+  box-shadow: 8px 8px 0 var(--accent);
+  transition: transform .15s var(--spring), box-shadow .15s ease;
+}
+.pop-card:hover {
+  transform: translate(-3px, -3px);
+  box-shadow: 12px 12px 0 var(--accent);
+}
+/* resting tilt for the home "Works" grid */
+.pop-card--tilt { transform: rotate(var(--tilt, -1.5deg)); }
+.pop-card--tilt:hover { transform: rotate(0deg) translate(-3px, -3px); }
+
+.accent-n1 { --accent: var(--n1); }
+.accent-n2 { --accent: var(--n2); }
+.accent-n3 { --accent: var(--n3); }
+.accent-n4 { --accent: var(--n4); }
+
+/* ---- 4. Buttons ---- */
+.pop-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: .4em;
+  background: var(--n2);
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-weight: 800;
+  text-transform: uppercase;
+  font-size: 14px;
+  text-decoration: none;
+  cursor: pointer;
+  padding: 12px 20px;
+  border: 3px solid var(--ink);
+  border-radius: 12px;
+  box-shadow: 6px 6px 0 var(--ink);
+  transition: transform .15s var(--spring), box-shadow .15s ease;
+}
+.pop-btn:hover { transform: translate(-2px, -2px); box-shadow: 8px 8px 0 var(--ink); }
+.pop-btn:active { transform: translate(0, 0); box-shadow: 3px 3px 0 var(--ink); }
+.pop-btn--magenta { background: var(--n1); }
+.pop-btn--block { width: 100%; justify-content: center; }
+
+.pop-btn--ghost {
+  background: transparent;
+  color: var(--fg);
+  border: 2px solid var(--line);
+  border-radius: 11px;
+  box-shadow: none;
+}
+.pop-btn--ghost:hover { transform: translate(-2px, -2px); box-shadow: 4px 4px 0 var(--line); }
+
+/* nav button — green stays fixed in both themes */
+.pop-nav-btn {
+  font-family: var(--font-display);
+  font-weight: 800;
+  text-transform: uppercase;
+  font-size: 13px;
+  text-decoration: none;
+  cursor: pointer;
+  padding: 7px 14px;
+  border: 2px solid var(--nav);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--nav);
+  transition: transform .15s var(--spring), box-shadow .15s ease, background .15s ease;
+}
+.pop-nav-btn:hover { transform: translateY(-1px); }
+.pop-nav-btn.is-active {
+  background: var(--nav);
+  color: #0c0814;
+  box-shadow: 0 0 14px rgba(57, 255, 122, .6);
+}
+
+/* ---- 5. Inputs ---- */
+.pop-label {
+  display: block;
+  font-family: var(--font-display);
+  font-weight: 800;
+  text-transform: uppercase;
+  font-size: 12px;
+  letter-spacing: .02em;
+  margin-bottom: 6px;
+  color: var(--fg);
+}
+.pop-input, .pop-field input, .pop-field textarea, .pop-field select {
+  --accent: var(--n3);
+  width: 100%;
+  background: var(--bg);
+  border: 2px solid var(--line);
+  border-radius: 9px;
+  color: var(--fg);
+  font-family: var(--font-body);
+  font-size: 14px;
+  padding: 12px 14px;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.pop-input:focus, .pop-field input:focus, .pop-field textarea:focus, .pop-field select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 3px 3px 0 var(--accent);
+}
+.pop-input--mono, .pop-field textarea.pop-input--mono { font-family: var(--font-mono); }
+/* custom select arrow */
+.pop-input.pop-select, .pop-field select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%239a85b5' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  padding-right: 34px;
+}
+
+/* ---- 6. Pills / tags / badges ---- */
+.pop-tag {
+  display: inline-block;
+  border: 1.5px solid var(--line);
+  border-radius: 24px;
+  color: var(--muted);
+  font-size: 11px;
+  padding: 3px 10px;
+}
+.pop-badge {
+  --accent: var(--n1);
+  display: inline-block;
+  background: var(--accent);
+  color: var(--ink);
+  border: 2px solid var(--ink);
+  border-radius: 24px;
+  box-shadow: 4px 4px 0 var(--ink);
+  font-family: var(--font-display);
+  font-weight: 800;
+  text-transform: uppercase;
+  font-size: 11px;
+  padding: 4px 12px;
+}
+.pop-badge--sticker { transform: rotate(-6deg); animation: pop-float 4.5s ease-in-out infinite; }
+
+/* ---- 7. Star rating ---- */
+.pop-stars { color: var(--n2); letter-spacing: 2px; font-size: 14px; }
+.pop-stars .empty { color: var(--muted); }
+
+/* ---- 8. Marquee ---- */
+.pop-marquee {
+  width: 100%;
+  overflow: hidden;
+  background: var(--n1);
+  border-bottom: 3px solid var(--fg);
+  color: var(--ink);
+}
+.pop-marquee__track {
+  display: flex;
+  width: max-content;
+  gap: 0;
+  white-space: nowrap;
+  font-family: var(--font-display);
+  font-weight: 800;
+  text-transform: uppercase;
+  font-size: 13px;
+  padding: 8px 0;
+  animation: pop-marquee 22s linear infinite;
+}
+.pop-marquee__item { padding: 0 18px; }
+
+/* ---- 9. Background ambiance ---- */
+.pop-bg { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+.pop-blob {
+  position: absolute;
+  width: 42vw; height: 42vw;
+  border-radius: 50%;
+  filter: blur(50px);
+  opacity: .28;
+  animation: pop-drift 20s ease-in-out infinite;
+}
+.pop-blob--1 { top: -8%; left: -6%; background: radial-gradient(circle, var(--n1), transparent 70%); }
+.pop-blob--2 { bottom: -10%; right: -6%; background: radial-gradient(circle, var(--n3), transparent 70%); animation-duration: 24s; }
+.pop-blob--3 { top: 40%; left: 50%; background: radial-gradient(circle, var(--n2), transparent 70%); opacity: .2; animation-duration: 18s; }
+.pop-halftone {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background-image: radial-gradient(var(--line) 1px, transparent 1px);
+  background-size: 21px 21px;
+  opacity: .5;
+}
+/* page content sits above ambiance */
+.pop-content { position: relative; z-index: 1; }
+
+/* ---- 10. Custom cursor ---- */
+.pop-cursor {
+  position: fixed;
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  z-index: 9999;
+  mix-blend-mode: screen;
+  background: #ff2bd6;
+}
+@media (pointer: coarse) { .pop-cursor { display: none; } }
+
+/* ---- 11. Footer ---- */
+.pop-footer {
+  border-top: 2px solid var(--fg);
+  background: color-mix(in srgb, var(--bg) 92%, black);
+  font-family: var(--font-display);
+  font-weight: 800;
+  text-transform: uppercase;
+  font-size: 12px;
+}
+
+/* ---- Motion ---- */
+@keyframes pop-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@keyframes pop-drift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50%      { transform: translate(4%, 6%) scale(1.12); }
+}
+@keyframes pop-float { 0%, 100% { transform: translateY(0) rotate(-6deg); } 50% { transform: translateY(-8px) rotate(-6deg); } }
+@keyframes pop-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+.pop-pulse { animation: pop-pulse 1.6s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pop-marquee__track,
+  .pop-blob,
+  .pop-badge--sticker,
+  .pop-pulse { animation: none; }
+  .pop-cursor { display: none; }
+  .pop-card, .pop-btn, .pop-btn--ghost, .pop-nav-btn { transition: none; }
+}
