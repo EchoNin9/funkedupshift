@@ -375,7 +375,7 @@ const EditMediaPage: React.FC = () => {
         </section>
       )}
 
-      <form className="card p-6 space-y-4 max-w-xl" onSubmit={handleSubmit}>
+      <form className="card p-6 space-y-4 max-w-xl mx-auto" onSubmit={handleSubmit}>
         <FormField label="Title">
           <input
             type="text"
@@ -405,9 +405,17 @@ const EditMediaPage: React.FC = () => {
           </button>
           <button
             type="button"
+            onClick={() => navigate(`/media/${encodeURIComponent(mediaId)}`)}
+            disabled={isSubmitting}
+            className="btn-secondary disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
             onClick={handleDelete}
             disabled={isDeleting || isSubmitting}
-            className="btn-secondary border-red-500/60 text-red-400 hover:bg-red-500/20 disabled:opacity-50"
+            className="btn-secondary border-red-500/60 text-red-400 hover:bg-red-500/20 disabled:opacity-50 ml-auto"
           >
             {isDeleting ? "Deleting…" : "Delete entry"}
           </button>
