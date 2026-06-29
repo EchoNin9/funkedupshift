@@ -38,7 +38,7 @@ const GlitchWordmark: React.FC<{ text: string; tilt: { x: number; y: number }; a
 }) => {
   const layer = "absolute inset-0 select-none";
   return (
-    <div className="relative inline-block font-display font-extrabold uppercase leading-[0.82] tracking-tight text-text-primary text-[clamp(3rem,13vw,9rem)]">
+    <div className="relative block w-full break-words font-display font-extrabold uppercase leading-[0.82] tracking-tight text-text-primary text-[clamp(3rem,13vw,9rem)]">
       <span
         aria-hidden
         className={layer}
