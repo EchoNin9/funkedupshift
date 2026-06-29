@@ -24,6 +24,13 @@ module.exports = {
           500: "rgb(var(--color-accent) / <alpha-value>)",
           600: "rgb(var(--color-accent-hover) / <alpha-value>)",
         },
+        /* Neon Pop accents */
+        n1: "rgb(var(--color-n1) / <alpha-value>)",
+        n2: "rgb(var(--color-n2) / <alpha-value>)",
+        n3: "rgb(var(--color-n3) / <alpha-value>)",
+        n4: "rgb(var(--color-n4) / <alpha-value>)",
+        nav: "rgb(var(--color-nav) / <alpha-value>)",
+        ink: "rgb(var(--color-ink) / <alpha-value>)",
         primary: {
           50: "#fff7ed",
           100: "#ffedd5",
@@ -61,7 +68,9 @@ module.exports = {
         }
       },
       fontFamily: {
-        sans: ["Inter", "system-ui", "sans-serif"],
+        sans: ["Space Grotesk", "system-ui", "sans-serif"],
+        display: ["Syne", "system-ui", "sans-serif"],
+        mono: ["JetBrains Mono", "ui-monospace", "monospace"],
       },
       animation: {
         "fade-in": "fadeIn 150ms ease-out forwards",
