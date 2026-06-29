@@ -258,6 +258,8 @@ def handler(event, context):
             return putBrandingLogo(event)
         if method == "PUT" and path == "/branding/hero":
             return putBrandingHero(event)
+        if method == "PUT" and path == "/branding/banner":
+            return putBrandingBanner(event)
         if method == "POST" and path == "/branding/hero-image":
             return postBrandingHeroImage(event)
         if method == "DELETE" and path == "/branding/hero-image":
@@ -2638,6 +2640,68 @@ def deleteProfileAvatar(event):
         return jsonResponse({"error": str(e)}, 500)
 
 
+DEFAULT_BANNER_TEXT = (
+    "WELCOME TO FUNKED UP SHIFT ★ FRESH DROPS DAILY ★ RATE • CURATE • VIBE ★"
+)
+BANNER_MAX_LEN = 500
+
+
+def _clean_banner_text(raw):
+    """Strip control chars (incl. newlines/tabs — the marquee is single-line) and trim."""
+    if raw is None:
+        return None
+    text = "".join(ch for ch in str(raw) if ord(ch) >= 32 and ord(ch) != 127)
+    return text.strip()
+
+
+def putBrandingBanner(event):
+    """PUT /branding/banner - Admin/manager only: set the marquee banner text."""
+    user = getEffectiveUserInfo(event)
+    if not user.get("userId"):
+        return jsonResponse({"error": "Unauthorized"}, 401)
+    groups = user.get("groups", [])
+    if "admin" not in groups and "manager" not in groups:
+        return jsonResponse({"error": "Forbidden: admin or manager role required"}, 403)
+    if not TABLE_NAME:
+        return jsonResponse({"error": "Not configured"}, 500)
+    try:
+        import boto3
+        import json as json_mod
+        from datetime import datetime
+
+        body = json_mod.loads(event.get("body", "{}"))
+        if "bannerText" not in body:
+            return jsonResponse({"error": "bannerText is required"}, 400)
+
+        banner_text = _clean_banner_text(body.get("bannerText"))
+        if not banner_text:
+            return jsonResponse({"error": "bannerText must not be empty"}, 400)
+        if len(banner_text) > BANNER_MAX_LEN:
+            return jsonResponse(
+                {"error": f"bannerText must be {BANNER_MAX_LEN} characters or fewer"}, 400
+            )
+
+        region = os.environ.get("AWS_REGION", "us-east-1")
+        dynamodb = boto3.client("dynamodb", region_name=region)
+        now = datetime.utcnow().isoformat() + "Z"
+        dynamodb.put_item(
+            TableName=TABLE_NAME,
+            Item={
+                "PK": {"S": "BRANDING"},
+                "SK": {"S": "BANNER#DEFAULT"},
+                "entityType": {"S": "BRANDING"},
+                "entitySk": {"S": "BANNER#DEFAULT"},
+                "bannerText": {"S": banner_text},
+                "updatedAt": {"S": now},
+                "updatedBy": {"S": user.get("email") or user.get("userId") or ""},
+            },
+        )
+        return jsonResponse({"ok": True, "bannerText": banner_text})
+    except Exception as e:
+        logger.exception("putBrandingBanner error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
 def getBrandingLogo(event):
     """GET /branding/logo - Public metadata and URL for current global logo + hero config."""
     if not TABLE_NAME:
@@ -2693,6 +2757,14 @@ def getBrandingLogo(event):
                     result["heroImageOpacity"] = int(hero["heroImageOpacity"]["N"])
                 except (ValueError, KeyError, TypeError):
                     result["heroImageOpacity"] = 25
+
+        # Banner (marquee). Always returned; falls back to default when unset/empty.
+        banner_resp = dynamodb.get_item(
+            TableName=TABLE_NAME,
+            Key={"PK": {"S": "BRANDING"}, "SK": {"S": "BANNER#DEFAULT"}},
+        )
+        banner_text = (banner_resp.get("Item", {}).get("bannerText", {}).get("S") or "").strip()
+        result["bannerText"] = banner_text or DEFAULT_BANNER_TEXT
 
         return jsonResponse(result)
     except Exception as e:

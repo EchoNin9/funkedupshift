@@ -60,7 +60,9 @@ def test_getBrandingLogo_returns_empty_when_not_configured(mock_boto_client):
 
   assert result["statusCode"] == 200
   body = json.loads(result["body"])
-  assert body == {} or "url" in body
+  # bannerText is always present (defaults when unset); logo url only when configured.
+  assert "url" not in body
+  assert "bannerText" in body
 
 
 def test_postBrandingLogoUpload_requires_auth():
@@ -339,4 +341,164 @@ def test_deleteBrandingHeroImage_requires_admin():
     result = handler(event, None)
 
   assert result["statusCode"] == 403
+
+
+# ── Banner (marquee) endpoints ──
+
+
+@patch("api.handler.TABLE_NAME", "fus-main")
+@patch("api.handler.MEDIA_BUCKET", "test-media-bucket")
+@patch("boto3.client")
+def test_getBrandingLogo_returns_default_banner_when_unset(mock_boto_client):
+  """GET /branding/logo returns the default banner text when no banner item exists."""
+  from api.handler import handler, DEFAULT_BANNER_TEXT
+
+  mock_dynamo = MagicMock()
+  mock_dynamo.get_item.return_value = {}
+  mock_s3 = MagicMock()
+
+  def _client(service_name, *args, **kwargs):
+    return mock_dynamo if service_name == "dynamodb" else mock_s3
+
+  mock_boto_client.side_effect = _client
+
+  result = handler(_unauth_event("/branding/logo", method="GET"), None)
+
+  assert result["statusCode"] == 200
+  body = json.loads(result["body"])
+  assert body["bannerText"] == DEFAULT_BANNER_TEXT
+
+
+@patch("api.handler.TABLE_NAME", "fus-main")
+@patch("api.handler.MEDIA_BUCKET", "test-media-bucket")
+@patch("boto3.client")
+def test_getBrandingLogo_returns_stored_banner(mock_boto_client):
+  """GET /branding/logo returns the stored banner text when BANNER#DEFAULT exists."""
+  from api.handler import handler
+
+  def _get_item(**kwargs):
+    sk = kwargs.get("Key", {}).get("SK", {}).get("S", "")
+    if sk == "BANNER#DEFAULT":
+      return {"Item": {"bannerText": {"S": "Live from the booth"}}}
+    return {}
+
+  mock_dynamo = MagicMock()
+  mock_dynamo.get_item.side_effect = _get_item
+  mock_s3 = MagicMock()
+
+  def _client(service_name, *args, **kwargs):
+    return mock_dynamo if service_name == "dynamodb" else mock_s3
+
+  mock_boto_client.side_effect = _client
+
+  result = handler(_unauth_event("/branding/logo", method="GET"), None)
+
+  assert result["statusCode"] == 200
+  body = json.loads(result["body"])
+  assert body["bannerText"] == "Live from the booth"
+
+
+def test_putBrandingBanner_requires_auth():
+  """PUT /branding/banner without auth returns 401."""
+  from api.handler import handler
+
+  event = {
+      "rawPath": "/branding/banner",
+      "requestContext": {"http": {"method": "PUT", "path": "/branding/banner"}},
+      "body": '{"bannerText": "Hello"}',
+  }
+  result = handler(event, None)
+  assert result["statusCode"] == 401
+
+
+@patch("api.handler.TABLE_NAME", "fus-main")
+def test_putBrandingBanner_rejects_non_admin_non_manager():
+  """PUT /branding/banner with a plain user returns 403."""
+  from api.handler import handler
+
+  def _user(event):
+    return {"userId": "user-1", "email": "u@example.com", "groups": ["user"], "groupsDisplay": []}
+
+  event = _admin_event_put("/branding/banner", body={"bannerText": "Hello"})
+  with patch("api.handler.getEffectiveUserInfo", side_effect=_user):
+    result = handler(event, None)
+  assert result["statusCode"] == 403
+
+
+@patch("api.handler.TABLE_NAME", "fus-main")
+@patch("boto3.client")
+def test_putBrandingBanner_allows_manager(mock_boto_client):
+  """PUT /branding/banner is permitted for managers (not just admins)."""
+  from api.handler import handler
+
+  mock_dynamo = MagicMock()
+  mock_boto_client.return_value = mock_dynamo
+
+  def _manager(event):
+    return {"userId": "mgr-1", "email": "m@example.com", "groups": ["manager"], "groupsDisplay": []}
+
+  event = _admin_event_put("/branding/banner", body={"bannerText": "Manager set this"})
+  with patch("api.handler.getEffectiveUserInfo", side_effect=_manager):
+    result = handler(event, None)
+
+  assert result["statusCode"] == 200
+  body = json.loads(result["body"])
+  assert body["bannerText"] == "Manager set this"
+  mock_dynamo.put_item.assert_called_once()
+
+
+@patch("api.handler.TABLE_NAME", "fus-main")
+@patch("boto3.client")
+def test_putBrandingBanner_rejects_empty(mock_boto_client):
+  """PUT /branding/banner with whitespace/control-only text returns 400."""
+  from api.handler import handler
+
+  mock_dynamo = MagicMock()
+  mock_boto_client.return_value = mock_dynamo
+
+  event = _admin_event_put("/branding/banner", body={"bannerText": "  \n\t  "})
+  result = handler(event, None)
+
+  assert result["statusCode"] == 400
+  mock_dynamo.put_item.assert_not_called()
+
+
+@patch("api.handler.TABLE_NAME", "fus-main")
+@patch("boto3.client")
+def test_putBrandingBanner_rejects_too_long(mock_boto_client):
+  """PUT /branding/banner with >500 chars returns 400."""
+  from api.handler import handler
+
+  mock_dynamo = MagicMock()
+  mock_boto_client.return_value = mock_dynamo
+
+  event = _admin_event_put("/branding/banner", body={"bannerText": "a" * 501})
+  result = handler(event, None)
+
+  assert result["statusCode"] == 400
+  mock_dynamo.put_item.assert_not_called()
+
+
+@patch("api.handler.TABLE_NAME", "fus-main")
+@patch("boto3.client")
+def test_putBrandingBanner_persists_and_strips_control_chars(mock_boto_client):
+  """PUT /branding/banner as admin persists cleaned text with updatedAt/updatedBy."""
+  from api.handler import handler
+
+  mock_dynamo = MagicMock()
+  mock_boto_client.return_value = mock_dynamo
+
+  event = _admin_event_put("/branding/banner", body={"bannerText": "  Hello\x07\nWorld  "})
+  result = handler(event, None)
+
+  assert result["statusCode"] == 200
+  body = json.loads(result["body"])
+  # Control chars (\x07, \n) stripped, surrounding whitespace trimmed.
+  assert body["bannerText"] == "HelloWorld"
+  mock_dynamo.put_item.assert_called_once()
+  item = mock_dynamo.put_item.call_args[1]["Item"]
+  assert item["SK"]["S"] == "BANNER#DEFAULT"
+  assert item["bannerText"]["S"] == "HelloWorld"
+  assert item["updatedAt"]["S"]
+  assert item["updatedBy"]["S"] == "admin@example.com"
 
