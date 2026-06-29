@@ -248,6 +248,9 @@ def handler(event, context):
         
         logger.info("path=%s, method=%s", path, method)
 
+        # NOTE: every literal route below must also exist as an aws_apigatewayv2_route
+        # in infra/main.tf — a handler route with no gateway route 404s without CORS
+        # ("Failed to fetch" in the browser). tests/test_route_coverage.py guards this.
         if method == "GET" and path == "/health":
             return jsonResponse({"ok": True})
         if method == "GET" and path == "/branding/logo":

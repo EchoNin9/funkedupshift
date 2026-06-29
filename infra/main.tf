@@ -1206,6 +1206,15 @@ resource "aws_apigatewayv2_route" "profileAvatarDelete" {
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
+# Get the current user's star rating for a site (used by SiteDetailPage)
+resource "aws_apigatewayv2_route" "starsGet" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /stars"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
 # Set star rating
 resource "aws_apigatewayv2_route" "starsPost" {
   api_id             = aws_apigatewayv2_api.main.id
