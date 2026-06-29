@@ -326,7 +326,7 @@ const BrandingPage: React.FC = () => {
             onChange={onFileChange}
             className="block w-full text-xs text-text-secondary file:mr-3 file:rounded-md file:border-0 file:bg-surface-3 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-text-primary hover:file:bg-surface-3"
           />
-          <p className="text-xs text-text-primary0">
+          <p className="text-xs text-text-tertiary">
             PNG, JPEG, GIF, or WEBP. Recommended square or horizontal layout.
           </p>
         </div>
@@ -370,7 +370,7 @@ const BrandingPage: React.FC = () => {
           {isSubmitting ? "Updating…" : "Update logo"}
         </button>
         {!file && (
-          <p className="text-xs text-text-primary0">
+          <p className="text-xs text-text-tertiary">
             Choose an image file above to upload a new logo. Use &quot;Save alt text&quot; to update alt text only.
           </p>
         )}
@@ -384,7 +384,7 @@ const BrandingPage: React.FC = () => {
       </form>
 
       <form className="card p-6 space-y-4 max-w-2xl" onSubmit={onHeroTextSave}>
-        <h2 className="text-lg font-semibold text-text-primary">Hero section</h2>
+        <h2 className="text-lg font-display font-extrabold uppercase tracking-tight text-text-primary">Hero section</h2>
         <p className="text-sm text-text-secondary">
           Edit the home page hero text and background image. Text uses fallbacks when empty.
         </p>
@@ -490,6 +490,23 @@ const BrandingPage: React.FC = () => {
           <Alert variant="error">{heroError}</Alert>
         )}
       </form>
+
+      {/* Reserved slot for the editable Scrolling Banner — wired up in FUNK-11. */}
+      <section className="card p-6 space-y-3 max-w-2xl opacity-70" aria-disabled>
+        <h2 className="text-lg font-display font-extrabold uppercase tracking-tight text-text-primary">
+          Scrolling Banner
+        </h2>
+        <p className="text-sm text-text-secondary">
+          Edit the marquee text shown under the header on every page. Coming soon.
+        </p>
+        <textarea
+          disabled
+          rows={2}
+          placeholder="Banner editor arrives in the next release."
+          className="input-field font-mono opacity-60 cursor-not-allowed"
+        />
+        <span className="pop-pill">Coming soon</span>
+      </section>
     </div>
   );
 };
