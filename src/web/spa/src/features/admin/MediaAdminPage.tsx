@@ -404,7 +404,7 @@ const MediaAdminPage: React.FC = () => {
               onChange={onFileChange}
               className="block w-full text-xs text-text-secondary file:mr-3 file:rounded-md file:border-0 file:bg-surface-3 file:px-3 file:py-1.5 file:text-text-primary"
             />
-            <p className="mt-1 text-xs text-text-primary0">
+            <p className="mt-1 text-xs text-text-tertiary">
               Videos get an auto-generated thumbnail from the 3–4 sec frame. Change it when editing.
             </p>
             {file?.type.startsWith("video/") && thumbnailFile && (
@@ -527,9 +527,9 @@ const MediaAdminPage: React.FC = () => {
           <section className="card p-6 mt-6">
             <h2 className="text-sm font-medium text-text-secondary mb-2">Existing media categories</h2>
             {categoriesLoading ? (
-              <p className="text-sm text-text-primary0">Loading…</p>
+              <p className="text-sm text-text-tertiary">Loading…</p>
             ) : categories.length === 0 ? (
-              <p className="text-sm text-text-primary0">No media categories yet. Create one above.</p>
+              <p className="text-sm text-text-tertiary">No media categories yet. Create one above.</p>
             ) : (
               <ul className="space-y-2">
                 {categories.map((c) => (
@@ -586,7 +586,7 @@ const MediaAdminPage: React.FC = () => {
                           className="flex-1 min-w-0 text-left hover:bg-surface-3 rounded px-1 -mx-1 py-1 -my-1 transition-colors"
                         >
                           <span className="font-medium text-text-primary">{c.name}</span>
-                          {c.description && <span className="text-text-primary0 truncate max-w-xs ml-2">{c.description}</span>}
+                          {c.description && <span className="text-text-tertiary truncate max-w-xs ml-2">{c.description}</span>}
                         </button>
                         <button
                           type="button"

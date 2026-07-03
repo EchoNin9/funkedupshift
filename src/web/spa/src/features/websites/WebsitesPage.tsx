@@ -1,9 +1,33 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { useAuth } from "../../shell/AuthContext";
+import { useAuth, hasRole } from "../../shell/AuthContext";
 import { fetchWithAuthOptional } from "../../utils/api";
 import { Alert, SkeletonGrid } from "../../components";
+
+/* ── Domain from a URL (host without www), falls back to the raw string ── */
+function domainOf(url?: string): string {
+  if (!url) return "";
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url.replace(/^https?:\/\//, "").replace(/^www\./, "").split("/")[0];
+  }
+}
+
+/* ── 5-star row from an average rating ── */
+const Stars: React.FC<{ avg?: number }> = ({ avg }) => {
+  const filled = Math.round(avg ?? 0);
+  return (
+    <span className="pop-stars" aria-label={avg ? `${avg.toFixed(1)} out of 5` : "unrated"}>
+      {"★★★★★".slice(0, filled)}
+      <span className="empty">{"★★★★★".slice(filled)}</span>
+    </span>
+  );
+};
+
+/* Cycle brutalist card-accent classes so the grid isn't monochrome. */
+const CARD_ACCENTS = ["", "card-accent-n3", "card-accent-n2", "card-accent-n4"];
 
 interface SiteCategory {
   id: string;
@@ -50,6 +74,7 @@ const WebsitesPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   const canRate = !!user;
+  const canManage = hasRole(user, "manager");
   const categoryDropdownRef = useRef<HTMLDivElement>(null);
   const [allCategories, setAllCategories] = useState<SiteCategory[]>([]);
 
@@ -230,15 +255,24 @@ const WebsitesPage: React.FC = () => {
     <div className="space-y-5">
       {/* ── Header ── */}
       <motion.header
-        className="space-y-1"
+        className="flex flex-wrap items-end justify-between gap-4"
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
       >
-        <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Websites</h1>
-        <p className="text-sm text-text-secondary">
-          Browse curated sites, see ratings, and jump straight into the interesting corners of the internet.
-        </p>
+        <div className="space-y-1">
+          <h1 className="text-3xl sm:text-4xl font-display font-extrabold uppercase tracking-tight text-text-primary">
+            The Stash
+          </h1>
+          <p className="text-sm text-text-secondary">
+            {sortedSites.length} curated {sortedSites.length === 1 ? "site" : "sites"} — rated and ready to raid.
+          </p>
+        </div>
+        {canManage && (
+          <Link to="/admin/websites" className="btn-primary">
+            + Add site
+          </Link>
+        )}
       </motion.header>
 
       {/* ── Search bar + sort ── */}
@@ -263,24 +297,21 @@ const WebsitesPage: React.FC = () => {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search sites (title, URL, description)..."
-            className="w-full rounded-full border border-border-default bg-surface-2 py-2.5 pl-10 pr-4 text-sm text-text-primary placeholder:text-text-tertiary focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500 transition-colors"
+            placeholder="Search the stash (title, URL, description)..."
+            className="input-field pl-10"
           />
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           <select
             value={sort}
             onChange={(e) => setSort(e.target.value as SortKey)}
-            className="rounded-full border border-border-default bg-surface-2 px-3 py-2.5 text-xs text-text-primary focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
+            className="input-field w-auto text-xs"
           >
             <option value="avgDesc">Stars (high first)</option>
             <option value="avgAsc">Stars (low first)</option>
             <option value="alphaAsc">Title A-Z</option>
             <option value="alphaDesc">Title Z-A</option>
           </select>
-          <span className="hidden sm:inline text-xs text-text-tertiary whitespace-nowrap">
-            {sortedSites.length} sites
-          </span>
         </div>
       </form>
 
@@ -292,10 +323,10 @@ const WebsitesPage: React.FC = () => {
             <button
               type="button"
               onClick={() => setSelectedCategoryIds([])}
-              className={`flex-shrink-0 rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors ${
+              className={`flex-shrink-0 rounded-full border-2 px-3.5 py-1 text-xs font-display font-extrabold uppercase tracking-tight transition-colors ${
                 selectedCategoryIds.length === 0
-                  ? "bg-accent-500 text-white"
-                  : "bg-surface-3 text-text-secondary hover:text-text-primary hover:bg-surface-2"
+                  ? "border-ink bg-accent text-ink"
+                  : "border-border-default text-text-secondary hover:border-n3 hover:text-text-primary"
               }`}
             >
               All
@@ -305,10 +336,10 @@ const WebsitesPage: React.FC = () => {
                 key={c.id}
                 type="button"
                 onClick={() => toggleCategory(c.id)}
-                className={`flex-shrink-0 rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors ${
+                className={`flex-shrink-0 rounded-full border-2 px-3.5 py-1 text-xs font-display font-extrabold uppercase tracking-tight transition-colors ${
                   selectedCategoryIds.includes(c.id)
-                    ? "bg-accent-500 text-white"
-                    : "bg-surface-3 text-text-secondary hover:text-text-primary hover:bg-surface-2"
+                    ? "border-ink bg-accent text-ink"
+                    : "border-border-default text-text-secondary hover:border-n3 hover:text-text-primary"
                 }`}
               >
                 {c.name}
@@ -403,18 +434,19 @@ const WebsitesPage: React.FC = () => {
         </div>
       )}
 
-      {/* ── Masonry grid ── */}
+      {/* ── Auto-fill grid of brutalist site cards ── */}
       {!isLoading && sortedSites.length > 0 && (
-        <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-4">
+        <div className="grid gap-6 grid-cols-[repeat(auto-fill,minmax(260px,1fr))]">
           {sortedSites.map((site, i) => {
             const title = site.title || site.url || site.PK || "Untitled";
             const logo = site.logoUrl;
+            const domain = domainOf(site.url);
             const detailLink = `/websites/${encodeURIComponent(site.PK)}`;
 
             return (
               <motion.div
                 key={site.PK}
-                className="break-inside-avoid mb-4 group"
+                className="group flex flex-col"
                 variants={cardVariants}
                 initial="hidden"
                 animate="visible"
@@ -422,104 +454,84 @@ const WebsitesPage: React.FC = () => {
               >
                 <Link
                   to={detailLink}
-                  className="block overflow-hidden rounded-xl bg-surface-2 border border-border-default hover:border-border-hover transition-all duration-200 hover:shadow-lg hover:shadow-black/20 group-hover:scale-[1.02]"
+                  className={`card ${CARD_ACCENTS[i % CARD_ACCENTS.length]} flex h-full w-full flex-col p-5 no-underline`}
                 >
-                  {/* Banner header area with logo */}
-                  <div className="relative h-24 bg-surface-3 overflow-hidden">
-                    {logo ? (
-                      <img
-                        src={logo}
-                        alt=""
-                        className="absolute inset-0 w-full h-full object-cover opacity-25"
-                        onError={(e) => {
-                          (e.currentTarget as HTMLImageElement).style.visibility = "hidden";
-                        }}
-                      />
-                    ) : (
-                      <div className="flex items-center justify-center h-full">
-                        <svg className="h-10 w-10 text-text-tertiary/40" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418" />
-                        </svg>
-                      </div>
-                    )}
+                  {/* Favicon / initial chip + title + domain */}
+                  <div className="flex items-start gap-3">
+                    <span className="flex h-11 w-11 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg border-2 border-ink bg-surface-3 font-display text-lg font-extrabold text-text-primary">
+                      {logo ? (
+                        <img
+                          src={logo}
+                          alt=""
+                          className="h-full w-full object-cover"
+                          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                        />
+                      ) : (
+                        title.charAt(0).toUpperCase()
+                      )}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <h2 className="truncate font-display text-base font-extrabold uppercase tracking-tight text-text-primary">
+                        {title}
+                      </h2>
+                      {domain && (
+                        <span className="block truncate font-mono text-xs text-text-tertiary">{domain}</span>
+                      )}
+                    </div>
                   </div>
 
-                  {/* Card body */}
-                  <div className="p-3 space-y-1.5">
-                    <h2 className="text-sm font-semibold text-text-primary truncate group-hover:text-accent-400 transition-colors">
-                      {title}
-                    </h2>
+                  {/* Blurb */}
+                  {site.description && (
+                    <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-text-secondary">
+                      {site.description}
+                      {site.descriptionAiGenerated && (
+                        <span className="ml-1 text-[11px] uppercase tracking-wide text-text-tertiary">AI summary</span>
+                      )}
+                    </p>
+                  )}
 
-                    {site.url && (
-                      <a
-                        href={site.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="block truncate text-xs text-text-tertiary hover:text-accent-400 transition-colors"
-                      >
-                        {site.url}
-                      </a>
-                    )}
+                  {/* Tag pills */}
+                  {site.categories && site.categories.length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-1.5">
+                      {site.categories.map((c) => (
+                        <span key={c.id} className="pop-pill">{c.name}</span>
+                      ))}
+                    </div>
+                  )}
 
-                    {site.description && (
-                      <p className="text-xs text-text-secondary line-clamp-3">
-                        {site.description}
-                        {site.descriptionAiGenerated && (
-                          <span className="ml-1 text-[11px] uppercase tracking-wide text-text-tertiary">
-                            AI summary
-                          </span>
-                        )}
-                      </p>
-                    )}
-
-                    {typeof site.averageRating === "number" && (
-                      <div>
-                        <span className="inline-flex items-center rounded-full bg-surface-3 px-2 py-0.5 text-[11px] text-amber-300 font-medium">
-                          {site.averageRating.toFixed(1)} ★
-                        </span>
-                      </div>
-                    )}
-
-                    {site.categories && site.categories.length > 0 && (
-                      <div className="flex flex-wrap gap-1 pt-0.5">
-                        {site.categories.map((c) => (
-                          <span
-                            key={c.id}
-                            className="rounded-full bg-surface-3 px-2 py-0.5 text-[11px] text-text-secondary"
-                          >
-                            {c.name}
-                          </span>
-                        ))}
-                      </div>
-                    )}
+                  {/* Divider + footer: stars + Open */}
+                  <div className="mt-auto pt-4 border-t-2 border-border-subtle flex items-center justify-between gap-2">
+                    {typeof site.averageRating === "number"
+                      ? <Stars avg={site.averageRating} />
+                      : <span className="text-xs text-text-tertiary">Unrated</span>}
+                    <span className="inline-flex items-center gap-1 font-display text-xs font-extrabold uppercase tracking-tight text-accent transition-all group-hover:gap-2">
+                      Open →
+                    </span>
                   </div>
                 </Link>
 
-                {/* Rate below card */}
+                {/* Rate (logged-in only) — kept out of the Link */}
                 {canRate && (
-                  <div className="mt-1.5 px-1">
-                    <label className="inline-flex items-center gap-1.5 text-[11px] text-text-tertiary">
-                      <span>Rate:</span>
-                      <select
-                        className="rounded-full border border-border-default bg-surface-2 px-2 py-0.5 text-[11px] text-text-primary focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
-                        onChange={(e) => {
-                          const value = Number(e.target.value);
-                          if (value >= 1 && value <= 5) {
-                            handleRate(site.PK, value);
-                          }
-                        }}
-                        defaultValue=""
-                      >
-                        <option value="">--</option>
-                        <option value="1">1</option>
-                        <option value="2">2</option>
-                        <option value="3">3</option>
-                        <option value="4">4</option>
-                        <option value="5">5</option>
-                      </select>
-                    </label>
-                  </div>
+                  <label className="mt-1.5 inline-flex items-center gap-1.5 px-1 text-[11px] text-text-tertiary">
+                    <span>Rate:</span>
+                    <select
+                      className="input-field w-auto px-2 py-0.5 text-[11px]"
+                      onChange={(e) => {
+                        const value = Number(e.target.value);
+                        if (value >= 1 && value <= 5) {
+                          handleRate(site.PK, value);
+                        }
+                      }}
+                      defaultValue=""
+                    >
+                      <option value="">--</option>
+                      <option value="1">1</option>
+                      <option value="2">2</option>
+                      <option value="3">3</option>
+                      <option value="4">4</option>
+                      <option value="5">5</option>
+                    </select>
+                  </label>
                 )}
               </motion.div>
             );

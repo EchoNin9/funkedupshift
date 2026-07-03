@@ -316,7 +316,7 @@ const EditSitePage: React.FC = () => {
         }
       />
 
-      <form className="card p-6 space-y-4 max-w-xl" onSubmit={handleSubmit}>
+      <form className="card p-6 space-y-4 max-w-xl mx-auto" onSubmit={handleSubmit}>
         <FormField label="URL *">
           <input
             type="url"
@@ -354,9 +354,9 @@ const EditSitePage: React.FC = () => {
             {isGeneratingDesc ? "Generating…" : "Generate AI description"}
           </button>
           {descriptionAiGenerated && (
-            <span className="ml-2 text-xs uppercase tracking-wide text-text-primary0">AI summary</span>
+            <span className="ml-2 text-xs uppercase tracking-wide text-text-tertiary">AI summary</span>
           )}
-          <label className="mt-2 block inline-flex items-center gap-2 text-xs text-text-primary0">
+          <label className="mt-2 block inline-flex items-center gap-2 text-xs text-text-tertiary">
             <input
               type="checkbox"
               checked={descriptionAiGenerated}
@@ -381,7 +381,7 @@ const EditSitePage: React.FC = () => {
             onChange={onLogoChange}
             className="block w-full text-xs text-text-secondary file:mr-3 file:rounded-md file:border-0 file:bg-surface-3 file:px-3 file:py-1.5 file:text-text-primary"
           />
-          <p className="mt-2 text-xs text-text-primary0">Or paste image URL (image will be copied to S3 on save):</p>
+          <p className="mt-2 text-xs text-text-tertiary">Or paste image URL (image will be copied to S3 on save):</p>
           <input
             type="url"
             value={logoImageUrl}
@@ -449,9 +449,17 @@ const EditSitePage: React.FC = () => {
           </button>
           <button
             type="button"
+            onClick={() => navigate(`/websites/${encodeURIComponent(siteId)}`)}
+            disabled={isSubmitting}
+            className="btn-secondary disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
             onClick={handleDelete}
             disabled={isDeleting || isSubmitting}
-            className="btn-secondary border-red-500/60 text-red-400 hover:bg-red-500/20 disabled:opacity-50"
+            className="btn-secondary border-red-500/60 text-red-400 hover:bg-red-500/20 disabled:opacity-50 ml-auto"
           >
             {isDeleting ? "Deleting…" : "Delete entry"}
           </button>

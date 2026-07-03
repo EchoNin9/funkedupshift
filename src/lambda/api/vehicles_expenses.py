@@ -9,7 +9,7 @@ import io
 import re
 import uuid
 import zipfile
-from datetime import datetime
+from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -136,10 +136,10 @@ def create_vehicle(user_id, data):
         return None
     try:
         import boto3
-        from datetime import datetime
+        from datetime import datetime, timezone
         dynamodb = boto3.client("dynamodb", region_name=AWS_REGION)
         vehicle_id = str(uuid.uuid4())
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
         item = _build_item(data, now, now)
         dynamodb.put_item(
             TableName=TABLE_NAME,
@@ -168,9 +168,9 @@ def update_vehicle(user_id, vehicle_id, data):
         return None
     try:
         import boto3
-        from datetime import datetime
+        from datetime import datetime, timezone
         dynamodb = boto3.client("dynamodb", region_name=AWS_REGION)
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
         merged = {**existing, **data, "updatedAt": now}
         item = _build_item(merged, existing.get("createdAt", now), now)
         dynamodb.put_item(
@@ -284,10 +284,10 @@ def create_fuel_entry(user_id, vehicle_id, data):
         return None
     try:
         import boto3
-        from datetime import datetime
+        from datetime import datetime, timezone
         dynamodb = boto3.client("dynamodb", region_name=AWS_REGION)
         fillup_id = str(uuid.uuid4())
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
         item = _build_fuel_item(data, now, now)
         dynamodb.put_item(
             TableName=TABLE_NAME,
@@ -316,9 +316,9 @@ def update_fuel_entry(user_id, vehicle_id, fillup_id, data):
         return None
     try:
         import boto3
-        from datetime import datetime
+        from datetime import datetime, timezone
         dynamodb = boto3.client("dynamodb", region_name=AWS_REGION)
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
         merged = {**existing, **data, "updatedAt": now}
         item = _build_fuel_item(merged, existing.get("createdAt", now), now)
         dynamodb.put_item(
@@ -443,14 +443,14 @@ def _ensure_maintenance_vendor(user_id, vendor):
         return
     try:
         import boto3
-        from datetime import datetime
+        from datetime import datetime, timezone
         dynamodb = boto3.client("dynamodb", region_name=AWS_REGION)
         existing = list_maintenance_vendors(user_id, "")
         exists = any(v.lower() == normalized.lower() for v in existing)
         if exists:
             return
         combined = [*existing, normalized]
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
         dynamodb.put_item(
             TableName=TABLE_NAME,
             Item={
@@ -495,11 +495,11 @@ def _ensure_maintenance_tags(user_id, tags):
         return
     try:
         import boto3
-        from datetime import datetime
+        from datetime import datetime, timezone
         dynamodb = boto3.client("dynamodb", region_name=AWS_REGION)
         existing = list_maintenance_tags(user_id, "")
         combined = _normalize_maintenance_tags([*existing, *normalized])
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
         dynamodb.put_item(
             TableName=TABLE_NAME,
             Item={
@@ -576,10 +576,10 @@ def create_maintenance_entry(user_id, vehicle_id, data):
         return None
     try:
         import boto3
-        from datetime import datetime
+        from datetime import datetime, timezone
         dynamodb = boto3.client("dynamodb", region_name=AWS_REGION)
         maintenance_id = str(uuid.uuid4())
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
         item = _build_maintenance_item(data, now, now)
         dynamodb.put_item(
             TableName=TABLE_NAME,
@@ -621,9 +621,9 @@ def update_maintenance_entry(user_id, vehicle_id, maintenance_id, data):
         return None
     try:
         import boto3
-        from datetime import datetime
+        from datetime import datetime, timezone
         dynamodb = boto3.client("dynamodb", region_name=AWS_REGION)
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
         merged = {**existing, **data, "updatedAt": now}
         merged["tags"] = _normalize_maintenance_tags(merged.get("tags") or [])
         merged["vendor"] = _normalize_maintenance_vendor(merged.get("vendor"))
@@ -711,7 +711,7 @@ def import_fuel_entries(user_id, payload):
     errors = []
     try:
         import boto3
-        from datetime import datetime
+        from datetime import datetime, timezone
         dynamodb = boto3.client("dynamodb", region_name=AWS_REGION)
         vehicles_by_name = {v["name"]: v["id"] for v in list_vehicles(user_id) if v.get("name")}
         for imp in imports:

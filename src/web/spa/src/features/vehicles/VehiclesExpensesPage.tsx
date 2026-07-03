@@ -163,7 +163,7 @@ function LineChart({
           );
         })}
       </svg>
-      <p className="text-xs text-text-primary0 mt-1">
+      <p className="text-xs text-text-tertiary mt-1">
         Range: {formatValue(minV)} – {formatValue(maxV)}
       </p>
     </div>
@@ -1422,7 +1422,7 @@ const VehiclesExpensesPage: React.FC = () => {
                   className="w-full rounded-md border border-border-hover bg-surface-3 px-3 py-2 text-text-primary"
                 />
                 <div>
-                  <p className="mb-2 text-xs text-text-primary0">Tags</p>
+                  <p className="mb-2 text-xs text-text-tertiary">Tags</p>
                   <AddTagInput
                     tags={maintenanceForm.tags}
                     onTagsChange={(tags) => setMaintenanceForm((f) => ({ ...f, tags }))}
@@ -1432,7 +1432,7 @@ const VehiclesExpensesPage: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="mb-2 block text-xs text-text-primary0">Attachments</label>
+                  <label className="mb-2 block text-xs text-text-tertiary">Attachments</label>
                   <input
                     type="file"
                     multiple
@@ -1441,7 +1441,7 @@ const VehiclesExpensesPage: React.FC = () => {
                     className="block w-full text-xs text-text-secondary file:mr-3 file:rounded-md file:border-0 file:bg-surface-3 file:px-3 file:py-1.5 file:text-text-primary"
                   />
                   {pendingAttachments.length > 0 && (
-                    <p className="mt-1 text-xs text-text-primary0">
+                    <p className="mt-1 text-xs text-text-tertiary">
                       {pendingAttachments.length} file(s) selected: {pendingAttachments.map((f) => f.name).join(", ")}
                     </p>
                   )}
@@ -1472,7 +1472,7 @@ const VehiclesExpensesPage: React.FC = () => {
           <>
           <div className="rounded-lg border border-border-hover bg-surface-3 p-3">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs text-text-primary0">Export fuel (uses Limit results date range):</span>
+              <span className="text-xs text-text-tertiary">Export fuel (uses Limit results date range):</span>
               <button
                 type="button"
                 onClick={() => exportFuel("csv")}
@@ -1504,7 +1504,7 @@ const VehiclesExpensesPage: React.FC = () => {
               <div className="px-4 pb-4 pt-1 border-t border-border-hover space-y-3">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                   <div>
-                    <label className="block text-xs text-text-primary0 mb-1">Start date</label>
+                    <label className="block text-xs text-text-tertiary mb-1">Start date</label>
                     <input
                       type="date"
                       value={filters.startDate}
@@ -1513,7 +1513,7 @@ const VehiclesExpensesPage: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-text-primary0 mb-1">End date</label>
+                    <label className="block text-xs text-text-tertiary mb-1">End date</label>
                     <input
                       type="date"
                       value={filters.endDate}
@@ -1522,7 +1522,7 @@ const VehiclesExpensesPage: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-text-primary0 mb-1">Sort order</label>
+                    <label className="block text-xs text-text-tertiary mb-1">Sort order</label>
                     <select
                       value={filters.sortNewestFirst ? "newest" : "oldest"}
                       onChange={(e) =>
@@ -1538,7 +1538,7 @@ const VehiclesExpensesPage: React.FC = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="flex gap-2 items-end">
                     <div className="flex-1">
-                      <label className="block text-xs text-text-primary0 mb-1">Fuel price ($)</label>
+                      <label className="block text-xs text-text-tertiary mb-1">Fuel price ($)</label>
                       <div className="flex gap-2">
                         <select
                           value={filters.fuelPriceOp}
@@ -1566,7 +1566,7 @@ const VehiclesExpensesPage: React.FC = () => {
                   </div>
                   <div className="flex gap-2 items-end">
                     <div className="flex-1">
-                      <label className="block text-xs text-text-primary0 mb-1">$/L</label>
+                      <label className="block text-xs text-text-tertiary mb-1">$/L</label>
                       <div className="flex gap-2">
                         <select
                           value={filters.pricePerLOp}
@@ -1610,7 +1610,7 @@ const VehiclesExpensesPage: React.FC = () => {
               <div className="px-4 pb-4 pt-4 border-t border-border-hover">
                 <div className="rounded-lg border border-border-hover bg-surface-2 p-4 min-h-[200px]">
                   {filteredEntries.length < 2 ? (
-                    <p className="text-text-primary0 text-sm py-8 text-center">
+                    <p className="text-text-tertiary text-sm py-8 text-center">
                       Add at least 2 fuel entries to display the graph.
                     </p>
                   ) : (
@@ -1654,15 +1654,15 @@ const VehiclesExpensesPage: React.FC = () => {
             <h2 className="text-sm font-semibold text-text-secondary px-4 py-3 border-b border-border-hover">
               Fuel expenses ({filters.sortNewestFirst ? "newest first" : "oldest first"})
               {filteredEntries.length !== fuelEntries.length && (
-                <span className="font-normal text-text-primary0 ml-2">
+                <span className="font-normal text-text-tertiary ml-2">
                   ({filteredEntries.length} of {fuelEntries.length})
                 </span>
               )}
             </h2>
             {fuelLoading ? (
-              <div className="p-8 text-center text-text-primary0">Loading…</div>
+              <div className="p-8 text-center text-text-tertiary">Loading…</div>
             ) : filteredEntries.length === 0 ? (
-              <div className="p-8 text-center text-text-primary0">
+              <div className="p-8 text-center text-text-tertiary">
                 {fuelEntries.length === 0
                   ? "No fuel entries yet. Add one above."
                   : "No entries match the current filters. Adjust or clear filters."}
@@ -1722,9 +1722,9 @@ const VehiclesExpensesPage: React.FC = () => {
                                   className="rounded border border-border-hover bg-surface-3 px-2 py-1 text-sm text-text-primary w-20 text-right"
                                 />
                               </td>
-                              <td className="px-4 py-2 text-sm text-text-primary0">—</td>
-                              <td className="px-4 py-2 text-sm text-text-primary0">—</td>
-                              <td className="px-4 py-2 text-sm text-text-primary0">—</td>
+                              <td className="px-4 py-2 text-sm text-text-tertiary">—</td>
+                              <td className="px-4 py-2 text-sm text-text-tertiary">—</td>
+                              <td className="px-4 py-2 text-sm text-text-tertiary">—</td>
                               <td className="px-4 py-2">
                                 <input
                                   type="number"
@@ -1735,7 +1735,7 @@ const VehiclesExpensesPage: React.FC = () => {
                                   className="rounded border border-border-hover bg-surface-3 px-2 py-1 text-sm text-text-primary w-24 text-right"
                                 />
                               </td>
-                              <td className="px-4 py-2 text-sm text-text-primary0">—</td>
+                              <td className="px-4 py-2 text-sm text-text-tertiary">—</td>
                               <td className="px-4 py-2 text-right">
                                 <button
                                   onClick={() => handleUpdateFuel(entry.id)}
@@ -1829,7 +1829,7 @@ const VehiclesExpensesPage: React.FC = () => {
             <>
             <div className="rounded-lg border border-border-hover bg-surface-3 p-3">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs text-text-primary0">Export maintenance (uses Limit results date range):</span>
+                <span className="text-xs text-text-tertiary">Export maintenance (uses Limit results date range):</span>
                 <button
                   type="button"
                   onClick={() => exportMaintenance("csv")}
@@ -1869,7 +1869,7 @@ const VehiclesExpensesPage: React.FC = () => {
                 <div className="px-4 pb-4 pt-1 border-t border-border-hover space-y-3">
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                     <div>
-                      <label className="block text-xs text-text-primary0 mb-1">Start date</label>
+                      <label className="block text-xs text-text-tertiary mb-1">Start date</label>
                       <input
                         type="date"
                         value={maintenanceFilters.startDate}
@@ -1878,7 +1878,7 @@ const VehiclesExpensesPage: React.FC = () => {
                       />
                     </div>
                     <div>
-                      <label className="block text-xs text-text-primary0 mb-1">End date</label>
+                      <label className="block text-xs text-text-tertiary mb-1">End date</label>
                       <input
                         type="date"
                         value={maintenanceFilters.endDate}
@@ -1887,7 +1887,7 @@ const VehiclesExpensesPage: React.FC = () => {
                       />
                     </div>
                     <div>
-                      <label className="block text-xs text-text-primary0 mb-1">Sort order</label>
+                      <label className="block text-xs text-text-tertiary mb-1">Sort order</label>
                       <select
                         value={maintenanceFilters.sortNewestFirst ? "newest" : "oldest"}
                         onChange={(e) =>
@@ -1900,7 +1900,7 @@ const VehiclesExpensesPage: React.FC = () => {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-xs text-text-primary0 mb-1">Vendor contains</label>
+                      <label className="block text-xs text-text-tertiary mb-1">Vendor contains</label>
                       <input
                         type="text"
                         value={maintenanceFilters.vendorQuery}
@@ -1913,7 +1913,7 @@ const VehiclesExpensesPage: React.FC = () => {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="flex gap-2 items-end">
                       <div className="flex-1">
-                        <label className="block text-xs text-text-primary0 mb-1">Price ($)</label>
+                        <label className="block text-xs text-text-tertiary mb-1">Price ($)</label>
                         <div className="flex gap-2">
                           <select
                             value={maintenanceFilters.priceOp}
@@ -1941,7 +1941,7 @@ const VehiclesExpensesPage: React.FC = () => {
                     </div>
                     <div className="flex gap-2 items-end">
                       <div className="flex-1">
-                        <label className="block text-xs text-text-primary0 mb-1">Mileage (km)</label>
+                        <label className="block text-xs text-text-tertiary mb-1">Mileage (km)</label>
                         <div className="flex gap-2">
                           <select
                             value={maintenanceFilters.mileageOp}
@@ -1975,15 +1975,15 @@ const VehiclesExpensesPage: React.FC = () => {
               <h2 className="text-sm font-semibold text-text-secondary px-4 py-3 border-b border-border-hover">
                 Maintenance expenses ({maintenanceFilters.sortNewestFirst ? "newest first" : "oldest first"})
                 {filteredMaintenanceEntries.length !== maintenanceEntries.length && (
-                  <span className="font-normal text-text-primary0 ml-2">
+                  <span className="font-normal text-text-tertiary ml-2">
                     ({filteredMaintenanceEntries.length} of {maintenanceEntries.length})
                   </span>
                 )}
               </h2>
               {maintenanceLoading ? (
-                <div className="p-8 text-center text-text-primary0">Loading…</div>
+                <div className="p-8 text-center text-text-tertiary">Loading…</div>
               ) : filteredMaintenanceEntries.length === 0 ? (
-                <div className="p-8 text-center text-text-primary0">
+                <div className="p-8 text-center text-text-tertiary">
                   {maintenanceEntries.length === 0
                     ? "No maintenance entries yet. Add one above."
                     : "No entries match the current filters. Adjust or clear filters."}
@@ -2056,13 +2056,13 @@ const VehiclesExpensesPage: React.FC = () => {
                                 </button>
                               </div>
                             </div>
-                            {entry.vendor && <p className="text-xs text-text-primary0">Vendor: {entry.vendor}</p>}
+                            {entry.vendor && <p className="text-xs text-text-tertiary">Vendor: {entry.vendor}</p>}
                             {entry.description && <p className="text-sm text-text-secondary">{entry.description}</p>}
                             {(entry.tags || []).length > 0 && (
-                              <p className="text-xs text-text-primary0">Tags: {(entry.tags || []).join(", ")}</p>
+                              <p className="text-xs text-text-tertiary">Tags: {(entry.tags || []).join(", ")}</p>
                             )}
                             {(entry.attachments || []).length > 0 && (
-                              <ul className="text-xs text-text-primary0 space-y-1">
+                              <ul className="text-xs text-text-tertiary space-y-1">
                                 {(entry.attachments || []).map((a) => (
                                   <li key={a.key}>
                                     {a.url ? (
@@ -2102,7 +2102,7 @@ const VehiclesExpensesPage: React.FC = () => {
                   <div className="px-4 pb-4 pt-1 border-t border-border-hover">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                       <div>
-                        <label className="block text-xs text-text-primary0 mb-1">Start date</label>
+                        <label className="block text-xs text-text-tertiary mb-1">Start date</label>
                         <input
                           type="date"
                           value={totalsFilters.startDate}
@@ -2111,7 +2111,7 @@ const VehiclesExpensesPage: React.FC = () => {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-text-primary0 mb-1">End date</label>
+                        <label className="block text-xs text-text-tertiary mb-1">End date</label>
                         <input
                           type="date"
                           value={totalsFilters.endDate}
@@ -2126,7 +2126,7 @@ const VehiclesExpensesPage: React.FC = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="rounded-lg border border-border-hover bg-surface-2 p-4">
-                  <p className="text-xs text-text-primary0 mb-1">Fuel total</p>
+                  <p className="text-xs text-text-tertiary mb-1">Fuel total</p>
                   <p className="text-2xl font-semibold text-text-primary">
                     ${totalsSummary.fuelTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </p>
@@ -2135,7 +2135,7 @@ const VehiclesExpensesPage: React.FC = () => {
                   </p>
                 </div>
                 <div className="rounded-lg border border-border-hover bg-surface-2 p-4">
-                  <p className="text-xs text-text-primary0 mb-1">Maintenance total</p>
+                  <p className="text-xs text-text-tertiary mb-1">Maintenance total</p>
                   <p className="text-2xl font-semibold text-text-primary">
                     ${totalsSummary.maintenanceTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </p>
@@ -2144,7 +2144,7 @@ const VehiclesExpensesPage: React.FC = () => {
                   </p>
                 </div>
                 <div className="rounded-lg border border-border-hover bg-surface-2 p-4">
-                  <p className="text-xs text-text-primary0 mb-1">Combined total</p>
+                  <p className="text-xs text-text-tertiary mb-1">Combined total</p>
                   <p className="text-2xl font-semibold text-text-primary">
                     ${totalsSummary.combinedTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </p>
@@ -2157,9 +2157,9 @@ const VehiclesExpensesPage: React.FC = () => {
           )}
         </>
       ) : loading ? (
-        <div className="p-8 text-center text-text-primary0">Loading vehicles…</div>
+        <div className="p-8 text-center text-text-tertiary">Loading vehicles…</div>
       ) : vehicles.length === 0 ? (
-        <div className="rounded-lg border border-border-hover bg-surface-2 p-8 text-center text-text-primary0">
+        <div className="rounded-lg border border-border-hover bg-surface-2 p-8 text-center text-text-tertiary">
           No vehicles yet. Click &quot;+ Add vehicle&quot; to create one.
         </div>
       ) : null}

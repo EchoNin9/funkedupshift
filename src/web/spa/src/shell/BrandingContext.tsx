@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { fetchWithAuthOptional } from "../utils/api";
+import { DEFAULT_BANNER } from "./PopMarquee";
 
 interface LogoMeta {
   url: string;
@@ -24,7 +25,9 @@ interface BrandingContextValue {
   /** Site name for header/footer. From API or fallback. Ready for multi-domain. */
   siteName: string;
   hero: HeroMeta;
-  /** Refetch branding from API (e.g. after logo/alt update). */
+  /** Marquee banner text. From API or DEFAULT_BANNER fallback. */
+  bannerText: string;
+  /** Refetch branding from API (e.g. after logo/alt/banner update). */
   refreshBranding: () => void;
 }
 
@@ -49,7 +52,8 @@ const defaultHero: HeroMeta = {
 const fetchBranding = async (
   setLogo: React.Dispatch<React.SetStateAction<LogoMeta | null>>,
   setSiteName: React.Dispatch<React.SetStateAction<string>>,
-  setHero: React.Dispatch<React.SetStateAction<HeroMeta>>
+  setHero: React.Dispatch<React.SetStateAction<HeroMeta>>,
+  setBannerText: React.Dispatch<React.SetStateAction<string>>
 ) => {
   const apiBase = getApiBaseUrl();
   if (!apiBase) return;
@@ -85,6 +89,7 @@ const fetchBranding = async (
             ? parseInt(data.heroImageOpacity, 10) || defaultHero.imageOpacity
             : defaultHero.imageOpacity,
     });
+    setBannerText((data?.bannerText && String(data.bannerText).trim()) || DEFAULT_BANNER);
   } catch {
     // Ignore; logo is optional (avoids Unexpected token '<' when response is HTML).
   }
@@ -94,9 +99,10 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [logo, setLogo] = useState<LogoMeta | null>(null);
   const [siteName, setSiteName] = useState<string>(DEFAULT_SITE_NAME);
   const [hero, setHero] = useState<HeroMeta>(defaultHero);
+  const [bannerText, setBannerText] = useState<string>(DEFAULT_BANNER);
 
   const refreshBranding = React.useCallback(() => {
-    fetchBranding(setLogo, setSiteName, setHero);
+    fetchBranding(setLogo, setSiteName, setHero, setBannerText);
   }, []);
 
   useEffect(() => {
@@ -105,7 +111,7 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (!apiBase) return;
 
     (async () => {
-      await fetchBranding(setLogo, setSiteName, setHero);
+      await fetchBranding(setLogo, setSiteName, setHero, setBannerText);
       if (cancelled) return;
     })();
     return () => {
@@ -113,7 +119,7 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     };
   }, []);
 
-  return <BrandingContext.Provider value={{ logo, siteName, hero, refreshBranding }}>{children}</BrandingContext.Provider>;
+  return <BrandingContext.Provider value={{ logo, siteName, hero, bannerText, refreshBranding }}>{children}</BrandingContext.Provider>;
 };
 
 export function useBranding(): BrandingContextValue {

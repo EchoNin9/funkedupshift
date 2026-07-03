@@ -6,7 +6,7 @@ import logging
 import os
 import re
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -218,7 +218,7 @@ def create_section(user_id, data):
 
         dynamodb = boto3.client("dynamodb", region_name=AWS_REGION)
         section_id = str(uuid.uuid4())
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
         item = _build_section_item({"name": name}, now, now)
         dynamodb.put_item(
             TableName=TABLE_NAME,
@@ -249,7 +249,7 @@ def update_section(user_id, section_id, data):
         import boto3
 
         dynamodb = boto3.client("dynamodb", region_name=AWS_REGION)
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
         merged = {**existing}
         item = _build_section_item(merged, existing.get("createdAt", now), now)
         dynamodb.put_item(
@@ -384,7 +384,7 @@ def create_entry(user_id, section_id, data):
 
         dynamodb = boto3.client("dynamodb", region_name=AWS_REGION)
         entry_id = str(uuid.uuid4())
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
         row = {
             "date": str(data.get("date") or "").strip(),
             "price": float(data.get("price")),
@@ -424,7 +424,7 @@ def update_entry(user_id, section_id, entry_id, data):
         import boto3
 
         dynamodb = boto3.client("dynamodb", region_name=AWS_REGION)
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
         merged = {**existing, **data, "updatedAt": now}
         if "attachments" in data:
             merged["attachments"] = _normalize_attachments(data.get("attachments") or [])

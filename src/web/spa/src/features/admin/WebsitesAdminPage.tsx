@@ -450,7 +450,7 @@ const WebsitesAdminPage: React.FC = () => {
               onChange={onLogoChange}
               className="block w-full text-xs text-text-secondary file:mr-3 file:rounded-md file:border-0 file:bg-surface-3 file:px-3 file:py-1.5 file:text-text-primary"
             />
-            <p className="mt-2 text-xs text-text-primary0">Or paste image URL (image will be copied to S3 on save):</p>
+            <p className="mt-2 text-xs text-text-tertiary">Or paste image URL (image will be copied to S3 on save):</p>
             <input
               type="url"
               value={logoImageUrl}
@@ -530,9 +530,9 @@ const WebsitesAdminPage: React.FC = () => {
           <section className="card p-6 mt-6">
             <h2 className="text-sm font-medium text-text-secondary mb-2">Existing categories</h2>
             {categoriesLoading ? (
-              <p className="text-sm text-text-primary0">Loading…</p>
+              <p className="text-sm text-text-tertiary">Loading…</p>
             ) : categories.length === 0 ? (
-              <p className="text-sm text-text-primary0">No categories yet. Create one above.</p>
+              <p className="text-sm text-text-tertiary">No categories yet. Create one above.</p>
             ) : (
               <ul className="space-y-2">
                 {categories.map((c) => (
@@ -589,7 +589,7 @@ const WebsitesAdminPage: React.FC = () => {
                           className="flex-1 min-w-0 text-left hover:bg-surface-3 rounded px-1 -mx-1 py-1 -my-1 transition-colors"
                         >
                           <span className="font-medium text-text-primary">{c.name}</span>
-                          {c.description && <span className="text-text-primary0 truncate max-w-xs ml-2">{c.description}</span>}
+                          {c.description && <span className="text-text-tertiary truncate max-w-xs ml-2">{c.description}</span>}
                         </button>
                         <button
                           type="button"

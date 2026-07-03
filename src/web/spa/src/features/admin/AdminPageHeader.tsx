@@ -16,14 +16,14 @@ export function AdminPageHeader({ title, description, actions }: AdminPageHeader
     <header className="space-y-4">
       <Link
         to="/admin"
-        className="inline-flex items-center gap-1.5 text-sm text-text-secondary hover:text-accent-400 transition-colors"
+        className="inline-flex items-center gap-1.5 text-sm text-text-secondary hover:text-accent transition-colors"
       >
         <ArrowLeftIcon className="h-4 w-4" />
         Back to Admin
       </Link>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-sans font-bold text-text-primary tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-display font-extrabold uppercase text-text-primary tracking-tight">
             {title}
           </h1>
           {description && (

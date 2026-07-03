@@ -253,7 +253,7 @@ const InternetDashboardAdminPage: React.FC = () => {
               } ${displayOrder === "custom" ? "cursor-grab active:cursor-grabbing" : ""}`}
             >
               {displayOrder === "custom" && (
-                <Bars3Icon className="h-4 w-4 flex-shrink-0 text-text-primary0" aria-hidden />
+                <Bars3Icon className="h-4 w-4 flex-shrink-0 text-text-tertiary" aria-hidden />
               )}
               <span className="font-medium text-text-primary break-all flex-1">{domain}</span>
               <button

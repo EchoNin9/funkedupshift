@@ -58,9 +58,9 @@ def save_dashboard_sites(sites):
         return False
     try:
         import boto3
-        from datetime import datetime
+        from datetime import datetime, timezone
         dynamodb = boto3.client("dynamodb")
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
         dynamodb.put_item(
             TableName=TABLE_NAME,
             Item={
@@ -270,9 +270,9 @@ def _save_to_dynamodb(sites):
         return
     try:
         import boto3
-        from datetime import datetime
+        from datetime import datetime, timezone
         dynamodb = boto3.client("dynamodb")
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
         dynamodb.put_item(
             TableName=TABLE_NAME,
             Item={

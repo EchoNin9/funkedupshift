@@ -53,9 +53,9 @@ def _recordLastLogin(event, user_id):
         return
     try:
         import boto3
-        from datetime import datetime
+        from datetime import datetime, timezone
         ip = _getSourceIp(event)
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
         dynamodb = boto3.client("dynamodb")
         dynamodb.update_item(
             TableName=TABLE_NAME,
@@ -248,6 +248,9 @@ def handler(event, context):
         
         logger.info("path=%s, method=%s", path, method)
 
+        # NOTE: every literal route below must also exist as an aws_apigatewayv2_route
+        # in infra/main.tf — a handler route with no gateway route 404s without CORS
+        # ("Failed to fetch" in the browser). tests/test_route_coverage.py guards this.
         if method == "GET" and path == "/health":
             return jsonResponse({"ok": True})
         if method == "GET" and path == "/branding/logo":
@@ -258,6 +261,8 @@ def handler(event, context):
             return putBrandingLogo(event)
         if method == "PUT" and path == "/branding/hero":
             return putBrandingHero(event)
+        if method == "PUT" and path == "/branding/banner":
+            return putBrandingBanner(event)
         if method == "POST" and path == "/branding/hero-image":
             return postBrandingHeroImage(event)
         if method == "DELETE" and path == "/branding/hero-image":
@@ -1925,7 +1930,7 @@ def createSite(event):
         import boto3
         import json
         import uuid
-        from datetime import datetime
+        from datetime import datetime, timezone
 
         body = json.loads(event.get("body", "{}"))
         url = body.get("url", "").strip()
@@ -1935,7 +1940,7 @@ def createSite(event):
             return jsonResponse({"error": "url is required"}, 400)
 
         site_id = f"SITE#{uuid.uuid4()}"
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
         logo_key = (body.get("logoKey") or "").strip() or None
         logo_url = (body.get("logoUrl") or "").strip() or None
 
@@ -1994,7 +1999,7 @@ def updateSite(event):
     try:
         import boto3
         import json
-        from datetime import datetime
+        from datetime import datetime, timezone
 
         body = json.loads(event.get("body", "{}"))
         site_id = body.get("id", "").strip()
@@ -2009,7 +2014,7 @@ def updateSite(event):
         delete_logo = body.get("deleteLogo") is True
         logo_key = (body.get("logoKey") or "").strip() or None
         logo_url = (body.get("logoUrl") or "").strip() or None
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
 
         dynamodb = boto3.client("dynamodb")
         region = os.environ.get("AWS_REGION", "us-east-1")
@@ -2356,13 +2361,13 @@ def updateProfile(event):
         return jsonResponse({"error": "TABLE_NAME not set"}, 500)
     try:
         import boto3
-        from datetime import datetime
+        from datetime import datetime, timezone
         body = json.loads(event.get("body", "{}"))
         description = body.get("description")
         avatar_key = body.get("avatarKey")
         user_id = user.get("userId", "")
         pk = f"USER#{user_id}"
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
 
         if description is not None:
             desc_str = str(description).strip()[:100]
@@ -2437,7 +2442,7 @@ def joinGroupSelf(event):
     try:
         import boto3
         import re
-        from datetime import datetime
+        from datetime import datetime, timezone
         body = json.loads(event.get("body", "{}"))
         group_name = (body.get("groupName") or "").strip()
         if not group_name:
@@ -2452,7 +2457,7 @@ def joinGroupSelf(event):
         )
         if "Item" not in group_check:
             return jsonResponse({"error": f"Custom group '{group_name}' not found"}, 404)
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
         dynamodb.put_item(
             TableName=TABLE_NAME,
             Item={
@@ -2610,7 +2615,7 @@ def deleteProfileAvatar(event):
         return jsonResponse({"error": "Not configured"}, 500)
     try:
         import boto3
-        from datetime import datetime
+        from datetime import datetime, timezone
         user_id = user.get("userId", "")
         pk = f"USER#{user_id}"
         dynamodb = boto3.client("dynamodb")
@@ -2625,7 +2630,7 @@ def deleteProfileAvatar(event):
         if old_key:
             s3 = boto3.client("s3")
             s3.delete_object(Bucket=MEDIA_BUCKET, Key=old_key)
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
         dynamodb.update_item(
             TableName=TABLE_NAME,
             Key={"PK": {"S": pk}, "SK": {"S": "PROFILE"}},
@@ -2635,6 +2640,70 @@ def deleteProfileAvatar(event):
         return jsonResponse({"deleted": True})
     except Exception as e:
         logger.exception("deleteProfileAvatar error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
+# Keep in sync with PopMarquee.DEFAULT_BANNER (src/web/spa/src/shell/PopMarquee.tsx).
+# Items are split on "✦" by the marquee, so use that separator.
+DEFAULT_BANNER_TEXT = (
+    "WELCOME TO FUNKED UP SHIFT ✦ FRESH DROPS DAILY ✦ RATE ✦ CURATE ✦ VIBE"
+)
+BANNER_MAX_LEN = 500
+
+
+def _clean_banner_text(raw):
+    """Strip control chars (incl. newlines/tabs — the marquee is single-line) and trim."""
+    if raw is None:
+        return None
+    text = "".join(ch for ch in str(raw) if ord(ch) >= 32 and ord(ch) != 127)
+    return text.strip()
+
+
+def putBrandingBanner(event):
+    """PUT /branding/banner - Admin/manager only: set the marquee banner text."""
+    user = getEffectiveUserInfo(event)
+    if not user.get("userId"):
+        return jsonResponse({"error": "Unauthorized"}, 401)
+    groups = user.get("groups", [])
+    if "admin" not in groups and "manager" not in groups:
+        return jsonResponse({"error": "Forbidden: admin or manager role required"}, 403)
+    if not TABLE_NAME:
+        return jsonResponse({"error": "Not configured"}, 500)
+    try:
+        import boto3
+        import json as json_mod
+        from datetime import datetime, timezone
+
+        body = json_mod.loads(event.get("body", "{}"))
+        if "bannerText" not in body:
+            return jsonResponse({"error": "bannerText is required"}, 400)
+
+        banner_text = _clean_banner_text(body.get("bannerText"))
+        if not banner_text:
+            return jsonResponse({"error": "bannerText must not be empty"}, 400)
+        if len(banner_text) > BANNER_MAX_LEN:
+            return jsonResponse(
+                {"error": f"bannerText must be {BANNER_MAX_LEN} characters or fewer"}, 400
+            )
+
+        region = os.environ.get("AWS_REGION", "us-east-1")
+        dynamodb = boto3.client("dynamodb", region_name=region)
+        now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
+        dynamodb.put_item(
+            TableName=TABLE_NAME,
+            Item={
+                "PK": {"S": "BRANDING"},
+                "SK": {"S": "BANNER#DEFAULT"},
+                "entityType": {"S": "BRANDING"},
+                "entitySk": {"S": "BANNER#DEFAULT"},
+                "bannerText": {"S": banner_text},
+                "updatedAt": {"S": now},
+                "updatedBy": {"S": user.get("email") or user.get("userId") or ""},
+            },
+        )
+        return jsonResponse({"ok": True, "bannerText": banner_text})
+    except Exception as e:
+        logger.exception("putBrandingBanner error")
         return jsonResponse({"error": str(e)}, 500)
 
 
@@ -2694,6 +2763,14 @@ def getBrandingLogo(event):
                 except (ValueError, KeyError, TypeError):
                     result["heroImageOpacity"] = 25
 
+        # Banner (marquee). Always returned; falls back to default when unset/empty.
+        banner_resp = dynamodb.get_item(
+            TableName=TABLE_NAME,
+            Key={"PK": {"S": "BRANDING"}, "SK": {"S": "BANNER#DEFAULT"}},
+        )
+        banner_text = (banner_resp.get("Item", {}).get("bannerText", {}).get("S") or "").strip()
+        result["bannerText"] = banner_text or DEFAULT_BANNER_TEXT
+
         return jsonResponse(result)
     except Exception as e:
         logger.exception("getBrandingLogo error")
@@ -2713,7 +2790,7 @@ def postBrandingLogoUpload(event):
         import boto3
         import json as json_mod
         import uuid as uuid_mod
-        from datetime import datetime
+        from datetime import datetime, timezone
 
         body = json_mod.loads(event.get("body", "{}"))
         content_type = (body.get("contentType") or "image/png").strip()
@@ -2748,7 +2825,7 @@ def postBrandingLogoUpload(event):
         )
 
         dynamodb = boto3.client("dynamodb", region_name=region)
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
         dynamodb.put_item(
             TableName=TABLE_NAME,
             Item={
@@ -2781,7 +2858,7 @@ def putBrandingLogo(event):
     try:
         import boto3
         import json as json_mod
-        from datetime import datetime
+        from datetime import datetime, timezone
 
         body = json_mod.loads(event.get("body", "{}"))
         alt = (body.get("alt") or "Funkedupshift").strip() or "Funkedupshift"
@@ -2797,7 +2874,7 @@ def putBrandingLogo(event):
         if "Item" not in resp:
             return jsonResponse({"error": "No logo configured. Upload a logo first."}, 404)
 
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
         dynamodb.update_item(
             TableName=TABLE_NAME,
             Key={"PK": {"S": "BRANDING"}, "SK": {"S": "LOGO#DEFAULT"}},
@@ -2823,7 +2900,7 @@ def putBrandingHero(event):
     try:
         import boto3
         import json as json_mod
-        from datetime import datetime
+        from datetime import datetime, timezone
 
         body = json_mod.loads(event.get("body", "{}"))
         hero_tagline = body.get("heroTagline")
@@ -2834,7 +2911,7 @@ def putBrandingHero(event):
 
         region = os.environ.get("AWS_REGION", "us-east-1")
         dynamodb = boto3.client("dynamodb", region_name=region)
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
 
         hero_resp = dynamodb.get_item(
             TableName=TABLE_NAME,
@@ -2884,7 +2961,7 @@ def postBrandingHeroImage(event):
         import boto3
         import json as json_mod
         import uuid as uuid_mod
-        from datetime import datetime
+        from datetime import datetime, timezone
 
         body = json_mod.loads(event.get("body", "{}"))
         content_type = (body.get("contentType") or "image/png").strip()
@@ -2915,7 +2992,7 @@ def postBrandingHeroImage(event):
         )
 
         dynamodb = boto3.client("dynamodb", region_name=region)
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
 
         hero_resp = dynamodb.get_item(
             TableName=TABLE_NAME,
@@ -2959,11 +3036,11 @@ def deleteBrandingHeroImage(event):
         return jsonResponse({"error": "Not configured"}, 500)
     try:
         import boto3
-        from datetime import datetime
+        from datetime import datetime, timezone
 
         region = os.environ.get("AWS_REGION", "us-east-1")
         dynamodb = boto3.client("dynamodb", region_name=region)
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
 
         dynamodb.update_item(
             TableName=TABLE_NAME,
@@ -3018,7 +3095,7 @@ def setStar(event):
     try:
         import boto3
         import json
-        from datetime import datetime
+        from datetime import datetime, timezone
 
         body = json.loads(event.get("body", "{}"))
         site_id = body.get("siteId", "").strip()
@@ -3035,7 +3112,7 @@ def setStar(event):
         if rating_int < 1 or rating_int > 5:
             return jsonResponse({"error": "rating must be between 1 and 5"}, 400)
 
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
 
         dynamodb = boto3.client("dynamodb")
 
@@ -3195,13 +3272,13 @@ def createCategory(event):
     try:
         import boto3
         import uuid
-        from datetime import datetime
+        from datetime import datetime, timezone
         body = json.loads(event.get("body", "{}"))
         name = (body.get("name") or "").strip()
         if not name:
             return jsonResponse({"error": "name is required"}, 400)
         cat_id = f"CATEGORY#{uuid.uuid4()}"
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
         dynamodb = boto3.client("dynamodb")
         dynamodb.put_item(
             TableName=TABLE_NAME,
@@ -3231,14 +3308,14 @@ def updateCategory(event):
         return jsonResponse({"error": "TABLE_NAME not set"}, 500)
     try:
         import boto3
-        from datetime import datetime
+        from datetime import datetime, timezone
         body = json.loads(event.get("body", "{}"))
         cat_id = (body.get("id") or "").strip()
         if not cat_id:
             return jsonResponse({"error": "id is required"}, 400)
         name = body.get("name")
         description = body.get("description")
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
         update_expr = ["updatedAt = :updatedAt"]
         names = {}
         values = {":updatedAt": {"S": now}}
@@ -3472,7 +3549,7 @@ def createMedia(event):
     try:
         import boto3
         import uuid
-        from datetime import datetime
+        from datetime import datetime, timezone
         body = json.loads(event.get("body", "{}"))
         title = (body.get("title") or "").strip()
         media_type = (body.get("mediaType") or "image").strip().lower()
@@ -3484,7 +3561,7 @@ def createMedia(event):
         media_id = (body.get("id") or "").strip()
         if not media_id or not media_id.startswith("MEDIA#"):
             media_id = f"MEDIA#{uuid.uuid4()}"
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
         category_ids = [str(c) for c in (body.get("categoryIds") or []) if c]
         category_ids_list = [{"S": cid} for cid in category_ids]
         item = {
@@ -3519,7 +3596,7 @@ def updateMedia(event):
         return jsonResponse({"error": "TABLE_NAME not set"}, 500)
     try:
         import boto3
-        from datetime import datetime
+        from datetime import datetime, timezone
         raw_body = event.get("body", "{}")
         body = json.loads(raw_body) if isinstance(raw_body, str) else (raw_body or {})
         media_id = (body.get("id") or "").strip()
@@ -3529,7 +3606,7 @@ def updateMedia(event):
         description = body.get("description")
         category_ids = body.get("categoryIds")
         media_key = (body.get("mediaKey") or "").strip() or None
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
         dynamodb = boto3.client("dynamodb")
         set_parts = ["updatedAt = :updatedAt"]
         names = {}
@@ -3768,7 +3845,7 @@ def setMediaStar(event):
         return jsonResponse({"error": "TABLE_NAME not set"}, 500)
     try:
         import boto3
-        from datetime import datetime
+        from datetime import datetime, timezone
         body = json.loads(event.get("body", "{}"))
         media_id = body.get("mediaId", "").strip()
         rating = body.get("rating")
@@ -3780,7 +3857,7 @@ def setMediaStar(event):
             return jsonResponse({"error": "rating must be an integer between 1 and 5"}, 400)
         if rating_int < 1 or rating_int > 5:
             return jsonResponse({"error": "rating must be between 1 and 5"}, 400)
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
         dynamodb = boto3.client("dynamodb")
         existing = dynamodb.get_item(
             TableName=TABLE_NAME,
@@ -3872,13 +3949,13 @@ def createMediaCategory(event):
     try:
         import boto3
         import uuid
-        from datetime import datetime
+        from datetime import datetime, timezone
         body = json.loads(event.get("body", "{}"))
         name = (body.get("name") or "").strip()
         if not name:
             return jsonResponse({"error": "name is required"}, 400)
         cat_id = f"MEDIA_CATEGORY#{uuid.uuid4()}"
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
         dynamodb = boto3.client("dynamodb")
         dynamodb.put_item(
             TableName=TABLE_NAME,
@@ -3908,14 +3985,14 @@ def updateMediaCategory(event):
         return jsonResponse({"error": "TABLE_NAME not set"}, 500)
     try:
         import boto3
-        from datetime import datetime
+        from datetime import datetime, timezone
         body = json.loads(event.get("body", "{}"))
         cat_id = (body.get("id") or "").strip()
         if not cat_id:
             return jsonResponse({"error": "id is required"}, 400)
         name = body.get("name")
         description = body.get("description")
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
         update_expr = ["updatedAt = :updatedAt"]
         names = {}
         values = {":updatedAt": {"S": now}}
@@ -4229,14 +4306,14 @@ def createSquashPlayer(event):
     try:
         import boto3
         import uuid
-        from datetime import datetime
+        from datetime import datetime, timezone
         body = json.loads(event.get("body", "{}"))
         name = (body.get("name") or "").strip()
         if not name:
             return jsonResponse({"error": "name is required"}, 400)
         player_id = str(uuid.uuid4())
         pk = f"SQUASH#PLAYER#{player_id}"
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
         email = (body.get("email") or "").strip() or None
         user_id = (body.get("userId") or "").strip() or None
         dynamodb = boto3.client("dynamodb")
@@ -4269,7 +4346,7 @@ def updateSquashPlayer(event):
         return jsonResponse({"error": "TABLE_NAME not set"}, 500)
     try:
         import boto3
-        from datetime import datetime
+        from datetime import datetime, timezone
         body = json.loads(event.get("body", "{}"))
         raw_id = (body.get("id") or "").strip()
         pk = raw_id if raw_id.startswith("SQUASH#PLAYER#") else f"SQUASH#PLAYER#{raw_id}"
@@ -4278,7 +4355,7 @@ def updateSquashPlayer(event):
         name = body.get("name")
         email = body.get("email")
         user_id = body.get("userId")
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
         dynamodb = boto3.client("dynamodb")
         updates = ["updatedAt = :now"]
         values = {":now": {"S": now}}
@@ -4472,7 +4549,7 @@ def _validateSquashMatchBody(body):
     if not date_val or len(date_val) != 10:
         return None, "date is required (YYYY-MM-DD)"
     try:
-        from datetime import datetime
+        from datetime import datetime, timezone
         datetime.strptime(date_val, "%Y-%m-%d")
     except ValueError:
         return None, "date must be YYYY-MM-DD"
@@ -4529,14 +4606,14 @@ def createSquashMatch(event):
     try:
         import boto3
         import uuid
-        from datetime import datetime
+        from datetime import datetime, timezone
         body = json.loads(event.get("body", "{}"))
         validated, err_msg = _validateSquashMatchBody(body)
         if err_msg:
             return jsonResponse({"error": err_msg}, 400)
         match_id = str(uuid.uuid4())
         pk = f"SQUASH#MATCH#{match_id}"
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
         dynamodb = boto3.client("dynamodb")
         item = {
             "PK": {"S": pk},
@@ -4582,7 +4659,7 @@ def updateSquashMatch(event):
         return jsonResponse({"error": "TABLE_NAME not set"}, 500)
     try:
         import boto3
-        from datetime import datetime
+        from datetime import datetime, timezone
         body = json.loads(event.get("body", "{}"))
         raw_id = (body.get("id") or "").strip()
         pk = raw_id if raw_id.startswith("SQUASH#MATCH#") else f"SQUASH#MATCH#{raw_id}"
@@ -4591,7 +4668,7 @@ def updateSquashMatch(event):
         validated, err_msg = _validateSquashMatchBody(body)
         if err_msg:
             return jsonResponse({"error": err_msg}, 400)
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
         dynamodb = boto3.client("dynamodb")
         resp = dynamodb.get_item(
             TableName=TABLE_NAME,
@@ -4896,7 +4973,7 @@ def addUserToGroup(event, username):
             if not TABLE_NAME:
                 return jsonResponse({"error": "TABLE_NAME not set"}, 500)
             import boto3
-            from datetime import datetime
+            from datetime import datetime, timezone
             cognito = boto3.client("cognito-idp")
             dynamodb = boto3.client("dynamodb")
             user_resp = cognito.admin_get_user(
@@ -4913,7 +4990,7 @@ def addUserToGroup(event, username):
             )
             if "Item" not in group_check:
                 return jsonResponse({"error": f"Custom group '{group_name}' not found"}, 404)
-            now = datetime.utcnow().isoformat() + "Z"
+            now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
             dynamodb.put_item(
                 TableName=TABLE_NAME,
                 Item={
@@ -5065,7 +5142,7 @@ def createAdminGroup(event):
     try:
         import boto3
         import re
-        from datetime import datetime
+        from datetime import datetime, timezone
         body = json.loads(event.get("body", "{}"))
         name = (body.get("name") or "").strip()
         if not name:
@@ -5080,7 +5157,7 @@ def createAdminGroup(event):
             permissions = [p.strip() for p in permissions.split(",") if p.strip()]
         elif not isinstance(permissions, list):
             permissions = []
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
         pk = f"GROUP#{name}"
         dynamodb = boto3.client("dynamodb")
         dynamodb.put_item(
@@ -5112,11 +5189,11 @@ def updateAdminGroup(event, name):
         return jsonResponse({"error": "TABLE_NAME not set"}, 500)
     try:
         import boto3
-        from datetime import datetime
+        from datetime import datetime, timezone
         body = json.loads(event.get("body", "{}"))
         description = body.get("description")
         permissions = body.get("permissions")
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
         pk = f"GROUP#{name}"
         update_expr = ["updatedAt = :updatedAt"]
         names = {}
@@ -5208,7 +5285,7 @@ def createAdminRole(event):
     try:
         import boto3
         import re
-        from datetime import datetime
+        from datetime import datetime, timezone
         body = json.loads(event.get("body", "{}"))
         name = (body.get("name") or "").strip()
         if not name:
@@ -5223,7 +5300,7 @@ def createAdminRole(event):
             custom_groups = [custom_groups] if custom_groups else []
         cognito_groups = [str(g).strip() for g in cognito_groups if str(g).strip()]
         custom_groups = [str(g).strip() for g in custom_groups if str(g).strip()]
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
         pk = f"ROLE#{name}"
         dynamodb = boto3.client("dynamodb")
         dynamodb.put_item(
@@ -5255,11 +5332,11 @@ def updateAdminRole(event, name):
         return jsonResponse({"error": "TABLE_NAME not set"}, 500)
     try:
         import boto3
-        from datetime import datetime
+        from datetime import datetime, timezone
         body = json.loads(event.get("body", "{}"))
         cognito_groups = body.get("cognitoGroups")
         custom_groups = body.get("customGroups")
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
         pk = f"ROLE#{name}"
         update_expr = ["updatedAt = :now"]
         values = {":now": {"S": now}}

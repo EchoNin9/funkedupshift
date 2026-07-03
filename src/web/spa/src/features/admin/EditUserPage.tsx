@@ -291,7 +291,7 @@ const EditUserPage: React.FC = () => {
     return (
       <div className="space-y-4">
         <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Edit User</h1>
-        <p className="text-sm text-text-primary0">Loading…</p>
+        <p className="text-sm text-text-tertiary">Loading…</p>
       </div>
     );
   }
@@ -317,7 +317,7 @@ const EditUserPage: React.FC = () => {
         }
       />
         <div className="flex items-center gap-2 text-sm mt-2">
-          <label htmlFor="tz-select" className="text-text-primary0">
+          <label htmlFor="tz-select" className="text-text-tertiary">
             Last login timezone:
           </label>
           <select
@@ -402,7 +402,7 @@ const EditUserPage: React.FC = () => {
 
         <FormField label="Custom groups">
           {allCustomGroups.length === 0 ? (
-            <p className="text-sm text-text-primary0">
+            <p className="text-sm text-text-tertiary">
               No custom groups. <Link to="/admin/membership?tab=groups" className="text-accent-500 hover:underline">Create groups</Link>.
             </p>
           ) : (
@@ -417,7 +417,7 @@ const EditUserPage: React.FC = () => {
                   }}
                   onFocus={() => setCustomDropdownOpen(true)}
                   placeholder="Search or select groups…"
-                  className="w-full rounded border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-primary0"
+                  className="w-full rounded border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary"
                 />
                 {customDropdownOpen && (
                   <>
@@ -428,7 +428,7 @@ const EditUserPage: React.FC = () => {
                     />
                     <div className="absolute top-full left-0 right-0 mt-1 max-h-48 overflow-y-auto scrollbar-thin rounded border border-border-hover bg-surface-2 shadow-lg z-20">
                       {customGroupOptions.length === 0 ? (
-                        <div className="px-3 py-2 text-sm text-text-primary0">No matches</div>
+                        <div className="px-3 py-2 text-sm text-text-tertiary">No matches</div>
                       ) : (
                         customGroupOptions.map((g) => (
                           <button

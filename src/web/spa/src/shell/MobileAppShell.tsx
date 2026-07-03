@@ -8,6 +8,9 @@ import { MobileModulesProvider } from "./MobileModulesContext";
 import { AdminLayout } from "./AdminLayout";
 import { pageTransition } from "../components/motion";
 import { UserCircleIcon } from "@heroicons/react/24/outline";
+import { PopBackground } from "./PopBackground";
+import { PopMarquee } from "./PopMarquee";
+import { ThemeToggle } from "./ThemeToggle";
 
 /* Eager-loaded */
 import HomePage from "../features/home/HomePage";
@@ -61,17 +64,19 @@ function PageLoader() {
 
 export function MobileAppShell() {
   const { user } = useAuth();
-  const { logo, siteName } = useBranding();
+  const { logo, siteName, bannerText } = useBranding();
   const location = useLocation();
 
   return (
     <MobileModulesProvider>
       <div
-        className="min-h-screen bg-surface-0 text-text-primary flex flex-col"
+        className="relative min-h-screen bg-surface-0 text-text-primary flex flex-col"
         style={{ paddingTop: "env(safe-area-inset-top)" }}
       >
+        <PopBackground />
+        <div className="relative z-10 flex-1 flex flex-col">
         {/* Compact top bar */}
-        <header className="flex items-center justify-between px-4 py-2.5 bg-surface-1 border-b border-border-default">
+        <header className="flex items-center justify-between px-4 py-2.5 bg-surface-1/80 backdrop-blur border-b-2 border-text-primary">
           <Link to="/" className="flex items-center gap-2">
             {logo?.url ? (
               <img
@@ -86,19 +91,21 @@ export function MobileAppShell() {
             )}
             <span className="text-sm font-semibold text-text-primary">{siteName}</span>
           </Link>
-          {user ? (
-            <Link to="/profile" className="text-text-secondary">
-              <UserCircleIcon className="w-7 h-7" />
-            </Link>
-          ) : (
-            <Link
-              to="/auth"
-              className="text-xs font-medium px-3 py-1.5 rounded-md bg-accent-500 text-white"
-            >
-              Sign In
-            </Link>
-          )}
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            {user ? (
+              <Link to="/profile" className="text-text-secondary">
+                <UserCircleIcon className="w-7 h-7" />
+              </Link>
+            ) : (
+              <Link to="/auth" className="btn-primary text-xs !px-3 !py-1.5">
+                Sign In
+              </Link>
+            )}
+          </div>
         </header>
+
+        <PopMarquee text={bannerText} />
 
         {/* Content area — bottom padding for tab bar */}
         <main className="flex-1 min-w-0 pb-20">
@@ -158,6 +165,7 @@ export function MobileAppShell() {
           </div>
         </main>
 
+        </div>
         <MobileBottomTabs />
       </div>
     </MobileModulesProvider>

@@ -27,7 +27,7 @@ export function AdminLayout() {
   if (!user || adminModules.length === 0) {
     return (
       <div className="container-max section-padding text-center">
-        <h1 className="text-2xl font-semibold text-text-primary mb-4">Access Denied</h1>
+        <h1 className="text-2xl font-display font-extrabold uppercase text-text-primary mb-4">Access Denied</h1>
         <p className="text-text-secondary">You don&rsquo;t have permission to access the admin area.</p>
       </div>
     );

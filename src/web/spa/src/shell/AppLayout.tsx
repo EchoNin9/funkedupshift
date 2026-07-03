@@ -9,6 +9,8 @@ import { Header } from "./Header";
 import { DesktopHeaderBar } from "./DesktopHeaderBar";
 import { LeftSidebar } from "./LeftSidebar";
 import { MobileAppShell } from "./MobileAppShell";
+import { PopBackground } from "./PopBackground";
+import { PopMarquee } from "./PopMarquee";
 import { getVisibleAdminModules, getVisibleModuleGroups } from "../config/modules";
 import { pageTransition } from "../components/motion";
 
@@ -62,7 +64,7 @@ function PageLoader() {
 
 const AppLayout: React.FC = () => {
   const { user } = useAuth();
-  const { siteName } = useBranding();
+  const { siteName, bannerText } = useBranding();
   const { isNative } = usePlatform();
   const location = useLocation();
   const adminModules = getVisibleAdminModules(user);
@@ -78,13 +80,16 @@ const AppLayout: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-surface-0 text-text-primary flex flex-col">
+    <div className="relative min-h-screen bg-surface-0 text-text-primary flex flex-col">
+      <PopBackground />
+      <div className="relative z-10 flex-1 flex flex-col min-h-screen">
       <Header />
       <LeftSidebar />
 
       {/* Content area - offset by sidebar width on desktop */}
       <div className={`flex-1 min-w-0 flex flex-col ${showSidebar ? "md:pl-60" : ""}`}>
         <DesktopHeaderBar />
+        <PopMarquee text={bannerText} />
         <main className="flex-1 min-w-0">
           <div className="container-max py-6">
             <AnimatePresence mode="wait">
@@ -141,11 +146,11 @@ const AppLayout: React.FC = () => {
         </main>
 
       {/* Footer */}
-      <footer className="border-t border-border-default bg-surface-0">
+      <footer className="border-t-2 border-text-primary bg-surface-0">
         <div className="container-max py-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div>
-              <Link to="/" className="text-sm font-semibold text-text-primary">
+              <Link to="/" className="font-display font-extrabold uppercase tracking-tight text-text-primary">
                 {siteName}
               </Link>
               <p className="mt-1 text-sm text-text-tertiary">
@@ -179,6 +184,7 @@ const AppLayout: React.FC = () => {
           </div>
         </div>
       </footer>
+      </div>
       </div>
     </div>
   );
