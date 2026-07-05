@@ -1559,6 +1559,55 @@ resource "aws_apigatewayv2_route" "adminFinancialDefaultSymbolsPut" {
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
+# Investing section (Financial custom group required, JWT)
+resource "aws_apigatewayv2_route" "investingSearchGet" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /investing/search"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "investingSuggestPost" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /investing/suggest"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "investingTickerGet" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /investing/ticker"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "investingAnalyzePost" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /investing/analyze"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "investingTrackerGet" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /investing/tracker"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "investingTrackerPut" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "PUT /investing/tracker"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
 # Vehicles expenses (expenses group required, JWT)
 resource "aws_apigatewayv2_route" "vehiclesExpensesList" {
   api_id             = aws_apigatewayv2_api.main.id

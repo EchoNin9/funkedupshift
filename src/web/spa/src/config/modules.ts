@@ -5,6 +5,7 @@ import {
   canModifySquash,
   canAccessFinancial,
   canAccessFinancialAdmin,
+  canAccessInvesting,
   canCreateMemes,
   canAccessMemes,
   canAccessExpenses,
@@ -56,6 +57,7 @@ export const PUBLIC_MODULES: PublicModule[] = [
   { id: "meme-generator", label: "Meme Generator", path: "/memes/create", section: "memes", minRole: "user", visibility: canCreateMemes },
   { id: "financial", label: "Financial", path: "/financial", section: "financial", minRole: "guest", visibility: canAccessFinancial },
   { id: "financial-admin", label: "Financial Admin", path: "/admin/financial", section: "financial", minRole: "superadmin", visibility: canAccessFinancialAdmin },
+  { id: "investing", label: "Investing", path: "/investing", section: "financial", minRole: "user", visibility: canAccessInvesting },
   { id: "vehicles-expenses", label: "Vehicles Expenses", path: "/vehicles-expenses", section: "vehicles", minRole: "user", visibility: canAccessExpenses },
   { id: "general-expenses", label: "General expenses", path: "/general-expenses", section: "vehicles", minRole: "user", visibility: canAccessExpenses },
   { id: "highlights", label: "Highlights", path: "/recommended/highlights", section: "recommended", minRole: "guest" },
@@ -170,6 +172,7 @@ const MODULE_GROUPS: ModuleGroup[] = [
     isVisible: (u) => canAccessFinancial(u) || canAccessFinancialAdmin(u),
     getLinks: (u) => {
       const links: ModuleLink[] = [{ path: "/financial", label: "Financial Dashboard" }];
+      if (canAccessInvesting(u)) links.push({ path: "/investing", label: "Investing" });
       if (canAccessFinancialAdmin(u)) links.push({ path: "/admin/financial", label: "Financial Admin" });
       return links;
     },

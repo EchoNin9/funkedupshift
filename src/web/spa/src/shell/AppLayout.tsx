@@ -46,6 +46,7 @@ const FinancialPage = lazy(() => import("../features/financial/FinancialPage"));
 const FinancialAdminPage = lazy(() =>
   import("../features/financial/admin/FinancialAdminPage")
 );
+const InvestingPage = lazy(() => import("../features/investing/InvestingPage"));
 const VehiclesExpensesPage = lazy(() => import("../features/vehicles/VehiclesExpensesPage"));
 const GeneralExpensesPage = lazy(() => import("../features/expenses/GeneralExpensesPage"));
 const PrivacyPolicyPage = lazy(() => import("../features/legal/PrivacyPolicyPage"));
@@ -118,6 +119,7 @@ const AppLayout: React.FC = () => {
               <Route path="/memes/:id/edit" element={<EditMemePage />} />
               <Route path="/memes/:id" element={<MemeDetailPage />} />
               <Route path="/financial" element={<FinancialPage />} />
+              <Route path="/investing" element={<InvestingPage />} />
               <Route path="/vehicles-expenses" element={<VehiclesExpensesPage />} />
               <Route path="/general-expenses" element={<GeneralExpensesPage />} />
               <Route path="/admin" element={<AdminLayout />}>

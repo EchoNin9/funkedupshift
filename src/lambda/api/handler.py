@@ -404,6 +404,19 @@ def handler(event, context):
             return getFinancialDefaultSymbols(event)
         if method == "PUT" and path == "/admin/financial/default-symbols":
             return putFinancialDefaultSymbols(event)
+        # Investing section routes (Financial custom group required)
+        if method == "GET" and path == "/investing/search":
+            return getInvestingSearch(event)
+        if method == "POST" and path == "/investing/suggest":
+            return postInvestingSuggest(event)
+        if method == "GET" and path == "/investing/ticker":
+            return getInvestingTicker(event)
+        if method == "POST" and path == "/investing/analyze":
+            return postInvestingAnalyze(event)
+        if method == "GET" and path == "/investing/tracker":
+            return getInvestingTracker(event)
+        if method == "PUT" and path == "/investing/tracker":
+            return putInvestingTracker(event)
         # Vehicles expenses routes (expenses group required)
         if method == "GET" and path == "/vehicles-expenses":
             return listVehiclesExpenses(event)
@@ -685,6 +698,131 @@ def getFinancialConfig(event):
         return jsonResponse(config)
     except Exception as e:
         logger.exception("getFinancialConfig error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
+# ------------------------------------------------------------------------------
+# Investing section (Financial custom group required)
+# ------------------------------------------------------------------------------
+
+def _requireInvesting(event):
+    """Auth + Financial custom group. Returns (user, err_response)."""
+    user, err = _requireAuth(event)
+    if err:
+        return None, err
+    if not _canAccessInvesting(user):
+        return None, jsonResponse({"error": "Forbidden: Financial group required"}, 403)
+    return user, None
+
+
+def getInvestingSearch(event):
+    """GET /investing/search?q= - Yahoo symbol search."""
+    user, err = _requireInvesting(event)
+    if err:
+        return err
+    qs = event.get("queryStringParameters") or {}
+    q = (qs.get("q") or "").strip()
+    if not q:
+        return jsonResponse({"error": "q is required"}, 400)
+    try:
+        from api.investing import search_symbols
+        return jsonResponse({"results": search_symbols(q)})
+    except Exception as e:
+        logger.exception("getInvestingSearch error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def postInvestingSuggest(event):
+    """POST /investing/suggest {query} - AI ticker suggestions via Bedrock."""
+    user, err = _requireInvesting(event)
+    if err:
+        return err
+    try:
+        body = json.loads(event.get("body") or "{}")
+        query = (body.get("query") or "").strip()
+        if not query:
+            return jsonResponse({"error": "query is required"}, 400)
+        from api.investing import suggest_tickers
+        return jsonResponse({"results": suggest_tickers(query)})
+    except json.JSONDecodeError:
+        return jsonResponse({"error": "Invalid JSON body"}, 400)
+    except Exception as e:
+        logger.exception("postInvestingSuggest error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def getInvestingTicker(event):
+    """GET /investing/ticker?symbol=&range=&interval= - Candles + meta + P/E."""
+    user, err = _requireInvesting(event)
+    if err:
+        return err
+    qs = event.get("queryStringParameters") or {}
+    symbol = (qs.get("symbol") or "").strip()
+    if not symbol:
+        return jsonResponse({"error": "symbol is required"}, 400)
+    try:
+        from api.investing import get_ticker_data
+        data = get_ticker_data(symbol, qs.get("range") or "1y", qs.get("interval") or "1d")
+        if not data:
+            return jsonResponse({"error": "No data for symbol"}, 404)
+        return jsonResponse(data)
+    except Exception as e:
+        logger.exception("getInvestingTicker error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def postInvestingAnalyze(event):
+    """POST /investing/analyze {symbol} - Bedrock buy-timing assessment."""
+    user, err = _requireInvesting(event)
+    if err:
+        return err
+    try:
+        body = json.loads(event.get("body") or "{}")
+        symbol = (body.get("symbol") or "").strip()
+        if not symbol:
+            return jsonResponse({"error": "symbol is required"}, 400)
+        from api.investing import analyze_ticker
+        result = analyze_ticker(symbol)
+        if not result:
+            return jsonResponse({"error": "No data for symbol"}, 404)
+        return jsonResponse(result)
+    except json.JSONDecodeError:
+        return jsonResponse({"error": "Invalid JSON body"}, 400)
+    except Exception as e:
+        logger.exception("postInvestingAnalyze error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def getInvestingTracker(event):
+    """GET /investing/tracker - Current user's tracked symbols."""
+    user, err = _requireInvesting(event)
+    if err:
+        return err
+    try:
+        from api.investing import get_tracker
+        return jsonResponse({"symbols": get_tracker(user["userId"])})
+    except Exception as e:
+        logger.exception("getInvestingTracker error: %s", e)
+        return jsonResponse({"error": str(e), "symbols": []}, 500)
+
+
+def putInvestingTracker(event):
+    """PUT /investing/tracker {symbols} - Replace current user's tracked symbols."""
+    user, err = _requireInvesting(event)
+    if err:
+        return err
+    try:
+        body = json.loads(event.get("body") or "{}")
+        symbols = body.get("symbols")
+        if not isinstance(symbols, list):
+            return jsonResponse({"error": "symbols must be an array"}, 400)
+        from api.investing import save_tracker
+        save_tracker(user["userId"], symbols)
+        return jsonResponse({"symbols": [str(s).strip().upper() for s in symbols if str(s).strip()]})
+    except json.JSONDecodeError:
+        return jsonResponse({"error": "Invalid JSON body"}, 400)
+    except Exception as e:
+        logger.exception("putInvestingTracker error: %s", e)
         return jsonResponse({"error": str(e)}, 500)
 
 
@@ -4896,6 +5034,16 @@ def _canAccessFinancialAdmin(user):
     if not user.get("userId"):
         return False
     return "admin" in user.get("groups", [])
+
+
+def _canAccessInvesting(user):
+    """User can access Investing: in Financial custom group OR SuperAdmin."""
+    if not user.get("userId"):
+        return False
+    if "admin" in user.get("groups", []):
+        return True
+    custom = _getUserCustomGroups(user["userId"])
+    return "Financial" in custom
 
 
 def getUserGroups(event, username):

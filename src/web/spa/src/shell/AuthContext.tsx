@@ -173,6 +173,13 @@ export function canAccessFinancialAdmin(user: AuthUser | null): boolean {
   return user.role === "superadmin";
 }
 
+/** User can access Investing: SuperAdmin OR in Financial custom group. */
+export function canAccessInvesting(user: AuthUser | null): boolean {
+  if (!user?.userId) return false;
+  if (user.role === "superadmin") return true;
+  return (user.customGroups ?? []).includes("Financial");
+}
+
 /** User can view Memes browse (cache + search): SuperAdmin OR in Memes custom group. */
 export function canAccessMemes(user: AuthUser | null): boolean {
   if (!user?.userId) return false;
