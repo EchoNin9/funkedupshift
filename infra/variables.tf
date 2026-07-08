@@ -102,3 +102,24 @@ variable "alphaVantageApiKey" {
   default     = ""
   sensitive   = true
 }
+
+variable "eraApiKey" {
+  description = "Era.app API key for read-only finance sync (optional; app runs on local data if empty)."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "mcpBearerToken" {
+  description = "Bearer token required by the finances MCP lambda. Leave empty to reject all MCP requests."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "mcpOwnerUserId" {
+  description = "Cognito sub of the user whose finance data the MCP lambda serves (single-owner by design)."
+  type        = string
+  default     = ""
+  sensitive   = true
+}

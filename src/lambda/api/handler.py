@@ -391,19 +391,6 @@ def handler(event, context):
             return updateSquashMatch(event)
         if method == "DELETE" and path == "/squash/matches":
             return deleteSquashMatch(event)
-        # Financial section routes (Financial custom group required)
-        if method == "GET" and path == "/financial/watchlist":
-            return getFinancialWatchlist(event)
-        if method == "PUT" and path == "/financial/watchlist":
-            return putFinancialWatchlist(event)
-        if method == "GET" and path == "/financial/quote":
-            return getFinancialQuote(event)
-        if method == "GET" and path == "/financial/config":
-            return getFinancialConfig(event)
-        if method == "GET" and path == "/admin/financial/default-symbols":
-            return getFinancialDefaultSymbols(event)
-        if method == "PUT" and path == "/admin/financial/default-symbols":
-            return putFinancialDefaultSymbols(event)
         # Investing section routes (Financial custom group required)
         if method == "GET" and path == "/investing/search":
             return getInvestingSearch(event)
@@ -417,6 +404,49 @@ def handler(event, context):
             return getInvestingTracker(event)
         if method == "PUT" and path == "/investing/tracker":
             return putInvestingTracker(event)
+        # Finances (Personal Finances / B&PF) routes — any logged-in user; sharing per-section
+        if method == "GET" and path == "/finances/overview":
+            return getFinancesOverview(event)
+        if method == "GET" and path == "/finances/accounts":
+            return getFinancesAccounts(event)
+        if method == "POST" and path == "/finances/accounts":
+            return postFinancesAccounts(event)
+        if method == "GET" and path == "/finances/transactions":
+            return getFinancesTransactions(event)
+        if method == "POST" and path == "/finances/transactions":
+            return postFinancesTransactions(event)
+        if method == "GET" and path == "/finances/budgets":
+            return getFinancesBudgets(event)
+        if method == "PUT" and path == "/finances/budgets":
+            return putFinancesBudgets(event)
+        if method == "GET" and path == "/finances/insights":
+            return getFinancesInsights(event)
+        if method == "POST" and path == "/finances/insights/summary":
+            return postFinancesInsightsSummary(event)
+        if method == "GET" and path == "/finances/shares":
+            return getFinancesShares(event)
+        if method == "PUT" and path == "/finances/shares":
+            return putFinancesShares(event)
+        if method == "GET" and path == "/finances/shared-with-me":
+            return getFinancesSharedWithMe(event)
+        if method == "GET" and path == "/finances/config":
+            return getFinancesConfig(event)
+        fin_parts = [p for p in path.split("/") if p]
+        if len(fin_parts) == 3 and fin_parts[0] == "finances":
+            fin_params = event.get("pathParameters") or {}
+            fin_id = fin_params.get("id") or fin_params.get("granteeId") or fin_parts[2]
+            if fin_parts[1] == "accounts":
+                if method == "PUT":
+                    return putFinancesAccount(event, fin_id)
+                if method == "DELETE":
+                    return deleteFinancesAccount(event, fin_id)
+            if fin_parts[1] == "transactions":
+                if method == "PUT":
+                    return putFinancesTransaction(event, fin_id)
+                if method == "DELETE":
+                    return deleteFinancesTransaction(event, fin_id)
+            if fin_parts[1] == "shares" and method == "DELETE":
+                return deleteFinancesShare(event, fin_id)
         # Vehicles expenses routes (expenses group required)
         if method == "GET" and path == "/vehicles-expenses":
             return listVehiclesExpenses(event)
@@ -630,78 +660,6 @@ def getVisitorNetworkInfo(event):
 
 
 # ------------------------------------------------------------------------------
-# Financial section (Financial custom group required)
-# ------------------------------------------------------------------------------
-
-def getFinancialWatchlist(event):
-    """GET /financial/watchlist - Return current user's watchlist symbols (logged-in users only)."""
-    user, err = _requireAuth(event)
-    if err:
-        return err
-    try:
-        from api.financial import get_user_watchlist
-        symbols = get_user_watchlist(user["userId"])
-        return jsonResponse({"symbols": symbols})
-    except Exception as e:
-        logger.exception("getFinancialWatchlist error: %s", e)
-        return jsonResponse({"error": str(e), "symbols": []}, 500)
-
-
-def putFinancialWatchlist(event):
-    """PUT /financial/watchlist - Save current user's watchlist symbols (logged-in users only)."""
-    user, err = _requireAuth(event)
-    if err:
-        return err
-    try:
-        body = event.get("body")
-        if body and isinstance(body, str):
-            body = json.loads(body)
-        else:
-            body = body or {}
-        symbols = body.get("symbols")
-        if not isinstance(symbols, list):
-            return jsonResponse({"error": "symbols must be an array"}, 400)
-        from api.financial import save_user_watchlist
-        save_user_watchlist(user["userId"], symbols)
-        return jsonResponse({"symbols": [str(s).strip().upper() for s in symbols if str(s).strip()]})
-    except Exception as e:
-        logger.exception("putFinancialWatchlist error: %s", e)
-        return jsonResponse({"error": str(e)}, 500)
-
-
-def getFinancialQuote(event):
-    """GET /financial/quote?symbol=AAPL&source=yahoo - Fetch stock quote (public for guests)."""
-    qs = event.get("queryStringParameters") or {}
-    symbol = (qs.get("symbol") or "").strip()
-    if not symbol:
-        return jsonResponse({"error": "symbol is required"}, 400)
-    source = (qs.get("source") or "yahoo").strip().lower()
-    if source not in ("yahoo", "alpha_vantage"):
-        source = "yahoo"
-    try:
-        from api.financial import fetch_quote
-        quote = fetch_quote(symbol, source)
-        if not quote:
-            return jsonResponse({"error": "Quote not found for symbol"}, 404)
-        return jsonResponse(quote)
-    except Exception as e:
-        logger.exception("getFinancialQuote error: %s", e)
-        return jsonResponse({"error": str(e)}, 500)
-
-
-def getFinancialConfig(event):
-    """GET /financial/config - Return default symbols and available sources (public for guests)."""
-    try:
-        from api.financial import get_financial_config, AVAILABLE_SOURCES
-        config = get_financial_config()
-        config["availableSources"] = AVAILABLE_SOURCES
-        return jsonResponse(config)
-    except Exception as e:
-        logger.exception("getFinancialConfig error: %s", e)
-        return jsonResponse({"error": str(e)}, 500)
-
-
-# ------------------------------------------------------------------------------
 # Investing section (Financial custom group required)
 # ------------------------------------------------------------------------------
 
@@ -826,49 +784,350 @@ def putInvestingTracker(event):
         return jsonResponse({"error": str(e)}, 500)
 
 
-def getFinancialDefaultSymbols(event):
-    """GET /admin/financial/default-symbols - Return admin default symbols and source (SuperAdmin only)."""
-    _, err = _requireAdmin(event)
+# ------------------------------------------------------------------------------
+# Finances (Personal Finances / B&PF) section — login-only; sharing per-section
+# ------------------------------------------------------------------------------
+
+def _resolveFinancesOwner(event, section):
+    """Auth + optional ?owner= share enforcement.
+    Returns (user, owner_id, err_response). When owner != caller, the caller
+    must hold a share grant covering `section`. Read routes only — mutating
+    routes never call this."""
+    user, err = _requireAuth(event)
+    if err:
+        return None, None, err
+    qs = event.get("queryStringParameters") or {}
+    owner = (qs.get("owner") or "").strip()
+    if not owner or owner == user["userId"]:
+        return user, user["userId"], None
+    from api.bpf import get_share_sections
+    sections = get_share_sections(owner, user["userId"])
+    if not sections or section not in sections:
+        return None, None, jsonResponse({"error": "Forbidden: no share grant for this section"}, 403)
+    return user, owner, None
+
+
+def _json_body(event):
+    body = event.get("body")
+    if body and isinstance(body, str):
+        return json.loads(body)
+    return body or {}
+
+
+def getFinancesOverview(event):
+    """GET /finances/overview?owner= - Dashboard payload (share-gated: dashboard)."""
+    user, owner_id, err = _resolveFinancesOwner(event, "dashboard")
     if err:
         return err
     try:
-        from api.financial import get_financial_config, AVAILABLE_SOURCES
-        config = get_financial_config()
-        return jsonResponse({
-            "symbols": config["symbols"],
-            "source": config["source"],
-            "availableSources": AVAILABLE_SOURCES,
-        })
+        from api.bpf import overview_payload
+        return jsonResponse(overview_payload(owner_id))
     except Exception as e:
-        logger.exception("getFinancialDefaultSymbols error: %s", e)
+        logger.exception("getFinancesOverview error: %s", e)
         return jsonResponse({"error": str(e)}, 500)
 
 
-def putFinancialDefaultSymbols(event):
-    """PUT /admin/financial/default-symbols - Save admin default symbols and source (SuperAdmin only)."""
-    _, err = _requireAdmin(event)
+def getFinancesAccounts(event):
+    """GET /finances/accounts - Current user's manual accounts."""
+    user, err = _requireAuth(event)
     if err:
         return err
     try:
-        body = event.get("body")
-        if body and isinstance(body, str):
-            body = json.loads(body)
-        else:
-            body = body or {}
-        symbols = body.get("symbols")
-        if not isinstance(symbols, list):
-            return jsonResponse({"error": "symbols must be an array"}, 400)
-        source = (body.get("source") or "yahoo").strip().lower()
-        if source not in ("yahoo", "alpha_vantage"):
-            source = "yahoo"
-        from api.financial import save_financial_config
-        save_financial_config(symbols, source)
+        from api.bpf import list_accounts
+        return jsonResponse({"accounts": list_accounts(user["userId"])})
+    except Exception as e:
+        logger.exception("getFinancesAccounts error: %s", e)
+        return jsonResponse({"error": str(e), "accounts": []}, 500)
+
+
+def postFinancesAccounts(event):
+    """POST /finances/accounts - Create manual account."""
+    user, err = _requireAuth(event)
+    if err:
+        return err
+    try:
+        from api.bpf import save_account
+        account, verr = save_account(user["userId"], _json_body(event))
+        if verr:
+            return jsonResponse({"error": verr}, 400)
+        return jsonResponse(account, 201)
+    except json.JSONDecodeError:
+        return jsonResponse({"error": "Invalid JSON body"}, 400)
+    except Exception as e:
+        logger.exception("postFinancesAccounts error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def putFinancesAccount(event, account_id):
+    """PUT /finances/accounts/{id} - Update manual account."""
+    user, err = _requireAuth(event)
+    if err:
+        return err
+    try:
+        from api.bpf import account_exists, save_account
+        if not account_exists(user["userId"], account_id):
+            return jsonResponse({"error": "Account not found"}, 404)
+        account, verr = save_account(user["userId"], _json_body(event), account_id)
+        if verr:
+            return jsonResponse({"error": verr}, 400)
+        return jsonResponse(account)
+    except json.JSONDecodeError:
+        return jsonResponse({"error": "Invalid JSON body"}, 400)
+    except Exception as e:
+        logger.exception("putFinancesAccount error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def deleteFinancesAccount(event, account_id):
+    """DELETE /finances/accounts/{id} - Delete manual account."""
+    user, err = _requireAuth(event)
+    if err:
+        return err
+    try:
+        from api.bpf import delete_account
+        if not delete_account(user["userId"], account_id):
+            return jsonResponse({"error": "Account not found"}, 404)
+        return jsonResponse({"ok": True})
+    except Exception as e:
+        logger.exception("deleteFinancesAccount error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def getFinancesTransactions(event):
+    """GET /finances/transactions?owner=&from=&to=&q=&category= (share-gated: transactions)."""
+    user, owner_id, err = _resolveFinancesOwner(event, "transactions")
+    if err:
+        return err
+    qs = event.get("queryStringParameters") or {}
+    try:
+        from api.bpf import transactions_payload
+        return jsonResponse(transactions_payload(
+            owner_id,
+            from_date=(qs.get("from") or "").strip() or None,
+            to_date=(qs.get("to") or "").strip() or None,
+            q=(qs.get("q") or "").strip() or None,
+            category=(qs.get("category") or "").strip() or None,
+        ))
+    except Exception as e:
+        logger.exception("getFinancesTransactions error: %s", e)
+        return jsonResponse({"error": str(e), "transactions": []}, 500)
+
+
+def postFinancesTransactions(event):
+    """POST /finances/transactions - Create manual transaction (local only, never Era)."""
+    user, err = _requireAuth(event)
+    if err:
+        return err
+    try:
+        from api.bpf import save_transaction
+        txn, verr = save_transaction(user["userId"], _json_body(event))
+        if verr:
+            return jsonResponse({"error": verr}, 400)
+        return jsonResponse(txn, 201)
+    except json.JSONDecodeError:
+        return jsonResponse({"error": "Invalid JSON body"}, 400)
+    except Exception as e:
+        logger.exception("postFinancesTransactions error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def putFinancesTransaction(event, txn_id):
+    """PUT /finances/transactions/{id} - Update manual transaction."""
+    user, err = _requireAuth(event)
+    if err:
+        return err
+    try:
+        from api.bpf import save_transaction
+        txn, verr = save_transaction(user["userId"], _json_body(event), txn_id)
+        if verr:
+            return jsonResponse({"error": verr}, 400)
+        return jsonResponse(txn)
+    except json.JSONDecodeError:
+        return jsonResponse({"error": "Invalid JSON body"}, 400)
+    except Exception as e:
+        logger.exception("putFinancesTransaction error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def deleteFinancesTransaction(event, txn_id):
+    """DELETE /finances/transactions/{id} - Delete manual transaction."""
+    user, err = _requireAuth(event)
+    if err:
+        return err
+    try:
+        from api.bpf import delete_transaction
+        if not delete_transaction(user["userId"], txn_id):
+            return jsonResponse({"error": "Transaction not found"}, 404)
+        return jsonResponse({"ok": True})
+    except Exception as e:
+        logger.exception("deleteFinancesTransaction error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def getFinancesBudgets(event):
+    """GET /finances/budgets?owner= - Budgets with month-to-date actuals (share-gated: budgets)."""
+    user, owner_id, err = _resolveFinancesOwner(event, "budgets")
+    if err:
+        return err
+    try:
+        from api.bpf import get_budgets
+        return jsonResponse({"budgets": get_budgets(owner_id)})
+    except Exception as e:
+        logger.exception("getFinancesBudgets error: %s", e)
+        return jsonResponse({"error": str(e), "budgets": []}, 500)
+
+
+def putFinancesBudgets(event):
+    """PUT /finances/budgets - Replace current user's budgets."""
+    user, err = _requireAuth(event)
+    if err:
+        return err
+    try:
+        body = _json_body(event)
+        from api.bpf import save_budgets
+        budgets, verr = save_budgets(user["userId"], body.get("budgets"))
+        if verr:
+            return jsonResponse({"error": verr}, 400)
+        return jsonResponse({"budgets": budgets})
+    except json.JSONDecodeError:
+        return jsonResponse({"error": "Invalid JSON body"}, 400)
+    except Exception as e:
+        logger.exception("putFinancesBudgets error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def getFinancesInsights(event):
+    """GET /finances/insights?owner=&period= (share-gated: insights)."""
+    user, owner_id, err = _resolveFinancesOwner(event, "insights")
+    if err:
+        return err
+    qs = event.get("queryStringParameters") or {}
+    try:
+        from api.bpf import insights_payload
+        return jsonResponse(insights_payload(owner_id, (qs.get("period") or "").strip() or None))
+    except Exception as e:
+        logger.exception("getFinancesInsights error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def postFinancesInsightsSummary(event):
+    """POST /finances/insights/summary - Bedrock Sonnet narrative (owner-only)."""
+    user, err = _requireAuth(event)
+    if err:
+        return err
+    try:
+        body = _json_body(event)
+        from api.bpf import summarize_insights
+        summary, serr = summarize_insights(user["userId"], (body.get("period") or "").strip() or None)
+        if serr:
+            return jsonResponse({"error": serr}, 502)
+        return jsonResponse({"summary": summary})
+    except json.JSONDecodeError:
+        return jsonResponse({"error": "Invalid JSON body"}, 400)
+    except Exception as e:
+        logger.exception("postFinancesInsightsSummary error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def getFinancesShares(event):
+    """GET /finances/shares - Current user's grants."""
+    user, err = _requireAuth(event)
+    if err:
+        return err
+    try:
+        from api.bpf import list_shares
+        return jsonResponse({"shares": list_shares(user["userId"])})
+    except Exception as e:
+        logger.exception("getFinancesShares error: %s", e)
+        return jsonResponse({"error": str(e), "shares": []}, 500)
+
+
+def _resolveCognitoSubByEmail(email):
+    """Look up a Cognito user's sub by email. Returns sub or None."""
+    if not COGNITO_USER_POOL_ID or not email:
+        return None
+    import boto3
+    cognito = boto3.client("cognito-idp")
+    resp = cognito.list_users(
+        UserPoolId=COGNITO_USER_POOL_ID,
+        Filter=f'email = "{email}"',
+        Limit=1,
+    )
+    users = resp.get("Users", [])
+    if not users:
+        return None
+    attrs = {a["Name"]: a["Value"] for a in users[0].get("Attributes", [])}
+    return attrs.get("sub") or None
+
+
+def putFinancesShares(event):
+    """PUT /finances/shares {email, sections} - Upsert a read-only grant."""
+    user, err = _requireAuth(event)
+    if err:
+        return err
+    try:
+        body = _json_body(event)
+        email = str(body.get("email") or "").strip().lower()
+        sections = body.get("sections")
+        if not email or not isinstance(sections, list):
+            return jsonResponse({"error": "email and sections[] are required"}, 400)
+        grantee_id = _resolveCognitoSubByEmail(email)
+        if not grantee_id:
+            return jsonResponse({"error": "No app user with that email"}, 404)
+        from api.bpf import put_share
+        share, verr = put_share(user["userId"], user.get("email", ""), grantee_id, email, sections)
+        if verr:
+            return jsonResponse({"error": verr}, 400)
+        return jsonResponse(share)
+    except json.JSONDecodeError:
+        return jsonResponse({"error": "Invalid JSON body"}, 400)
+    except Exception as e:
+        logger.exception("putFinancesShares error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def deleteFinancesShare(event, grantee_id):
+    """DELETE /finances/shares/{granteeId} - Revoke grant + mirror."""
+    user, err = _requireAuth(event)
+    if err:
+        return err
+    try:
+        from api.bpf import delete_share
+        if not delete_share(user["userId"], grantee_id):
+            return jsonResponse({"error": "Share not found"}, 404)
+        return jsonResponse({"ok": True})
+    except Exception as e:
+        logger.exception("deleteFinancesShare error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def getFinancesSharedWithMe(event):
+    """GET /finances/shared-with-me - Owners who shared with the current user."""
+    user, err = _requireAuth(event)
+    if err:
+        return err
+    try:
+        from api.bpf import list_shared_with_me
+        return jsonResponse({"sharedWithMe": list_shared_with_me(user["userId"])})
+    except Exception as e:
+        logger.exception("getFinancesSharedWithMe error: %s", e)
+        return jsonResponse({"error": str(e), "sharedWithMe": []}, 500)
+
+
+def getFinancesConfig(event):
+    """GET /finances/config - Era connectivity flag + categories for the SPA."""
+    user, err = _requireAuth(event)
+    if err:
+        return err
+    try:
+        from api import era_client
+        from api.bpf import get_categories
         return jsonResponse({
-            "symbols": [str(s).strip().upper() for s in symbols if str(s).strip()],
-            "source": source,
+            "eraConnected": era_client.is_connected(),
+            "categories": get_categories(user["userId"]),
         })
     except Exception as e:
-        logger.exception("putFinancialDefaultSymbols error: %s", e)
+        logger.exception("getFinancesConfig error: %s", e)
         return jsonResponse({"error": str(e)}, 500)
 
 
@@ -4355,26 +4614,6 @@ def _requireSquashAccess(event):
     return user, None
 
 
-def _requireFinancialAccess(event):
-    """Return (user, None) if user can access Financial, else (None, error_response)."""
-    user = getEffectiveUserInfo(event)
-    if not user.get("userId"):
-        return None, jsonResponse({"error": "Unauthorized"}, 401)
-    if not _canAccessFinancial(user):
-        return None, jsonResponse({"error": "Forbidden: Financial access required"}, 403)
-    return user, None
-
-
-def _requireFinancialAdmin(event):
-    """Return (user, None) if user can admin Financial, else (None, error_response)."""
-    user = getEffectiveUserInfo(event)
-    if not user.get("userId"):
-        return None, jsonResponse({"error": "Unauthorized"}, 401)
-    if not _canAccessFinancialAdmin(user):
-        return None, jsonResponse({"error": "Forbidden: Financial admin required"}, 403)
-    return user, None
-
-
 def _canAccessMemes(user):
     """User can access Memes: admin OR in Memes custom group."""
     if not user.get("userId"):
@@ -5022,18 +5261,6 @@ def _canModifySquash(user):
         return False
     custom = _getUserCustomGroups(user["userId"])
     return "Squash" in custom
-
-
-def _canAccessFinancial(user):
-    """Financial view is public (guests, users, managers, superadmins). Kept for backward compat."""
-    return True
-
-
-def _canAccessFinancialAdmin(user):
-    """User can admin Financial: SuperAdmin only."""
-    if not user.get("userId"):
-        return False
-    return "admin" in user.get("groups", [])
 
 
 def _canAccessInvesting(user):

@@ -750,7 +750,13 @@ resource "aws_iam_role_policy" "lambdaApi" {
       {
         Effect   = "Allow"
         Action   = ["bedrock:InvokeModel"]
-        Resource = "arn:aws:bedrock:${var.awsRegion}::foundation-model/amazon.nova-micro-*"
+        Resource = [
+          "arn:aws:bedrock:${var.awsRegion}::foundation-model/amazon.nova-micro-*",
+          # Claude Sonnet requires an inference profile (us.*), which fans out
+          # to regional foundation models — both ARNs must be allowed.
+          "arn:aws:bedrock:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:inference-profile/us.anthropic.claude-sonnet*",
+          "arn:aws:bedrock:*::foundation-model/anthropic.claude-sonnet-*",
+        ]
       },
       {
         Effect   = "Allow"
@@ -783,6 +789,7 @@ resource "aws_lambda_function" "api" {
       COGNITO_USER_POOL_ID     = aws_cognito_user_pool.main.id
       THUMB_FUNCTION_NAME      = aws_lambda_function.thumb.function_name
       ALPHA_VANTAGE_API_KEY    = var.alphaVantageApiKey
+      ERA_API_KEY              = var.eraApiKey
     }
   }
 }
@@ -1514,51 +1521,6 @@ resource "aws_apigatewayv2_route" "squashMatchesDelete" {
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
-# Financial section: config and quote are public (guests view); watchlist requires JWT
-resource "aws_apigatewayv2_route" "financialConfigGet" {
-  api_id    = aws_apigatewayv2_api.main.id
-  route_key = "GET /financial/config"
-  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
-}
-
-resource "aws_apigatewayv2_route" "financialQuoteGet" {
-  api_id    = aws_apigatewayv2_api.main.id
-  route_key = "GET /financial/quote"
-  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
-}
-
-resource "aws_apigatewayv2_route" "financialWatchlistGet" {
-  api_id             = aws_apigatewayv2_api.main.id
-  route_key          = "GET /financial/watchlist"
-  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
-  authorization_type = "JWT"
-  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
-}
-
-resource "aws_apigatewayv2_route" "financialWatchlistPut" {
-  api_id             = aws_apigatewayv2_api.main.id
-  route_key          = "PUT /financial/watchlist"
-  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
-  authorization_type = "JWT"
-  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
-}
-
-resource "aws_apigatewayv2_route" "adminFinancialDefaultSymbolsGet" {
-  api_id             = aws_apigatewayv2_api.main.id
-  route_key          = "GET /admin/financial/default-symbols"
-  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
-  authorization_type = "JWT"
-  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
-}
-
-resource "aws_apigatewayv2_route" "adminFinancialDefaultSymbolsPut" {
-  api_id             = aws_apigatewayv2_api.main.id
-  route_key          = "PUT /admin/financial/default-symbols"
-  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
-  authorization_type = "JWT"
-  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
-}
-
 # Investing section (Financial custom group required, JWT)
 resource "aws_apigatewayv2_route" "investingSearchGet" {
   api_id             = aws_apigatewayv2_api.main.id
@@ -1603,6 +1565,151 @@ resource "aws_apigatewayv2_route" "investingTrackerGet" {
 resource "aws_apigatewayv2_route" "investingTrackerPut" {
   api_id             = aws_apigatewayv2_api.main.id
   route_key          = "PUT /investing/tracker"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+# Personal Finances / B&PF (any logged-in user, JWT; sharing enforced in the lambda)
+resource "aws_apigatewayv2_route" "financesOverviewGet" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /finances/overview"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "financesAccountsGet" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /finances/accounts"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "financesAccountsPost" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /finances/accounts"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "financesAccountPut" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "PUT /finances/accounts/{id}"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "financesAccountDelete" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "DELETE /finances/accounts/{id}"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "financesTransactionsGet" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /finances/transactions"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "financesTransactionsPost" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /finances/transactions"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "financesTransactionPut" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "PUT /finances/transactions/{id}"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "financesTransactionDelete" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "DELETE /finances/transactions/{id}"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "financesBudgetsGet" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /finances/budgets"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "financesBudgetsPut" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "PUT /finances/budgets"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "financesInsightsGet" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /finances/insights"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "financesInsightsSummaryPost" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /finances/insights/summary"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "financesSharesGet" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /finances/shares"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "financesSharesPut" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "PUT /finances/shares"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "financesShareDelete" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "DELETE /finances/shares/{granteeId}"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "financesSharedWithMeGet" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /finances/shared-with-me"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "financesConfigGet" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /finances/config"
   target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
   authorization_type = "JWT"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
@@ -2087,6 +2194,50 @@ resource "aws_lambda_permission" "apiGateway" {
   statement_id  = "AllowAPIGatewayInvoke"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.api.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.main.execution_arn}/*/*"
+}
+
+# ------------------------------------------------------------------------------
+# Finances MCP server lambda (bearer-token auth inside the lambda — no Cognito
+# authorizer; MCP clients can't do the Cognito flow)
+# ------------------------------------------------------------------------------
+resource "aws_lambda_function" "mcp" {
+  filename         = data.archive_file.api.output_path
+  function_name    = "fus-finances-mcp"
+  role             = aws_iam_role.lambdaApi.arn
+  handler          = "mcp.handler.handler"
+  source_code_hash = data.archive_file.api.output_base64sha256
+  runtime          = "python3.12"
+  timeout          = 30
+
+  environment {
+    variables = {
+      TABLE_NAME        = aws_dynamodb_table.main.name
+      ERA_API_KEY       = var.eraApiKey
+      MCP_BEARER_TOKEN  = var.mcpBearerToken
+      MCP_OWNER_USER_ID = var.mcpOwnerUserId
+    }
+  }
+}
+
+resource "aws_apigatewayv2_integration" "mcp" {
+  api_id                 = aws_apigatewayv2_api.main.id
+  integration_type       = "AWS_PROXY"
+  integration_uri        = aws_lambda_function.mcp.invoke_arn
+  payload_format_version = "2.0"
+}
+
+resource "aws_apigatewayv2_route" "mcpPost" {
+  api_id    = aws_apigatewayv2_api.main.id
+  route_key = "POST /mcp"
+  target    = "integrations/${aws_apigatewayv2_integration.mcp.id}"
+}
+
+resource "aws_lambda_permission" "mcpGateway" {
+  statement_id  = "AllowAPIGatewayInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.mcp.function_name
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.main.execution_arn}/*/*"
 }

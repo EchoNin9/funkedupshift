@@ -9,3 +9,8 @@ githubOrgRepo = "EchoNin9/funkedupshift"
 # Optional overrides for state backend (defaults in variables.tf)
 terraformStateBucket     = "fus-aws-s3-terraform-state"
 terraformStateLockTable  = "fus-terraform-state-lock"
+
+# Personal Finances app (all optional; features stay dark until set)
+eraApiKey      = ""  # Era.app key — enables read-only Era account/transaction sync
+mcpBearerToken = ""  # long random secret; required for the finances MCP endpoint
+mcpOwnerUserId = ""  # Cognito sub whose finances the MCP server exposes
