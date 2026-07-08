@@ -3,6 +3,7 @@ import { Alert } from "../../components";
 import { apiGet, apiSend, fmtMoney, ownerParam, type Insights } from "./api";
 import type { FinancesContext } from "./FinancesPage";
 import { EraEmptyState } from "./EraBadge";
+import RecurringPanel from "./RecurringPanel";
 
 const InsightsTab: React.FC<{ ctx: FinancesContext }> = ({ ctx }) => {
   const readOnly = !!ctx.owner;
@@ -117,6 +118,8 @@ const InsightsTab: React.FC<{ ctx: FinancesContext }> = ({ ctx }) => {
           </div>
         </div>
       </div>
+
+      <RecurringPanel items={data.recurring ?? []} />
 
       {!data.eraConnected && <EraEmptyState />}
       {error && <Alert variant="error">{error}</Alert>}

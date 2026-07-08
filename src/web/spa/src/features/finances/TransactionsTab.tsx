@@ -3,8 +3,11 @@ import { Alert } from "../../components";
 import { apiGet, apiSend, fmtMoney, ownerParam, type Account, type Txn } from "./api";
 import type { FinancesContext } from "./FinancesPage";
 import EraBadge, { EraEmptyState } from "./EraBadge";
+import ImportPanel from "./ImportPanel";
+import RulesSection from "./RulesSection";
 
 const EMPTY_FORM = { date: "", amount: "", payee: "", category: "", notes: "", accountId: "" };
+const EMPTY_XFER = { date: "", amount: "", fromAccountId: "", toAccountId: "", notes: "" };
 
 const TransactionsTab: React.FC<{ ctx: FinancesContext }> = ({ ctx }) => {
   const readOnly = !!ctx.owner;
@@ -14,6 +17,9 @@ const TransactionsTab: React.FC<{ ctx: FinancesContext }> = ({ ctx }) => {
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [xfer, setXfer] = useState(EMPTY_XFER);
+  const [showXfer, setShowXfer] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -70,8 +76,26 @@ const TransactionsTab: React.FC<{ ctx: FinancesContext }> = ({ ctx }) => {
     }
   };
 
+  const submitTransfer = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await apiSend("POST", "/finances/transfers", { ...xfer, amount: parseFloat(xfer.amount) });
+      setXfer(EMPTY_XFER);
+      setShowXfer(false);
+      load();
+    } catch (e: any) {
+      setError(e?.message ?? "Transfer failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const remove = async (t: Txn) => {
-    if (!window.confirm(`Delete transaction "${t.payee || t.id}"?`)) return;
+    const msg = t.transferId
+      ? `Delete this transfer? Both legs will be removed.`
+      : `Delete transaction "${t.payee || t.id}"?`;
+    if (!window.confirm(msg)) return;
     try {
       await apiSend("DELETE", `/finances/transactions/${encodeURIComponent(t.id)}`);
       load();
@@ -109,15 +133,69 @@ const TransactionsTab: React.FC<{ ctx: FinancesContext }> = ({ ctx }) => {
           </select>
         </div>
         {!readOnly && (
-          <button
-            type="button"
-            onClick={() => { setShowForm(!showForm); setEditingId(null); setForm(EMPTY_FORM); }}
-            className="ml-auto rounded-md bg-accent-500 px-3 py-2 text-sm font-medium text-surface-0 hover:bg-orange-500"
-          >
-            {showForm ? "Close" : "Add transaction"}
-          </button>
+          <div className="ml-auto flex gap-2">
+            <button
+              type="button"
+              onClick={() => setShowImport(!showImport)}
+              className="rounded-md border border-accent-500 px-3 py-2 text-sm font-medium text-accent-500 hover:bg-surface-2"
+            >
+              {showImport ? "Close import" : "Import file"}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setShowXfer(!showXfer); setXfer(EMPTY_XFER); }}
+              className="rounded-md border border-accent-500 px-3 py-2 text-sm font-medium text-accent-500 hover:bg-surface-2"
+            >
+              {showXfer ? "Close transfer" : "Record transfer"}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setShowForm(!showForm); setEditingId(null); setForm(EMPTY_FORM); }}
+              className="rounded-md bg-accent-500 px-3 py-2 text-sm font-medium text-surface-0 hover:bg-orange-500"
+            >
+              {showForm ? "Close" : "Add transaction"}
+            </button>
+          </div>
         )}
       </div>
+
+      {showImport && !readOnly && <ImportPanel accounts={accounts} onImported={load} />}
+
+      {showXfer && !readOnly && (
+        <div className="rounded-xl border border-border-default bg-surface-1 p-4 space-y-3">
+          <h3 className="text-sm font-semibold text-text-primary">Record transfer between accounts</h3>
+          <div className="flex flex-wrap gap-2">
+            <input type="date" aria-label="Transfer date" value={xfer.date}
+              onChange={(e) => setXfer({ ...xfer, date: e.target.value })} className={input} />
+            <input type="number" step="0.01" min="0" aria-label="Transfer amount" placeholder="Amount"
+              value={xfer.amount} onChange={(e) => setXfer({ ...xfer, amount: e.target.value })} className={input} />
+            <select aria-label="From account" value={xfer.fromAccountId}
+              onChange={(e) => setXfer({ ...xfer, fromAccountId: e.target.value })} className={input}>
+              <option value="">From…</option>
+              {accounts.map((a) => <option key={a.id} value={a.id}>{a.displayName ?? a.name}</option>)}
+            </select>
+            <select aria-label="To account" value={xfer.toAccountId}
+              onChange={(e) => setXfer({ ...xfer, toAccountId: e.target.value })} className={input}>
+              <option value="">To…</option>
+              {accounts.filter((a) => a.id !== xfer.fromAccountId)
+                .map((a) => <option key={a.id} value={a.id}>{a.displayName ?? a.name}</option>)}
+            </select>
+            <input type="text" aria-label="Transfer notes" placeholder="Notes" value={xfer.notes}
+              onChange={(e) => setXfer({ ...xfer, notes: e.target.value })} className={`${input} grow`} />
+            <button
+              type="button"
+              onClick={submitTransfer}
+              disabled={busy || !xfer.date || !xfer.amount || !xfer.fromAccountId || !xfer.toAccountId}
+              className="rounded-md bg-accent-500 px-3 py-2 text-sm font-medium text-surface-0 hover:bg-orange-500 disabled:opacity-50"
+            >
+              {busy ? "Saving…" : "Record transfer"}
+            </button>
+          </div>
+          <p className="text-xs text-text-tertiary">
+            Creates linked legs in both accounts — transfers never count as income or spend.
+          </p>
+        </div>
+      )}
 
       {showForm && !readOnly && (
         <div className="rounded-xl border border-border-default bg-surface-1 p-4 space-y-3">
@@ -175,6 +253,11 @@ const TransactionsTab: React.FC<{ ctx: FinancesContext }> = ({ ctx }) => {
                 <td className="px-4 py-3 text-sm text-text-primary">
                   {t.payee || "—"}
                   {t.source === "era" && <span className="ml-2"><EraBadge /></span>}
+                  {(t.transferId || t.category === "Transfer") && (
+                    <span className="ml-2 rounded-full border border-border-hover px-2 py-0.5 text-[10px] uppercase tracking-wide text-text-tertiary">
+                      Transfer
+                    </span>
+                  )}
                 </td>
                 <td className="px-4 py-3 text-sm text-text-secondary">{t.category}</td>
                 <td className={`px-4 py-3 text-sm text-right font-medium ${t.amount < 0 ? "text-red-400" : "text-emerald-400"}`}>
@@ -202,6 +285,8 @@ const TransactionsTab: React.FC<{ ctx: FinancesContext }> = ({ ctx }) => {
           </tbody>
         </table>
       </div>
+
+      {!readOnly && <RulesSection categories={ctx.categories} />}
 
       {error && <Alert variant="error">{error}</Alert>}
     </div>

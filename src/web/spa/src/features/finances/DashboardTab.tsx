@@ -1,19 +1,32 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Alert } from "../../components";
-import { apiGet, fmtMoney, type Overview } from "./api";
+import { apiGet, fmtMoney, type Account, type Overview } from "./api";
 import type { FinancesContext } from "./FinancesPage";
 import NetLineChart from "./NetLineChart";
 import EraBadge, { EraEmptyState } from "./EraBadge";
+import AccountsManager from "./AccountsManager";
+
+function groupByBank(accounts: Account[]): [string, Account[]][] {
+  const groups = new Map<string, Account[]>();
+  for (const a of accounts) {
+    const key = a.source === "era" ? "Era" : a.bank || "Other accounts";
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(a);
+  }
+  return [...groups.entries()];
+}
 
 const DashboardTab: React.FC<{ ctx: FinancesContext }> = ({ ctx }) => {
   const [data, setData] = useState<Overview | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const load = useCallback(() => {
     apiGet<Overview>(`/finances/overview${ctx.owner ? `?owner=${encodeURIComponent(ctx.owner)}` : ""}`)
       .then(setData)
       .catch((e: Error) => setError(e.message));
   }, [ctx.owner]);
+
+  useEffect(load, [load]);
 
   if (error) return <Alert variant="error">{error}</Alert>;
   if (!data) return <div className="h-48 animate-pulse rounded-xl bg-surface-3" />;
@@ -39,25 +52,41 @@ const DashboardTab: React.FC<{ ctx: FinancesContext }> = ({ ctx }) => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        {data.accounts.map((a) => (
-          <div key={`${a.source}-${a.id}`} className="rounded-xl border border-border-default bg-surface-1 p-4">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium text-text-primary">{a.name}</p>
-              {a.source === "era" && <EraBadge />}
-            </div>
-            <p className="text-xs text-text-tertiary capitalize">{a.kind}</p>
-            <p className={`mt-1 text-lg font-semibold ${a.balance < 0 ? "text-red-400" : "text-text-primary"}`}>
-              {fmtMoney(a.balance, a.currency)}
-            </p>
+      {!ctx.owner && <AccountsManager accounts={data.accounts} onChanged={load} />}
+
+      {groupByBank(data.accounts).map(([bank, accounts]) => (
+        <div key={bank} className="space-y-2">
+          <h2 className="text-sm font-semibold text-text-primary uppercase">{bank}</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {accounts.map((a) => {
+              const drift = a.reconciledBalance != null && Math.abs(a.balance - a.reconciledBalance) > 0.005;
+              return (
+                <div key={`${a.source}-${a.id}`} className="rounded-xl border border-border-default bg-surface-1 p-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium text-text-primary">{a.displayName ?? a.name}</p>
+                    {a.source === "era" && <EraBadge />}
+                  </div>
+                  <p className="text-xs text-text-tertiary capitalize">{a.kind}</p>
+                  <p className={`mt-1 text-lg font-semibold ${a.balance < 0 ? "text-red-400" : "text-text-primary"}`}>
+                    {fmtMoney(a.balance, a.currency)}
+                  </p>
+                  {drift && (
+                    <p className="mt-1 text-xs text-amber-400">
+                      Bank statement says {fmtMoney(a.reconciledBalance!, a.currency)}
+                      {a.reconciledAt ? ` (as of ${a.reconciledAt})` : ""} — doesn&apos;t match the register.
+                    </p>
+                  )}
+                </div>
+              );
+            })}
           </div>
-        ))}
-        {data.accounts.length === 0 && (
-          <p className="text-sm text-text-tertiary col-span-full">
-            No accounts yet. Add manual transactions and accounts from the Transactions tab.
-          </p>
-        )}
-      </div>
+        </div>
+      ))}
+      {data.accounts.length === 0 && (
+        <p className="text-sm text-text-tertiary">
+          No accounts yet. Add one above, then record transactions or import a bank file.
+        </p>
+      )}
 
       {!data.eraConnected && <EraEmptyState />}
 

@@ -9,8 +9,16 @@ export function getApiBaseUrl(): string | null {
 export interface Account {
   id: string;
   name: string;
+  bank?: string;
+  nickname?: string;
+  accountNumberMasked?: string;
+  displayName?: string;
   kind: string;
   balance: number;
+  openingBalance?: number;
+  reconciledBalance?: number;
+  reconciledAt?: string;
+  csvMapping?: Record<string, string>;
   currency: string;
   source: "local" | "era";
   updatedAt?: string;
@@ -24,6 +32,7 @@ export interface Txn {
   payee: string;
   category: string;
   notes: string;
+  transferId?: string;
   source: "local" | "era";
 }
 
@@ -53,6 +62,14 @@ export interface Insights {
     previousIncome: number;
   };
   forecast: { month: string; projectedNet: number }[];
+  recurring?: {
+    payee: string;
+    cadence: string;
+    typicalAmount: number;
+    occurrences: number;
+    lastDate: string;
+    nextExpected: string;
+  }[];
   eraConnected: boolean;
   era?: unknown;
 }
