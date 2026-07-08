@@ -725,6 +725,7 @@ resource "aws_iam_role_policy" "lambdaApi" {
           "dynamodb:GetItem",
           "dynamodb:BatchGetItem",
           "dynamodb:PutItem",
+          "dynamodb:BatchWriteItem",
           "dynamodb:UpdateItem",
           "dynamodb:DeleteItem"
         ]
