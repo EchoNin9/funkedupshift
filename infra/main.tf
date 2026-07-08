@@ -1643,6 +1643,46 @@ resource "aws_apigatewayv2_route" "financesTransactionDelete" {
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
+resource "aws_apigatewayv2_route" "financesTransfersPost" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /finances/transfers"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "financesImportPost" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /finances/import"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "financesRulesGet" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /finances/rules"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "financesRulesPut" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "PUT /finances/rules"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "financesRulesApplyPost" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /finances/rules/apply"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
 resource "aws_apigatewayv2_route" "financesBudgetsGet" {
   api_id             = aws_apigatewayv2_api.main.id
   route_key          = "GET /finances/budgets"

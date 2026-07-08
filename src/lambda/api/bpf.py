@@ -70,19 +70,64 @@ def _query_prefix(user_id, sk_prefix):
 # ------------------------------------------------------------------------------
 
 def _account_from_item(item):
-    return {
+    """Account dict for API output. Full accountNumber never leaves the API —
+    only the masked last 4. Balance is computed by list_accounts."""
+    number = item.get("accountNumber", {}).get("S", "")
+    # legacy items stored a static `balance`; treat it as the opening balance
+    opening = item.get("openingBalance", item.get("balance", {})).get("N", "0")
+    name = item.get("name", {}).get("S", "")
+    bank = item.get("bank", {}).get("S", "")
+    nickname = item.get("nickname", {}).get("S", "")
+    masked = f"…{number[-4:]}" if number else ""
+    display = nickname or " ".join(p for p in (bank, masked or name) if p) or name
+    out = {
         "id": item["SK"]["S"].split("BPF#ACCOUNT#")[-1],
-        "name": item.get("name", {}).get("S", ""),
+        "name": name,
+        "bank": bank,
+        "nickname": nickname,
+        "accountNumberMasked": masked,
+        "displayName": display,
         "kind": item.get("kind", {}).get("S", "checking"),
-        "balance": float(item.get("balance", {}).get("N", "0")),
+        "openingBalance": float(opening),
         "currency": item.get("currency", {}).get("S", "USD"),
         "updatedAt": item.get("updatedAt", {}).get("S", ""),
         "source": "local",
     }
+    if "reconciledBalance" in item:
+        out["reconciledBalance"] = float(item["reconciledBalance"]["N"])
+        out["reconciledAt"] = item.get("reconciledAt", {}).get("S", "")
+    if "csvMapping" in item:
+        try:
+            out["csvMapping"] = json.loads(item["csvMapping"]["S"])
+        except (json.JSONDecodeError, KeyError):
+            pass
+    return out
 
 
-def list_accounts(user_id):
-    return [_account_from_item(i) for i in _query_prefix(user_id, "BPF#ACCOUNT#")]
+def list_accounts(user_id, txns=None):
+    """Accounts with computed balance = openingBalance + sum(transactions)."""
+    accounts = [_account_from_item(i) for i in _query_prefix(user_id, "BPF#ACCOUNT#")]
+    if accounts:
+        if txns is None:
+            txns = list_transactions(user_id)
+        sums = {}
+        for t in txns:
+            if t.get("accountId"):
+                sums[t["accountId"]] = sums.get(t["accountId"], 0.0) + t["amount"]
+        for a in accounts:
+            a["balance"] = round(a["openingBalance"] + sums.get(a["id"], 0.0), 2)
+    return accounts
+
+
+def find_account_by_number(user_id, number):
+    """Full-number match for statement imports. Returns account id or None."""
+    number = (number or "").strip()
+    if not number:
+        return None
+    for item in _query_prefix(user_id, "BPF#ACCOUNT#"):
+        if item.get("accountNumber", {}).get("S", "") == number:
+            return item["SK"]["S"].split("BPF#ACCOUNT#")[-1]
+    return None
 
 
 def _validate_account(data):
@@ -94,11 +139,20 @@ def _validate_account(data):
     if kind not in ACCOUNT_KINDS:
         return None, f"kind must be one of: {', '.join(ACCOUNT_KINDS)}"
     try:
-        balance = float(data.get("balance") or 0)
+        # accept legacy `balance` as the opening balance
+        opening = float(data.get("openingBalance", data.get("balance")) or 0)
     except (TypeError, ValueError):
-        return None, "balance must be a number"
+        return None, "openingBalance must be a number"
     currency = str(data.get("currency") or "USD").strip().upper()[:8]
-    return {"name": name, "kind": kind, "balance": balance, "currency": currency}, None
+    return {
+        "name": name,
+        "kind": kind,
+        "openingBalance": opening,
+        "currency": currency,
+        "bank": str(data.get("bank") or "").strip(),
+        "accountNumber": str(data.get("accountNumber") or "").strip(),
+        "nickname": str(data.get("nickname") or "").strip(),
+    }, None
 
 
 def save_account(user_id, data, account_id=None):
@@ -106,21 +160,55 @@ def save_account(user_id, data, account_id=None):
     clean, err = _validate_account(data)
     if err:
         return None, err
+    reconciled = {}
+    if account_id:
+        # carry reconciliation fields through edits
+        resp = _ddb().get_item(
+            TableName=TABLE_NAME,
+            Key={"PK": {"S": f"USER#{user_id}"}, "SK": {"S": f"BPF#ACCOUNT#{account_id}"}},
+        )
+        old = resp.get("Item") or {}
+        if "reconciledBalance" in old:
+            reconciled = {"reconciledBalance": old["reconciledBalance"],
+                          "reconciledAt": old.get("reconciledAt", {"S": ""})}
+        if "csvMapping" in old:
+            reconciled["csvMapping"] = old["csvMapping"]
+        # the full number is never sent to clients, so a blank on edit means "keep"
+        if not clean["accountNumber"]:
+            clean["accountNumber"] = old.get("accountNumber", {}).get("S", "")
     account_id = account_id or uuid.uuid4().hex
     now = _now()
-    _ddb().put_item(
+    item = {
+        "PK": {"S": f"USER#{user_id}"},
+        "SK": {"S": f"BPF#ACCOUNT#{account_id}"},
+        "name": {"S": clean["name"]},
+        "kind": {"S": clean["kind"]},
+        "openingBalance": {"N": str(clean["openingBalance"])},
+        "currency": {"S": clean["currency"]},
+        "updatedAt": {"S": now},
+        **reconciled,
+    }
+    for attr in ("bank", "accountNumber", "nickname"):
+        if clean[attr]:
+            item[attr] = {"S": clean[attr]}
+    _ddb().put_item(TableName=TABLE_NAME, Item=item)
+    saved = _account_from_item(item)
+    saved["updatedAt"] = now
+    return saved, None
+
+
+def set_reconciled_balance(user_id, account_id, balance, as_of):
+    """Record the bank-stated ledger balance from a statement import."""
+    _ddb().update_item(
         TableName=TABLE_NAME,
-        Item={
-            "PK": {"S": f"USER#{user_id}"},
-            "SK": {"S": f"BPF#ACCOUNT#{account_id}"},
-            "name": {"S": clean["name"]},
-            "kind": {"S": clean["kind"]},
-            "balance": {"N": str(clean["balance"])},
-            "currency": {"S": clean["currency"]},
-            "updatedAt": {"S": now},
+        Key={"PK": {"S": f"USER#{user_id}"}, "SK": {"S": f"BPF#ACCOUNT#{account_id}"}},
+        UpdateExpression="SET reconciledBalance = :b, reconciledAt = :d, updatedAt = :n",
+        ExpressionAttributeValues={
+            ":b": {"N": str(float(balance))},
+            ":d": {"S": str(as_of or "")},
+            ":n": {"S": _now()},
         },
     )
-    return {**clean, "id": account_id, "updatedAt": now, "source": "local"}, None
 
 
 def account_exists(user_id, account_id):
@@ -158,9 +246,16 @@ def _txn_from_item(item):
         "category": item.get("category", {}).get("S", "Other"),
         "notes": item.get("notes", {}).get("S", ""),
         "business": item.get("business", {}).get("BOOL", False),
+        "transferId": item.get("transferId", {}).get("S", ""),
+        "fitid": item.get("fitid", {}).get("S", ""),
         "updatedAt": item.get("updatedAt", {}).get("S", ""),
         "source": "local",
     }
+
+
+def _is_transfer(txn):
+    """Transfer legs move money between own accounts — never income/spend."""
+    return bool(txn.get("transferId")) or txn.get("category") == "Transfer"
 
 
 def _txn_sk(txn_id):
@@ -230,15 +325,60 @@ def list_transactions(user_id, from_date=None, to_date=None, q=None, category=No
     return txns
 
 
-def save_transaction(user_id, data, txn_id=None):
-    """Create or update. Date changes move the item (SK embeds date). Returns (txn, error)."""
+def _put_txn(user_id, sk, clean, transfer_id="", fitid=""):
+    now = _now()
+    item = {
+        "PK": {"S": f"USER#{user_id}"},
+        "SK": {"S": sk},
+        "accountId": {"S": clean["accountId"]},
+        "amount": {"N": str(clean["amount"])},
+        "payee": {"S": clean["payee"]},
+        "category": {"S": clean["category"]},
+        "notes": {"S": clean["notes"]},
+        "business": {"BOOL": False},  # phase-2 hook, always false in P1
+        "updatedAt": {"S": now},
+    }
+    if transfer_id:
+        item["transferId"] = {"S": transfer_id}
+    if fitid:
+        item["fitid"] = {"S": fitid}
+    _ddb().put_item(TableName=TABLE_NAME, Item=item)
+    return now
+
+
+def _find_transfer_sibling(user_id, transfer_id, exclude_sk):
+    """The other leg of a transfer. ponytail: prefix scan; fine at personal volumes."""
+    for item in _query_prefix(user_id, "BPF#TXN#"):
+        if (item.get("transferId", {}).get("S") == transfer_id
+                and item["SK"]["S"] != exclude_sk):
+            return item
+    return None
+
+
+def save_transaction(user_id, data, txn_id=None, fitid=""):
+    """Create or update. Date changes move the item (SK embeds date).
+    Editing a transfer leg mirrors amount/date onto its sibling. Returns (txn, error)."""
     clean, err = _validate_txn(data)
     if err:
         return None, err
+    transfer_id = ""
+    if not txn_id and clean["category"] == "Other":
+        # no explicit category — let the user's payee rules pick one
+        from api.bpf_rules import apply_rules, get_rules
+        clean["category"] = apply_rules(get_rules(user_id), clean["payee"]) or "Other"
     if txn_id:
         old_sk = _txn_sk(txn_id)
         if not old_sk:
             return None, "invalid transaction id"
+        resp = _ddb().get_item(
+            TableName=TABLE_NAME,
+            Key={"PK": {"S": f"USER#{user_id}"}, "SK": {"S": old_sk}},
+        )
+        old = resp.get("Item") or {}
+        transfer_id = old.get("transferId", {}).get("S", "")
+        fitid = fitid or old.get("fitid", {}).get("S", "")
+        if transfer_id:
+            clean["category"] = "Transfer"  # legs stay transfers
         old_uuid = old_sk.split("#")[-1]
         new_sk = f"BPF#TXN#{clean['date']}#{old_uuid}"
         if new_sk != old_sk:
@@ -252,26 +392,30 @@ def save_transaction(user_id, data, txn_id=None):
         u = uuid.uuid4().hex
         sk = f"BPF#TXN#{clean['date']}#{u}"
         new_id = f"{clean['date']}_{u}"
-    now = _now()
-    _ddb().put_item(
-        TableName=TABLE_NAME,
-        Item={
-            "PK": {"S": f"USER#{user_id}"},
-            "SK": {"S": sk},
-            "accountId": {"S": clean["accountId"]},
-            "amount": {"N": str(clean["amount"])},
-            "payee": {"S": clean["payee"]},
-            "category": {"S": clean["category"]},
-            "notes": {"S": clean["notes"]},
-            "business": {"BOOL": False},  # phase-2 hook, always false in P1
-            "updatedAt": {"S": now},
-        },
-    )
-    _ensure_category(user_id, clean["category"])
-    return {**clean, "id": new_id, "business": False, "updatedAt": now, "source": "local"}, None
+    now = _put_txn(user_id, sk, clean, transfer_id, fitid)
+    if transfer_id:
+        sib = _find_transfer_sibling(user_id, transfer_id, sk)
+        if sib:
+            sib_txn = _txn_from_item(sib)
+            mirrored = {**sib_txn, "date": clean["date"], "amount": -clean["amount"],
+                        "category": "Transfer"}
+            sib_uuid = sib["SK"]["S"].split("#")[-1]
+            new_sib_sk = f"BPF#TXN#{clean['date']}#{sib_uuid}"
+            if new_sib_sk != sib["SK"]["S"]:
+                _ddb().delete_item(
+                    TableName=TABLE_NAME,
+                    Key={"PK": {"S": f"USER#{user_id}"}, "SK": {"S": sib["SK"]["S"]}},
+                )
+            _put_txn(user_id, new_sib_sk, mirrored, transfer_id,
+                     sib.get("fitid", {}).get("S", ""))
+    else:
+        _ensure_category(user_id, clean["category"])
+    return {**clean, "id": new_id, "business": False, "transferId": transfer_id,
+            "updatedAt": now, "source": "local"}, None
 
 
 def delete_transaction(user_id, txn_id):
+    """Delete a transaction; a transfer leg takes its sibling with it."""
     sk = _txn_sk(txn_id)
     if not sk:
         return False
@@ -285,7 +429,53 @@ def delete_transaction(user_id, txn_id):
         TableName=TABLE_NAME,
         Key={"PK": {"S": f"USER#{user_id}"}, "SK": {"S": sk}},
     )
+    transfer_id = resp["Item"].get("transferId", {}).get("S", "")
+    if transfer_id:
+        sib = _find_transfer_sibling(user_id, transfer_id, sk)
+        if sib:
+            _ddb().delete_item(
+                TableName=TABLE_NAME,
+                Key={"PK": {"S": f"USER#{user_id}"}, "SK": {"S": sib["SK"]["S"]}},
+            )
     return True
+
+
+def create_transfer(user_id, data):
+    """Record money moving between two own accounts as linked legs.
+    {date, amount (positive), fromAccountId, toAccountId, notes} -> (legs, error)."""
+    d = str(data.get("date") or "").strip()[:10]
+    try:
+        datetime.strptime(d, "%Y-%m-%d")
+    except ValueError:
+        return None, "date must be YYYY-MM-DD"
+    try:
+        amount = abs(float(data.get("amount")))
+    except (TypeError, ValueError):
+        return None, "amount must be a number"
+    if amount == 0:
+        return None, "amount must be non-zero"
+    src = str(data.get("fromAccountId") or "").strip()
+    dst = str(data.get("toAccountId") or "").strip()
+    if not src or not dst or src == dst:
+        return None, "fromAccountId and toAccountId must be two different accounts"
+    names = {a["id"]: a["displayName"] for a in list_accounts(user_id, txns=[])}
+    if src not in names or dst not in names:
+        return None, "account not found"
+    notes = str(data.get("notes") or "").strip()
+    transfer_id = uuid.uuid4().hex
+    legs = []
+    for account_id, amt, payee in (
+        (src, -amount, f"Transfer to {names[dst]}"),
+        (dst, amount, f"Transfer from {names[src]}"),
+    ):
+        u = uuid.uuid4().hex
+        sk = f"BPF#TXN#{d}#{u}"
+        clean = {"date": d, "amount": amt, "accountId": account_id,
+                 "payee": payee, "category": "Transfer", "notes": notes}
+        now = _put_txn(user_id, sk, clean, transfer_id)
+        legs.append({**clean, "id": f"{d}_{u}", "business": False,
+                     "transferId": transfer_id, "updatedAt": now, "source": "local"})
+    return legs, None
 
 
 # ------------------------------------------------------------------------------
@@ -341,7 +531,7 @@ def get_budgets(user_id):
     txns = list_transactions(user_id, from_date=month_start, to_date=today.isoformat())
     actuals = {}
     for t in txns:
-        if t["amount"] < 0:
+        if t["amount"] < 0 and not _is_transfer(t):
             actuals[t["category"]] = actuals.get(t["category"], 0.0) + (-t["amount"])
     for b in budgets:
         b["actual"] = round(actuals.get(b["category"], 0.0), 2)
@@ -468,7 +658,8 @@ def delete_share(owner_id, grantee_id):
 # ------------------------------------------------------------------------------
 
 def overview_payload(user_id):
-    """Dashboard: accounts (local ∪ Era), net worth, 30-day cash flow, 90-day series."""
+    """Dashboard: accounts (local ∪ Era), net worth, 30-day cash flow, 90-day series.
+    Transfer legs cancel out in the net series but are excluded from income/spend."""
     accounts = list_accounts(user_id) + era_client.get_accounts()
     net_worth = round(sum(a["balance"] for a in accounts), 2)
     today = date.today()
@@ -476,8 +667,9 @@ def overview_payload(user_id):
     d30 = (today - timedelta(days=30)).isoformat()
     txns = list_transactions(user_id, from_date=d90, to_date=today.isoformat())
     txns += era_client.get_transactions(from_date=d90, to_date=today.isoformat())
-    income = sum(t["amount"] for t in txns if t["date"] >= d30 and t["amount"] > 0)
-    spend = sum(-t["amount"] for t in txns if t["date"] >= d30 and t["amount"] < 0)
+    flows = [t for t in txns if not _is_transfer(t)]
+    income = sum(t["amount"] for t in flows if t["date"] >= d30 and t["amount"] > 0)
+    spend = sum(-t["amount"] for t in flows if t["date"] >= d30 and t["amount"] < 0)
     daily = {}
     for t in txns:
         daily[t["date"]] = daily.get(t["date"], 0.0) + t["amount"]
@@ -526,18 +718,21 @@ def insights_payload(user_id, period=None):
     def _by_category(txns):
         out = {}
         for t in txns:
-            if t["amount"] < 0:
+            if t["amount"] < 0 and not _is_transfer(t):
                 out[t["category"]] = round(out.get(t["category"], 0.0) - t["amount"], 2)
         return out
 
-    cur = list_transactions(user_id, from_date=p_start, to_date=p_end)
-    prev = list_transactions(user_id, from_date=q_start, to_date=q_end)
+    cur = [t for t in list_transactions(user_id, from_date=p_start, to_date=p_end)
+           if not _is_transfer(t)]
+    prev = [t for t in list_transactions(user_id, from_date=q_start, to_date=q_end)
+            if not _is_transfer(t)]
 
     # ponytail: naive projection — avg net flow of last 3 months forward 3;
     # revisit if Adam wants Era's forecast surface to drive it.
     f_start = (today.replace(day=1) - timedelta(days=1)).replace(day=1)
     f_start = (f_start - timedelta(days=1)).replace(day=1)
-    hist = list_transactions(user_id, from_date=f_start.isoformat(), to_date=today.isoformat())
+    hist = [t for t in list_transactions(user_id, from_date=f_start.isoformat(),
+                                         to_date=today.isoformat()) if not _is_transfer(t)]
     months = max(1, (today.year - f_start.year) * 12 + today.month - f_start.month + 1)
     avg_net = sum(t["amount"] for t in hist) / months
     forecast = []
@@ -547,8 +742,10 @@ def insights_payload(user_id, period=None):
         forecast.append({"month": nxt.strftime("%Y-%m"), "projectedNet": round(avg_net, 2)})
         m = nxt
 
+    from api.bpf_recurring import detect_recurring
     payload = {
         "period": period,
+        "recurring": detect_recurring(list_transactions(user_id)),
         "spendingByCategory": _by_category(cur),
         "comparison": {
             "period": period,
@@ -565,6 +762,175 @@ def insights_payload(user_id, period=None):
     if era:
         payload["era"] = era
     return payload
+
+
+# ------------------------------------------------------------------------------
+# Statement imports (OFX/QFX, QIF, CSV) — parse/preview/commit with dedupe
+# ------------------------------------------------------------------------------
+
+def link_transfer_pairs(user_id, from_date=None, to_date=None):
+    """Link opposite-sign equal-amount pairs across different accounts within
+    3 days as transfers. Returns pairs linked. ponytail: O(n²) over the window."""
+    txns = [t for t in list_transactions(user_id, from_date, to_date)
+            if not t["transferId"] and t["category"] != "Transfer" and t["accountId"]]
+    txns.sort(key=lambda t: t["date"])
+    linked, used = 0, set()
+    for i, t in enumerate(txns):
+        if t["id"] in used or t["amount"] >= 0:
+            continue
+        for u in txns:
+            if (u["id"] in used or u["id"] == t["id"] or u["amount"] != -t["amount"]
+                    or u["accountId"] == t["accountId"]):
+                continue
+            gap = abs((datetime.strptime(u["date"], "%Y-%m-%d")
+                       - datetime.strptime(t["date"], "%Y-%m-%d")).days)
+            if gap > 3:
+                continue
+            transfer_id = uuid.uuid4().hex
+            for leg in (t, u):
+                _ddb().update_item(
+                    TableName=TABLE_NAME,
+                    Key={"PK": {"S": f"USER#{user_id}"}, "SK": {"S": _txn_sk(leg["id"])}},
+                    UpdateExpression="SET transferId = :t, category = :c, updatedAt = :n",
+                    ExpressionAttributeValues={
+                        ":t": {"S": transfer_id},
+                        ":c": {"S": "Transfer"},
+                        ":n": {"S": _now()},
+                    },
+                )
+            used.add(t["id"])
+            used.add(u["id"])
+            linked += 1
+            break
+    return linked
+
+
+def import_statement(user_id, body, commit=False):
+    """Parse an uploaded statement, dedupe against existing transactions,
+    route rows by account number when possible, and (on commit) write rows,
+    apply payee rules, link transfer pairs, and record ledger balances.
+    Returns (result, error). Parse errors happen before any write; dedupe
+    makes re-running a partially-committed file safe."""
+    from api import bpf_import
+    filename = str(body.get("filename") or "").strip()
+    content = body.get("content")
+    account_id = str(body.get("accountId") or "").strip()
+    if not content or not isinstance(content, str):
+        return None, "content (file text) is required"
+    if not account_id:
+        return None, "accountId (target account) is required"
+    fmt = bpf_import.detect_format(filename, content)
+    try:
+        if fmt == "ofx":
+            rows = bpf_import.parse_ofx(content)
+        elif fmt == "qif":
+            rows = bpf_import.parse_qif(content)
+        else:
+            mapping = body.get("mapping")
+            if not isinstance(mapping, dict) or not mapping:
+                return None, "mapping is required for CSV imports"
+            rows = bpf_import.parse_csv(content, mapping)
+    except ValueError as e:
+        return None, str(e)
+    if not rows:
+        return None, "No transactions found in file"
+
+    accounts = {a["id"]: a for a in list_accounts(user_id, txns=[])}
+    if account_id not in accounts:
+        return None, "Target account not found"
+    number_to_account = {}
+    for row in rows:
+        n = row.get("accountNumber") or ""
+        if n and n not in number_to_account:
+            number_to_account[n] = find_account_by_number(user_id, n)
+
+    lo = min(r["date"] for r in rows)
+    hi = max(r["date"] for r in rows)
+    existing = list_transactions(user_id, from_date=lo, to_date=hi)
+    seen_fitids = {t["fitid"] for t in existing if t["fitid"]}
+    seen_prints = {bpf_import.fingerprint(t["accountId"], t["date"], t["amount"], t["payee"])
+                   for t in existing}
+
+    from api.bpf_rules import apply_rules, get_rules
+    rules = get_rules(user_id)
+    new_rows, duplicates, routed = [], 0, {}
+    for row in rows:
+        target = number_to_account.get(row.get("accountNumber") or "") or account_id
+        fp = bpf_import.fingerprint(target, row["date"], row["amount"], row["payee"])
+        if (row.get("fitid") and row["fitid"] in seen_fitids) or fp in seen_prints:
+            duplicates += 1
+            continue
+        seen_prints.add(fp)
+        if row.get("fitid"):
+            seen_fitids.add(row["fitid"])
+        category = (row.get("category") or "").strip() \
+            or apply_rules(rules, row["payee"]) or "Other"
+        new_rows.append({"target": target, "category": category, **row})
+        routed[target] = routed.get(target, 0) + 1
+
+    result = {
+        "format": fmt,
+        "total": len(rows),
+        "new": len(new_rows),
+        "duplicates": duplicates,
+        "routed": routed,
+        "committed": False,
+    }
+    if not commit:
+        return result, None
+
+    for row in new_rows:
+        u = uuid.uuid4().hex
+        clean = {"date": row["date"], "amount": row["amount"], "accountId": row["target"],
+                 "payee": row["payee"], "category": row["category"], "notes": ""}
+        _put_txn(user_id, f"BPF#TXN#{row['date']}#{u}", clean, fitid=row.get("fitid") or "")
+    # bank-stated ledger balances → one reconciliation per statement/account
+    reconciled = set()
+    for row in rows:
+        if row.get("ledgerBalance") is None:
+            continue
+        target = number_to_account.get(row.get("accountNumber") or "") or account_id
+        key = (target, row["ledgerBalance"], row.get("ledgerBalanceDate"))
+        if key in reconciled:
+            continue
+        reconciled.add(key)
+        set_reconciled_balance(user_id, target, row["ledgerBalance"],
+                               row.get("ledgerBalanceDate") or hi)
+    if fmt == "csv" and isinstance(body.get("mapping"), dict):
+        # remember the mapping on the target account for next time
+        _ddb().update_item(
+            TableName=TABLE_NAME,
+            Key={"PK": {"S": f"USER#{user_id}"}, "SK": {"S": f"BPF#ACCOUNT#{account_id}"}},
+            UpdateExpression="SET csvMapping = :m",
+            ExpressionAttributeValues={":m": {"S": json.dumps(body["mapping"])}},
+        )
+    result["committed"] = True
+    result["transfersLinked"] = link_transfer_pairs(user_id, from_date=lo, to_date=hi)
+    return result, None
+
+
+def apply_rules_to_uncategorized(user_id):
+    """Re-run the user's payee rules over transactions still in 'Other'.
+    Returns the number recategorized."""
+    from api.bpf_rules import apply_rules, get_rules
+    rules = get_rules(user_id)
+    if not rules:
+        return 0
+    updated = 0
+    for t in list_transactions(user_id):
+        if t["category"] != "Other" or _is_transfer(t):
+            continue
+        category = apply_rules(rules, t["payee"])
+        if not category:
+            continue
+        _ddb().update_item(
+            TableName=TABLE_NAME,
+            Key={"PK": {"S": f"USER#{user_id}"}, "SK": {"S": _txn_sk(t["id"])}},
+            UpdateExpression="SET category = :c, updatedAt = :n",
+            ExpressionAttributeValues={":c": {"S": category}, ":n": {"S": _now()}},
+        )
+        updated += 1
+    return updated
 
 
 # ------------------------------------------------------------------------------

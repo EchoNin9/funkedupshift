@@ -415,6 +415,16 @@ def handler(event, context):
             return getFinancesTransactions(event)
         if method == "POST" and path == "/finances/transactions":
             return postFinancesTransactions(event)
+        if method == "POST" and path == "/finances/transfers":
+            return postFinancesTransfers(event)
+        if method == "POST" and path == "/finances/import":
+            return postFinancesImport(event)
+        if method == "GET" and path == "/finances/rules":
+            return getFinancesRules(event)
+        if method == "PUT" and path == "/finances/rules":
+            return putFinancesRules(event)
+        if method == "POST" and path == "/finances/rules/apply":
+            return postFinancesRulesApply(event)
         if method == "GET" and path == "/finances/budgets":
             return getFinancesBudgets(event)
         if method == "PUT" and path == "/finances/budgets":
@@ -949,6 +959,25 @@ def putFinancesTransaction(event, txn_id):
         return jsonResponse({"error": str(e)}, 500)
 
 
+def postFinancesTransfers(event):
+    """POST /finances/transfers {date, amount, fromAccountId, toAccountId, notes}
+    - Record a transfer as two linked legs (never income/spend)."""
+    user, err = _requireAuth(event)
+    if err:
+        return err
+    try:
+        from api.bpf import create_transfer
+        legs, verr = create_transfer(user["userId"], _json_body(event))
+        if verr:
+            return jsonResponse({"error": verr}, 400)
+        return jsonResponse({"legs": legs}, 201)
+    except json.JSONDecodeError:
+        return jsonResponse({"error": "Invalid JSON body"}, 400)
+    except Exception as e:
+        logger.exception("postFinancesTransfers error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
 def deleteFinancesTransaction(event, txn_id):
     """DELETE /finances/transactions/{id} - Delete manual transaction."""
     user, err = _requireAuth(event)
@@ -1026,6 +1055,71 @@ def postFinancesInsightsSummary(event):
         return jsonResponse({"error": "Invalid JSON body"}, 400)
     except Exception as e:
         logger.exception("postFinancesInsightsSummary error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def postFinancesImport(event):
+    """POST /finances/import {accountId, filename, content, mapping?, commit?}
+    - Statement import: preview by default, write on commit=true."""
+    user, err = _requireAuth(event)
+    if err:
+        return err
+    try:
+        body = _json_body(event)
+        from api.bpf import import_statement
+        result, verr = import_statement(user["userId"], body, commit=bool(body.get("commit")))
+        if verr:
+            return jsonResponse({"error": verr}, 400)
+        return jsonResponse(result)
+    except json.JSONDecodeError:
+        return jsonResponse({"error": "Invalid JSON body"}, 400)
+    except Exception as e:
+        logger.exception("postFinancesImport error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def getFinancesRules(event):
+    """GET /finances/rules - Current user's payee->category rules."""
+    user, err = _requireAuth(event)
+    if err:
+        return err
+    try:
+        from api.bpf_rules import get_rules
+        return jsonResponse({"rules": get_rules(user["userId"])})
+    except Exception as e:
+        logger.exception("getFinancesRules error: %s", e)
+        return jsonResponse({"error": str(e), "rules": []}, 500)
+
+
+def putFinancesRules(event):
+    """PUT /finances/rules {rules} - Replace rules (order = priority)."""
+    user, err = _requireAuth(event)
+    if err:
+        return err
+    try:
+        body = _json_body(event)
+        from api.bpf_rules import save_rules
+        rules, verr = save_rules(user["userId"], body.get("rules"))
+        if verr:
+            return jsonResponse({"error": verr}, 400)
+        return jsonResponse({"rules": rules})
+    except json.JSONDecodeError:
+        return jsonResponse({"error": "Invalid JSON body"}, 400)
+    except Exception as e:
+        logger.exception("putFinancesRules error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def postFinancesRulesApply(event):
+    """POST /finances/rules/apply - Recategorize transactions still in 'Other'."""
+    user, err = _requireAuth(event)
+    if err:
+        return err
+    try:
+        from api.bpf import apply_rules_to_uncategorized
+        return jsonResponse({"updated": apply_rules_to_uncategorized(user["userId"])})
+    except Exception as e:
+        logger.exception("postFinancesRulesApply error: %s", e)
         return jsonResponse({"error": str(e)}, 500)
 
 
