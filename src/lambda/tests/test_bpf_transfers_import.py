@@ -172,6 +172,7 @@ OFX = """OFXHEADER:100
 def _import_env(existing):
     """Common patches for import_statement. Returns (ctx_managers, ddb, puts)."""
     ddb = MagicMock()
+    ddb.batch_write_item.return_value = {}  # no UnprocessedItems -> no retries
     return ddb, [
         patch.object(bpf, "_ddb", return_value=ddb),
         patch.object(bpf, "list_accounts", return_value=[
@@ -211,7 +212,10 @@ def test_import_commit_writes_new_rows_and_reconciles():
             commit=True)
     assert err is None
     assert result["new"] == 2 and result["committed"] is True
-    items = [c.kwargs["Item"] for c in ddb.put_item.call_args_list]
+    items = []
+    for c in ddb.batch_write_item.call_args_list:
+        for req in next(iter(c.kwargs["RequestItems"].values())):
+            items.append(req["PutRequest"]["Item"])
     assert len(items) == 2
     assert {i["fitid"]["S"] for i in items} == {"f1", "f2"}
     cats = {i["payee"]["S"]: i["category"]["S"] for i in items}

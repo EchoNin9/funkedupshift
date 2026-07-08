@@ -35,9 +35,16 @@ DEFAULT_CATEGORIES = [
 ]
 
 
+_dynamodb = None
+
+
 def _ddb():
-    import boto3
-    return boto3.client("dynamodb")
+    """Cached client — creating one per call added ~30s to large imports (503s)."""
+    global _dynamodb
+    if _dynamodb is None:
+        import boto3
+        _dynamodb = boto3.client("dynamodb")
+    return _dynamodb
 
 
 def _now():
@@ -325,8 +332,7 @@ def list_transactions(user_id, from_date=None, to_date=None, q=None, category=No
     return txns
 
 
-def _put_txn(user_id, sk, clean, transfer_id="", fitid=""):
-    now = _now()
+def _txn_item(user_id, sk, clean, transfer_id="", fitid="", now=None):
     item = {
         "PK": {"S": f"USER#{user_id}"},
         "SK": {"S": sk},
@@ -336,14 +342,32 @@ def _put_txn(user_id, sk, clean, transfer_id="", fitid=""):
         "category": {"S": clean["category"]},
         "notes": {"S": clean["notes"]},
         "business": {"BOOL": False},  # phase-2 hook, always false in P1
-        "updatedAt": {"S": now},
+        "updatedAt": {"S": now or _now()},
     }
     if transfer_id:
         item["transferId"] = {"S": transfer_id}
     if fitid:
         item["fitid"] = {"S": fitid}
-    _ddb().put_item(TableName=TABLE_NAME, Item=item)
+    return item
+
+
+def _put_txn(user_id, sk, clean, transfer_id="", fitid=""):
+    now = _now()
+    _ddb().put_item(TableName=TABLE_NAME,
+                    Item=_txn_item(user_id, sk, clean, transfer_id, fitid, now))
     return now
+
+
+def _batch_put(items):
+    """BatchWriteItem in chunks of 25 with unprocessed-item retries."""
+    ddb = _ddb()
+    for i in range(0, len(items), 25):
+        request = {TABLE_NAME: [{"PutRequest": {"Item": it}} for it in items[i:i + 25]]}
+        for _ in range(5):
+            resp = ddb.batch_write_item(RequestItems=request)
+            request = resp.get("UnprocessedItems") or {}
+            if not request.get(TABLE_NAME):
+                break
 
 
 def _find_transfer_sibling(user_id, transfer_id, exclude_sk):
@@ -879,11 +903,14 @@ def import_statement(user_id, body, commit=False):
     if not commit:
         return result, None
 
+    items = []
     for row in new_rows:
         u = uuid.uuid4().hex
         clean = {"date": row["date"], "amount": row["amount"], "accountId": row["target"],
                  "payee": row["payee"], "category": row["category"], "notes": ""}
-        _put_txn(user_id, f"BPF#TXN#{row['date']}#{u}", clean, fitid=row.get("fitid") or "")
+        items.append(_txn_item(user_id, f"BPF#TXN#{row['date']}#{u}", clean,
+                               fitid=row.get("fitid") or ""))
+    _batch_put(items)
     # bank-stated ledger balances → one reconciliation per statement/account
     reconciled = set()
     for row in rows:
