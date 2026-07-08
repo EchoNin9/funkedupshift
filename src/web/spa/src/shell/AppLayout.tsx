@@ -42,10 +42,7 @@ const EditMediaPage = lazy(() => import("../features/admin/EditMediaPage"));
 const EditUserPage = lazy(() => import("../features/admin/EditUserPage"));
 const SquashPage = lazy(() => import("../features/squash/SquashPage"));
 const SquashAdminPage = lazy(() => import("../features/squash/SquashAdminPage"));
-const FinancialPage = lazy(() => import("../features/financial/FinancialPage"));
-const FinancialAdminPage = lazy(() =>
-  import("../features/financial/admin/FinancialAdminPage")
-);
+const FinancesPage = lazy(() => import("../features/finances/FinancesPage"));
 const InvestingPage = lazy(() => import("../features/investing/InvestingPage"));
 const VehiclesExpensesPage = lazy(() => import("../features/vehicles/VehiclesExpensesPage"));
 const GeneralExpensesPage = lazy(() => import("../features/expenses/GeneralExpensesPage"));
@@ -118,13 +115,14 @@ const AppLayout: React.FC = () => {
               <Route path="/memes/create" element={<MemeGeneratorPage />} />
               <Route path="/memes/:id/edit" element={<EditMemePage />} />
               <Route path="/memes/:id" element={<MemeDetailPage />} />
-              <Route path="/financial" element={<FinancialPage />} />
+              <Route path="/finances/*" element={<FinancesPage />} />
+              {/* Financial dashboard retired (FUNK-20); keep old links working */}
+              <Route path="/financial" element={<Navigate to="/finances" replace />} />
               <Route path="/investing" element={<InvestingPage />} />
               <Route path="/vehicles-expenses" element={<VehiclesExpensesPage />} />
               <Route path="/general-expenses" element={<GeneralExpensesPage />} />
               <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<AdminDashboard />} />
-                <Route path="financial" element={<FinancialAdminPage />} />
                 <Route path="branding" element={<BrandingPage />} />
                 <Route path="internet-dashboard" element={<InternetDashboardAdminPage />} />
                 <Route path="recommended" element={<RecommendedAdminPage />} />

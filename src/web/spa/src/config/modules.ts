@@ -3,8 +3,6 @@ import {
   hasRole,
   canAccessSquash,
   canModifySquash,
-  canAccessFinancial,
-  canAccessFinancialAdmin,
   canAccessInvesting,
   canCreateMemes,
   canAccessMemes,
@@ -55,8 +53,7 @@ export const PUBLIC_MODULES: PublicModule[] = [
   { id: "squash-admin", label: "Squash Admin", path: "/squash-admin", section: "squash", minRole: "manager", visibility: canModifySquash },
   { id: "memes", label: "Memes", path: "/memes", section: "memes", minRole: "guest" },
   { id: "meme-generator", label: "Meme Generator", path: "/memes/create", section: "memes", minRole: "user", visibility: canCreateMemes },
-  { id: "financial", label: "Financial", path: "/financial", section: "financial", minRole: "guest", visibility: canAccessFinancial },
-  { id: "financial-admin", label: "Financial Admin", path: "/admin/financial", section: "financial", minRole: "superadmin", visibility: canAccessFinancialAdmin },
+  { id: "finances", label: "Finances", path: "/finances", section: "financial", minRole: "user", authOnly: true },
   { id: "investing", label: "Investing", path: "/investing", section: "financial", minRole: "user", visibility: canAccessInvesting },
   { id: "vehicles-expenses", label: "Vehicles Expenses", path: "/vehicles-expenses", section: "vehicles", minRole: "user", visibility: canAccessExpenses },
   { id: "general-expenses", label: "General expenses", path: "/general-expenses", section: "vehicles", minRole: "user", visibility: canAccessExpenses },
@@ -71,7 +68,6 @@ export const ADMIN_MODULES: AdminModule[] = [
   { id: "recommended", label: "Recommended", path: "/admin/recommended", description: "Curate highlights and highest-rated lists.", icon: SparklesIcon, minRole: "manager" },
   { id: "membership", label: "Membership", path: "/admin/membership", description: "Manage custom groups and member access.", icon: UserGroupIcon, minRole: "manager" },
   { id: "branding", label: "Branding", path: "/admin/branding", description: "Set global logo and branding assets.", icon: Cog6ToothIcon, minRole: "superadmin" },
-  { id: "financial", label: "Financial", path: "/admin/financial", description: "Manage default symbols and financial config.", icon: CurrencyDollarIcon, minRole: "superadmin" },
   { id: "squash", label: "Squash", path: "/squash-admin", description: "Manage squash players and matches.", icon: TrophyIcon, minRole: "manager" },
 ];
 
@@ -169,11 +165,10 @@ const MODULE_GROUPS: ModuleGroup[] = [
     id: "financial",
     label: "Financial",
     icon: CurrencyDollarIcon,
-    isVisible: (u) => canAccessFinancial(u) || canAccessFinancialAdmin(u),
+    isVisible: (u) => !!u?.userId,
     getLinks: (u) => {
-      const links: ModuleLink[] = [{ path: "/financial", label: "Financial Dashboard" }];
+      const links: ModuleLink[] = [{ path: "/finances", label: "Finances" }];
       if (canAccessInvesting(u)) links.push({ path: "/investing", label: "Investing" });
-      if (canAccessFinancialAdmin(u)) links.push({ path: "/admin/financial", label: "Financial Admin" });
       return links;
     },
   },
