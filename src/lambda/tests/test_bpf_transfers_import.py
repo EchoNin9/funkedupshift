@@ -223,6 +223,34 @@ def test_import_commit_writes_new_rows_and_reconciles():
     mock_rec.assert_called_once_with("u1", "acc1", 1500.25, "2026-07-07")
 
 
+def test_debt_signed_balance():
+    assert bpf._debt_signed_balance("credit", 4343.49) == -4343.49
+    assert bpf._debt_signed_balance("liability", 100.0) == -100.0
+    assert bpf._debt_signed_balance("credit", -4343.49) == -4343.49  # already-owed
+    assert bpf._debt_signed_balance("checking", 1500.25) == 1500.25
+    assert bpf._debt_signed_balance("savings", -50.0) == -50.0
+
+
+def test_import_reconciles_credit_card_as_negative_debt():
+    """RBC reports a credit balance as positive amount-owed; store it negative."""
+    ddb = MagicMock()
+    ddb.batch_write_item.return_value = {}
+    with patch.object(bpf, "_ddb", return_value=ddb), \
+         patch.object(bpf, "list_accounts", return_value=[
+             {"id": "acc1", "displayName": "RBC …8461", "kind": "credit"}]), \
+         patch.object(bpf, "find_account_by_number",
+                      side_effect=lambda uid, n: "acc1" if n == "12345678" else None), \
+         patch.object(bpf, "list_transactions", return_value=[]), \
+         patch.object(bpf, "link_transfer_pairs", return_value=0), \
+         patch("api.bpf_rules.get_rules", return_value=[]), \
+         patch.object(bpf, "set_reconciled_balance") as mock_rec:
+        result, err = bpf.import_statement(
+            "u1", {"accountId": "acc1", "filename": "x.qfx", "content": OFX},
+            commit=True)
+    assert err is None
+    mock_rec.assert_called_once_with("u1", "acc1", -1500.25, "2026-07-07")
+
+
 def test_import_rejects_garbage_and_missing_mapping():
     _, patches = _import_env([])
     with patches[1]:

@@ -27,6 +27,9 @@ BEDROCK_MODEL_ID = "us.anthropic.claude-sonnet-5"
 MAX_PROMPT_CHARS = 6000
 
 ACCOUNT_KINDS = ("checking", "savings", "credit", "cash", "asset", "liability")
+# Debt-nature accounts: the register tracks these as negative (money owed),
+# but banks report the statement/ledger balance as a positive amount-owed.
+DEBT_KINDS = ("credit", "liability")
 SECTIONS = ("dashboard", "transactions", "budgets", "insights")
 DEFAULT_CATEGORIES = [
     "Income", "Groceries", "Dining", "Housing", "Utilities", "Transportation",
@@ -202,6 +205,18 @@ def save_account(user_id, data, account_id=None):
     saved = _account_from_item(item)
     saved["updatedAt"] = now
     return saved, None
+
+
+def _debt_signed_balance(kind, ledger_balance):
+    """Convert a bank-reported ledger balance to the app's debt convention.
+    Credit cards / loans report a positive amount-owed; the register tracks
+    that as negative, so flip the sign for debt-nature accounts.
+    # ponytail: assumes banks report debt balances positive (RBC does). If a
+    # bank ever reports them already-negative, reconciliation will look off —
+    # revisit with per-bank sign handling then."""
+    if kind in DEBT_KINDS:
+        return -abs(ledger_balance)
+    return ledger_balance
 
 
 def set_reconciled_balance(user_id, account_id, balance, as_of):
@@ -921,8 +936,10 @@ def import_statement(user_id, body, commit=False):
         if key in reconciled:
             continue
         reconciled.add(key)
-        set_reconciled_balance(user_id, target, row["ledgerBalance"],
-                               row.get("ledgerBalanceDate") or hi)
+        set_reconciled_balance(
+            user_id, target,
+            _debt_signed_balance(accounts.get(target, {}).get("kind", ""), row["ledgerBalance"]),
+            row.get("ledgerBalanceDate") or hi)
     if fmt == "csv" and isinstance(body.get("mapping"), dict):
         # remember the mapping on the target account for next time
         _ddb().update_item(
