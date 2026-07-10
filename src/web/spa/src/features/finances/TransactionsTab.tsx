@@ -159,6 +159,8 @@ const TransactionsTab: React.FC<{ ctx: FinancesContext }> = ({ ctx }) => {
   const allOnPageSelected = selectableOnPage.length > 0
     && selectableOnPage.every((id) => selectedIds.includes(id));
 
+  const resultsTotal = visible.reduce((sum, t) => sum + t.amount, 0);
+
   const pill = (active: boolean) =>
     `rounded-full border border-accent-500 px-3 py-1 text-xs font-medium ${
       active ? "bg-accent-500 text-surface-0" : "text-accent-500 hover:bg-surface-2"
@@ -376,7 +378,19 @@ const TransactionsTab: React.FC<{ ctx: FinancesContext }> = ({ ctx }) => {
               <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">Date</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">Payee</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">Category</th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-text-secondary uppercase">Amount</th>
+              <th className="px-4 py-3 text-right text-xs font-medium text-text-secondary uppercase">
+                {visible.length > 0 && (
+                  <span
+                    className={`mb-1 block ml-auto w-fit rounded-full px-2.5 py-0.5 text-xs font-semibold normal-case text-surface-0 ${
+                      resultsTotal >= 0 ? "bg-emerald-500" : "bg-orange-500"
+                    }`}
+                    title="Total of all transactions in the current results"
+                  >
+                    {fmtMoney(resultsTotal)}
+                  </span>
+                )}
+                Amount
+              </th>
               <th className="px-4 py-3 w-32" />
             </tr>
           </thead>
