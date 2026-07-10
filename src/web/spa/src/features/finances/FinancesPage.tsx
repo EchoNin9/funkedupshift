@@ -22,6 +22,7 @@ export interface FinancesContext {
   ownerEmail: string;
   eraConnected: boolean;
   categories: string[];
+  reloadConfig: () => void;
 }
 
 const FinancesPage: React.FC = () => {
@@ -34,12 +35,15 @@ const FinancesPage: React.FC = () => {
     categories: [],
   });
 
-  useEffect(() => {
-    if (!user) return;
+  const loadConfig = React.useCallback(() => {
     apiGet<{ eraConnected: boolean; categories: string[] }>("/finances/config")
       .then(setConfig)
       .catch(() => {});
-  }, [user]);
+  }, []);
+
+  useEffect(() => {
+    if (user) loadConfig();
+  }, [user, loadConfig]);
 
   if (!user) {
     return (
@@ -55,6 +59,7 @@ const FinancesPage: React.FC = () => {
     ownerEmail,
     eraConnected: config.eraConnected,
     categories: config.categories,
+    reloadConfig: loadConfig,
   };
   const ownerSuffix = ctx.owner
     ? `?owner=${encodeURIComponent(ctx.owner)}&ownerEmail=${encodeURIComponent(ownerEmail)}`

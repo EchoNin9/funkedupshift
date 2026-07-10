@@ -421,6 +421,8 @@ def handler(event, context):
             return postFinancesImport(event)
         if method == "POST" and path == "/finances/transactions/bulk-categorize":
             return postFinancesBulkCategorize(event)
+        if method == "PUT" and path == "/finances/categories":
+            return putFinancesCategories(event)
         if method == "GET" and path == "/finances/rules":
             return getFinancesRules(event)
         if method == "PUT" and path == "/finances/rules":
@@ -1097,6 +1099,25 @@ def postFinancesBulkCategorize(event):
         return jsonResponse({"error": "Invalid JSON body"}, 400)
     except Exception as e:
         logger.exception("postFinancesBulkCategorize error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def putFinancesCategories(event):
+    """PUT /finances/categories {categories} - Replace the user's category list."""
+    user, err = _requireAuth(event)
+    if err:
+        return err
+    try:
+        body = _json_body(event)
+        from api.bpf import save_categories
+        categories, verr = save_categories(user["userId"], body.get("categories"))
+        if verr:
+            return jsonResponse({"error": verr}, 400)
+        return jsonResponse({"categories": categories})
+    except json.JSONDecodeError:
+        return jsonResponse({"error": "Invalid JSON body"}, 400)
+    except Exception as e:
+        logger.exception("putFinancesCategories error: %s", e)
         return jsonResponse({"error": str(e)}, 500)
 
 

@@ -5,6 +5,7 @@ import type { FinancesContext } from "./FinancesPage";
 import EraBadge, { EraEmptyState } from "./EraBadge";
 import ImportPanel from "./ImportPanel";
 import RulesSection from "./RulesSection";
+import CategoriesSection from "./CategoriesSection";
 
 const EMPTY_FORM = { date: "", amount: "", payee: "", category: "", notes: "", accountId: "" };
 const EMPTY_XFER = { date: "", amount: "", fromAccountId: "", toAccountId: "", notes: "" };
@@ -453,6 +454,8 @@ const TransactionsTab: React.FC<{ ctx: FinancesContext }> = ({ ctx }) => {
             className={`${input} w-20`} />
         </div>
       )}
+
+      {!readOnly && <CategoriesSection categories={ctx.categories} onChanged={ctx.reloadConfig} />}
 
       {!readOnly && <RulesSection categories={ctx.categories} />}
 

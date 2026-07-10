@@ -543,6 +543,26 @@ def _save_categories(user_id, categories):
     )
 
 
+def save_categories(user_id, categories):
+    """Replace the user's category list. Returns (clean_list, error).
+    'Transfer' is reserved for transfer legs and can't be a normal category."""
+    if not isinstance(categories, list) or not categories:
+        return None, "categories must be a non-empty array"
+    clean, seen = [], set()
+    for c in categories:
+        name = str(c or "").strip()
+        if not name:
+            return None, "categories cannot be empty strings"
+        if name.lower() == "transfer":
+            return None, "'Transfer' is reserved for transfers"
+        if name.lower() in seen:
+            return None, f"duplicate category: {name}"
+        seen.add(name.lower())
+        clean.append(name)
+    _save_categories(user_id, clean)
+    return clean, None
+
+
 def _ensure_category(user_id, category):
     """Seed defaults on first write; append unseen categories."""
     cats = get_categories(user_id)

@@ -287,6 +287,26 @@ def test_bulk_categorize_validates():
     assert err
 
 
+# --- category list editing -------------------------------------------------------
+
+def test_save_categories_validates_and_saves():
+    _, err = bpf.save_categories("u1", [])
+    assert err
+    _, err = bpf.save_categories("u1", ["Dining", ""])
+    assert err
+    _, err = bpf.save_categories("u1", ["Dining", "dining"])
+    assert "duplicate" in err
+    _, err = bpf.save_categories("u1", ["Transfer"])
+    assert "reserved" in err
+    ddb = MagicMock()
+    with patch.object(bpf, "_ddb", return_value=ddb):
+        clean, err = bpf.save_categories("u1", [" Dining ", "Pets"])
+    assert err is None and clean == ["Dining", "Pets"]
+    item = ddb.put_item.call_args.kwargs["Item"]
+    assert item["SK"]["S"] == "BPF#SETTINGS"
+    assert [c["S"] for c in item["categories"]["L"]] == ["Dining", "Pets"]
+
+
 # --- handler routes ------------------------------------------------------------
 
 def _event(path, method="GET", body=None, sub="user-123"):
