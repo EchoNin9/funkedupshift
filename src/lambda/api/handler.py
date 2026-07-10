@@ -419,6 +419,8 @@ def handler(event, context):
             return postFinancesTransfers(event)
         if method == "POST" and path == "/finances/import":
             return postFinancesImport(event)
+        if method == "POST" and path == "/finances/transactions/bulk-categorize":
+            return postFinancesBulkCategorize(event)
         if method == "GET" and path == "/finances/rules":
             return getFinancesRules(event)
         if method == "PUT" and path == "/finances/rules":
@@ -1075,6 +1077,26 @@ def postFinancesImport(event):
         return jsonResponse({"error": "Invalid JSON body"}, 400)
     except Exception as e:
         logger.exception("postFinancesImport error: %s", e)
+        return jsonResponse({"error": str(e)}, 500)
+
+
+def postFinancesBulkCategorize(event):
+    """POST /finances/transactions/bulk-categorize {ids, category}
+    - Recategorize many transactions in one call (transfer legs skipped)."""
+    user, err = _requireAuth(event)
+    if err:
+        return err
+    try:
+        body = _json_body(event)
+        from api.bpf import bulk_categorize
+        updated, verr = bulk_categorize(user["userId"], body.get("ids"), body.get("category"))
+        if verr:
+            return jsonResponse({"error": verr}, 400)
+        return jsonResponse({"updated": updated})
+    except json.JSONDecodeError:
+        return jsonResponse({"error": "Invalid JSON body"}, 400)
+    except Exception as e:
+        logger.exception("postFinancesBulkCategorize error: %s", e)
         return jsonResponse({"error": str(e)}, 500)
 
 

@@ -953,6 +953,37 @@ def import_statement(user_id, body, commit=False):
     return result, None
 
 
+def bulk_categorize(user_id, txn_ids, category):
+    """Set the category on many transactions at once. Transfer legs are
+    skipped (they stay 'Transfer'). Returns (updated_count, error)."""
+    category = str(category or "").strip()
+    if not category or category == "Transfer":
+        return None, "category is required (and cannot be Transfer)"
+    if not isinstance(txn_ids, list) or not txn_ids:
+        return None, "ids must be a non-empty array"
+    now = _now()
+    updated = 0
+    for txn_id in txn_ids[:200]:  # sanity cap; pages are <=50 rows
+        sk = _txn_sk(str(txn_id))
+        if not sk:
+            continue
+        try:
+            _ddb().update_item(
+                TableName=TABLE_NAME,
+                Key={"PK": {"S": f"USER#{user_id}"}, "SK": {"S": sk}},
+                UpdateExpression="SET category = :c, updatedAt = :n",
+                ConditionExpression="attribute_exists(SK) AND attribute_not_exists(transferId)",
+                ExpressionAttributeValues={":c": {"S": category}, ":n": {"S": now}},
+            )
+            updated += 1
+        except Exception:
+            # missing row or transfer leg — skip, keep going
+            continue
+    if updated:
+        _ensure_category(user_id, category)
+    return updated, None
+
+
 def apply_rules_to_uncategorized(user_id):
     """Re-run the user's payee rules over transactions still in 'Other'.
     Returns the number recategorized."""

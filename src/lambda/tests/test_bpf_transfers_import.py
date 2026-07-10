@@ -262,6 +262,31 @@ def test_import_rejects_garbage_and_missing_mapping():
         assert err
 
 
+# --- bulk categorize -------------------------------------------------------------
+
+def test_bulk_categorize_updates_and_skips_transfers():
+    ddb = MagicMock()
+    # second call raises like a failed ConditionExpression (transfer leg)
+    ddb.update_item.side_effect = [None, Exception("ConditionalCheckFailed"), None]
+    with patch.object(bpf, "_ddb", return_value=ddb), \
+         patch.object(bpf, "_ensure_category") as mock_cat:
+        updated, err = bpf.bulk_categorize(
+            "u1", ["2026-07-01_a", "2026-07-02_b", "2026-07-03_c"], "Dining")
+    assert err is None and updated == 2
+    cond = ddb.update_item.call_args_list[0].kwargs["ConditionExpression"]
+    assert "attribute_not_exists(transferId)" in cond
+    mock_cat.assert_called_once_with("u1", "Dining")
+
+
+def test_bulk_categorize_validates():
+    _, err = bpf.bulk_categorize("u1", [], "Dining")
+    assert err
+    _, err = bpf.bulk_categorize("u1", ["2026-07-01_a"], "")
+    assert err
+    _, err = bpf.bulk_categorize("u1", ["2026-07-01_a"], "Transfer")
+    assert err
+
+
 # --- handler routes ------------------------------------------------------------
 
 def _event(path, method="GET", body=None, sub="user-123"):
@@ -298,6 +323,17 @@ def test_postFinancesImport_route(mock_groups, mock_imp):
     assert result["statusCode"] == 200
     mock_imp.assert_called_once()
     assert mock_imp.call_args.kwargs["commit"] is False
+
+
+@patch("api.bpf.bulk_categorize", return_value=(3, None))
+@patch("api.handler._getUserCustomGroups", return_value=[])
+def test_postFinancesBulkCategorize_route(mock_groups, mock_bulk):
+    from api.handler import handler
+    result = handler(_event("/finances/transactions/bulk-categorize", "POST",
+                            {"ids": ["2026-07-01_a"], "category": "Dining"}), None)
+    assert result["statusCode"] == 200
+    assert json.loads(result["body"])["updated"] == 3
+    mock_bulk.assert_called_once_with("user-123", ["2026-07-01_a"], "Dining")
 
 
 @patch("api.bpf_rules.save_rules", return_value=([{"match": "contains"}], None))
