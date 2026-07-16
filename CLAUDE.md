@@ -57,14 +57,16 @@ Give these to the sidekick so it doesn't run the slow path on every iteration.
 **Fast iteration (sidekick uses this while implementing):**
 - Backend (Lambda): `pytest src/lambda/tests -q` — or a single file, e.g.
   `pytest src/lambda/tests/test_<feature>.py -q`
-- Frontend (SPA): `cd src/web/spa && npm run typecheck`
+- Frontend (SPA): `cd src/web/spa && npm run build` (~8s; this is what CI gates on)
 
 **Full verification (before opening a PR):**
 - Backend: `pytest src/lambda/tests -v`
 - Frontend: `cd src/web/spa && npm ci && npm run build`
 
-**Known-good baseline:** `test_api_handler.py` has 2 pre-existing PIL-related
-failures — those are expected. Any *other* failure is yours to fix.
+**Known baselines (don't chase these):**
+- `test_api_handler.py` has 2 pre-existing PIL-related failures — expected.
+- `npm run typecheck` reports several pre-existing type errors and is **not** the
+  gate — use `npm run build`. Any *new* failure you introduce is yours to fix.
 
 ---
 
