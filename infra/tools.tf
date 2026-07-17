@@ -390,6 +390,127 @@ resource "aws_cloudfront_distribution" "shortener" {
 }
 
 # ------------------------------------------------------------------------------
+# tools.e9.cx — standalone freetools.org-style frontend (Part A of the
+# tools-site brief). Own S3 website bucket + CloudFront distribution, same
+# copy-pattern as the staging/production sites in main.tf/cloudfront.tf, but
+# env-shared: one bucket, one distro, no staging variant. Talks to the same
+# API Gateway + Cognito app client as the SPA's /tools page — no backend
+# changes here. CI (dev.yml) deploys this from the development branch only.
+# ------------------------------------------------------------------------------
+resource "aws_s3_bucket" "toolsSite" {
+  bucket = var.toolsSiteBucket
+}
+
+resource "aws_s3_bucket_public_access_block" "toolsSite" {
+  bucket = aws_s3_bucket.toolsSite.id
+
+  block_public_acls       = false
+  block_public_policy     = false
+  ignore_public_acls      = false
+  restrict_public_buckets = false
+}
+
+data "aws_iam_policy_document" "toolsSitePublicRead" {
+  statement {
+    sid       = "PublicReadGetObject"
+    effect    = "Allow"
+    actions   = ["s3:GetObject"]
+    resources = ["${aws_s3_bucket.toolsSite.arn}/*"]
+    principals {
+      type        = "*"
+      identifiers = ["*"]
+    }
+  }
+}
+
+resource "aws_s3_bucket_policy" "toolsSite" {
+  bucket = aws_s3_bucket.toolsSite.id
+  policy = data.aws_iam_policy_document.toolsSitePublicRead.json
+
+  # Public policy PUT races BlockPublicPolicy unless the access block is
+  # relaxed first (bit CI on the initial apply).
+  depends_on = [aws_s3_bucket_public_access_block.toolsSite]
+}
+
+resource "aws_s3_bucket_website_configuration" "toolsSite" {
+  bucket = aws_s3_bucket.toolsSite.id
+
+  index_document {
+    suffix = "index.html"
+  }
+  error_document {
+    key = "index.html"
+  }
+}
+
+resource "aws_cloudfront_distribution" "tools_site" {
+  enabled             = true
+  is_ipv6_enabled     = true
+  comment             = "e9 tools standalone frontend (tools.e9.cx)"
+  default_root_object = "index.html"
+  price_class         = "PriceClass_100"
+
+  aliases = ["tools.e9.cx"]
+
+  origin {
+    domain_name = aws_s3_bucket_website_configuration.toolsSite.website_endpoint
+    origin_id   = "S3-${aws_s3_bucket.toolsSite.id}"
+
+    custom_origin_config {
+      http_port              = 80
+      https_port             = 443
+      origin_protocol_policy = "http-only"
+      origin_ssl_protocols   = ["TLSv1.2"]
+    }
+  }
+
+  default_cache_behavior {
+    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
+    cached_methods         = ["GET", "HEAD"]
+    target_origin_id       = "S3-${aws_s3_bucket.toolsSite.id}"
+    viewer_protocol_policy = "redirect-to-https"
+    compress               = true
+
+    forwarded_values {
+      query_string = false
+      cookies {
+        forward = "none"
+      }
+    }
+
+    min_ttl     = 0
+    default_ttl = 3600
+    max_ttl     = 86400
+  }
+
+  custom_error_response {
+    error_code         = 404
+    response_code      = 200
+    response_page_path = "/index.html"
+  }
+
+  custom_error_response {
+    error_code         = 403
+    response_code      = 200
+    response_page_path = "/index.html"
+  }
+
+  restrictions {
+    geo_restriction {
+      restriction_type = "none"
+    }
+  }
+
+  viewer_certificate {
+    acm_certificate_arn      = aws_acm_certificate_validation.shortener.certificate_arn
+    ssl_support_method       = "sni-only"
+    minimum_protocol_version = "TLSv1.2_2021"
+  }
+
+  depends_on = [aws_acm_certificate_validation.shortener]
+}
+
+# ------------------------------------------------------------------------------
 # Outputs
 # ------------------------------------------------------------------------------
 output "shortenerCloudfrontDomain" {
@@ -405,4 +526,19 @@ output "shortenerCertArn" {
 output "shortenerKvsArn" {
   description = "CloudFront KeyValueStore ARN for the URL shortener edge projection."
   value       = aws_cloudfront_key_value_store.tools.arn
+}
+
+output "toolsSiteBucketName" {
+  description = "S3 bucket name for the tools.e9.cx frontend (CI deploy target)."
+  value       = aws_s3_bucket.toolsSite.id
+}
+
+output "toolsSiteCloudfrontId" {
+  description = "CloudFront distribution ID for tools.e9.cx (CI cache invalidation target)."
+  value       = aws_cloudfront_distribution.tools_site.id
+}
+
+output "toolsSiteCloudfrontDomain" {
+  description = "CloudFront domain name for tools.e9.cx (for the manual ClouDNS CNAME record)."
+  value       = aws_cloudfront_distribution.tools_site.domain_name
 }
