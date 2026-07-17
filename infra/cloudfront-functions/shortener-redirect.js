@@ -26,21 +26,52 @@ async function handler(event) {
 
   try {
     var kvsHandle = cf.kvs();
-    var target = await kvsHandle.get(code);
-    if (!target) {
+    var raw = await kvsHandle.get(code);
+    if (!raw) {
       return miss();
     }
-    return {
-      statusCode: 301,
-      statusDescription: "Moved Permanently",
-      headers: { location: { value: target } },
-    };
+    return resolve(raw);
   } catch (err) {
     // Unknown key (kvs.get throws when missing) or any KVS error — fall
     // through to the branded landing redirect rather than surfacing a raw
     // edge error to the visitor.
     return miss();
   }
+}
+
+// KVS values are JSON `{"u": "<url>", "e": <epochSeconds>}` written by the
+// tools Lambda on mint/expiry-update (see src/lambda/tools/handler.py).
+// Expired links (e <= now) are a miss even though the KVS entry itself is
+// still present — DynamoDB TTL removes the source-of-truth table row on its
+// own schedule (not immediately), and this function never needs to see
+// that; it just stops treating the entry as a hit once it's past e.
+//
+// Legacy tolerance: entries minted before expiry existed are plain
+// (non-JSON) strings, so JSON.parse throws — those are treated as
+// non-expiring hits.
+//
+// ponytail: a sweep that proactively deletes stale KVS entries once
+// DynamoDB TTL fires is deliberately unbuilt for phase 1 — an expired entry
+// just resolves to a miss here forever after e, at no correctness cost, and
+// nothing currently reclaims the KVS storage it uses.
+function resolve(raw) {
+  var target = raw;
+  try {
+    var parsed = JSON.parse(raw);
+    if (parsed && typeof parsed.u === "string") {
+      if (typeof parsed.e === "number" && parsed.e <= Math.floor(Date.now() / 1000)) {
+        return miss();
+      }
+      target = parsed.u;
+    }
+  } catch (err) {
+    // Not JSON — legacy plain-string value; fall through with raw as target.
+  }
+  return {
+    statusCode: 301,
+    statusDescription: "Moved Permanently",
+    headers: { location: { value: target } },
+  };
 }
 
 function miss() {

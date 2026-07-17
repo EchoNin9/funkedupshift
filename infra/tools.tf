@@ -20,6 +20,12 @@ variable "toolsDynamoTableName" {
   default     = "fus-tools"
 }
 
+variable "linkTtlDays" {
+  description = "Days a minted short link stays live before it expires (mint stamps expiresAt = now + this)."
+  type        = number
+  default     = 30
+}
+
 # ------------------------------------------------------------------------------
 # ACM certificate for the shortener domains (fus.fyi, e9.cx) — already
 # requested by hand outside Terraform; imported here rather than recreated.
@@ -68,6 +74,34 @@ resource "aws_dynamodb_table" "tools" {
   attribute {
     name = "code"
     type = "S"
+  }
+
+  attribute {
+    name = "createdBy"
+    type = "S"
+  }
+
+  attribute {
+    name = "createdAt"
+    type = "S"
+  }
+
+  # List a caller's own links: query byCreator where createdBy = <sub>,
+  # newest first (ScanIndexForward=false on createdAt). See GET /s.
+  global_secondary_index {
+    name            = "byCreator"
+    hash_key        = "createdBy"
+    range_key       = "createdAt"
+    projection_type = "ALL"
+  }
+
+  # DynamoDB TTL cleans up expired links from the table itself. This is
+  # independent of edge enforcement (see shortener-redirect.js) — TTL
+  # deletion timing is "usually within 48 hours", not immediate, so the
+  # CloudFront Function must not rely on rows being gone by expiresAt.
+  ttl {
+    attribute_name = "expiresAt"
+    enabled        = true
   }
 }
 
@@ -166,13 +200,22 @@ resource "aws_iam_role_policy" "lambdaTools" {
         Resource = "arn:aws:logs:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:*"
       },
       {
-        Effect   = "Allow"
-        Action   = ["dynamodb:PutItem", "dynamodb:GetItem", "dynamodb:ConditionCheckItem"]
-        Resource = aws_dynamodb_table.tools.arn
+        Effect = "Allow"
+        Action = [
+          "dynamodb:PutItem", "dynamodb:GetItem", "dynamodb:ConditionCheckItem",
+          "dynamodb:DeleteItem", "dynamodb:UpdateItem", "dynamodb:Query",
+        ]
+        # Query targets the byCreator GSI (GET /s), the rest target the base
+        # table — both ARNs are listed so a single statement covers all of
+        # them without granting anything beyond this table + its indexes.
+        Resource = [aws_dynamodb_table.tools.arn, "${aws_dynamodb_table.tools.arn}/index/*"]
       },
       {
-        Effect   = "Allow"
-        Action   = ["cloudfront-keyvaluestore:DescribeKeyValueStore", "cloudfront-keyvaluestore:GetKey", "cloudfront-keyvaluestore:PutKey"]
+        Effect = "Allow"
+        Action = [
+          "cloudfront-keyvaluestore:DescribeKeyValueStore", "cloudfront-keyvaluestore:GetKey",
+          "cloudfront-keyvaluestore:PutKey", "cloudfront-keyvaluestore:DeleteKey",
+        ]
         Resource = aws_cloudfront_key_value_store.tools.arn
       }
     ]
@@ -194,6 +237,7 @@ resource "aws_lambda_function" "tools" {
       TOOLS_TABLE_NAME = aws_dynamodb_table.tools.name
       KVS_ARN          = aws_cloudfront_key_value_store.tools.arn
       SHORT_DOMAIN     = var.shortDomain
+      LINK_TTL_DAYS    = tostring(var.linkTtlDays)
     }
   }
 }
@@ -226,6 +270,33 @@ resource "aws_apigatewayv2_route" "toolsShortenPost" {
 resource "aws_apigatewayv2_route" "toolsShortenGet" {
   api_id             = aws_apigatewayv2_api.main.id
   route_key          = "GET /s/{code}"
+  target             = "integrations/${aws_apigatewayv2_integration.tools.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+# List the caller's own short links (paginated, newest first).
+resource "aws_apigatewayv2_route" "toolsShortenList" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /s"
+  target             = "integrations/${aws_apigatewayv2_integration.tools.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+# Delete a short link (creator only).
+resource "aws_apigatewayv2_route" "toolsShortenDelete" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "DELETE /s/{code}"
+  target             = "integrations/${aws_apigatewayv2_integration.tools.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+# Adjust a short link's expiry (creator only).
+resource "aws_apigatewayv2_route" "toolsShortenPatch" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "PATCH /s/{code}"
   target             = "integrations/${aws_apigatewayv2_integration.tools.id}"
   authorization_type = "JWT"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
