@@ -4,6 +4,8 @@ name: Deploy Production
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - "docs/**"
 
 permissions:
   id-token: write
