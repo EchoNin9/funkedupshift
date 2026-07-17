@@ -49,6 +49,15 @@ async function parseJsonOrThrow<T>(resp: Response): Promise<T> {
   return data;
 }
 
+// ponytail: the backend mints fus.fyi shortUrls (SHORT_DOMAIN env var on the
+// tools Lambda); this site brands them as e9.cx. Both hosts resolve on the
+// same distribution/KVS, so a host swap is purely cosmetic.
+const BRAND_HOST = "https://e9.cx";
+
+function brand(link: ShortLink): ShortLink {
+  return { ...link, shortUrl: link.shortUrl.replace(/^https?:\/\/[^/]+/, BRAND_HOST) };
+}
+
 /** POST /s — mint a short link for `url`. Throws with the API's error message on failure. */
 export async function mintShortLink(url: string): Promise<ShortLink> {
   const base = getApiBaseUrl();
@@ -58,7 +67,7 @@ export async function mintShortLink(url: string): Promise<ShortLink> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ url })
   });
-  return parseJsonOrThrow<ShortLink>(resp);
+  return brand(await parseJsonOrThrow<ShortLink>(resp));
 }
 
 /** GET /s — the caller's own links, newest first. Pass `cursor` (from a prior
@@ -70,7 +79,8 @@ export async function listLinks(cursor?: string | null): Promise<ShortLinkPage> 
   if (cursor) params.set("cursor", cursor);
   const qs = params.toString();
   const resp = await fetchWithAuth(`${base}/s${qs ? `?${qs}` : ""}`);
-  return parseJsonOrThrow<ShortLinkPage>(resp);
+  const page = await parseJsonOrThrow<ShortLinkPage>(resp);
+  return { ...page, items: page.items.map(brand) };
 }
 
 /** DELETE /s/{code} — only the creator may delete. */
@@ -90,7 +100,7 @@ export async function updateExpiry(code: string, expiresAt: number): Promise<Sho
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ expiresAt })
   });
-  return parseJsonOrThrow<ShortLink>(resp);
+  return brand(await parseJsonOrThrow<ShortLink>(resp));
 }
 
 /** True for the "not signed in" / "session expired" errors thrown above —
