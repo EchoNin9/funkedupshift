@@ -10,7 +10,6 @@ import {
 import {
   useAuth,
   canAccessSquash,
-  canAccessMemes,
   canAccessExpenses,
 } from "../../shell/AuthContext";
 import { useBranding } from "../../shell/BrandingContext";
@@ -124,12 +123,12 @@ const scaleIn = {
 
 /* ── "The Works" cards. `show` (optional) role-gates via canAccess* helpers. ── */
 type Work = { title: string; blurb: string; to: string; status: string; accent: string; show?: boolean };
-function buildWorks(showSquash: boolean, showMemes: boolean, showExpenses: boolean): Work[] {
+function buildWorks(showSquash: boolean, showExpenses: boolean): Work[] {
   return [
     { title: "Websites", blurb: "The curated index. Browse, rate, and rank the sites that matter.", to: "/websites", status: "LIVE", accent: "" },
     { title: "Media", blurb: "A living gallery of clips, tracks, and oddities — all rateable.", to: "/media", status: "LIVE", accent: "card-accent-n3" },
     { title: "Internet Dashboard", blurb: "Live pulse of the domains we track, all on one screen.", to: "/internet-dashboard", status: "LIVE", accent: "card-accent-n2" },
-    { title: "Memes", blurb: "Browse, rate, and generate the freshest dank.", to: "/memes", status: "MEMBERS", accent: "card-accent-n2", show: showMemes },
+    { title: "Memes", blurb: "Browse, rate, and generate the freshest dank.", to: "/memes", status: "LIVE", accent: "card-accent-n2" },
     { title: "Financial", blurb: "Watchlists and market data for the symbols you care about.", to: "/financial", status: "LIVE", accent: "card-accent-n4" },
     { title: "Squash", blurb: "Ladder, players, and match results for the crew.", to: "/squash", status: "MEMBERS", accent: "card-accent-n3", show: showSquash },
     { title: "Vehicle Expenses", blurb: "Log and track what your rides cost you.", to: "/vehicles-expenses", status: "MEMBERS", accent: "card-accent-n4", show: showExpenses },
@@ -232,9 +231,8 @@ const HomePage: React.FC = () => {
   const { user } = useAuth();
   const { hero, siteName } = useBranding();
   const showSquash = canAccessSquash(user);
-  const showMemes = canAccessMemes(user);
   const showExpenses = canAccessExpenses(user);
-  const works = buildWorks(showSquash, showMemes, showExpenses);
+  const works = buildWorks(showSquash, showExpenses);
 
   const reduce = useReducedMotion();
   // Parallax/glitch only with a fine pointer (mouse) and motion allowed — off on touch/reduced-motion.
@@ -368,6 +366,10 @@ const HomePage: React.FC = () => {
           </motion.div>
 
           <motion.div
+            // Re-key when auth resolves and adds the members-only cards: the
+            // whileInView stagger runs once, so cards mounted after it fires
+            // would otherwise be stuck at their hidden state (opacity 0).
+            key={works.length}
             className="grid gap-7 grid-cols-[repeat(auto-fill,minmax(260px,1fr))]"
             initial="hidden"
             whileInView="visible"
