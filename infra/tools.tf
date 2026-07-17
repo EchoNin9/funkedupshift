@@ -78,7 +78,7 @@ resource "aws_dynamodb_table" "tools" {
 # this repo.
 # ------------------------------------------------------------------------------
 resource "aws_cloudfront_key_value_store" "tools" {
-  name    = "fus-tools-kvs"
+  name = "fus-tools-kvs"
   # API limit: comment must be <= 128 chars.
   comment = "URL shortener code->URL edge projection; source of truth is the ${var.toolsDynamoTableName} DynamoDB table."
 }
@@ -110,6 +110,28 @@ data "archive_file" "tools" {
     "thumb/**",
     "tests/**",
   ]
+}
+
+# The CloudFront KeyValueStore data plane signs requests with SigV4A, which
+# botocore only supports when the awscrt package is present — it is NOT in
+# the Lambda runtime's bundled boto3 ("Missing Dependency ... pip install
+# botocore[crt]"). Shipped as a layer, mirroring the pillow_layer pattern in
+# main.tf. The generic python/ path works for any runtime version.
+resource "null_resource" "tools_crt_layer" {
+  triggers = {
+    requirements = "awscrt"
+  }
+  provisioner "local-exec" {
+    command     = "mkdir -p build/tools_layer/python && python3 -m pip install awscrt -t build/tools_layer/python --quiet && cd build/tools_layer && zip -qr ../tools_crt_layer.zip python"
+    working_dir = path.module
+  }
+}
+
+resource "aws_lambda_layer_version" "toolsCrt" {
+  filename            = "${path.module}/build/tools_crt_layer.zip"
+  layer_name          = "fus-tools-crt-layer"
+  compatible_runtimes = ["python3.13"]
+  depends_on          = [null_resource.tools_crt_layer]
 }
 
 resource "aws_iam_role" "lambdaTools" {
@@ -165,6 +187,7 @@ resource "aws_lambda_function" "tools" {
   source_code_hash = data.archive_file.tools.output_base64sha256
   runtime          = "python3.13"
   timeout          = 15
+  layers           = [aws_lambda_layer_version.toolsCrt.arn]
 
   environment {
     variables = {
