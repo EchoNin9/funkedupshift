@@ -13,6 +13,9 @@
 import cf from "cloudfront";
 
 var LANDING_URL = "https://funkedupshift.com/";
+// ponytail: e9.cx root redirects to the SPA tools page until a standalone
+// tools site (freetools clone) exists — retarget this one URL then.
+var E9CX_ROOT_URL = "https://funkedupshift.com/tools";
 
 // kvs.get() returns a Promise in the cloudfront-js-2.0 runtime, so the
 // handler must be async and await the lookup.
@@ -21,7 +24,10 @@ async function handler(event) {
   var code = request.uri.replace(/^\/+/, "");
 
   if (!code) {
-    return miss();
+    // Bare-root requests: e9.cx/ goes to the tools landing; fus.fyi/ (and
+    // anything else) keeps the branded funkedupshift.com redirect.
+    var host = request.headers.host && request.headers.host.value;
+    return miss(host === "e9.cx" ? E9CX_ROOT_URL : undefined);
   }
 
   try {
@@ -74,10 +80,10 @@ function resolve(raw) {
   };
 }
 
-function miss() {
+function miss(url) {
   return {
     statusCode: 302,
     statusDescription: "Found",
-    headers: { location: { value: LANDING_URL } },
+    headers: { location: { value: url || LANDING_URL } },
   };
 }
