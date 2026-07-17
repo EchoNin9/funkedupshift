@@ -133,9 +133,10 @@ lead, not yet committed — will commit together with Phase 1/2 once that lands.
       lead on the combined tree (Phase 1–4 together). CI rebuilds `dist/` from
       source (`npm ci && npm run build` → `s3 sync`), so the tracked `dist/`
       churn is stale and is intentionally NOT committed.
-- [ ] 5.2 Manual pass in browser: guest view (greyed cards + sidebar with
+- [x] 5.2 Manual pass in browser: guest view (greyed cards + sidebar with
       locked links, no admin section), user view, admin view; pagination on
-      both pages at desktop + mobile widths. **← user verifies on staging.**
+      both pages at desktop + mobile widths. Verified on staging by user
+      2026-07-17 — desktop + mobile confirmed good.
 - [x] 5.3 Committed to `development` (source only; dist/pyc noise excluded).
       Awaiting user staging verification, then this doc is fully done.
 
@@ -148,3 +149,9 @@ lead, not yet committed — will commit together with Phase 1/2 once that lands.
   baseline errors (DashboardPage, VehiclesExpensesPage, SiteDetailPage — none
   in touched files). Diff reviewed by lead, not yet committed — pending 5.1/5.2
   alongside Phase 3/4.
+- 2026-07-17 — all phases committed to `development` (`bdd20e1`, source only,
+  dist/pyc excluded) and pushed to staging.
+- 2026-07-17 — follow-up (`adddaab`): reordered Basics to Home, Websites, Media,
+  Memes, Internet Dashboard; added Memes → ungated `/memes`.
+- 2026-07-17 — **user verified desktop + mobile on staging; all changes good.
+  UI Tweaks v3 complete.**
