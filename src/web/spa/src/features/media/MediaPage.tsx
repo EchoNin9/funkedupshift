@@ -4,7 +4,7 @@ import { PencilSquareIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outli
 import { motion } from "framer-motion";
 import { useAuth, hasRole } from "../../shell/AuthContext";
 import { fetchWithAuthOptional } from "../../utils/api";
-import { Alert } from "../../components";
+import { Alert, Pager, useMediaQuery } from "../../components";
 
 interface MediaCategory {
   id: string;
@@ -73,6 +73,11 @@ const MediaPage: React.FC = () => {
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  /* ── Pagination (client-side slice of the filtered+sorted+type-filtered list) ── */
+  const isDesktop = useMediaQuery("(min-width: 768px)");
+  const PAGE_SIZE = isDesktop ? 12 : 8;
+  const [page, setPage] = useState(1);
 
   const canRate = !!user;
   const canEdit = hasRole(user ?? null, "manager");
@@ -173,6 +178,11 @@ const MediaPage: React.FC = () => {
     };
   }, [search, selectedCategoryIds, categoryMode]);
 
+  /* ── Reset to page 1 whenever the filtered set changes ── */
+  useEffect(() => {
+    setPage(1);
+  }, [search, selectedCategoryIds, categoryMode, typeFilter]);
+
   /* ── Close category dropdown on outside click ── */
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -217,6 +227,12 @@ const MediaPage: React.FC = () => {
     );
   }, [sortedItems, typeFilter]);
 
+  /* ── Page slice over the post-filter list (clamped inline so a shrinking page count —
+     filter or viewport — never strands the view on an out-of-range page) ── */
+  const pageCount = Math.max(1, Math.ceil(displayedItems.length / PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount);
+  const pagedItems = displayedItems.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
   /* ── Rate handler ── */
   const handleRate = async (mediaId: string, rating: number) => {
     const apiBase = getApiBaseUrl();
@@ -245,7 +261,7 @@ const MediaPage: React.FC = () => {
   };
 
   /* ── Skeleton poster cards for loading state ── */
-  const skeletonCards = Array.from({ length: 12 }).map((_, i) => (
+  const skeletonCards = Array.from({ length: PAGE_SIZE }).map((_, i) => (
     <div key={i} className="overflow-hidden rounded-lg border-[3px] border-border-default bg-surface-2">
       <div className="aspect-[2/3] w-full animate-pulse bg-surface-3" />
       <div className="p-2.5 space-y-2">
@@ -448,9 +464,9 @@ const MediaPage: React.FC = () => {
         <Alert variant="error" className="text-xs">{error}</Alert>
       )}
 
-      {/* ── Content: skeleton / empty / poster grid ── */}
+      {/* ── Content: skeleton / empty / poster grid (fixed 2 cols mobile, 4 cols desktop) ── */}
       {isLoading ? (
-        <div className="grid gap-4 grid-cols-[repeat(auto-fill,minmax(180px,1fr))]">
+        <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
           {skeletonCards}
         </div>
       ) : displayedItems.length === 0 ? (
@@ -462,8 +478,8 @@ const MediaPage: React.FC = () => {
           </p>
         </div>
       ) : (
-        <div className="grid gap-4 grid-cols-[repeat(auto-fill,minmax(180px,1fr))]">
-          {displayedItems.map((m, index) => {
+        <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
+          {pagedItems.map((m, index) => {
             const thumb = m.thumbnailUrl || (m.mediaType === "image" ? m.mediaUrl : undefined);
             const title = m.title || m.PK || "Untitled";
             const mediaTypeLabel = m.mediaType === "video" ? "Video" : "Image";
@@ -573,6 +589,10 @@ const MediaPage: React.FC = () => {
             );
           })}
         </div>
+      )}
+
+      {!isLoading && displayedItems.length > 0 && (
+        <Pager page={currentPage} pageCount={pageCount} onChange={setPage} />
       )}
     </div>
   );

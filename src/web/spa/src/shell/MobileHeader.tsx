@@ -1,19 +1,12 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
-import { Bars3Icon, XMarkIcon, HomeIcon } from "@heroicons/react/24/outline";
+import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "./AuthContext";
 import { useBranding } from "./BrandingContext";
-import {
-  getPublicModulesBySection,
-  getVisibleAdminModules,
-  getAdminHomeModules,
-  getVisibleModuleGroups,
-} from "../config/modules";
-import type { PublicModule } from "../config/modules";
 import ImpersonationBanner from "./ImpersonationBanner";
 import ImpersonationSelector from "./ImpersonationSelector";
-import { AccordionSection } from "./LeftSidebar";
+import { SidebarNavSections } from "./LeftSidebar";
 import { ThemeToggle } from "./ThemeToggle";
 
 export function MobileHeader() {
@@ -21,18 +14,6 @@ export function MobileHeader() {
   const { logo, siteName } = useBranding();
   const [panelOpen, setPanelOpen] = useState(false);
   const location = useLocation();
-
-  const bySection = getPublicModulesBySection(user);
-  const discoverIds = ["websites", "media", "memes", "internet-dashboard", "my-info"] as const;
-  const allForDiscover = [...(bySection.discover ?? []), ...(bySection.memes ?? [])];
-  const discoverItems = discoverIds
-    .map((id) => allForDiscover.find((m) => m.id === id))
-    .filter((m): m is PublicModule => m != null);
-  const recommendedItems = bySection.recommended ?? [];
-  const adminModules = getVisibleAdminModules(user);
-  const adminHomeModules = getAdminHomeModules(user);
-  const moduleGroups = getVisibleModuleGroups(user);
-  const showAdminLink = adminModules.length > 0;
 
   // Close panel on route change
   useEffect(() => setPanelOpen(false), [location.pathname]);
@@ -47,42 +28,57 @@ export function MobileHeader() {
     return () => { document.body.style.overflow = ""; };
   }, [panelOpen]);
 
+  const close = useCallback(() => setPanelOpen(false), []);
+
+  // Close on Esc while open; cleaned up on unmount / when the panel closes.
+  useEffect(() => {
+    if (!panelOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") close();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [panelOpen, close]);
+
   const handleSignOut = useCallback(() => {
     signOut();
     setPanelOpen(false);
   }, [signOut]);
-
-  const close = useCallback(() => setPanelOpen(false), []);
 
   const navItemClass = (isActive: boolean) =>
     `flex items-center gap-3 px-4 py-2.5 min-h-[44px] text-sm rounded-md transition-colors duration-150 ${
       isActive ? "bg-surface-3 text-nav font-medium border-l-2 border-nav" : "text-text-secondary hover:bg-surface-2 hover:text-text-primary"
     }`;
 
-  const adminHomeLinks = [
-    { path: "/admin", label: "Admin Home" },
-    ...adminHomeModules.map((m) => ({ path: m.path, label: m.label })),
-  ];
-
   return (
     <div className="md:hidden">
       <ImpersonationBanner />
 
-      {/* Top bar */}
-      <div className="flex items-center justify-between px-4 py-2.5 bg-surface-1 border-b border-border-default">
-        <Link to="/" className="flex items-center gap-2.5">
+      {/* Top bar — hamburger leads on the left, per the mobile-nav spec */}
+      <div className="flex items-center gap-2 px-4 py-2.5 bg-surface-1 border-b border-border-default">
+        <button
+          type="button"
+          onClick={() => setPanelOpen(!panelOpen)}
+          className="min-h-[44px] min-w-[44px] flex items-center justify-center text-text-secondary hover:text-text-primary rounded-md hover:bg-surface-2 transition-colors duration-150"
+          aria-label={panelOpen ? "Close menu" : "Open menu"}
+          aria-expanded={panelOpen}
+        >
+          {panelOpen ? <XMarkIcon className="w-6 h-6" /> : <Bars3Icon className="w-6 h-6" />}
+        </button>
+
+        <Link to="/" className="flex items-center gap-2.5 min-w-0 flex-1">
           {logo?.url ? (
             <img
               src={logo.url}
               alt={logo.alt || siteName}
-              className="h-7 w-auto rounded object-contain"
+              className="h-7 w-auto rounded object-contain shrink-0"
             />
           ) : (
-            <div className="h-7 w-7 rounded bg-accent-500 flex items-center justify-center text-xs font-bold text-white">
+            <div className="h-7 w-7 rounded bg-accent-500 flex items-center justify-center text-xs font-bold text-white shrink-0">
               {siteName.charAt(0)}
             </div>
           )}
-          <span className="text-sm font-semibold text-text-primary">
+          <span className="text-sm font-semibold text-text-primary truncate">
             {siteName}
           </span>
         </Link>
@@ -90,14 +86,6 @@ export function MobileHeader() {
         <div className="flex items-center gap-1">
           <ThemeToggle />
           {user && <ImpersonationSelector />}
-          <button
-            type="button"
-            onClick={() => setPanelOpen(!panelOpen)}
-            className="min-h-[44px] min-w-[44px] flex items-center justify-center text-text-secondary hover:text-text-primary rounded-md hover:bg-surface-2 transition-colors duration-150"
-            aria-label={panelOpen ? "Close menu" : "Open menu"}
-          >
-            {panelOpen ? <XMarkIcon className="w-6 h-6" /> : <Bars3Icon className="w-6 h-6" />}
-          </button>
         </div>
       </div>
 
@@ -156,85 +144,10 @@ export function MobileHeader() {
                 </button>
               </div>
 
-              {/* Navigation */}
+              {/* Navigation — same sections/gating as the desktop sidebar rail,
+                  just rendered inside this off-canvas drawer instead. */}
               <div className="py-3 space-y-4">
-                {/* Discover */}
-                {discoverItems.length > 0 && (
-                  <div>
-                    <div className="px-4 py-1 text-xs font-medium uppercase tracking-wider text-text-tertiary">
-                      Discover
-                    </div>
-                    <nav className="mt-1 flex flex-col gap-0.5 px-2">
-                      {discoverItems.map((m) => (
-                        <NavLink
-                          key={m.path}
-                          to={m.path}
-                          onClick={close}
-                          className={({ isActive }) => navItemClass(isActive)}
-                        >
-                          {m.label}
-                        </NavLink>
-                      ))}
-                    </nav>
-                  </div>
-                )}
-
-                {/* Recommended */}
-                {recommendedItems.length > 0 && (
-                  <div>
-                    <div className="px-4 py-1 text-xs font-medium uppercase tracking-wider text-text-tertiary">
-                      Recommended
-                    </div>
-                    <nav className="mt-1 flex flex-col gap-0.5 px-2">
-                      {recommendedItems.map((m) => (
-                        <NavLink
-                          key={m.path}
-                          to={m.path}
-                          onClick={close}
-                          className={({ isActive }) => navItemClass(isActive)}
-                        >
-                          {m.label}
-                        </NavLink>
-                      ))}
-                    </nav>
-                  </div>
-                )}
-
-                {/* Admin sidebar items */}
-                {showAdminLink && (
-                  <div>
-                    <div className="px-4 py-1 text-xs font-medium uppercase tracking-wider text-text-tertiary">
-                      Admin
-                    </div>
-                    <nav className="mt-1 flex flex-col gap-0.5">
-                      <AccordionSection
-                        label="Admin Home"
-                        links={adminHomeLinks}
-                        icon={HomeIcon}
-                        defaultExpanded={false}
-                      />
-                    </nav>
-                  </div>
-                )}
-
-                {/* Module groups */}
-                {user && moduleGroups.length > 0 && (
-                  <div>
-                    <div className="px-4 py-1 text-xs font-medium uppercase tracking-wider text-text-tertiary">
-                      Modules
-                    </div>
-                    <nav className="mt-1 flex flex-col gap-0.5">
-                      {moduleGroups.map((group) => (
-                        <AccordionSection
-                          key={group.id}
-                          label={group.label}
-                          links={group.getLinks(user)}
-                          icon={group.icon}
-                        />
-                      ))}
-                    </nav>
-                  </div>
-                )}
+                <SidebarNavSections onNavigate={close} />
 
                 {/* Auth section */}
                 <div className="border-t border-border-subtle pt-3 px-2">

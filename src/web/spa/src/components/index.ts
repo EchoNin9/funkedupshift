@@ -6,6 +6,8 @@ export { SearchableSelect } from "./SearchableSelect";
 export type { SelectOption } from "./SearchableSelect";
 export { PageTransition } from "./PageTransition";
 export { SkeletonCard, SkeletonGrid } from "./SkeletonCard";
+export { Pager } from "./Pager";
+export { useMediaQuery } from "./useMediaQuery";
 export {
   fadeUp,
   fadeUpStaggered,

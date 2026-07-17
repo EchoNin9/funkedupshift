@@ -7,11 +7,10 @@ import { usePlatform } from "./PlatformContext";
 import { AdminLayout } from "./AdminLayout";
 import { Header } from "./Header";
 import { DesktopHeaderBar } from "./DesktopHeaderBar";
-import { LeftSidebar } from "./LeftSidebar";
+import { LeftSidebar, SidebarCollapseProvider, useSidebarCollapse } from "./LeftSidebar";
 import { MobileAppShell } from "./MobileAppShell";
 import { PopBackground } from "./PopBackground";
 import { PopMarquee } from "./PopMarquee";
-import { getVisibleAdminModules, getVisibleModuleGroups } from "../config/modules";
 import { pageTransition } from "../components/motion";
 
 /* Eager-loaded (above-the-fold) */
@@ -61,22 +60,15 @@ function PageLoader() {
   );
 }
 
-const AppLayout: React.FC = () => {
+const AppLayoutContent: React.FC = () => {
   const { user } = useAuth();
   const { siteName, bannerText } = useBranding();
-  const { isNative } = usePlatform();
   const location = useLocation();
-  const adminModules = getVisibleAdminModules(user);
-  const moduleGroups = getVisibleModuleGroups(user);
-  const showSidebar = user && (adminModules.length > 0 || moduleGroups.length > 0);
+  const { collapsed } = useSidebarCollapse();
 
   React.useEffect(() => {
     if (siteName) document.title = siteName;
   }, [siteName]);
-
-  if (isNative) {
-    return <MobileAppShell />;
-  }
 
   return (
     <div className="relative min-h-screen bg-surface-0 text-text-primary flex flex-col">
@@ -85,8 +77,9 @@ const AppLayout: React.FC = () => {
       <Header />
       <LeftSidebar />
 
-      {/* Content area - offset by sidebar width on desktop */}
-      <div className={`flex-1 min-w-0 flex flex-col ${showSidebar ? "md:pl-60" : ""}`}>
+      {/* Content area - offset by sidebar width on desktop; sidebar is always
+          visible (incl. guests), so the offset just tracks collapsed state. */}
+      <div className={`flex-1 min-w-0 flex flex-col ${collapsed ? "md:pl-16" : "md:pl-60"}`}>
         <DesktopHeaderBar />
         <PopMarquee text={bannerText} />
         <main className="flex-1 min-w-0">
@@ -189,6 +182,20 @@ const AppLayout: React.FC = () => {
       </div>
       </div>
     </div>
+  );
+};
+
+const AppLayout: React.FC = () => {
+  const { isNative } = usePlatform();
+
+  if (isNative) {
+    return <MobileAppShell />;
+  }
+
+  return (
+    <SidebarCollapseProvider>
+      <AppLayoutContent />
+    </SidebarCollapseProvider>
   );
 };
 

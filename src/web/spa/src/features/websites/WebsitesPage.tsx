@@ -3,7 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useAuth, hasRole } from "../../shell/AuthContext";
 import { fetchWithAuthOptional } from "../../utils/api";
-import { Alert, SkeletonGrid } from "../../components";
+import { Alert, SkeletonGrid, Pager, useMediaQuery } from "../../components";
 
 /* ── Domain from a URL (host without www), falls back to the raw string ── */
 function domainOf(url?: string): string {
@@ -72,6 +72,11 @@ const WebsitesPage: React.FC = () => {
   const [sort, setSort] = useState<SortKey>("avgDesc");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  /* ── Pagination (client-side slice of the filtered+sorted list) ── */
+  const isDesktop = useMediaQuery("(min-width: 768px)");
+  const PAGE_SIZE = isDesktop ? 16 : 4;
+  const [page, setPage] = useState(1);
 
   const canRate = !!user;
   const canManage = hasRole(user, "manager");
@@ -178,6 +183,11 @@ const WebsitesPage: React.FC = () => {
     };
   }, [search, selectedCategoryIds, categoryMode]);
 
+  /* ── Reset to page 1 whenever the filtered set changes ── */
+  useEffect(() => {
+    setPage(1);
+  }, [search, selectedCategoryIds, categoryMode]);
+
   /* ── Close category dropdown on outside click ── */
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -213,6 +223,12 @@ const WebsitesPage: React.FC = () => {
     });
     return copy;
   }, [sites, sort]);
+
+  /* ── Page slice (clamped inline so a shrinking page count — filter or viewport — never
+     strands the view on an out-of-range page) ── */
+  const pageCount = Math.max(1, Math.ceil(sortedSites.length / PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount);
+  const pagedSites = sortedSites.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   /* ── Rate handler ── */
   const handleRate = async (siteId: string, rating: number) => {
@@ -434,10 +450,10 @@ const WebsitesPage: React.FC = () => {
         </div>
       )}
 
-      {/* ── Auto-fill grid of brutalist site cards ── */}
+      {/* ── Fixed grid of brutalist site cards: 1 col mobile, 4 cols desktop ── */}
       {!isLoading && sortedSites.length > 0 && (
-        <div className="grid gap-6 grid-cols-[repeat(auto-fill,minmax(260px,1fr))]">
-          {sortedSites.map((site, i) => {
+        <div className="grid gap-6 grid-cols-1 md:grid-cols-4">
+          {pagedSites.map((site, i) => {
             const title = site.title || site.url || site.PK || "Untitled";
             const logo = site.logoUrl;
             const domain = domainOf(site.url);
@@ -537,6 +553,10 @@ const WebsitesPage: React.FC = () => {
             );
           })}
         </div>
+      )}
+
+      {!isLoading && sortedSites.length > 0 && (
+        <Pager page={currentPage} pageCount={pageCount} onChange={setPage} />
       )}
     </div>
   );
