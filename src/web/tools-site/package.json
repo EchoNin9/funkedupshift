@@ -1,0 +1,24 @@
+{
+  "name": "e9-tools-site",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "predev": "cp node_modules/amazon-cognito-identity-js/dist/amazon-cognito-identity.min.js public/",
+    "build": "vite build",
+    "prebuild": "cp node_modules/amazon-cognito-identity-js/dist/amazon-cognito-identity.min.js public/",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.64",
+    "@types/react-dom": "^18.2.21",
+    "@vitejs/plugin-react-swc": "^3.7.0",
+    "amazon-cognito-identity-js": "^6.3.0",
+    "typescript": "^5.4.0",
+    "vite": "^5.1.0"
+  }
+}

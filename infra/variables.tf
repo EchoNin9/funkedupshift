@@ -75,6 +75,12 @@ variable "mediaBucketName" {
   default     = "fus-media"
 }
 
+variable "toolsSiteBucket" {
+  description = "S3 bucket name for the tools.e9.cx standalone frontend (JS website)."
+  type        = string
+  default     = "fus-tools-site"
+}
+
 # ------------------------------------------------------------------------------
 # Custom domains (Route 53 + CloudFront)
 # ------------------------------------------------------------------------------

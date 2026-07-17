@@ -202,7 +202,9 @@ data "aws_iam_policy_document" "terraformManage" {
       "arn:aws:s3:::${var.websiteStagingBucket}",
       "arn:aws:s3:::${var.websiteStagingBucket}/*",
       "arn:aws:s3:::${var.websiteProductionBucket}",
-      "arn:aws:s3:::${var.websiteProductionBucket}/*"
+      "arn:aws:s3:::${var.websiteProductionBucket}/*",
+      "arn:aws:s3:::${var.toolsSiteBucket}",
+      "arn:aws:s3:::${var.toolsSiteBucket}/*"
     ]
   }
   # S3 media bucket (logos/uploads) – create and full manage
