@@ -6,6 +6,7 @@ import {
   EyeIcon,
   UserGroupIcon,
   ShieldCheckIcon,
+  LockClosedIcon,
 } from "@heroicons/react/24/outline";
 import {
   useAuth,
@@ -121,19 +122,21 @@ const scaleIn = {
   },
 };
 
-/* ── "The Works" cards. `show` (optional) role-gates via canAccess* helpers. ── */
-type Work = { title: string; blurb: string; to: string; status: string; accent: string; show?: boolean };
-function buildWorks(showSquash: boolean, showExpenses: boolean): Work[] {
+/* ── "The Works" cards. Every card renders for every visitor; `locked`
+   greys out cards the viewer can't access instead of hiding them, so the
+   array is identical across auth states. ── */
+type Work = { title: string; blurb: string; to: string; status: string; accent: string; locked: boolean };
+function buildWorks(locked: { squash: boolean; expenses: boolean; financial: boolean }): Work[] {
   return [
-    { title: "Websites", blurb: "The curated index. Browse, rate, and rank the sites that matter.", to: "/websites", status: "LIVE", accent: "" },
-    { title: "Media", blurb: "A living gallery of clips, tracks, and oddities — all rateable.", to: "/media", status: "LIVE", accent: "card-accent-n3" },
-    { title: "Internet Dashboard", blurb: "Live pulse of the domains we track, all on one screen.", to: "/internet-dashboard", status: "LIVE", accent: "card-accent-n2" },
-    { title: "Memes", blurb: "Browse, rate, and generate the freshest dank.", to: "/memes", status: "LIVE", accent: "card-accent-n2" },
-    { title: "Financial", blurb: "Watchlists and market data for the symbols you care about.", to: "/financial", status: "LIVE", accent: "card-accent-n4" },
-    { title: "Squash", blurb: "Ladder, players, and match results for the crew.", to: "/squash", status: "MEMBERS", accent: "card-accent-n3", show: showSquash },
-    { title: "Vehicle Expenses", blurb: "Log and track what your rides cost you.", to: "/vehicles-expenses", status: "MEMBERS", accent: "card-accent-n4", show: showExpenses },
-    { title: "General Expenses", blurb: "Everything else that hits the books.", to: "/general-expenses", status: "MEMBERS", accent: "", show: showExpenses },
-  ].filter((w) => w.show !== false);
+    { title: "Websites", blurb: "The curated index. Browse, rate, and rank the sites that matter.", to: "/websites", status: "LIVE", accent: "", locked: false },
+    { title: "Media", blurb: "A living gallery of clips, tracks, and oddities — all rateable.", to: "/media", status: "LIVE", accent: "card-accent-n3", locked: false },
+    { title: "Internet Dashboard", blurb: "Live pulse of the domains we track, all on one screen.", to: "/internet-dashboard", status: "LIVE", accent: "card-accent-n2", locked: false },
+    { title: "Memes", blurb: "Browse, rate, and generate the freshest dank.", to: "/memes", status: "LIVE", accent: "card-accent-n2", locked: false },
+    { title: "Financial", blurb: "Watchlists and market data for the symbols you care about.", to: "/finances", status: "LIVE", accent: "card-accent-n4", locked: locked.financial },
+    { title: "Squash", blurb: "Ladder, players, and match results for the crew.", to: "/squash", status: "MEMBERS", accent: "card-accent-n3", locked: locked.squash },
+    { title: "Vehicle Expenses", blurb: "Log and track what your rides cost you.", to: "/vehicles-expenses", status: "MEMBERS", accent: "card-accent-n4", locked: locked.expenses },
+    { title: "General Expenses", blurb: "Everything else that hits the books.", to: "/general-expenses", status: "MEMBERS", accent: "", locked: locked.expenses },
+  ];
 }
 
 /* ── Role breakdown data ── */
@@ -228,11 +231,15 @@ const StatsSection: React.FC = () => {
 };
 
 const HomePage: React.FC = () => {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const { hero, siteName } = useBranding();
-  const showSquash = canAccessSquash(user);
-  const showExpenses = canAccessExpenses(user);
-  const works = buildWorks(showSquash, showExpenses);
+  // While auth is still resolving, don't flash the locked state — render
+  // cards as unlocked/neutral until we know the real access level.
+  const works = buildWorks({
+    squash: !isLoading && !canAccessSquash(user),
+    expenses: !isLoading && !canAccessExpenses(user),
+    financial: !isLoading && !user,
+  });
 
   const reduce = useReducedMotion();
   // Parallax/glitch only with a fine pointer (mouse) and motion allowed — off on touch/reduced-motion.
@@ -366,22 +373,23 @@ const HomePage: React.FC = () => {
           </motion.div>
 
           <motion.div
-            // Re-key when auth resolves and adds the members-only cards: the
-            // whileInView stagger runs once, so cards mounted after it fires
-            // would otherwise be stuck at their hidden state (opacity 0).
-            key={works.length}
             className="grid gap-7 grid-cols-[repeat(auto-fill,minmax(260px,1fr))]"
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: "-60px" }}
             variants={staggerContainer}
           >
-            {works.map((w, i) => (
-              <motion.div key={w.title} variants={scaleIn} style={{ rotate: i % 2 === 0 ? -1 : 1 }}>
-                <Link
-                  to={w.to}
-                  className={`card ${w.accent} group flex h-full flex-col p-6 no-underline`}
-                >
+            {works.map((w, i) => {
+              // Guests get routed to sign in; logged-in users without access
+              // are inert (no navigation) with a "no access" hint.
+              const guestLocked = w.locked && !user;
+              const inertLocked = w.locked && !!user;
+              const cardClass = `card ${w.accent} group flex h-full flex-col p-6 no-underline ${
+                w.locked ? "opacity-50 grayscale cursor-not-allowed" : ""
+              }`;
+
+              const cardBody = (
+                <>
                   <div className="flex items-center justify-between">
                     <span className="font-display font-extrabold text-2xl text-text-tertiary tabular-nums">
                       {String(i + 1).padStart(2, "0")}
@@ -389,20 +397,51 @@ const HomePage: React.FC = () => {
                     <span className="pop-pill">{w.status}</span>
                   </div>
 
-                  <h3 className="mt-5 text-xl font-display font-extrabold uppercase tracking-tight text-text-primary">
+                  <h3 className="mt-5 flex items-center gap-2 text-xl font-display font-extrabold uppercase tracking-tight text-text-primary">
                     {w.title}
+                    {w.locked && (
+                      <LockClosedIcon className="h-4 w-4 shrink-0 text-text-tertiary" aria-hidden="true" />
+                    )}
                   </h3>
                   <p className="mt-2 flex-1 text-sm leading-relaxed text-text-secondary">
                     {w.blurb}
                   </p>
 
-                  <span className="mt-6 inline-flex items-center gap-1.5 text-sm font-display font-extrabold uppercase tracking-tight text-accent transition-all group-hover:gap-2.5">
-                    Open
-                    <ArrowRightIcon className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                  </span>
-                </Link>
-              </motion.div>
-            ))}
+                  {w.locked ? (
+                    <span className="mt-6 inline-flex items-center gap-1.5 text-sm font-display font-extrabold uppercase tracking-tight text-text-tertiary">
+                      {user ? "No access" : "Sign in to unlock"}
+                    </span>
+                  ) : (
+                    <span className="mt-6 inline-flex items-center gap-1.5 text-sm font-display font-extrabold uppercase tracking-tight text-accent transition-all group-hover:gap-2.5">
+                      Open
+                      <ArrowRightIcon className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                    </span>
+                  )}
+                </>
+              );
+
+              return (
+                <motion.div key={w.title} variants={scaleIn} style={{ rotate: i % 2 === 0 ? -1 : 1 }}>
+                  {inertLocked ? (
+                    <div
+                      className={cardClass}
+                      title="You don't have access to this module"
+                      aria-disabled="true"
+                    >
+                      {cardBody}
+                    </div>
+                  ) : (
+                    <Link
+                      to={guestLocked ? "/auth" : w.to}
+                      className={cardClass}
+                      title={guestLocked ? "Sign in to unlock" : undefined}
+                    >
+                      {cardBody}
+                    </Link>
+                  )}
+                </motion.div>
+              );
+            })}
           </motion.div>
         </div>
       </section>
