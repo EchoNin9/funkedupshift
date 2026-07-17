@@ -7,6 +7,7 @@ import {
   HomeIcon,
   ChartBarIcon,
   PhotoIcon,
+  FaceSmileIcon,
   GlobeAltIcon,
   LockClosedIcon,
   TruckIcon,
@@ -42,9 +43,10 @@ const subNavLinkBase =
 /* ── "Basics" — always-public top links, first in the sidebar. ── */
 const BASIC_LINKS: { path: string; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { path: "/", label: "Home", icon: HomeIcon },
-  { path: "/internet-dashboard", label: "Internet Dashboard", icon: ChartBarIcon },
-  { path: "/media", label: "Media", icon: PhotoIcon },
   { path: "/websites", label: "Websites", icon: GlobeAltIcon },
+  { path: "/media", label: "Media", icon: PhotoIcon },
+  { path: "/memes", label: "Memes", icon: FaceSmileIcon },
+  { path: "/internet-dashboard", label: "Internet Dashboard", icon: ChartBarIcon },
 ];
 
 /** Canonical module-group metadata, shown regardless of access (locked ones greyed).
