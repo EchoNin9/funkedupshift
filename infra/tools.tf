@@ -426,6 +426,10 @@ data "aws_iam_policy_document" "toolsSitePublicRead" {
 resource "aws_s3_bucket_policy" "toolsSite" {
   bucket = aws_s3_bucket.toolsSite.id
   policy = data.aws_iam_policy_document.toolsSitePublicRead.json
+
+  # Public policy PUT races BlockPublicPolicy unless the access block is
+  # relaxed first (bit CI on the initial apply).
+  depends_on = [aws_s3_bucket_public_access_block.toolsSite]
 }
 
 resource "aws_s3_bucket_website_configuration" "toolsSite" {
