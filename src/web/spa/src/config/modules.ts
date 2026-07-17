@@ -18,6 +18,7 @@ import {
   Cog6ToothIcon,
   UserGroupIcon,
   TruckIcon,
+  LinkIcon,
 } from "@heroicons/react/24/outline";
 
 /** Public nav modules (sidebar/header links). */
@@ -25,7 +26,7 @@ export interface PublicModule {
   id: string;
   label: string;
   path: string;
-  section: "discover" | "recommended" | "memes" | "squash" | "financial" | "vehicles";
+  section: "discover" | "recommended" | "memes" | "squash" | "financial" | "vehicles" | "tools";
   minRole: "guest" | "user" | "manager" | "superadmin";
   /** Optional: custom visibility. If absent, uses hasRole(user, minRole). */
   visibility?: (user: AuthUser | null) => boolean;
@@ -57,6 +58,7 @@ export const PUBLIC_MODULES: PublicModule[] = [
   { id: "investing", label: "Investing", path: "/investing", section: "financial", minRole: "user", visibility: canAccessInvesting },
   { id: "vehicles-expenses", label: "Vehicles Expenses", path: "/vehicles-expenses", section: "vehicles", minRole: "user", visibility: canAccessExpenses },
   { id: "general-expenses", label: "General expenses", path: "/general-expenses", section: "vehicles", minRole: "user", visibility: canAccessExpenses },
+  { id: "tools", label: "URL Shortener", path: "/tools", section: "tools", minRole: "user", authOnly: true },
   { id: "highlights", label: "Highlights", path: "/recommended/highlights", section: "recommended", minRole: "guest" },
   { id: "highest-rated", label: "Highest Rated", path: "/recommended/highest-rated", section: "recommended", minRole: "guest" },
 ];
@@ -72,7 +74,7 @@ export const ADMIN_MODULES: AdminModule[] = [
 ];
 
 /** Sections for sidebar grouping, in display order. */
-export const SECTIONS = ["discover", "recommended", "memes", "squash", "financial", "vehicles", "admin"] as const;
+export const SECTIONS = ["discover", "recommended", "memes", "squash", "financial", "vehicles", "tools", "admin"] as const;
 
 /** Filter public modules visible to the given user. */
 export function getVisiblePublicModules(user: AuthUser | null): PublicModule[] {
@@ -171,6 +173,13 @@ const MODULE_GROUPS: ModuleGroup[] = [
       if (canAccessInvesting(u)) links.push({ path: "/investing", label: "Investing" });
       return links;
     },
+  },
+  {
+    id: "tools",
+    label: "Tools",
+    icon: LinkIcon,
+    isVisible: (u) => !!u?.userId,
+    getLinks: () => [{ path: "/tools", label: "URL Shortener" }],
   },
 ];
 

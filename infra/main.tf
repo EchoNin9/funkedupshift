@@ -189,7 +189,8 @@ data "aws_iam_policy_document" "terraformManage" {
       "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/github-actions-funkedupshift-production",
       "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/fus-api-lambda-role",
       "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/fus-thumb-lambda-role",
-      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/fus-mediaconvert-role"
+      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/fus-mediaconvert-role",
+      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/fus-tools-lambda-role"
     ]
   }
   # S3 website buckets – full manage for Terraform (s3:* avoids provider refresh whack-a-mole)
@@ -215,12 +216,15 @@ data "aws_iam_policy_document" "terraformManage" {
     ]
   }
   # DynamoDB main table – full manage (covers DescribeContinuousBackups and any future provider APIs)
+  # Also covers the isolated tools table (fus-tools, see infra/tools.tf) — a
+  # separate table, not shared data, just the same CI role provisioning it.
   statement {
     sid       = "TerraformManageDynamo"
     effect    = "Allow"
     actions   = ["dynamodb:*"]
     resources = [
-      "arn:aws:dynamodb:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:table/${var.dynamoTableName}"
+      "arn:aws:dynamodb:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:table/${var.dynamoTableName}",
+      "arn:aws:dynamodb:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:table/${var.toolsDynamoTableName}"
     ]
   }
   # Cognito User Pool – full manage (covers GetUserPoolMfaConfig and any future provider APIs)
@@ -248,6 +252,7 @@ data "aws_iam_policy_document" "terraformManage" {
       "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:function:${var.lambdaApiFunctionName}",
       "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:function:fus-finances-mcp",
       "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:function:fus-thumb",
+      "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:function:fus-tools",
       "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:layer:fus-pillow-layer",
       "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:layer:fus-pillow-layer:*"
     ]
