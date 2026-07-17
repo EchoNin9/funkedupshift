@@ -332,8 +332,7 @@ resource "aws_cloudfront_distribution" "shortener" {
   aliases = [
     "fus.fyi",
     "stage.fus.fyi",
-    # "e9.cx", # still an alias on the legacy distribution E1S4CU3NV8WOAL —
-    # add here only as part of the later cutover that removes it there.
+    "e9.cx", # cutover 2026-07-17: detached from legacy distribution E1S4CU3NV8WOAL first.
   ]
 
   # Dummy fallback origin (production S3 website endpoint) — the
