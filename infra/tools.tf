@@ -79,7 +79,8 @@ resource "aws_dynamodb_table" "tools" {
 # ------------------------------------------------------------------------------
 resource "aws_cloudfront_key_value_store" "tools" {
   name    = "fus-tools-kvs"
-  comment = "URL shortener code -> destination URL. Source of truth is DynamoDB (${var.toolsDynamoTableName}); this store is a reconcilable projection written by the tools Lambda on mint."
+  # API limit: comment must be <= 128 chars.
+  comment = "URL shortener code->URL edge projection; source of truth is the ${var.toolsDynamoTableName} DynamoDB table."
 }
 
 resource "aws_cloudfront_function" "shortenerRedirect" {
