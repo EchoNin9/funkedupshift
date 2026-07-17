@@ -189,13 +189,14 @@ data "aws_iam_policy_document" "terraformManage" {
       "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/github-actions-funkedupshift-production",
       "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/fus-api-lambda-role",
       "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/fus-thumb-lambda-role",
-      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/fus-mediaconvert-role"
+      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/fus-mediaconvert-role",
+      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/fus-tools-lambda-role"
     ]
   }
   # S3 website buckets – full manage for Terraform (s3:* avoids provider refresh whack-a-mole)
   statement {
-    sid    = "TerraformManageWebsiteBuckets"
-    effect = "Allow"
+    sid     = "TerraformManageWebsiteBuckets"
+    effect  = "Allow"
     actions = ["s3:*"]
     resources = [
       "arn:aws:s3:::${var.websiteStagingBucket}",
@@ -206,8 +207,8 @@ data "aws_iam_policy_document" "terraformManage" {
   }
   # S3 media bucket (logos/uploads) – create and full manage
   statement {
-    sid    = "TerraformManageMediaBucket"
-    effect = "Allow"
+    sid     = "TerraformManageMediaBucket"
+    effect  = "Allow"
     actions = ["s3:*"]
     resources = [
       "arn:aws:s3:::${var.mediaBucketName}",
@@ -215,19 +216,22 @@ data "aws_iam_policy_document" "terraformManage" {
     ]
   }
   # DynamoDB main table – full manage (covers DescribeContinuousBackups and any future provider APIs)
+  # Also covers the isolated tools table (fus-tools, see infra/tools.tf) — a
+  # separate table, not shared data, just the same CI role provisioning it.
   statement {
-    sid       = "TerraformManageDynamo"
-    effect    = "Allow"
-    actions   = ["dynamodb:*"]
+    sid     = "TerraformManageDynamo"
+    effect  = "Allow"
+    actions = ["dynamodb:*"]
     resources = [
-      "arn:aws:dynamodb:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:table/${var.dynamoTableName}"
+      "arn:aws:dynamodb:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:table/${var.dynamoTableName}",
+      "arn:aws:dynamodb:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:table/${var.toolsDynamoTableName}"
     ]
   }
   # Cognito User Pool – full manage (covers GetUserPoolMfaConfig and any future provider APIs)
   statement {
-    sid       = "TerraformManageCognito"
-    effect    = "Allow"
-    actions   = ["cognito-idp:*"]
+    sid     = "TerraformManageCognito"
+    effect  = "Allow"
+    actions = ["cognito-idp:*"]
     resources = [
       "arn:aws:cognito-idp:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:userpool/*"
     ]
@@ -241,15 +245,18 @@ data "aws_iam_policy_document" "terraformManage" {
   }
   # Lambda functions (for Terraform plan/apply)
   statement {
-    sid       = "TerraformManageLambda"
-    effect    = "Allow"
-    actions   = ["lambda:*"]
+    sid     = "TerraformManageLambda"
+    effect  = "Allow"
+    actions = ["lambda:*"]
     resources = [
       "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:function:${var.lambdaApiFunctionName}",
       "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:function:fus-finances-mcp",
       "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:function:fus-thumb",
+      "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:function:fus-tools",
       "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:layer:fus-pillow-layer",
-      "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:layer:fus-pillow-layer:*"
+      "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:layer:fus-pillow-layer:*",
+      "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:layer:fus-tools-crt-layer",
+      "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:layer:fus-tools-crt-layer:*"
     ]
   }
   # EventBridge, MediaConvert, IAM roles for thumb pipeline
@@ -369,7 +376,7 @@ resource "aws_s3_bucket_public_access_block" "websiteStaging" {
   block_public_acls       = false
   block_public_policy     = false
   ignore_public_acls      = false
-  restrict_public_buckets  = false
+  restrict_public_buckets = false
 }
 
 data "aws_iam_policy_document" "websiteStagingPublicRead" {
@@ -570,7 +577,7 @@ resource "aws_cognito_user_pool" "main" {
     require_lowercase = true
     require_uppercase = true
     require_numbers   = true
-    require_symbols  = true
+    require_symbols   = true
   }
 
   account_recovery_setting {
@@ -595,8 +602,8 @@ resource "aws_cognito_user_pool" "main" {
 
   verification_message_template {
     default_email_option = "CONFIRM_WITH_LINK"
-    email_subject       = "Funkedupshift - Verify your email"
-    email_message       = "Please click the link to verify your email: {##Verify Email##}. Code: {####}"
+    email_subject        = "Funkedupshift - Verify your email"
+    email_message        = "Please click the link to verify your email: {##Verify Email##}. Code: {####}"
   }
 
   mfa_configuration = "OFF"
@@ -681,7 +688,7 @@ resource "null_resource" "pillow_layer" {
     requirements = file("${path.module}/layer_requirements.txt")
   }
   provisioner "local-exec" {
-    command = "mkdir -p build/layer/python/lib/python3.12/site-packages && python3 -m pip install -r ${path.module}/layer_requirements.txt -t build/layer/python/lib/python3.12/site-packages --quiet && cd build/layer && zip -r ../pillow_layer.zip python"
+    command     = "mkdir -p build/layer/python/lib/python3.12/site-packages && python3 -m pip install -r ${path.module}/layer_requirements.txt -t build/layer/python/lib/python3.12/site-packages --quiet && cd build/layer && zip -r ../pillow_layer.zip python"
     working_dir = path.module
   }
 }
@@ -709,8 +716,8 @@ resource "aws_iam_role" "lambdaApi" {
 }
 
 resource "aws_iam_role_policy" "lambdaApi" {
-  name   = "fus-api-lambda"
-  role   = aws_iam_role.lambdaApi.id
+  name = "fus-api-lambda"
+  role = aws_iam_role.lambdaApi.id
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -720,8 +727,8 @@ resource "aws_iam_role_policy" "lambdaApi" {
         Resource = "arn:aws:logs:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:*"
       },
       {
-        Effect   = "Allow"
-        Action   = [
+        Effect = "Allow"
+        Action = [
           "dynamodb:Query",
           "dynamodb:GetItem",
           "dynamodb:BatchGetItem",
@@ -738,8 +745,8 @@ resource "aws_iam_role_policy" "lambdaApi" {
         Resource = "${aws_s3_bucket.media.arn}/*"
       },
       {
-        Effect   = "Allow"
-        Action   = [
+        Effect = "Allow"
+        Action = [
           "cognito-idp:AdminListGroupsForUser",
           "cognito-idp:AdminAddUserToGroup",
           "cognito-idp:AdminRemoveUserFromGroup",
@@ -750,8 +757,8 @@ resource "aws_iam_role_policy" "lambdaApi" {
         Resource = [aws_cognito_user_pool.main.arn]
       },
       {
-        Effect   = "Allow"
-        Action   = ["bedrock:InvokeModel"]
+        Effect = "Allow"
+        Action = ["bedrock:InvokeModel"]
         Resource = [
           "arn:aws:bedrock:${var.awsRegion}::foundation-model/amazon.nova-micro-*",
           # Claude Sonnet requires an inference profile (us.*), which fans out
@@ -786,12 +793,12 @@ resource "aws_lambda_function" "api" {
 
   environment {
     variables = {
-      TABLE_NAME               = aws_dynamodb_table.main.name
-      MEDIA_BUCKET             = aws_s3_bucket.media.id
-      COGNITO_USER_POOL_ID     = aws_cognito_user_pool.main.id
-      THUMB_FUNCTION_NAME      = aws_lambda_function.thumb.function_name
-      ALPHA_VANTAGE_API_KEY    = var.alphaVantageApiKey
-      ERA_API_KEY              = var.eraApiKey
+      TABLE_NAME            = aws_dynamodb_table.main.name
+      MEDIA_BUCKET          = aws_s3_bucket.media.id
+      COGNITO_USER_POOL_ID  = aws_cognito_user_pool.main.id
+      THUMB_FUNCTION_NAME   = aws_lambda_function.thumb.function_name
+      ALPHA_VANTAGE_API_KEY = var.alphaVantageApiKey
+      ERA_API_KEY           = var.eraApiKey
     }
   }
 }
@@ -805,16 +812,16 @@ resource "aws_iam_role" "mediaconvert" {
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Action = "sts:AssumeRole"
-      Effect = "Allow"
+      Action    = "sts:AssumeRole"
+      Effect    = "Allow"
       Principal = { Service = "mediaconvert.amazonaws.com" }
     }]
   })
 }
 
 resource "aws_iam_role_policy" "mediaconvert" {
-  name   = "fus-mediaconvert-s3"
-  role   = aws_iam_role.mediaconvert.id
+  name = "fus-mediaconvert-s3"
+  role = aws_iam_role.mediaconvert.id
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
@@ -831,16 +838,16 @@ resource "aws_iam_role" "lambdaThumb" {
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Action = "sts:AssumeRole"
-      Effect = "Allow"
+      Action    = "sts:AssumeRole"
+      Effect    = "Allow"
       Principal = { Service = "lambda.amazonaws.com" }
     }]
   })
 }
 
 resource "aws_iam_role_policy" "lambdaThumb" {
-  name   = "fus-thumb-lambda"
-  role   = aws_iam_role.lambdaThumb.id
+  name = "fus-thumb-lambda"
+  role = aws_iam_role.lambdaThumb.id
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -888,7 +895,7 @@ resource "aws_lambda_function" "thumb" {
   environment {
     variables = {
       TABLE_NAME            = aws_dynamodb_table.main.name
-      MEDIA_BUCKET         = aws_s3_bucket.media.id
+      MEDIA_BUCKET          = aws_s3_bucket.media.id
       MEDIACONVERT_ROLE_ARN = aws_iam_role.mediaconvert.arn
     }
   }
@@ -954,11 +961,11 @@ resource "aws_apigatewayv2_api" "main" {
   protocol_type = "HTTP"
 
   cors_configuration {
-    allow_origins      = ["*"]
-    allow_methods      = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
-    allow_headers      = ["Authorization", "Content-Type", "X-Amz-Date", "X-Api-Key", "X-Amz-Security-Token", "X-Impersonate-User", "X-Impersonate-Role"]
-    expose_headers     = []
-    allow_credentials  = false
+    allow_origins     = ["*"]
+    allow_methods     = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+    allow_headers     = ["Authorization", "Content-Type", "X-Amz-Date", "X-Api-Key", "X-Amz-Security-Token", "X-Impersonate-User", "X-Impersonate-Role"]
+    expose_headers    = []
+    allow_credentials = false
   }
 }
 

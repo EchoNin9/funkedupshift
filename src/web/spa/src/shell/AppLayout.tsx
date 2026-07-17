@@ -51,6 +51,7 @@ const MemeBrowsePage = lazy(() => import("../features/memes/MemeBrowsePage"));
 const MemeGeneratorPage = lazy(() => import("../features/memes/MemeGeneratorPage"));
 const MemeDetailPage = lazy(() => import("../features/memes/MemeDetailPage"));
 const EditMemePage = lazy(() => import("../features/memes/EditMemePage"));
+const ShortenerPage = lazy(() => import("../features/tools/ShortenerPage"));
 
 function PageLoader() {
   return (
@@ -121,6 +122,7 @@ const AppLayout: React.FC = () => {
               <Route path="/investing" element={<InvestingPage />} />
               <Route path="/vehicles-expenses" element={<VehiclesExpensesPage />} />
               <Route path="/general-expenses" element={<GeneralExpensesPage />} />
+              <Route path="/tools/*" element={<ShortenerPage />} />
               <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<AdminDashboard />} />
                 <Route path="branding" element={<BrandingPage />} />
