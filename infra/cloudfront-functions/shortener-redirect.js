@@ -13,9 +13,7 @@
 import cf from "cloudfront";
 
 var LANDING_URL = "https://funkedupshift.com/";
-// ponytail: e9.cx root redirects to the SPA tools page until a standalone
-// tools site (freetools clone) exists — retarget this one URL then.
-var E9CX_ROOT_URL = "https://funkedupshift.com/tools";
+var E9CX_ROOT_URL = "https://tools.e9.cx/";
 
 // kvs.get() returns a Promise in the cloudfront-js-2.0 runtime, so the
 // handler must be async and await the lookup.
