@@ -229,7 +229,13 @@ resource "aws_lambda_layer_version" "toolsCrt" {
   filename            = "${path.module}/build/tools_crt_layer.zip"
   layer_name          = "fus-tools-crt-layer"
   compatible_runtimes = ["python3.13"]
-  depends_on          = [null_resource.tools_crt_layer]
+  # Update-trigger only (FUNK-41): without this, a requirements change
+  # rebuilds the zip via the null_resource but terraform sees no diff here
+  # and never publishes a new layer version — the Lambda keeps the old deps.
+  # Hashing the requirements string (not the zip) is deliberate: the zip is
+  # produced at apply time, so plan-time file hashing is unreliable.
+  source_code_hash = base64sha256(null_resource.tools_crt_layer.triggers.requirements)
+  depends_on       = [null_resource.tools_crt_layer]
 }
 
 resource "aws_iam_role" "lambdaTools" {
