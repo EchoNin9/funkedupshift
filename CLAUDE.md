@@ -82,3 +82,29 @@ Give these to the sidekick so it doesn't run the slow path on every iteration.
   production. PRs go `development` → `main`. Don't push/merge `main` directly.
 
 Planning briefs and design docs live in `docs/`.
+
+---
+
+## Hard-won gotchas — phase-2 tools sessions (2026-07-18)
+
+Additions to the phase-2 handoff doc's list; each of these cost a failed deploy
+or a prod bug.
+
+1. **New backend Python deps need TWO homes:** the tools Lambda layer
+   (`null_resource.tools_crt_layer` in `infra/tools.tf`) AND
+   `src/lambda/requirements-test.txt` (what CI's pytest env installs).
+   Missing the second fails the deploy at the pytest step (dnspython bit us).
+2. **`aws_lambda_layer_version` does not republish when the zip is rebuilt.**
+   The resource has no `source_code_hash`, so changing the `null_resource`
+   trigger rebuilds the zip but terraform sees no diff on the layer version —
+   the Lambda keeps running the OLD layer (caused the /dns 500 in prod). Tie
+   `source_code_hash` to the requirements trigger, or expect to republish
+   manually.
+3. **`gh run watch ... | tail` eats the exit code** — the pipeline exits with
+   tail's status, so a failed deploy reads as success. Check the run's
+   `conclusion` field explicitly (`gh run view --json conclusion`).
+4. **React: a ref target used by an async load handler must stay mounted.**
+   Conditionally rendering the canvas on state that the handler itself sets
+   (`{meta && <canvas ref={...}/>}`) makes the first interaction a silent
+   no-op (image tool first-file-pick bug — both frontends). Keep it mounted,
+   hide with CSS.
