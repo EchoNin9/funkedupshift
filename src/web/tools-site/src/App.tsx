@@ -4,6 +4,7 @@ import ShortenerTool from "./ShortenerTool";
 import PasswordTool from "./PasswordTool";
 import ImageTool from "./ImageTool";
 import CropTool from "./CropTool";
+import RemoveBgTool from "./RemoveBgTool";
 import DnsTool from "./DnsTool";
 import TextShareTool from "./TextShareTool";
 import ConvertersTool from "./ConvertersTool";
@@ -14,6 +15,7 @@ type View =
   | "tool:password"
   | "tool:images"
   | "tool:crop"
+  | "tool:removebg"
   | "tool:dns"
   | "tool:pastebin"
   | "tool:converters"
@@ -39,6 +41,7 @@ const TOOLS: ToolDef[] = [
   { id: "pastebin", name: "Text Share", description: "Share text snippets with a link that expires.", available: true },
   { id: "images", name: "Image Resizer", description: "Crop and shrink image file size, right in your browser.", available: true },
   { id: "crop", name: "Crop Image", description: "Crop an image to a region and download it, right in your browser.", available: true },
+  { id: "removebg", name: "Remove Background", description: "Cut the background out of a photo, right in your browser.", available: true },
   { id: "dns", name: "DNS Lookup", description: "Look up A, MX, TXT and other DNS records for any domain.", available: true },
   { id: "converters", name: "Converters", description: "Temperature, units, date math, and timezones, right in your browser.", available: true }
 ];
@@ -174,6 +177,8 @@ const App: React.FC = () => {
         {view === "tool:images" && auth.signedIn && <ImageTool onBack={goLanding} />}
 
         {view === "tool:crop" && auth.signedIn && <CropTool onBack={goLanding} />}
+
+        {view === "tool:removebg" && auth.signedIn && <RemoveBgTool onBack={goLanding} />}
 
         {view === "tool:dns" && auth.signedIn && (
           <DnsTool onBack={goLanding} onAuthError={handleAuthError} />

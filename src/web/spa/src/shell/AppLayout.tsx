@@ -54,6 +54,7 @@ const ShortenerPage = lazy(() => import("../features/tools/ShortenerPage"));
 const PasswordPage = lazy(() => import("../features/passwordgen/PasswordPage"));
 const ImagePage = lazy(() => import("../features/imagetool/ImagePage"));
 const CropPage = lazy(() => import("../features/croptool/CropPage"));
+const RemoveBgPage = lazy(() => import("../features/removebg/RemoveBgPage"));
 const DnsPage = lazy(() => import("../features/dnstool/DnsPage"));
 const TextSharePage = lazy(() => import("../features/textshare/TextSharePage"));
 const TextViewPage = lazy(() => import("../features/textshare/TextViewPage"));
@@ -126,6 +127,7 @@ const AppLayoutContent: React.FC = () => {
               <Route path="/password" element={<PasswordPage />} />
               <Route path="/images" element={<ImagePage />} />
               <Route path="/crop" element={<CropPage />} />
+              <Route path="/removebg" element={<RemoveBgPage />} />
               <Route path="/dns" element={<DnsPage />} />
               <Route path="/textshare" element={<TextSharePage />} />
               <Route path="/converters" element={<ConvertersPage />} />

@@ -554,6 +554,40 @@ body {
   gap: 0.75rem;
 }
 
+.imgtool-progress-track {
+  margin-top: 0.5rem;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.imgtool-progress-fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.2s ease;
+}
+
+.imgtool-checkerboard {
+  display: inline-block;
+  max-width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  line-height: 0;
+  background-image: linear-gradient(45deg, #444 25%, transparent 25%), linear-gradient(-45deg, #444 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #444 75%), linear-gradient(-45deg, transparent 75%, #444 75%);
+  background-size: 20px 20px;
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+  background-color: #2a2a2a;
+}
+
+.imgtool-checkerboard img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
 /* DNS lookup tool */
 .dns-form {
   display: flex;
