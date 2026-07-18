@@ -143,3 +143,82 @@ export async function dnsLookup(name: string, type: DnsRecordType): Promise<DnsR
   const resp = await fetchWithAuth(`${base}/tools/dns?${params.toString()}`);
   return parseJsonOrThrow<DnsResult>(resp);
 }
+
+// --- text-paste sharing (FUNK-40) -------------------------------------------
+
+// The public-facing host for share links. Both frontends brand text-share
+// URLs this way (tools.e9.cx is the public directory site), even though this
+// app itself is served there — mirrors BRAND_HOST above for short links.
+export const TEXT_SHARE_HOST = "https://tools.e9.cx";
+
+export interface TextPasteSummary {
+  id: string;
+  kind: "text";
+  /** ISO 8601 string. */
+  createdAt: string;
+  /** Epoch seconds. */
+  expiresAt: number;
+}
+
+export interface TextPasteMinted {
+  id: string;
+  kind: "text";
+  createdAt: string;
+  expiresAt: number;
+  shareUrl: string;
+}
+
+export interface TextPastePublic {
+  id: string;
+  kind: "text";
+  content: string;
+  /** Epoch seconds. */
+  expiresAt: number;
+}
+
+function shareUrlFor(id: string): string {
+  return `${TEXT_SHARE_HOST}/t/${id}`;
+}
+
+/** POST /tools/text — mint a text paste. `expiresInSeconds` must be between
+ * 1 hour (3600) and 30 days (2592000); omit for the 7-day server default. */
+export async function mintTextPaste(content: string, expiresInSeconds?: number): Promise<TextPasteMinted> {
+  const base = getApiBaseUrl();
+  if (!base) throw new Error("API not configured");
+  const resp = await fetchWithAuth(`${base}/tools/text`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(expiresInSeconds ? { content, expiresInSeconds } : { content })
+  });
+  const paste = await parseJsonOrThrow<Omit<TextPasteMinted, "shareUrl">>(resp);
+  return { ...paste, shareUrl: shareUrlFor(paste.id) };
+}
+
+/** GET /tools/text — the caller's own pastes, newest first. */
+export async function listTextPastes(cursor?: string | null): Promise<{ items: TextPasteSummary[]; nextCursor: string | null }> {
+  const base = getApiBaseUrl();
+  if (!base) throw new Error("API not configured");
+  const params = new URLSearchParams();
+  if (cursor) params.set("cursor", cursor);
+  const qs = params.toString();
+  const resp = await fetchWithAuth(`${base}/tools/text${qs ? `?${qs}` : ""}`);
+  return parseJsonOrThrow(resp);
+}
+
+/** DELETE /tools/text/{id} — creator only. */
+export async function deleteTextPaste(id: string): Promise<void> {
+  const base = getApiBaseUrl();
+  if (!base) throw new Error("API not configured");
+  const resp = await fetchWithAuth(`${base}/tools/text/${encodeURIComponent(id)}`, { method: "DELETE" });
+  await parseJsonOrThrow<{ deleted: boolean }>(resp);
+}
+
+/** GET /tools/text/{id} — PUBLIC. Plain fetch, no auth token — this must
+ * work for a signed-out visitor who just opened a shared link. A 404
+ * (unknown or expired paste) throws "Not found". */
+export async function getPublicTextPaste(id: string): Promise<TextPastePublic> {
+  const base = getApiBaseUrl();
+  if (!base) throw new Error("API not configured");
+  const resp = await fetch(`${base}/tools/text/${encodeURIComponent(id)}`);
+  return parseJsonOrThrow<TextPastePublic>(resp);
+}

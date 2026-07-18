@@ -9,6 +9,17 @@ provider "aws" {
   region = "us-east-1"
 }
 
+# Text-paste sharing tool (FUNK-40) stores content in ca-central-1 for Canada
+# data residency — the first multi-region resource in this repo. Only the
+# DynamoDB table (aws_dynamodb_table.textShare, infra/tools.tf) uses this
+# alias; the fus-tools Lambda that reads/writes it stays in the primary
+# region (var.awsRegion) and talks cross-region via a second boto3 client
+# (TEXT_TABLE_REGION env var).
+provider "aws" {
+  alias  = "ca_central"
+  region = "ca-central-1"
+}
+
 data "aws_caller_identity" "current" {}
 
 # ------------------------------------------------------------------------------
@@ -227,6 +238,20 @@ data "aws_iam_policy_document" "terraformManage" {
     resources = [
       "arn:aws:dynamodb:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:table/${var.dynamoTableName}",
       "arn:aws:dynamodb:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:table/${var.toolsDynamoTableName}"
+    ]
+  }
+  # Text-share table (FUNK-40) — Canada data residency, so this table lives
+  # in ca-central-1 (not var.awsRegion) via the aws.ca_central provider
+  # alias above. A separate statement rather than folding into
+  # TerraformManageDynamo above since the region differs from every other
+  # entry there.
+  statement {
+    sid     = "TerraformManageDynamoTextShareCaCentral"
+    effect  = "Allow"
+    actions = ["dynamodb:*"]
+    resources = [
+      "arn:aws:dynamodb:ca-central-1:${data.aws_caller_identity.current.account_id}:table/${var.textShareDynamoTableName}",
+      "arn:aws:dynamodb:ca-central-1:${data.aws_caller_identity.current.account_id}:table/${var.textShareDynamoTableName}/index/*"
     ]
   }
   # Cognito User Pool – full manage (covers GetUserPoolMfaConfig and any future provider APIs)

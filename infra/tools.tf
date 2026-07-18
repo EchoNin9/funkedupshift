@@ -26,6 +26,12 @@ variable "linkTtlDays" {
   default     = 30
 }
 
+variable "textShareDynamoTableName" {
+  description = "DynamoDB table name for the text-paste sharing tool (FUNK-40). Lives in ca-central-1 (Canada data residency) — see aws_dynamodb_table.textShare's provider alias."
+  type        = string
+  default     = "fus-textshare"
+}
+
 # ------------------------------------------------------------------------------
 # ACM certificate for the shortener domains (fus.fyi, e9.cx) — already
 # requested by hand outside Terraform; imported here rather than recreated.
@@ -99,6 +105,60 @@ resource "aws_dynamodb_table" "tools" {
   # independent of edge enforcement (see shortener-redirect.js) — TTL
   # deletion timing is "usually within 48 hours", not immediate, so the
   # CloudFront Function must not rely on rows being gone by expiresAt.
+  ttl {
+    attribute_name = "expiresAt"
+    enabled        = true
+  }
+}
+
+# ------------------------------------------------------------------------------
+# Text-paste sharing (FUNK-40) — own DynamoDB table, own region.
+#
+# Canada data residency requirement: content at rest must live in
+# ca-central-1. This is the first multi-region resource in this repo — the
+# aws.ca_central provider alias is declared in main.tf. Compute stays where
+# it already is: the fus-tools Lambda (primary region) talks to this table
+# over a second, region-pinned boto3 client (see _textDdb() in
+# src/lambda/tools/handler.py) rather than the module living in its own
+# Lambda — no isolation benefit here since it's the same trust boundary
+# (public-tool traffic) as the shortener already occupies.
+#
+# Same shape as aws_dynamodb_table.tools above: hash key id, byCreator GSI
+# for "list my pastes" (GET /tools/text), TTL on expiresAt for cleanup.
+# ------------------------------------------------------------------------------
+resource "aws_dynamodb_table" "textShare" {
+  provider     = aws.ca_central
+  name         = var.textShareDynamoTableName
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "id"
+
+  attribute {
+    name = "id"
+    type = "S"
+  }
+
+  attribute {
+    name = "createdBy"
+    type = "S"
+  }
+
+  attribute {
+    name = "createdAt"
+    type = "S"
+  }
+
+  # List a caller's own pastes: query byCreator where createdBy = <sub>,
+  # newest first (ScanIndexForward=false on createdAt). See GET /tools/text.
+  global_secondary_index {
+    name            = "byCreator"
+    hash_key        = "createdBy"
+    range_key       = "createdAt"
+    projection_type = "ALL"
+  }
+
+  # TTL deletion lags real time by up to ~48 hours — the public GET handler
+  # (getTextPastePublic) independently treats expiresAt <= now as a 404
+  # regardless of whether this sweep has run yet.
   ttl {
     attribute_name = "expiresAt"
     enabled        = true
@@ -221,6 +281,19 @@ resource "aws_iam_role_policy" "lambdaTools" {
           "cloudfront-keyvaluestore:PutKey", "cloudfront-keyvaluestore:DeleteKey",
         ]
         Resource = aws_cloudfront_key_value_store.tools.arn
+      },
+      {
+        # Text-share table (FUNK-40) — cross-region grant (ca-central-1;
+        # aws_dynamodb_table.textShare.arn resolves to that region via its
+        # own provider alias, independent of this role's home region).
+        # Query targets the byCreator GSI (GET /tools/text), same shape as
+        # the fus-tools grant above.
+        Effect = "Allow"
+        Action = [
+          "dynamodb:PutItem", "dynamodb:GetItem", "dynamodb:ConditionCheckItem",
+          "dynamodb:DeleteItem", "dynamodb:UpdateItem", "dynamodb:Query",
+        ]
+        Resource = [aws_dynamodb_table.textShare.arn, "${aws_dynamodb_table.textShare.arn}/index/*"]
       }
     ]
   })
@@ -238,10 +311,12 @@ resource "aws_lambda_function" "tools" {
 
   environment {
     variables = {
-      TOOLS_TABLE_NAME = aws_dynamodb_table.tools.name
-      KVS_ARN          = aws_cloudfront_key_value_store.tools.arn
-      SHORT_DOMAIN     = var.shortDomain
-      LINK_TTL_DAYS    = tostring(var.linkTtlDays)
+      TOOLS_TABLE_NAME  = aws_dynamodb_table.tools.name
+      KVS_ARN           = aws_cloudfront_key_value_store.tools.arn
+      SHORT_DOMAIN      = var.shortDomain
+      LINK_TTL_DAYS     = tostring(var.linkTtlDays)
+      TEXT_TABLE_NAME   = aws_dynamodb_table.textShare.name
+      TEXT_TABLE_REGION = "ca-central-1"
     }
   }
 }
@@ -314,6 +389,47 @@ resource "aws_apigatewayv2_route" "toolsDnsGet" {
   target             = "integrations/${aws_apigatewayv2_integration.tools.id}"
   authorization_type = "JWT"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+# ------------------------------------------------------------------------------
+# Text-paste sharing (FUNK-40). Mint/list/delete are authenticated, same
+# pattern as the shortener above. GET /tools/text/{id} is PUBLIC — the FIRST
+# unauthenticated route on this API: recipients of a shared paste link must
+# be able to open it without ever signing in, so authorization_type /
+# authorizer_id are omitted entirely below (not set to "NONE" — omitted, per
+# the aws_apigatewayv2_route schema default).
+# ------------------------------------------------------------------------------
+resource "aws_apigatewayv2_route" "toolsTextPost" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /tools/text"
+  target             = "integrations/${aws_apigatewayv2_integration.tools.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+# List the caller's own text pastes (paginated, newest first).
+resource "aws_apigatewayv2_route" "toolsTextList" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /tools/text"
+  target             = "integrations/${aws_apigatewayv2_integration.tools.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+# Delete a text paste (creator only).
+resource "aws_apigatewayv2_route" "toolsTextDelete" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "DELETE /tools/text/{id}"
+  target             = "integrations/${aws_apigatewayv2_integration.tools.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+# PUBLIC: read a shared text paste. No authorization_type/authorizer_id.
+resource "aws_apigatewayv2_route" "toolsTextGetPublic" {
+  api_id    = aws_apigatewayv2_api.main.id
+  route_key = "GET /tools/text/{id}"
+  target    = "integrations/${aws_apigatewayv2_integration.tools.id}"
 }
 
 resource "aws_lambda_permission" "toolsGateway" {

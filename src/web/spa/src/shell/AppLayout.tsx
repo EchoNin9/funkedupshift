@@ -54,6 +54,8 @@ const ShortenerPage = lazy(() => import("../features/tools/ShortenerPage"));
 const PasswordPage = lazy(() => import("../features/passwordgen/PasswordPage"));
 const ImagePage = lazy(() => import("../features/imagetool/ImagePage"));
 const DnsPage = lazy(() => import("../features/dnstool/DnsPage"));
+const TextSharePage = lazy(() => import("../features/textshare/TextSharePage"));
+const TextViewPage = lazy(() => import("../features/textshare/TextViewPage"));
 
 function PageLoader() {
   return (
@@ -122,6 +124,10 @@ const AppLayoutContent: React.FC = () => {
               <Route path="/password" element={<PasswordPage />} />
               <Route path="/images" element={<ImagePage />} />
               <Route path="/dns" element={<DnsPage />} />
+              <Route path="/textshare" element={<TextSharePage />} />
+              {/* Public — no auth gate. Recipients of a shared paste link
+                  must be able to open it signed-out (see TextViewPage). */}
+              <Route path="/t/:id" element={<TextViewPage />} />
               <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<AdminDashboard />} />
                 <Route path="branding" element={<BrandingPage />} />

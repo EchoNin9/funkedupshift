@@ -4,8 +4,9 @@ import ShortenerTool from "./ShortenerTool";
 import PasswordTool from "./PasswordTool";
 import ImageTool from "./ImageTool";
 import DnsTool from "./DnsTool";
+import TextShareTool from "./TextShareTool";
 
-type View = "landing" | "tool:shortener" | "tool:password" | "tool:images" | "tool:dns" | "auth";
+type View = "landing" | "tool:shortener" | "tool:password" | "tool:images" | "tool:dns" | "tool:pastebin" | "auth";
 
 interface AuthState {
   checked: boolean;
@@ -24,7 +25,7 @@ const TOOLS: ToolDef[] = [
   { id: "shortener", name: "URL Shortener", description: "Mint short links and manage the ones you've made.", available: true },
   { id: "password", name: "Password Generator", description: "Generate strong passwords, right in your browser.", available: true },
   { id: "qr", name: "QR Codes", description: "Generate a QR code for any link or block of text.", available: false },
-  { id: "pastebin", name: "Paste Bin", description: "Share text snippets with a link that expires.", available: false },
+  { id: "pastebin", name: "Text Share", description: "Share text snippets with a link that expires.", available: true },
   { id: "images", name: "Image Resizer", description: "Crop and shrink image file size, right in your browser.", available: true },
   { id: "dns", name: "DNS Lookup", description: "Look up A, MX, TXT and other DNS records for any domain.", available: true }
 ];
@@ -161,6 +162,10 @@ const App: React.FC = () => {
 
         {view === "tool:dns" && auth.signedIn && (
           <DnsTool onBack={goLanding} onAuthError={handleAuthError} />
+        )}
+
+        {view === "tool:pastebin" && auth.signedIn && (
+          <TextShareTool onBack={goLanding} onAuthError={handleAuthError} />
         )}
       </main>
     </div>
