@@ -59,6 +59,7 @@ export const PUBLIC_MODULES: PublicModule[] = [
   { id: "vehicles-expenses", label: "Vehicles Expenses", path: "/vehicles-expenses", section: "vehicles", minRole: "user", visibility: canAccessExpenses },
   { id: "general-expenses", label: "General expenses", path: "/general-expenses", section: "vehicles", minRole: "user", visibility: canAccessExpenses },
   { id: "tools", label: "URL Shortener", path: "/tools", section: "tools", minRole: "user", authOnly: true },
+  { id: "passwordgen", label: "Password Generator", path: "/password", section: "tools", minRole: "user", authOnly: true },
   { id: "highlights", label: "Highlights", path: "/recommended/highlights", section: "recommended", minRole: "guest" },
   { id: "highest-rated", label: "Highest Rated", path: "/recommended/highest-rated", section: "recommended", minRole: "guest" },
 ];
@@ -179,7 +180,10 @@ const MODULE_GROUPS: ModuleGroup[] = [
     label: "Tools",
     icon: LinkIcon,
     isVisible: (u) => !!u?.userId,
-    getLinks: () => [{ path: "/tools", label: "URL Shortener" }],
+    getLinks: () => [
+      { path: "/tools", label: "URL Shortener" },
+      { path: "/password", label: "Password Generator" },
+    ],
   },
 ];
 

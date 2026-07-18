@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useState } from "react";
 import AuthView from "./AuthView";
 import ShortenerTool from "./ShortenerTool";
+import PasswordTool from "./PasswordTool";
 
-type View = "landing" | "tool:shortener" | "auth";
+type View = "landing" | "tool:shortener" | "tool:password" | "auth";
 
 interface AuthState {
   checked: boolean;
@@ -19,6 +20,7 @@ interface ToolDef {
 
 const TOOLS: ToolDef[] = [
   { id: "shortener", name: "URL Shortener", description: "Mint short links and manage the ones you've made.", available: true },
+  { id: "password", name: "Password Generator", description: "Generate strong passwords, right in your browser.", available: true },
   { id: "qr", name: "QR Codes", description: "Generate a QR code for any link or block of text.", available: false },
   { id: "pastebin", name: "Paste Bin", description: "Share text snippets with a link that expires.", available: false },
   { id: "images", name: "Image Resizer", description: "Resize and compress images in the browser.", available: false }
@@ -149,6 +151,8 @@ const App: React.FC = () => {
         {view === "tool:shortener" && auth.signedIn && (
           <ShortenerTool onBack={goLanding} onAuthError={handleAuthError} />
         )}
+
+        {view === "tool:password" && auth.signedIn && <PasswordTool onBack={goLanding} />}
       </main>
     </div>
   );

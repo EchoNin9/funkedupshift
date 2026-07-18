@@ -389,3 +389,76 @@ body {
 .load-more {
   margin-top: 1.25rem;
 }
+
+/* Password generator */
+.local-notice {
+  margin: 0 0 1.5rem;
+  font-size: 0.85rem;
+}
+
+.pwgen-output {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.pwgen-password {
+  flex: 1;
+  overflow-wrap: anywhere;
+  font-size: 1rem;
+}
+
+.entropy-readout {
+  font-size: 0.8rem;
+  margin: 0 0 1.5rem;
+}
+
+.entropy-weak {
+  color: var(--danger);
+}
+
+.entropy-ok {
+  color: var(--warn);
+}
+
+.entropy-strong {
+  color: var(--accent);
+}
+
+.pwgen-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 1.25rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.pwgen-field input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.pwgen-checks {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-bottom: 1.25rem;
+}
+
+.pwgen-check {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.pwgen-check input {
+  accent-color: var(--accent);
+}
