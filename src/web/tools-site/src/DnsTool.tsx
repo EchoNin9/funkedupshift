@@ -23,7 +23,7 @@ interface SectionState {
 
 const DnsTool: React.FC<Props> = ({ onBack, onAuthError }) => {
   const [name, setName] = useState("");
-  const [type, setType] = useState<TypeChoice>("A");
+  const [type, setType] = useState<TypeChoice>("ALL");
   const [running, setRunning] = useState(false);
   const [sections, setSections] = useState<SectionState[]>([]);
   const [formError, setFormError] = useState<string | null>(null);

@@ -26,7 +26,7 @@ const td = "px-3 py-2 text-sm text-text-primary border-t border-border-default";
 const DnsPage: React.FC = () => {
   const { user } = useAuth();
   const [name, setName] = useState("");
-  const [type, setType] = useState<TypeChoice>("A");
+  const [type, setType] = useState<TypeChoice>("ALL");
   const [running, setRunning] = useState(false);
   const [sections, setSections] = useState<SectionState[]>([]);
   const [formError, setFormError] = useState<string | null>(null);
