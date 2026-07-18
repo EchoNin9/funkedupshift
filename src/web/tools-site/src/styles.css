@@ -692,3 +692,151 @@ body {
   max-height: 60vh;
   overflow-y: auto;
 }
+
+/* Converters tool */
+.conv-tabs {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.conv-subtabs {
+  margin-bottom: 1rem;
+}
+
+.conv-tab {
+  font: inherit;
+  background: var(--surface);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.45rem 0.85rem;
+  cursor: pointer;
+}
+
+.conv-tab.active {
+  background: rgba(79, 209, 197, 0.12);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.conv-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.conv-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.conv-field input,
+.conv-field select {
+  font: inherit;
+  padding: 0.55rem 0.7rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.conv-row {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.conv-row input {
+  font: inherit;
+  padding: 0.55rem 0.7rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.conv-unit-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.conv-unit-value {
+  font: inherit;
+  padding: 0.55rem 0.7rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  width: 120px;
+}
+
+.conv-unit-row select {
+  font: inherit;
+  padding: 0.55rem 0.7rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.conv-arrow {
+  color: var(--text-muted);
+}
+
+.conv-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.conv-card-heading {
+  font-size: 0.9rem;
+  margin: 0 0 0.75rem;
+  color: var(--accent);
+}
+
+.conv-result {
+  margin: 0.75rem 0 0;
+  font-size: 0.95rem;
+}
+
+.conv-tz-pickers {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.conv-fav-row {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.conv-fav-btn {
+  font: inherit;
+  font-size: 0.75rem;
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.25rem 0.6rem;
+  cursor: pointer;
+}
+
+.conv-fav-btn.active {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.conv-tz-result {
+  margin-top: 1.25rem;
+}

@@ -56,6 +56,7 @@ const ImagePage = lazy(() => import("../features/imagetool/ImagePage"));
 const DnsPage = lazy(() => import("../features/dnstool/DnsPage"));
 const TextSharePage = lazy(() => import("../features/textshare/TextSharePage"));
 const TextViewPage = lazy(() => import("../features/textshare/TextViewPage"));
+const ConvertersPage = lazy(() => import("../features/converters/ConvertersPage"));
 
 function PageLoader() {
   return (
@@ -125,6 +126,7 @@ const AppLayoutContent: React.FC = () => {
               <Route path="/images" element={<ImagePage />} />
               <Route path="/dns" element={<DnsPage />} />
               <Route path="/textshare" element={<TextSharePage />} />
+              <Route path="/converters" element={<ConvertersPage />} />
               {/* Public — no auth gate. Recipients of a shared paste link
                   must be able to open it signed-out (see TextViewPage). */}
               <Route path="/t/:id" element={<TextViewPage />} />

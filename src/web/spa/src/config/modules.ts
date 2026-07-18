@@ -63,6 +63,7 @@ export const PUBLIC_MODULES: PublicModule[] = [
   { id: "imagetool", label: "Image Resizer", path: "/images", section: "tools", minRole: "user", authOnly: true },
   { id: "dnstool", label: "DNS Lookup", path: "/dns", section: "tools", minRole: "user", authOnly: true },
   { id: "textshare", label: "Text Share", path: "/textshare", section: "tools", minRole: "user", authOnly: true },
+  { id: "converters", label: "Converters", path: "/converters", section: "tools", minRole: "user", authOnly: true },
   { id: "highlights", label: "Highlights", path: "/recommended/highlights", section: "recommended", minRole: "guest" },
   { id: "highest-rated", label: "Highest Rated", path: "/recommended/highest-rated", section: "recommended", minRole: "guest" },
 ];
@@ -189,6 +190,7 @@ const MODULE_GROUPS: ModuleGroup[] = [
       { path: "/images", label: "Image Resizer" },
       { path: "/dns", label: "DNS Lookup" },
       { path: "/textshare", label: "Text Share" },
+      { path: "/converters", label: "Converters" },
     ],
   },
 ];
