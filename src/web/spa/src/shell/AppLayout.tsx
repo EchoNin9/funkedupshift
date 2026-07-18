@@ -52,6 +52,7 @@ const MemeDetailPage = lazy(() => import("../features/memes/MemeDetailPage"));
 const EditMemePage = lazy(() => import("../features/memes/EditMemePage"));
 const ShortenerPage = lazy(() => import("../features/tools/ShortenerPage"));
 const PasswordPage = lazy(() => import("../features/passwordgen/PasswordPage"));
+const ImagePage = lazy(() => import("../features/imagetool/ImagePage"));
 
 function PageLoader() {
   return (
@@ -118,6 +119,7 @@ const AppLayoutContent: React.FC = () => {
               <Route path="/general-expenses" element={<GeneralExpensesPage />} />
               <Route path="/tools/*" element={<ShortenerPage />} />
               <Route path="/password" element={<PasswordPage />} />
+              <Route path="/images" element={<ImagePage />} />
               <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<AdminDashboard />} />
                 <Route path="branding" element={<BrandingPage />} />
