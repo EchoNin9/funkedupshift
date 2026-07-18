@@ -151,12 +151,16 @@ data "archive_file" "tools" {
 # the Lambda runtime's bundled boto3 ("Missing Dependency ... pip install
 # botocore[crt]"). Shipped as a layer, mirroring the pillow_layer pattern in
 # main.tf. The generic python/ path works for any runtime version.
+#
+# dnspython rides in the same layer (GET /tools/dns, dnsLookup) — no
+# per-feature layer proliferation; both packages are small and neither is in
+# the base Lambda runtime.
 resource "null_resource" "tools_crt_layer" {
   triggers = {
-    requirements = "awscrt"
+    requirements = "awscrt dnspython"
   }
   provisioner "local-exec" {
-    command     = "mkdir -p build/tools_layer/python && python3 -m pip install awscrt -t build/tools_layer/python --quiet && cd build/tools_layer && zip -qr ../tools_crt_layer.zip python"
+    command     = "mkdir -p build/tools_layer/python && python3 -m pip install awscrt dnspython -t build/tools_layer/python --quiet && cd build/tools_layer && zip -qr ../tools_crt_layer.zip python"
     working_dir = path.module
   }
 }
@@ -297,6 +301,16 @@ resource "aws_apigatewayv2_route" "toolsShortenDelete" {
 resource "aws_apigatewayv2_route" "toolsShortenPatch" {
   api_id             = aws_apigatewayv2_api.main.id
   route_key          = "PATCH /s/{code}"
+  target             = "integrations/${aws_apigatewayv2_integration.tools.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+# DNS lookup tool (mxtoolbox-style): one typed query per request, no
+# recursion/resolver options exposed (authenticated users only).
+resource "aws_apigatewayv2_route" "toolsDnsGet" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /tools/dns"
   target             = "integrations/${aws_apigatewayv2_integration.tools.id}"
   authorization_type = "JWT"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id

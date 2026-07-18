@@ -553,3 +553,82 @@ body {
   flex-direction: column;
   gap: 0.75rem;
 }
+
+/* DNS lookup tool */
+.dns-form {
+  display: flex;
+  gap: 0.6rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.dns-form input[type="text"] {
+  flex: 1;
+  min-width: 220px;
+  font: inherit;
+  padding: 0.55rem 0.7rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.dns-form select {
+  font: inherit;
+  padding: 0.55rem 0.7rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.dns-results {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.dns-section-heading {
+  font-size: 0.95rem;
+  margin: 0 0 0.5rem;
+  color: var(--accent);
+  letter-spacing: 0.02em;
+}
+
+.dns-status-line {
+  margin: 0;
+}
+
+.dns-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  font-size: 0.85rem;
+}
+
+.dns-table th,
+.dns-table td {
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.dns-table th {
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.dns-table tr:last-child td {
+  border-bottom: none;
+}
+
+.dns-value {
+  overflow-wrap: anywhere;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}

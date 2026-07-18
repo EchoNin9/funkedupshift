@@ -110,3 +110,36 @@ export function isAuthError(err: unknown): boolean {
   const msg = err instanceof Error ? err.message : String(err);
   return msg === "Not signed in" || msg.startsWith("Session expired");
 }
+
+// --- DNS lookup tool -------------------------------------------------------
+
+export type DnsRecordType = "A" | "AAAA" | "CNAME" | "MX" | "TXT" | "NS" | "SOA" | "SRV" | "CAA" | "PTR";
+
+export const DNS_RECORD_TYPES: DnsRecordType[] = [
+  "A", "AAAA", "CNAME", "MX", "TXT", "NS", "SOA", "SRV", "CAA", "PTR"
+];
+
+export type DnsStatus = "ok" | "nxdomain" | "noanswer" | "timeout";
+
+export interface DnsRecord {
+  record: string;
+  ttl: number;
+  value: string;
+}
+
+export interface DnsResult {
+  name: string;
+  type: DnsRecordType;
+  records: DnsRecord[];
+  status: DnsStatus;
+}
+
+/** GET /tools/dns?name=&type= — a single typed DNS query. "All types" fan-out
+ * (one request per type) is a client-side concern; see DnsTool.tsx. */
+export async function dnsLookup(name: string, type: DnsRecordType): Promise<DnsResult> {
+  const base = getApiBaseUrl();
+  if (!base) throw new Error("API not configured");
+  const params = new URLSearchParams({ name, type });
+  const resp = await fetchWithAuth(`${base}/tools/dns?${params.toString()}`);
+  return parseJsonOrThrow<DnsResult>(resp);
+}

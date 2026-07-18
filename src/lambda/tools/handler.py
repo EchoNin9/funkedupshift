@@ -29,9 +29,11 @@ e <= now as a miss regardless of whether DynamoDB has gotten around to
 deleting the row yet.
 """
 import base64
+import ipaddress
 import json
 import logging
 import os
+import re
 import secrets
 import string
 import sys
@@ -443,6 +445,120 @@ def patchShortLinkExpiry(event, code):
     )
 
 
+DNS_RECORD_TYPES = {"A", "AAAA", "CNAME", "MX", "TXT", "NS", "SOA", "SRV", "CAA", "PTR"}
+
+DNS_MAX_NAME_LENGTH = 253
+DNS_MAX_LABEL_LENGTH = 63
+# Underscore is allowed alongside the standard hostname charset — needed for
+# TXT lookups like _dmarc.example.com.
+_DNS_NAME_CHARS_RE = re.compile(r"^[A-Za-z0-9._-]+$")
+
+DNS_RESOLVER_TIMEOUT = 1.5
+DNS_RESOLVER_LIFETIME = 3.0
+
+
+def _validateDnsName(raw):
+    """Validate a candidate domain name for a non-PTR DNS lookup (trust
+    boundary — called before any DNS query is issued). Returns (name, error);
+    error is None on success. Never echoes the raw input back in the error
+    message."""
+    if not raw or not isinstance(raw, str):
+        return None, "name is required"
+    name = raw.strip()
+    if name.endswith("."):
+        name = name[:-1]
+    if not name:
+        return None, "name is required"
+    if len(name) > DNS_MAX_NAME_LENGTH:
+        return None, f"name exceeds {DNS_MAX_NAME_LENGTH} characters"
+    if not _DNS_NAME_CHARS_RE.match(name):
+        return None, "name contains characters that are not allowed"
+    labels = name.split(".")
+    if any(len(label) == 0 for label in labels):
+        return None, "name contains an empty label"
+    if any(len(label) > DNS_MAX_LABEL_LENGTH for label in labels):
+        return None, f"name has a label longer than {DNS_MAX_LABEL_LENGTH} characters"
+    return name, None
+
+
+def _validatePtrName(raw):
+    """Validate a candidate IPv4/IPv6 address for a PTR lookup. Returns
+    (address, error); error is None on success."""
+    if not raw or not isinstance(raw, str):
+        return None, "name is required"
+    candidate = raw.strip()
+    if not candidate:
+        return None, "name is required"
+    try:
+        ipaddress.ip_address(candidate)
+    except ValueError:
+        return None, "name must be a valid IPv4 or IPv6 address for a PTR lookup"
+    return candidate, None
+
+
+def dnsLookup(event):
+    """GET /tools/dns?name=<domain>&type=<TYPE> — a single typed DNS query,
+    no recursion/resolver options exposed to the caller. "All types" fan-out
+    is a client-side concern (one request per type); this handler only ever
+    answers one type per call.
+    """
+    qs = event.get("queryStringParameters") or {}
+    raw_type = (qs.get("type") or "").strip().upper()
+
+    if raw_type not in DNS_RECORD_TYPES:
+        return jsonResponse(
+            {"error": f"type must be one of: {', '.join(sorted(DNS_RECORD_TYPES))}"}, 400
+        )
+
+    raw_name = qs.get("name")
+    if raw_type == "PTR":
+        query_target, err = _validatePtrName(raw_name)
+    else:
+        query_target, err = _validateDnsName(raw_name)
+    if err:
+        return jsonResponse({"error": err}, 400)
+
+    import dns.exception
+    import dns.resolver
+
+    resolver = dns.resolver.Resolver()
+    resolver.timeout = DNS_RESOLVER_TIMEOUT
+    resolver.lifetime = DNS_RESOLVER_LIFETIME
+
+    if raw_type == "PTR":
+        import dns.reversename
+        query_name = dns.reversename.from_address(query_target)
+    else:
+        query_name = query_target
+
+    try:
+        answer = resolver.resolve(query_name, raw_type)
+    except dns.resolver.NXDOMAIN:
+        return jsonResponse(
+            {"name": query_target, "type": raw_type, "records": [], "status": "nxdomain"}, 200
+        )
+    except dns.resolver.NoAnswer:
+        return jsonResponse(
+            {"name": query_target, "type": raw_type, "records": [], "status": "noanswer"}, 200
+        )
+    except dns.exception.Timeout:
+        return jsonResponse(
+            {"name": query_target, "type": raw_type, "records": [], "status": "timeout"}, 200
+        )
+    except dns.resolver.NoNameservers:
+        # SERVFAIL et al. (e.g. broken DNSSEC) — a lookup outcome, not a 500.
+        return jsonResponse(
+            {"name": query_target, "type": raw_type, "records": [], "status": "servfail"}, 200
+        )
+
+    ttl = answer.rrset.ttl if answer.rrset is not None else 0
+    records = [{"record": raw_type, "ttl": ttl, "value": rr.to_text()} for rr in answer]
+
+    return jsonResponse(
+        {"name": query_target, "type": raw_type, "records": records, "status": "ok"}, 200
+    )
+
+
 def handler(event, context):
     """Route request by path; return JSON with CORS headers."""
     try:
@@ -470,6 +586,8 @@ def handler(event, context):
         if method == "PATCH" and path.startswith("/s/"):
             code = path[len("/s/"):]
             return patchShortLinkExpiry(event, code)
+        if method == "GET" and path == "/tools/dns":
+            return dnsLookup(event)
 
         return jsonResponse({"error": "Not found"}, 404)
     except Exception as e:

@@ -3,8 +3,9 @@ import AuthView from "./AuthView";
 import ShortenerTool from "./ShortenerTool";
 import PasswordTool from "./PasswordTool";
 import ImageTool from "./ImageTool";
+import DnsTool from "./DnsTool";
 
-type View = "landing" | "tool:shortener" | "tool:password" | "tool:images" | "auth";
+type View = "landing" | "tool:shortener" | "tool:password" | "tool:images" | "tool:dns" | "auth";
 
 interface AuthState {
   checked: boolean;
@@ -24,7 +25,8 @@ const TOOLS: ToolDef[] = [
   { id: "password", name: "Password Generator", description: "Generate strong passwords, right in your browser.", available: true },
   { id: "qr", name: "QR Codes", description: "Generate a QR code for any link or block of text.", available: false },
   { id: "pastebin", name: "Paste Bin", description: "Share text snippets with a link that expires.", available: false },
-  { id: "images", name: "Image Resizer", description: "Crop and shrink image file size, right in your browser.", available: true }
+  { id: "images", name: "Image Resizer", description: "Crop and shrink image file size, right in your browser.", available: true },
+  { id: "dns", name: "DNS Lookup", description: "Look up A, MX, TXT and other DNS records for any domain.", available: true }
 ];
 
 const App: React.FC = () => {
@@ -156,6 +158,10 @@ const App: React.FC = () => {
         {view === "tool:password" && auth.signedIn && <PasswordTool onBack={goLanding} />}
 
         {view === "tool:images" && auth.signedIn && <ImageTool onBack={goLanding} />}
+
+        {view === "tool:dns" && auth.signedIn && (
+          <DnsTool onBack={goLanding} onAuthError={handleAuthError} />
+        )}
       </main>
     </div>
   );
