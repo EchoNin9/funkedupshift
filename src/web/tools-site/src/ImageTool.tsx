@@ -316,19 +316,22 @@ const ImageTool: React.FC<Props> = ({ onBack }) => {
 
       {error && <div className="banner banner-error">{error}</div>}
 
+      {/* Always mounted: handleFileChange draws in here before meta exists,
+          so unmounting it while empty would leave canvasRef.current null on
+          the first file pick. */}
+      <div className="imgtool-canvas-wrap" style={{ display: meta ? undefined : "none" }}>
+        <canvas
+          ref={canvasRef}
+          className="imgtool-canvas"
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+        />
+        {selection && <div className="imgtool-selection" style={selStyle()} />}
+      </div>
+
       {meta && (
         <>
-          <div className="imgtool-canvas-wrap">
-            <canvas
-              ref={canvasRef}
-              className="imgtool-canvas"
-              onPointerDown={handlePointerDown}
-              onPointerMove={handlePointerMove}
-              onPointerUp={handlePointerUp}
-            />
-            {selection && <div className="imgtool-selection" style={selStyle()} />}
-          </div>
-
           <div className="imgtool-crop-row">
             <span className="muted">
               {selection && selection.w >= 2 && selection.h >= 2

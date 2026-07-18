@@ -340,24 +340,30 @@ const ImagePage: React.FC = () => {
         />
       </div>
 
+      {/* Always mounted: handleFileChange draws in here before meta exists,
+          so unmounting it while empty would leave canvasRef.current null on
+          the first file pick. */}
+      <div
+        className="relative inline-block max-w-full overflow-hidden rounded-xl border border-border-default bg-surface-1 leading-none"
+        style={{ display: meta ? undefined : "none" }}
+      >
+        <canvas
+          ref={canvasRef}
+          className="block max-w-full h-auto touch-none cursor-crosshair"
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+        />
+        {selection && (
+          <div
+            className="pointer-events-none absolute border-2 border-dashed border-accent bg-accent-500/15"
+            style={selStyle()}
+          />
+        )}
+      </div>
+
       {meta && (
         <>
-          <div className="relative inline-block max-w-full overflow-hidden rounded-xl border border-border-default bg-surface-1 leading-none">
-            <canvas
-              ref={canvasRef}
-              className="block max-w-full h-auto touch-none cursor-crosshair"
-              onPointerDown={handlePointerDown}
-              onPointerMove={handlePointerMove}
-              onPointerUp={handlePointerUp}
-            />
-            {selection && (
-              <div
-                className="pointer-events-none absolute border-2 border-dashed border-accent bg-accent-500/15"
-                style={selStyle()}
-              />
-            )}
-          </div>
-
           <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-text-secondary">
             <span className="flex items-center gap-1.5">
               <ScissorsIcon className="h-4 w-4" />
