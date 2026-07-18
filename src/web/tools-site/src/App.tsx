@@ -3,6 +3,7 @@ import AuthView from "./AuthView";
 import ShortenerTool from "./ShortenerTool";
 import PasswordTool from "./PasswordTool";
 import ImageTool from "./ImageTool";
+import CropTool from "./CropTool";
 import DnsTool from "./DnsTool";
 import TextShareTool from "./TextShareTool";
 import ConvertersTool from "./ConvertersTool";
@@ -12,6 +13,7 @@ type View =
   | "tool:shortener"
   | "tool:password"
   | "tool:images"
+  | "tool:crop"
   | "tool:dns"
   | "tool:pastebin"
   | "tool:converters"
@@ -36,6 +38,7 @@ const TOOLS: ToolDef[] = [
   { id: "qr", name: "QR Codes", description: "Generate a QR code for any link or block of text.", available: false },
   { id: "pastebin", name: "Text Share", description: "Share text snippets with a link that expires.", available: true },
   { id: "images", name: "Image Resizer", description: "Crop and shrink image file size, right in your browser.", available: true },
+  { id: "crop", name: "Crop Image", description: "Crop an image to a region and download it, right in your browser.", available: true },
   { id: "dns", name: "DNS Lookup", description: "Look up A, MX, TXT and other DNS records for any domain.", available: true },
   { id: "converters", name: "Converters", description: "Temperature, units, date math, and timezones, right in your browser.", available: true }
 ];
@@ -169,6 +172,8 @@ const App: React.FC = () => {
         {view === "tool:password" && auth.signedIn && <PasswordTool onBack={goLanding} />}
 
         {view === "tool:images" && auth.signedIn && <ImageTool onBack={goLanding} />}
+
+        {view === "tool:crop" && auth.signedIn && <CropTool onBack={goLanding} />}
 
         {view === "tool:dns" && auth.signedIn && (
           <DnsTool onBack={goLanding} onAuthError={handleAuthError} />
