@@ -218,6 +218,11 @@ data "archive_file" "tools" {
 resource "null_resource" "tools_crt_layer" {
   triggers = {
     requirements = "awscrt dnspython"
+    # Rebuild the zip on EVERY apply (FUNK-41): CI runners are fresh, so a
+    # skipped provisioner means no zip on disk — and the layer version only
+    # actually republishes when `requirements` changes (source_code_hash
+    # below hashes that string, not this timestamp).
+    always_run = timestamp()
   }
   provisioner "local-exec" {
     command     = "mkdir -p build/tools_layer/python && python3 -m pip install awscrt dnspython -t build/tools_layer/python --quiet && cd build/tools_layer && zip -qr ../tools_crt_layer.zip python"
