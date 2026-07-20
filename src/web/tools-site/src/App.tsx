@@ -2,9 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import AuthView from "./AuthView";
 import ShortenerTool from "./ShortenerTool";
 import PasswordTool from "./PasswordTool";
-import ImageTool from "./ImageTool";
-import CropTool from "./CropTool";
-import RemoveBgTool from "./RemoveBgTool";
+import ImageToolsTool from "./ImageToolsTool";
 import DnsTool from "./DnsTool";
 import TextShareTool from "./TextShareTool";
 import ConvertersTool from "./ConvertersTool";
@@ -13,9 +11,7 @@ type View =
   | "landing"
   | "tool:shortener"
   | "tool:password"
-  | "tool:images"
-  | "tool:crop"
-  | "tool:removebg"
+  | "tool:imagetools"
   | "tool:dns"
   | "tool:pastebin"
   | "tool:converters"
@@ -39,9 +35,7 @@ const TOOLS: ToolDef[] = [
   { id: "password", name: "Password Generator", description: "Generate strong passwords, right in your browser.", available: true },
   { id: "qr", name: "QR Codes", description: "Generate a QR code for any link or block of text.", available: false },
   { id: "pastebin", name: "Text Share", description: "Share text snippets with a link that expires.", available: true },
-  { id: "images", name: "Image Resizer", description: "Crop and shrink image file size, right in your browser.", available: true },
-  { id: "crop", name: "Crop Image", description: "Crop an image to a region and download it, right in your browser.", available: true },
-  { id: "removebg", name: "Remove Background", description: "Cut the background out of a photo, right in your browser.", available: true },
+  { id: "imagetools", name: "Image Tools", description: "Resize, crop, remove backgrounds.", available: true },
   { id: "dns", name: "DNS Lookup", description: "Look up A, MX, TXT and other DNS records for any domain.", available: true },
   { id: "converters", name: "Converters", description: "Temperature, units, date math, and timezones, right in your browser.", available: true }
 ];
@@ -112,7 +106,7 @@ const App: React.FC = () => {
     <div className="app">
       <header className="site-header">
         <button className="wordmark" onClick={goLanding} type="button">
-          e9 tools
+          Echo9 Tools
         </button>
         <div className="header-right">
           {auth.signedIn ? (
@@ -174,11 +168,7 @@ const App: React.FC = () => {
 
         {view === "tool:password" && auth.signedIn && <PasswordTool onBack={goLanding} />}
 
-        {view === "tool:images" && auth.signedIn && <ImageTool onBack={goLanding} />}
-
-        {view === "tool:crop" && auth.signedIn && <CropTool onBack={goLanding} />}
-
-        {view === "tool:removebg" && auth.signedIn && <RemoveBgTool onBack={goLanding} />}
+        {view === "tool:imagetools" && auth.signedIn && <ImageToolsTool onBack={goLanding} />}
 
         {view === "tool:dns" && auth.signedIn && (
           <DnsTool onBack={goLanding} onAuthError={handleAuthError} />
