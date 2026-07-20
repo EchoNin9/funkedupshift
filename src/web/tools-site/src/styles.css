@@ -160,11 +160,13 @@ body {
   font-size: 2.4rem;
   font-weight: 600;
   margin: 0 0 0.35rem;
+  text-align: center;
 }
 
 .landing-subtitle {
   color: var(--text-muted);
   margin: 0 0 2rem;
+  text-align: center;
 }
 
 .tool-grid {
