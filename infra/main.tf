@@ -1099,6 +1099,22 @@ resource "aws_apigatewayv2_route" "internetDashboard" {
   target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
 }
 
+resource "aws_apigatewayv2_route" "adminStatsGet" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /admin/stats"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "adminStatsRecomputePost" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /admin/stats/recompute"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
 # My Info page: server-side ipwho.is (browser free plan blocks direct calls)
 resource "aws_apigatewayv2_route" "visitorNetworkInfo" {
   api_id    = aws_apigatewayv2_api.main.id
