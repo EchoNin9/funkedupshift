@@ -201,7 +201,8 @@ data "aws_iam_policy_document" "terraformManage" {
       "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/fus-api-lambda-role",
       "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/fus-thumb-lambda-role",
       "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/fus-mediaconvert-role",
-      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/fus-tools-lambda-role"
+      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/fus-tools-lambda-role",
+      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/fus-collector-lambda-role"
     ]
   }
   # S3 website buckets – full manage for Terraform (s3:* avoids provider refresh whack-a-mole)
@@ -226,6 +227,16 @@ data "aws_iam_policy_document" "terraformManage" {
     resources = [
       "arn:aws:s3:::${var.mediaBucketName}",
       "arn:aws:s3:::${var.mediaBucketName}/*"
+    ]
+  }
+  # S3 CloudFront logs bucket
+  statement {
+    sid     = "TerraformManageCloudfrontLogsBucket"
+    effect  = "Allow"
+    actions = ["s3:*"]
+    resources = [
+      "arn:aws:s3:::fus-cf-logs-${data.aws_caller_identity.current.account_id}",
+      "arn:aws:s3:::fus-cf-logs-${data.aws_caller_identity.current.account_id}/*"
     ]
   }
   # DynamoDB main table – full manage (covers DescribeContinuousBackups and any future provider APIs)
@@ -280,6 +291,7 @@ data "aws_iam_policy_document" "terraformManage" {
       "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:function:fus-finances-mcp",
       "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:function:fus-thumb",
       "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:function:fus-tools",
+      "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:function:fus-collector",
       "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:layer:fus-pillow-layer",
       "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:layer:fus-pillow-layer:*",
       "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:layer:fus-tools-crt-layer",
@@ -2332,4 +2344,113 @@ resource "aws_lambda_permission" "mcpGateway" {
   function_name = aws_lambda_function.mcp.function_name
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.main.execution_arn}/*/*"
+}
+
+# ------------------------------------------------------------------------------
+# CloudFront Logs Bucket & Collector Lambda
+# ------------------------------------------------------------------------------
+resource "aws_s3_bucket" "cloudfrontLogs" {
+  bucket = "fus-cf-logs-${data.aws_caller_identity.current.account_id}"
+}
+
+resource "aws_s3_bucket_ownership_controls" "cloudfrontLogs" {
+  bucket = aws_s3_bucket.cloudfrontLogs.id
+  rule {
+    object_ownership = "BucketOwnerPreferred"
+  }
+}
+
+resource "aws_iam_role" "collector" {
+  name = "fus-collector-lambda-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = {
+        Service = "lambda.amazonaws.com"
+      }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "collector" {
+  name = "fus-collector-lambda"
+  role = aws_iam_role.collector.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"]
+        Resource = "arn:aws:logs:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["s3:GetObject", "s3:ListBucket"]
+        Resource = [aws_s3_bucket.cloudfrontLogs.arn, "${aws_s3_bucket.cloudfrontLogs.arn}/*"]
+      },
+      {
+        Effect = "Allow"
+        Action = ["cloudwatch:GetMetricData"]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:StartQuery",
+          "logs:GetQueryResults",
+          "logs:StopQuery",
+          "logs:DescribeLogGroups"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "dynamodb:PutItem",
+          "dynamodb:Query"
+        ]
+        Resource = [aws_dynamodb_table.main.arn, "${aws_dynamodb_table.main.arn}/index/*"]
+      }
+    ]
+  })
+}
+
+resource "aws_lambda_function" "collector" {
+  filename         = data.archive_file.api.output_path
+  function_name    = "fus-collector"
+  role             = aws_iam_role.collector.arn
+  handler          = "collector.handler.handler"
+  source_code_hash = data.archive_file.api.output_base64sha256
+  runtime          = "python3.12"
+  timeout          = 300
+
+  environment {
+    variables = {
+      TABLE_NAME            = aws_dynamodb_table.main.name
+      CLOUDFRONT_LOG_BUCKET = aws_s3_bucket.cloudfrontLogs.bucket
+    }
+  }
+}
+
+resource "aws_cloudwatch_event_rule" "collector_daily" {
+  name                = "collector-daily"
+  description         = "Trigger collector lambda daily"
+  schedule_expression = "cron(0 6 * * ? *)"
+}
+
+resource "aws_cloudwatch_event_target" "collector_target" {
+  rule      = aws_cloudwatch_event_rule.collector_daily.name
+  target_id = "collector"
+  arn       = aws_lambda_function.collector.arn
+}
+
+resource "aws_lambda_permission" "allow_eventbridge_collector" {
+  statement_id  = "AllowExecutionFromEventBridge"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.collector.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.collector_daily.arn
 }
