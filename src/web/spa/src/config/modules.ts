@@ -59,6 +59,13 @@ export const PUBLIC_MODULES: PublicModule[] = [
   { id: "vehicles-expenses", label: "Vehicles Expenses", path: "/vehicles-expenses", section: "vehicles", minRole: "user", visibility: canAccessExpenses },
   { id: "general-expenses", label: "General expenses", path: "/general-expenses", section: "vehicles", minRole: "user", visibility: canAccessExpenses },
   { id: "tools", label: "URL Shortener", path: "/tools", section: "tools", minRole: "user", authOnly: true },
+  { id: "passwordgen", label: "Password Generator", path: "/password", section: "tools", minRole: "user", authOnly: true },
+  { id: "imagetool", label: "Image Resizer", path: "/images", section: "tools", minRole: "user", authOnly: true },
+  { id: "croptool", label: "Crop Image", path: "/crop", section: "tools", minRole: "user", authOnly: true },
+  { id: "removebg", label: "Remove Background", path: "/removebg", section: "tools", minRole: "user", authOnly: true },
+  { id: "dnstool", label: "DNS Lookup", path: "/dns", section: "tools", minRole: "user", authOnly: true },
+  { id: "textshare", label: "Text Share", path: "/textshare", section: "tools", minRole: "user", authOnly: true },
+  { id: "converters", label: "Converters", path: "/converters", section: "tools", minRole: "user", authOnly: true },
   { id: "highlights", label: "Highlights", path: "/recommended/highlights", section: "recommended", minRole: "guest" },
   { id: "highest-rated", label: "Highest Rated", path: "/recommended/highest-rated", section: "recommended", minRole: "guest" },
 ];
@@ -179,7 +186,16 @@ const MODULE_GROUPS: ModuleGroup[] = [
     label: "Tools",
     icon: LinkIcon,
     isVisible: (u) => !!u?.userId,
-    getLinks: () => [{ path: "/tools", label: "URL Shortener" }],
+    getLinks: () => [
+      { path: "/tools", label: "URL Shortener" },
+      { path: "/password", label: "Password Generator" },
+      { path: "/images", label: "Image Resizer" },
+      { path: "/crop", label: "Crop Image" },
+      { path: "/removebg", label: "Remove Background" },
+      { path: "/dns", label: "DNS Lookup" },
+      { path: "/textshare", label: "Text Share" },
+      { path: "/converters", label: "Converters" },
+    ],
   },
 ];
 

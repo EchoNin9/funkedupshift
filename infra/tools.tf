@@ -26,6 +26,12 @@ variable "linkTtlDays" {
   default     = 30
 }
 
+variable "textShareDynamoTableName" {
+  description = "DynamoDB table name for the text-paste sharing tool (FUNK-40). Lives in ca-central-1 (Canada data residency) — see aws_dynamodb_table.textShare's provider alias."
+  type        = string
+  default     = "fus-textshare"
+}
+
 # ------------------------------------------------------------------------------
 # ACM certificate for the shortener domains (fus.fyi, e9.cx) — already
 # requested by hand outside Terraform; imported here rather than recreated.
@@ -106,6 +112,60 @@ resource "aws_dynamodb_table" "tools" {
 }
 
 # ------------------------------------------------------------------------------
+# Text-paste sharing (FUNK-40) — own DynamoDB table, own region.
+#
+# Canada data residency requirement: content at rest must live in
+# ca-central-1. This is the first multi-region resource in this repo — the
+# aws.ca_central provider alias is declared in main.tf. Compute stays where
+# it already is: the fus-tools Lambda (primary region) talks to this table
+# over a second, region-pinned boto3 client (see _textDdb() in
+# src/lambda/tools/handler.py) rather than the module living in its own
+# Lambda — no isolation benefit here since it's the same trust boundary
+# (public-tool traffic) as the shortener already occupies.
+#
+# Same shape as aws_dynamodb_table.tools above: hash key id, byCreator GSI
+# for "list my pastes" (GET /tools/text), TTL on expiresAt for cleanup.
+# ------------------------------------------------------------------------------
+resource "aws_dynamodb_table" "textShare" {
+  provider     = aws.ca_central
+  name         = var.textShareDynamoTableName
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "id"
+
+  attribute {
+    name = "id"
+    type = "S"
+  }
+
+  attribute {
+    name = "createdBy"
+    type = "S"
+  }
+
+  attribute {
+    name = "createdAt"
+    type = "S"
+  }
+
+  # List a caller's own pastes: query byCreator where createdBy = <sub>,
+  # newest first (ScanIndexForward=false on createdAt). See GET /tools/text.
+  global_secondary_index {
+    name            = "byCreator"
+    hash_key        = "createdBy"
+    range_key       = "createdAt"
+    projection_type = "ALL"
+  }
+
+  # TTL deletion lags real time by up to ~48 hours — the public GET handler
+  # (getTextPastePublic) independently treats expiresAt <= now as a 404
+  # regardless of whether this sweep has run yet.
+  ttl {
+    attribute_name = "expiresAt"
+    enabled        = true
+  }
+}
+
+# ------------------------------------------------------------------------------
 # CloudFront KeyValueStore — read-optimized edge projection of the table
 # above (code -> destination URL). One store, shared by staging and
 # production, matching the existing single-table/single-lambda pattern in
@@ -151,12 +211,21 @@ data "archive_file" "tools" {
 # the Lambda runtime's bundled boto3 ("Missing Dependency ... pip install
 # botocore[crt]"). Shipped as a layer, mirroring the pillow_layer pattern in
 # main.tf. The generic python/ path works for any runtime version.
+#
+# dnspython rides in the same layer (GET /tools/dns, dnsLookup) — no
+# per-feature layer proliferation; both packages are small and neither is in
+# the base Lambda runtime.
 resource "null_resource" "tools_crt_layer" {
   triggers = {
-    requirements = "awscrt"
+    requirements = "awscrt dnspython"
+    # Rebuild the zip on EVERY apply (FUNK-41): CI runners are fresh, so a
+    # skipped provisioner means no zip on disk — and the layer version only
+    # actually republishes when `requirements` changes (source_code_hash
+    # below hashes that string, not this timestamp).
+    always_run = timestamp()
   }
   provisioner "local-exec" {
-    command     = "mkdir -p build/tools_layer/python && python3 -m pip install awscrt -t build/tools_layer/python --quiet && cd build/tools_layer && zip -qr ../tools_crt_layer.zip python"
+    command     = "mkdir -p build/tools_layer/python && python3 -m pip install awscrt dnspython -t build/tools_layer/python --quiet && cd build/tools_layer && zip -qr ../tools_crt_layer.zip python"
     working_dir = path.module
   }
 }
@@ -165,7 +234,13 @@ resource "aws_lambda_layer_version" "toolsCrt" {
   filename            = "${path.module}/build/tools_crt_layer.zip"
   layer_name          = "fus-tools-crt-layer"
   compatible_runtimes = ["python3.13"]
-  depends_on          = [null_resource.tools_crt_layer]
+  # Update-trigger only (FUNK-41): without this, a requirements change
+  # rebuilds the zip via the null_resource but terraform sees no diff here
+  # and never publishes a new layer version — the Lambda keeps the old deps.
+  # Hashing the requirements string (not the zip) is deliberate: the zip is
+  # produced at apply time, so plan-time file hashing is unreliable.
+  source_code_hash = base64sha256(null_resource.tools_crt_layer.triggers.requirements)
+  depends_on       = [null_resource.tools_crt_layer]
 }
 
 resource "aws_iam_role" "lambdaTools" {
@@ -217,6 +292,19 @@ resource "aws_iam_role_policy" "lambdaTools" {
           "cloudfront-keyvaluestore:PutKey", "cloudfront-keyvaluestore:DeleteKey",
         ]
         Resource = aws_cloudfront_key_value_store.tools.arn
+      },
+      {
+        # Text-share table (FUNK-40) — cross-region grant (ca-central-1;
+        # aws_dynamodb_table.textShare.arn resolves to that region via its
+        # own provider alias, independent of this role's home region).
+        # Query targets the byCreator GSI (GET /tools/text), same shape as
+        # the fus-tools grant above.
+        Effect = "Allow"
+        Action = [
+          "dynamodb:PutItem", "dynamodb:GetItem", "dynamodb:ConditionCheckItem",
+          "dynamodb:DeleteItem", "dynamodb:UpdateItem", "dynamodb:Query",
+        ]
+        Resource = [aws_dynamodb_table.textShare.arn, "${aws_dynamodb_table.textShare.arn}/index/*"]
       }
     ]
   })
@@ -234,10 +322,12 @@ resource "aws_lambda_function" "tools" {
 
   environment {
     variables = {
-      TOOLS_TABLE_NAME = aws_dynamodb_table.tools.name
-      KVS_ARN          = aws_cloudfront_key_value_store.tools.arn
-      SHORT_DOMAIN     = var.shortDomain
-      LINK_TTL_DAYS    = tostring(var.linkTtlDays)
+      TOOLS_TABLE_NAME  = aws_dynamodb_table.tools.name
+      KVS_ARN           = aws_cloudfront_key_value_store.tools.arn
+      SHORT_DOMAIN      = var.shortDomain
+      LINK_TTL_DAYS     = tostring(var.linkTtlDays)
+      TEXT_TABLE_NAME   = aws_dynamodb_table.textShare.name
+      TEXT_TABLE_REGION = "ca-central-1"
     }
   }
 }
@@ -300,6 +390,57 @@ resource "aws_apigatewayv2_route" "toolsShortenPatch" {
   target             = "integrations/${aws_apigatewayv2_integration.tools.id}"
   authorization_type = "JWT"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+# DNS lookup tool (mxtoolbox-style): one typed query per request, no
+# recursion/resolver options exposed (authenticated users only).
+resource "aws_apigatewayv2_route" "toolsDnsGet" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /tools/dns"
+  target             = "integrations/${aws_apigatewayv2_integration.tools.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+# ------------------------------------------------------------------------------
+# Text-paste sharing (FUNK-40). Mint/list/delete are authenticated, same
+# pattern as the shortener above. GET /tools/text/{id} is PUBLIC — the FIRST
+# unauthenticated route on this API: recipients of a shared paste link must
+# be able to open it without ever signing in, so authorization_type /
+# authorizer_id are omitted entirely below (not set to "NONE" — omitted, per
+# the aws_apigatewayv2_route schema default).
+# ------------------------------------------------------------------------------
+resource "aws_apigatewayv2_route" "toolsTextPost" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /tools/text"
+  target             = "integrations/${aws_apigatewayv2_integration.tools.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+# List the caller's own text pastes (paginated, newest first).
+resource "aws_apigatewayv2_route" "toolsTextList" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /tools/text"
+  target             = "integrations/${aws_apigatewayv2_integration.tools.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+# Delete a text paste (creator only).
+resource "aws_apigatewayv2_route" "toolsTextDelete" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "DELETE /tools/text/{id}"
+  target             = "integrations/${aws_apigatewayv2_integration.tools.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+# PUBLIC: read a shared text paste. No authorization_type/authorizer_id.
+resource "aws_apigatewayv2_route" "toolsTextGetPublic" {
+  api_id    = aws_apigatewayv2_api.main.id
+  route_key = "GET /tools/text/{id}"
+  target    = "integrations/${aws_apigatewayv2_integration.tools.id}"
 }
 
 resource "aws_lambda_permission" "toolsGateway" {

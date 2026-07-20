@@ -4,12 +4,13 @@
   "private": true,
   "scripts": {
     "dev": "vite",
-    "predev": "cp node_modules/amazon-cognito-identity-js/dist/amazon-cognito-identity.min.js public/",
+    "predev": "cp node_modules/amazon-cognito-identity-js/dist/amazon-cognito-identity.min.js public/ && node scripts/fetch-imgly-assets.js",
     "build": "vite build",
-    "prebuild": "cp node_modules/amazon-cognito-identity-js/dist/amazon-cognito-identity.min.js public/",
+    "prebuild": "cp node_modules/amazon-cognito-identity-js/dist/amazon-cognito-identity.min.js public/ && node scripts/fetch-imgly-assets.js",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@imgly/background-removal": "^1.7.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },

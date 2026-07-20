@@ -1,8 +1,25 @@
 import React, { useCallback, useEffect, useState } from "react";
 import AuthView from "./AuthView";
 import ShortenerTool from "./ShortenerTool";
+import PasswordTool from "./PasswordTool";
+import ImageTool from "./ImageTool";
+import CropTool from "./CropTool";
+import RemoveBgTool from "./RemoveBgTool";
+import DnsTool from "./DnsTool";
+import TextShareTool from "./TextShareTool";
+import ConvertersTool from "./ConvertersTool";
 
-type View = "landing" | "tool:shortener" | "auth";
+type View =
+  | "landing"
+  | "tool:shortener"
+  | "tool:password"
+  | "tool:images"
+  | "tool:crop"
+  | "tool:removebg"
+  | "tool:dns"
+  | "tool:pastebin"
+  | "tool:converters"
+  | "auth";
 
 interface AuthState {
   checked: boolean;
@@ -19,9 +36,14 @@ interface ToolDef {
 
 const TOOLS: ToolDef[] = [
   { id: "shortener", name: "URL Shortener", description: "Mint short links and manage the ones you've made.", available: true },
+  { id: "password", name: "Password Generator", description: "Generate strong passwords, right in your browser.", available: true },
   { id: "qr", name: "QR Codes", description: "Generate a QR code for any link or block of text.", available: false },
-  { id: "pastebin", name: "Paste Bin", description: "Share text snippets with a link that expires.", available: false },
-  { id: "images", name: "Image Resizer", description: "Resize and compress images in the browser.", available: false }
+  { id: "pastebin", name: "Text Share", description: "Share text snippets with a link that expires.", available: true },
+  { id: "images", name: "Image Resizer", description: "Crop and shrink image file size, right in your browser.", available: true },
+  { id: "crop", name: "Crop Image", description: "Crop an image to a region and download it, right in your browser.", available: true },
+  { id: "removebg", name: "Remove Background", description: "Cut the background out of a photo, right in your browser.", available: true },
+  { id: "dns", name: "DNS Lookup", description: "Look up A, MX, TXT and other DNS records for any domain.", available: true },
+  { id: "converters", name: "Converters", description: "Temperature, units, date math, and timezones, right in your browser.", available: true }
 ];
 
 const App: React.FC = () => {
@@ -149,6 +171,24 @@ const App: React.FC = () => {
         {view === "tool:shortener" && auth.signedIn && (
           <ShortenerTool onBack={goLanding} onAuthError={handleAuthError} />
         )}
+
+        {view === "tool:password" && auth.signedIn && <PasswordTool onBack={goLanding} />}
+
+        {view === "tool:images" && auth.signedIn && <ImageTool onBack={goLanding} />}
+
+        {view === "tool:crop" && auth.signedIn && <CropTool onBack={goLanding} />}
+
+        {view === "tool:removebg" && auth.signedIn && <RemoveBgTool onBack={goLanding} />}
+
+        {view === "tool:dns" && auth.signedIn && (
+          <DnsTool onBack={goLanding} onAuthError={handleAuthError} />
+        )}
+
+        {view === "tool:pastebin" && auth.signedIn && (
+          <TextShareTool onBack={goLanding} onAuthError={handleAuthError} />
+        )}
+
+        {view === "tool:converters" && auth.signedIn && <ConvertersTool onBack={goLanding} />}
       </main>
     </div>
   );

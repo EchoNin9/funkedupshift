@@ -51,6 +51,14 @@ const MemeGeneratorPage = lazy(() => import("../features/memes/MemeGeneratorPage
 const MemeDetailPage = lazy(() => import("../features/memes/MemeDetailPage"));
 const EditMemePage = lazy(() => import("../features/memes/EditMemePage"));
 const ShortenerPage = lazy(() => import("../features/tools/ShortenerPage"));
+const PasswordPage = lazy(() => import("../features/passwordgen/PasswordPage"));
+const ImagePage = lazy(() => import("../features/imagetool/ImagePage"));
+const CropPage = lazy(() => import("../features/croptool/CropPage"));
+const RemoveBgPage = lazy(() => import("../features/removebg/RemoveBgPage"));
+const DnsPage = lazy(() => import("../features/dnstool/DnsPage"));
+const TextSharePage = lazy(() => import("../features/textshare/TextSharePage"));
+const TextViewPage = lazy(() => import("../features/textshare/TextViewPage"));
+const ConvertersPage = lazy(() => import("../features/converters/ConvertersPage"));
 
 function PageLoader() {
   return (
@@ -116,6 +124,16 @@ const AppLayoutContent: React.FC = () => {
               <Route path="/vehicles-expenses" element={<VehiclesExpensesPage />} />
               <Route path="/general-expenses" element={<GeneralExpensesPage />} />
               <Route path="/tools/*" element={<ShortenerPage />} />
+              <Route path="/password" element={<PasswordPage />} />
+              <Route path="/images" element={<ImagePage />} />
+              <Route path="/crop" element={<CropPage />} />
+              <Route path="/removebg" element={<RemoveBgPage />} />
+              <Route path="/dns" element={<DnsPage />} />
+              <Route path="/textshare" element={<TextSharePage />} />
+              <Route path="/converters" element={<ConvertersPage />} />
+              {/* Public — no auth gate. Recipients of a shared paste link
+                  must be able to open it signed-out (see TextViewPage). */}
+              <Route path="/t/:id" element={<TextViewPage />} />
               <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<AdminDashboard />} />
                 <Route path="branding" element={<BrandingPage />} />

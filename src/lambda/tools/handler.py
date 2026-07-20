@@ -29,9 +29,11 @@ e <= now as a miss regardless of whether DynamoDB has gotten around to
 deleting the row yet.
 """
 import base64
+import ipaddress
 import json
 import logging
 import os
+import re
 import secrets
 import string
 import sys
@@ -443,6 +445,329 @@ def patchShortLinkExpiry(event, code):
     )
 
 
+DNS_RECORD_TYPES = {"A", "AAAA", "CNAME", "MX", "TXT", "NS", "SOA", "SRV", "CAA", "PTR"}
+
+DNS_MAX_NAME_LENGTH = 253
+DNS_MAX_LABEL_LENGTH = 63
+# Underscore is allowed alongside the standard hostname charset — needed for
+# TXT lookups like _dmarc.example.com.
+_DNS_NAME_CHARS_RE = re.compile(r"^[A-Za-z0-9._-]+$")
+
+DNS_RESOLVER_TIMEOUT = 1.5
+DNS_RESOLVER_LIFETIME = 3.0
+
+
+def _validateDnsName(raw):
+    """Validate a candidate domain name for a non-PTR DNS lookup (trust
+    boundary — called before any DNS query is issued). Returns (name, error);
+    error is None on success. Never echoes the raw input back in the error
+    message."""
+    if not raw or not isinstance(raw, str):
+        return None, "name is required"
+    name = raw.strip()
+    if name.endswith("."):
+        name = name[:-1]
+    if not name:
+        return None, "name is required"
+    if len(name) > DNS_MAX_NAME_LENGTH:
+        return None, f"name exceeds {DNS_MAX_NAME_LENGTH} characters"
+    if not _DNS_NAME_CHARS_RE.match(name):
+        return None, "name contains characters that are not allowed"
+    labels = name.split(".")
+    if any(len(label) == 0 for label in labels):
+        return None, "name contains an empty label"
+    if any(len(label) > DNS_MAX_LABEL_LENGTH for label in labels):
+        return None, f"name has a label longer than {DNS_MAX_LABEL_LENGTH} characters"
+    return name, None
+
+
+def _validatePtrName(raw):
+    """Validate a candidate IPv4/IPv6 address for a PTR lookup. Returns
+    (address, error); error is None on success."""
+    if not raw or not isinstance(raw, str):
+        return None, "name is required"
+    candidate = raw.strip()
+    if not candidate:
+        return None, "name is required"
+    try:
+        ipaddress.ip_address(candidate)
+    except ValueError:
+        return None, "name must be a valid IPv4 or IPv6 address for a PTR lookup"
+    return candidate, None
+
+
+def dnsLookup(event):
+    """GET /tools/dns?name=<domain>&type=<TYPE> — a single typed DNS query,
+    no recursion/resolver options exposed to the caller. "All types" fan-out
+    is a client-side concern (one request per type); this handler only ever
+    answers one type per call.
+    """
+    qs = event.get("queryStringParameters") or {}
+    raw_type = (qs.get("type") or "").strip().upper()
+
+    if raw_type not in DNS_RECORD_TYPES:
+        return jsonResponse(
+            {"error": f"type must be one of: {', '.join(sorted(DNS_RECORD_TYPES))}"}, 400
+        )
+
+    raw_name = qs.get("name")
+    if raw_type == "PTR":
+        query_target, err = _validatePtrName(raw_name)
+    else:
+        query_target, err = _validateDnsName(raw_name)
+    if err:
+        return jsonResponse({"error": err}, 400)
+
+    import dns.exception
+    import dns.resolver
+
+    resolver = dns.resolver.Resolver()
+    resolver.timeout = DNS_RESOLVER_TIMEOUT
+    resolver.lifetime = DNS_RESOLVER_LIFETIME
+
+    if raw_type == "PTR":
+        import dns.reversename
+        query_name = dns.reversename.from_address(query_target)
+    else:
+        query_name = query_target
+
+    try:
+        answer = resolver.resolve(query_name, raw_type)
+    except dns.resolver.NXDOMAIN:
+        return jsonResponse(
+            {"name": query_target, "type": raw_type, "records": [], "status": "nxdomain"}, 200
+        )
+    except dns.resolver.NoAnswer:
+        return jsonResponse(
+            {"name": query_target, "type": raw_type, "records": [], "status": "noanswer"}, 200
+        )
+    except dns.exception.Timeout:
+        return jsonResponse(
+            {"name": query_target, "type": raw_type, "records": [], "status": "timeout"}, 200
+        )
+    except dns.resolver.NoNameservers:
+        # SERVFAIL et al. (e.g. broken DNSSEC) — a lookup outcome, not a 500.
+        return jsonResponse(
+            {"name": query_target, "type": raw_type, "records": [], "status": "servfail"}, 200
+        )
+
+    ttl = answer.rrset.ttl if answer.rrset is not None else 0
+    records = [{"record": raw_type, "ttl": ttl, "value": rr.to_text()} for rr in answer]
+
+    return jsonResponse(
+        {"name": query_target, "type": raw_type, "records": records, "status": "ok"}, 200
+    )
+
+
+TEXT_TABLE_NAME = os.environ.get("TEXT_TABLE_NAME", "")
+TEXT_TABLE_REGION = os.environ.get("TEXT_TABLE_REGION", "ca-central-1")
+
+TEXT_MIN_EXPIRY_SECONDS = 3600           # 1 hour
+TEXT_MAX_EXPIRY_SECONDS = 30 * 86400     # 30 days
+TEXT_DEFAULT_EXPIRY_SECONDS = 7 * 86400  # 1 week
+TEXT_MAX_CONTENT_BYTES = 100 * 1024      # 100 KB
+
+_text_dynamodb = None
+
+
+def _textDdb():
+    """Cached DynamoDB client for the text-share table, deliberately separate
+    from _ddb() above: that table (fus-tools) lives in the default region;
+    this one (fus-textshare, see infra/tools.tf aws_dynamodb_table.textShare)
+    is pinned to ca-central-1 for Canada data residency — the compute
+    (this Lambda) stays in the primary region regardless."""
+    global _text_dynamodb
+    if _text_dynamodb is None:
+        import boto3
+        _text_dynamodb = boto3.client("dynamodb", region_name=TEXT_TABLE_REGION)
+    return _text_dynamodb
+
+
+def _validateTextContent(raw):
+    """Validate mint-time paste content (trust boundary — arbitrary text from
+    any caller). Returns (content, error); error is None on success."""
+    if not isinstance(raw, str) or not raw.strip():
+        return None, "content is required"
+    if len(raw.encode("utf-8")) > TEXT_MAX_CONTENT_BYTES:
+        return None, f"content exceeds {TEXT_MAX_CONTENT_BYTES} bytes"
+    return raw, None
+
+
+def _validateTextExpiry(raw):
+    """Validate the optional mint-time expiresInSeconds override. Returns
+    (seconds, error); error is None on success. Missing/None -> default."""
+    if raw is None:
+        return TEXT_DEFAULT_EXPIRY_SECONDS, None
+    if not isinstance(raw, (int, float)) or isinstance(raw, bool):
+        return None, "expiresInSeconds must be a number"
+    seconds = int(raw)
+    if seconds < TEXT_MIN_EXPIRY_SECONDS or seconds > TEXT_MAX_EXPIRY_SECONDS:
+        return None, (
+            f"expiresInSeconds must be between {TEXT_MIN_EXPIRY_SECONDS} "
+            f"and {TEXT_MAX_EXPIRY_SECONDS}"
+        )
+    return seconds, None
+
+
+def mintTextPaste(event):
+    """POST /tools/text — mint a text paste, returns its id. Content is
+    stored verbatim (whitespace preserved); the share URL is a client-side
+    concern (both frontends brand it as https://tools.e9.cx/t/<id>, mirroring
+    how the shortener's tools-site brands fus.fyi links as e9.cx)."""
+    try:
+        body = json.loads(event.get("body") or "{}")
+    except (json.JSONDecodeError, TypeError):
+        return jsonResponse({"error": "Invalid JSON body"}, 400)
+    if not isinstance(body, dict):
+        return jsonResponse({"error": "Invalid JSON body"}, 400)
+
+    content, err = _validateTextContent(body.get("content"))
+    if err:
+        return jsonResponse({"error": err}, 400)
+
+    expires_in, err = _validateTextExpiry(body.get("expiresInSeconds"))
+    if err:
+        return jsonResponse({"error": err}, 400)
+
+    created_by = _getSub(event)
+    created_at = _now()
+    expires_at = _nowEpoch() + expires_in
+    text_id = secrets.token_urlsafe(16)  # 128-bit, unguessable — public GET has no auth gate
+
+    client = _textDdb()
+    client.put_item(
+        TableName=TEXT_TABLE_NAME,
+        Item={
+            "id": {"S": text_id},
+            "kind": {"S": "text"},
+            "content": {"S": content},
+            "createdBy": {"S": created_by or ""},
+            "createdAt": {"S": created_at},
+            "expiresAt": {"N": str(expires_at)},
+        },
+        ConditionExpression="attribute_not_exists(id)",
+    )
+
+    return jsonResponse(
+        {
+            "id": text_id,
+            "kind": "text",
+            "createdAt": created_at,
+            "expiresAt": expires_at,
+        },
+        200,
+    )
+
+
+def listTextPastes(event):
+    """GET /tools/text — the caller's own pastes, newest first, paginated via
+    byCreator (same cursor scheme as listShortLinks). Content is omitted from
+    list rows — pastes can be up to 100 KB each; the manage view doesn't need
+    the body, only the public single-item GET does."""
+    sub = _getSub(event)
+    qs = event.get("queryStringParameters") or {}
+
+    limit = _clampLimit(qs.get("limit"))
+
+    exclusive_start_key = None
+    cursor = qs.get("cursor")
+    if cursor:
+        try:
+            exclusive_start_key = _decodeCursor(cursor)
+        except ValueError:
+            return jsonResponse({"error": "Invalid cursor"}, 400)
+
+    client = _textDdb()
+    kwargs = {
+        "TableName": TEXT_TABLE_NAME,
+        "IndexName": "byCreator",
+        "KeyConditionExpression": "createdBy = :sub",
+        "FilterExpression": "expiresAt > :now",
+        "ExpressionAttributeValues": {
+            ":sub": {"S": sub},
+            ":now": {"N": str(_nowEpoch())},
+        },
+        "ScanIndexForward": False,
+        "Limit": limit,
+    }
+    if exclusive_start_key:
+        kwargs["ExclusiveStartKey"] = exclusive_start_key
+
+    resp = client.query(**kwargs)
+
+    items = [
+        {
+            "id": item.get("id", {}).get("S", ""),
+            "kind": item.get("kind", {}).get("S", "text"),
+            "createdAt": item.get("createdAt", {}).get("S", ""),
+            "expiresAt": int(item.get("expiresAt", {}).get("N", "0")),
+        }
+        for item in resp.get("Items", [])
+    ]
+
+    lastEvaluatedKey = resp.get("LastEvaluatedKey")
+    nextCursor = _encodeCursor(lastEvaluatedKey) if lastEvaluatedKey else None
+
+    return jsonResponse({"items": items, "nextCursor": nextCursor}, 200)
+
+
+def deleteTextPaste(event, text_id):
+    """DELETE /tools/text/{id} — creator only. Mirrors deleteShortLink: 404 on
+    unknown id, 403 on wrong owner, and never echoes the paste content back to
+    a non-owner."""
+    if not text_id:
+        return jsonResponse({"error": "id is required"}, 400)
+
+    client = _textDdb()
+    resp = client.get_item(TableName=TEXT_TABLE_NAME, Key={"id": {"S": text_id}})
+    item = resp.get("Item")
+    if not item:
+        return jsonResponse({"error": "Not found"}, 404)
+
+    if item.get("createdBy", {}).get("S", "") != _getSub(event):
+        return jsonResponse({"error": "Forbidden"}, 403)
+
+    client.delete_item(TableName=TEXT_TABLE_NAME, Key={"id": {"S": text_id}})
+    return jsonResponse({"id": text_id, "deleted": True}, 200)
+
+
+def getTextPastePublic(event, text_id):
+    """GET /tools/text/{id} — PUBLIC, no authorizer on this route (see
+    infra/tools.tf aws_apigatewayv2_route.toolsTextGetPublic). This is the
+    first unauthenticated route on this API: recipients of a shared link must
+    be able to read it without a Cognito session, so this function MUST NOT
+    read event["requestContext"]["authorizer"] — it isn't populated here.
+
+    expiresAt <= now is treated as a 404 even though DynamoDB TTL deletion
+    can lag up to ~48 hours behind the stamped expiry (mirrors the
+    byCreator FilterExpression in listTextPastes / listShortLinks, and the
+    shortener-redirect.js edge convention of treating a stale-but-present row
+    as a miss).
+    """
+    if not text_id:
+        return jsonResponse({"error": "Not found"}, 404)
+
+    client = _textDdb()
+    resp = client.get_item(TableName=TEXT_TABLE_NAME, Key={"id": {"S": text_id}})
+    item = resp.get("Item")
+    if not item:
+        return jsonResponse({"error": "Not found"}, 404)
+
+    expires_at = int(item.get("expiresAt", {}).get("N", "0"))
+    if expires_at <= _nowEpoch():
+        return jsonResponse({"error": "Not found"}, 404)
+
+    return jsonResponse(
+        {
+            "id": item.get("id", {}).get("S", text_id),
+            "kind": item.get("kind", {}).get("S", "text"),
+            "content": item.get("content", {}).get("S", ""),
+            "expiresAt": expires_at,
+        },
+        200,
+    )
+
+
 def handler(event, context):
     """Route request by path; return JSON with CORS headers."""
     try:
@@ -470,6 +795,23 @@ def handler(event, context):
         if method == "PATCH" and path.startswith("/s/"):
             code = path[len("/s/"):]
             return patchShortLinkExpiry(event, code)
+        if method == "GET" and path == "/tools/dns":
+            return dnsLookup(event)
+
+        # Text-paste sharing (FUNK-40). Literal checks first, then the
+        # /tools/text/ prefix — mirrors the /s vs /s/{code} ordering above,
+        # so the dynamic {id} routes (public GET, creator DELETE) can never
+        # be shadowed by (nor shadow) the literal mint/list routes.
+        if method == "POST" and path == "/tools/text":
+            return mintTextPaste(event)
+        if method == "GET" and path == "/tools/text":
+            return listTextPastes(event)
+        if method == "GET" and path.startswith("/tools/text/"):
+            text_id = path[len("/tools/text/"):]
+            return getTextPastePublic(event, text_id)
+        if method == "DELETE" and path.startswith("/tools/text/"):
+            text_id = path[len("/tools/text/"):]
+            return deleteTextPaste(event, text_id)
 
         return jsonResponse({"error": "Not found"}, 404)
     except Exception as e:
