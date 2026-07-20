@@ -39,6 +39,7 @@ const MediaAdminPage = lazy(() => import("../features/admin/MediaAdminPage"));
 const EditSitePage = lazy(() => import("../features/admin/EditSitePage"));
 const EditMediaPage = lazy(() => import("../features/admin/EditMediaPage"));
 const EditUserPage = lazy(() => import("../features/admin/EditUserPage"));
+const StatsAdminPage = lazy(() => import("../features/admin/StatsAdminPage"));
 const SquashPage = lazy(() => import("../features/squash/SquashPage"));
 const SquashAdminPage = lazy(() => import("../features/squash/SquashAdminPage"));
 const FinancesPage = lazy(() => import("../features/finances/FinancesPage"));
@@ -145,6 +146,7 @@ const AppLayoutContent: React.FC = () => {
                 <Route path="sites/edit/:id" element={<EditSitePage />} />
                 <Route path="media" element={<MediaAdminPage />} />
                 <Route path="media/edit/:id" element={<EditMediaPage />} />
+                <Route path="stats" element={<StatsAdminPage />} />
                 <Route path="*" element={<Navigate to="/admin" replace />} />
               </Route>
               <Route path="/profile" element={<ProfilePage />} />
