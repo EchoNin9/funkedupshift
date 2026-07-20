@@ -112,7 +112,7 @@ const App: React.FC = () => {
     <div className="app">
       <header className="site-header">
         <button className="wordmark" onClick={goLanding} type="button">
-          e9 tools
+          Echo9 Tools
         </button>
         <div className="header-right">
           {auth.signedIn ? (

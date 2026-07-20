@@ -63,7 +63,7 @@ const PublicTextView: React.FC<Props> = ({ id }) => {
     <div className="app">
       <header className="site-header">
         <a className="wordmark" href="/">
-          e9 tools
+          Echo9 Tools
         </a>
       </header>
       <main className="main">
