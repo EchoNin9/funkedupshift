@@ -3,6 +3,9 @@ import { Link, useSearchParams } from "react-router-dom";
 import { useAuth, canAccessSquash, canModifySquash } from "../../shell/AuthContext";
 import DateInput from "./DateInput";
 import { fetchWithAuth } from "../../utils/api";
+import { Badge } from "../../components";
+import TagFilterBar from "./TagFilterBar";
+import { matchesTagFilter } from "./tagFilter";
 
 function getApiBaseUrl(): string | null {
   if (typeof window === "undefined") return null;
@@ -27,6 +30,7 @@ interface Match {
   winningTeam?: string;
   teamAGames?: number;
   teamBGames?: number;
+  tags?: string[];
 }
 
 const PAGE_SIZE = 10;
@@ -58,6 +62,8 @@ const SquashPage: React.FC = () => {
     const m = searchParams.get("playerMode");
     return m === "or" ? "or" : "and";
   });
+  const [tagFilters, setTagFilters] = useState<string[]>([]);
+  const [tagFilterMode, setTagFilterMode] = useState<"and" | "or">("or");
   const playerDropdownRef = useRef<HTMLDivElement>(null);
 
   const access = canAccessSquash(user);
@@ -194,9 +200,32 @@ const SquashPage: React.FC = () => {
     return copy;
   }, [allMatches, sortOrder]);
 
-  const totalPages = Math.max(1, Math.ceil(sortedMatches.length / PAGE_SIZE));
+  const availableTags = useMemo(() => {
+    const set = new Set<string>();
+    for (const m of allMatches) {
+      for (const t of m.tags || []) set.add(t);
+    }
+    return Array.from(set).sort();
+  }, [allMatches]);
+
+  const toggleTagFilter = (tag: string) => {
+    setTagFilters((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]));
+    setCurrentPage(1);
+  };
+
+  const clearTagFilters = () => {
+    setTagFilters([]);
+    setTagFilterMode("or");
+  };
+
+  const tagFilteredMatches = useMemo(
+    () => sortedMatches.filter((m) => matchesTagFilter(m.tags, tagFilters, tagFilterMode)),
+    [sortedMatches, tagFilters, tagFilterMode]
+  );
+
+  const totalPages = Math.max(1, Math.ceil(tagFilteredMatches.length / PAGE_SIZE));
   const start = (currentPage - 1) * PAGE_SIZE;
-  const pageMatches = sortedMatches.slice(start, start + PAGE_SIZE);
+  const pageMatches = tagFilteredMatches.slice(start, start + PAGE_SIZE);
 
   const renderScore = (m: Match) => {
     const ga = m.teamAGames ?? 0;
@@ -218,6 +247,13 @@ const SquashPage: React.FC = () => {
           {leftTeam} vs {rightTeam}
         </span>
         <span className="italic text-text-secondary">{renderScore(m)}</span>
+        {(m.tags || []).length > 0 && (
+          <span className="flex flex-wrap gap-1">
+            {(m.tags || []).map((t) => (
+              <Badge key={t} label={t} />
+            ))}
+          </span>
+        )}
       </li>
     );
   };
@@ -422,8 +458,18 @@ const SquashPage: React.FC = () => {
           )}
         </div>
         {hasSearched && (
+          <TagFilterBar
+            availableTags={availableTags}
+            selectedTags={tagFilters}
+            onToggleTag={toggleTagFilter}
+            mode={tagFilterMode}
+            onModeChange={setTagFilterMode}
+            onClear={clearTagFilters}
+          />
+        )}
+        {hasSearched && (
           <div className="rounded-md border border-border-default bg-surface-1 px-3 py-2 text-sm text-text-secondary mb-3">
-            {sortedMatches.length === 0 ? "No results" : `${sortedMatches.length} results`}
+            {tagFilteredMatches.length === 0 ? "No results" : `${tagFilteredMatches.length} results`}
           </div>
         )}
         {!hasSearched ? (

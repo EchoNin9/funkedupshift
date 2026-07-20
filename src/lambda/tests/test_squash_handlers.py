@@ -250,3 +250,132 @@ def test_listSquashMatches_returns_matches(mock_boto, mock_custom_groups):
     assert result["statusCode"] == 200
     body = json.loads(result["body"])
     assert "matches" in body
+
+
+@patch("api.handler._getUserCustomGroups", return_value=["Squash"])
+@patch("api.handler.TABLE_NAME", "fus-main")
+@patch("boto3.client")
+def test_createSquashMatch_normalizes_tags(mock_boto, mock_custom_groups):
+    """POST /squash/matches with tags differing by case/whitespace/duplicates stores normalized, de-duped tags."""
+    from api.handler import handler
+    mock_dynamo = MagicMock()
+    mock_boto.return_value = mock_dynamo
+    body = {
+        "date": "2024-01-15",
+        "teamAPlayer1Id": "p1",
+        "teamAPlayer2Id": "p2",
+        "teamBPlayer1Id": "p3",
+        "teamBPlayer2Id": "p4",
+        "winningTeam": "A",
+        "teamAGames": 3,
+        "teamBGames": 1,
+        "tags": ["League ", "league", "Friendly"],
+    }
+    event = _manager_event("/squash/matches", method="POST", body=body)
+    result = handler(event, None)
+    assert result["statusCode"] == 201
+
+    metadata_calls = [
+        call for call in mock_dynamo.put_item.call_args_list
+        if call.kwargs["Item"].get("SK", {}).get("S") == "METADATA"
+    ]
+    assert len(metadata_calls) == 1
+    tags_list = [v["S"] for v in metadata_calls[0].kwargs["Item"]["tags"]["L"]]
+    assert tags_list == ["league", "friendly"]
+
+
+@patch("api.handler._getUserCustomGroups", return_value=["Squash"])
+@patch("api.handler.TABLE_NAME", "fus-main")
+@patch("boto3.client")
+def test_createSquashMatch_no_tags_key_stores_empty_list(mock_boto, mock_custom_groups):
+    """POST /squash/matches with no tags key stores an empty tags list."""
+    from api.handler import handler
+    mock_dynamo = MagicMock()
+    mock_boto.return_value = mock_dynamo
+    body = {
+        "date": "2024-01-15",
+        "teamAPlayer1Id": "p1",
+        "teamAPlayer2Id": "p2",
+        "teamBPlayer1Id": "p3",
+        "teamBPlayer2Id": "p4",
+        "winningTeam": "A",
+        "teamAGames": 3,
+        "teamBGames": 1,
+    }
+    event = _manager_event("/squash/matches", method="POST", body=body)
+    result = handler(event, None)
+    assert result["statusCode"] == 201
+
+    metadata_calls = [
+        call for call in mock_dynamo.put_item.call_args_list
+        if call.kwargs["Item"].get("SK", {}).get("S") == "METADATA"
+    ]
+    assert len(metadata_calls) == 1
+    assert metadata_calls[0].kwargs["Item"]["tags"]["L"] == []
+
+
+@patch("api.handler._getUserCustomGroups", return_value=["Squash"])
+@patch("api.handler.TABLE_NAME", "fus-main")
+@patch("boto3.client")
+def test_createSquashMatch_tags_non_list_rejected(mock_boto, mock_custom_groups):
+    """POST /squash/matches with tags as a non-list returns 400, not a crash."""
+    from api.handler import handler
+    mock_dynamo = MagicMock()
+    mock_boto.return_value = mock_dynamo
+    body = {
+        "date": "2024-01-15",
+        "teamAPlayer1Id": "p1",
+        "teamAPlayer2Id": "p2",
+        "teamBPlayer1Id": "p3",
+        "teamBPlayer2Id": "p4",
+        "winningTeam": "A",
+        "teamAGames": 3,
+        "teamBGames": 1,
+        "tags": "notalist",
+    }
+    event = _manager_event("/squash/matches", method="POST", body=body)
+    result = handler(event, None)
+    assert result["statusCode"] == 400
+    mock_dynamo.put_item.assert_not_called()
+
+
+@patch("api.handler._getUserCustomGroups", return_value=["Squash"])
+@patch("api.handler.TABLE_NAME", "fus-main")
+@patch("boto3.client")
+def test_updateSquashMatch_writes_normalized_tags(mock_boto, mock_custom_groups):
+    """PUT /squash/matches with tags writes the normalized list via update_item."""
+    from api.handler import handler
+    mock_dynamo = MagicMock()
+    mock_dynamo.get_item.return_value = {
+        "Item": {
+            "PK": {"S": "SQUASH#MATCH#abc"},
+            "SK": {"S": "METADATA"},
+            "teamAPlayer1Id": {"S": "SQUASH#PLAYER#p1"},
+            "teamAPlayer2Id": {"S": "SQUASH#PLAYER#p2"},
+            "teamBPlayer1Id": {"S": "SQUASH#PLAYER#p3"},
+            "teamBPlayer2Id": {"S": "SQUASH#PLAYER#p4"},
+            "tags": {"L": [{"S": "old"}]},
+        }
+    }
+    mock_boto.return_value = mock_dynamo
+    body = {
+        "id": "abc",
+        "date": "2024-01-15",
+        "teamAPlayer1Id": "p1",
+        "teamAPlayer2Id": "p2",
+        "teamBPlayer1Id": "p3",
+        "teamBPlayer2Id": "p4",
+        "winningTeam": "A",
+        "teamAGames": 3,
+        "teamBGames": 1,
+        "tags": [" Rematch", "rematch"],
+    }
+    event = _manager_event("/squash/matches", method="PUT", body=body)
+    result = handler(event, None)
+    assert result["statusCode"] == 200
+
+    assert mock_dynamo.update_item.call_count == 1
+    update_kwargs = mock_dynamo.update_item.call_args.kwargs
+    assert "tags = :tags" in update_kwargs["UpdateExpression"]
+    tags_list = [v["S"] for v in update_kwargs["ExpressionAttributeValues"][":tags"]["L"]]
+    assert tags_list == ["rematch"]

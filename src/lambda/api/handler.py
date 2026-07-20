@@ -5098,6 +5098,19 @@ def _validateSquashMatchBody(body):
     else:
         if g_b != 3 or g_a not in (0, 1, 2):
             return None, "when team B wins: teamBGames=3, teamAGames in {0,1,2}"
+    raw_tags = body.get("tags") if "tags" in body else []
+    if raw_tags is None:
+        raw_tags = []
+    if not isinstance(raw_tags, list):
+        return None, "tags must be a list"
+    tags = []
+    seen_tags = set()
+    for t in raw_tags:
+        t_norm = str(t).strip().lower()
+        if not t_norm or t_norm in seen_tags:
+            continue
+        seen_tags.add(t_norm)
+        tags.append(t_norm)
     return {
         "date": date_val,
         "teamAPlayer1Id": p1 if p1.startswith("SQUASH#") else f"SQUASH#PLAYER#{p1}",
@@ -5107,6 +5120,7 @@ def _validateSquashMatchBody(body):
         "winningTeam": win,
         "teamAGames": g_a,
         "teamBGames": g_b,
+        "tags": tags,
     }, None
 
 
@@ -5142,6 +5156,7 @@ def createSquashMatch(event):
             "winningTeam": {"S": validated["winningTeam"]},
             "teamAGames": {"N": str(validated["teamAGames"])},
             "teamBGames": {"N": str(validated["teamBGames"])},
+            "tags": {"L": [{"S": t} for t in validated["tags"]]},
             "entityType": {"S": "SQUASH_MATCH"},
             "entitySk": {"S": pk},
             "createdAt": {"S": now},
@@ -5201,7 +5216,9 @@ def updateSquashMatch(event):
         dynamodb.update_item(
             TableName=TABLE_NAME,
             Key={"PK": {"S": pk}, "SK": {"S": "METADATA"}},
-            UpdateExpression="SET date = :d, squashDate = :d, teamAPlayer1Id = :p1, teamAPlayer2Id = :p2, teamBPlayer1Id = :p3, teamBPlayer2Id = :p4, winningTeam = :w, teamAGames = :ga, teamBGames = :gb, updatedAt = :now",
+            # "date" is a DynamoDB reserved word — must be aliased or update_item rejects the whole expression
+            UpdateExpression="SET #d = :d, squashDate = :d, teamAPlayer1Id = :p1, teamAPlayer2Id = :p2, teamBPlayer1Id = :p3, teamBPlayer2Id = :p4, winningTeam = :w, teamAGames = :ga, teamBGames = :gb, tags = :tags, updatedAt = :now",
+            ExpressionAttributeNames={"#d": "date"},
             ExpressionAttributeValues={
                 ":d": {"S": validated["date"]},
                 ":p1": {"S": validated["teamAPlayer1Id"]},
@@ -5211,6 +5228,7 @@ def updateSquashMatch(event):
                 ":w": {"S": validated["winningTeam"]},
                 ":ga": {"N": str(validated["teamAGames"])},
                 ":gb": {"N": str(validated["teamBGames"])},
+                ":tags": {"L": [{"S": t} for t in validated["tags"]]},
                 ":now": {"S": now},
             },
         )
