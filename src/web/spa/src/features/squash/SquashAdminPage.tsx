@@ -3,6 +3,10 @@ import { Link, useSearchParams } from "react-router-dom";
 import { useAuth, canModifySquash } from "../../shell/AuthContext";
 import DateInput from "./DateInput";
 import { fetchWithAuth } from "../../utils/api";
+import AddTagInput from "../memes/AddTagInput";
+import { Badge } from "../../components";
+import TagFilterBar from "./TagFilterBar";
+import { matchesTagFilter } from "./tagFilter";
 
 function getApiBaseUrl(): string | null {
   if (typeof window === "undefined") return null;
@@ -28,6 +32,7 @@ interface Match {
   winningTeam?: string;
   teamAGames?: number;
   teamBGames?: number;
+  tags?: string[];
 }
 
 interface AdminUser {
@@ -65,8 +70,11 @@ const SquashAdminPage: React.FC = () => {
   const [matchTeamBP2, setMatchTeamBP2] = useState("");
   const [matchWinningTeam, setMatchWinningTeam] = useState<"A" | "B">("A");
   const [matchLoserGames, setMatchLoserGames] = useState(0);
+  const [matchTags, setMatchTags] = useState<string[]>([]);
   const [isMatchSubmitting, setIsMatchSubmitting] = useState(false);
   const [isMatchesLoading, setIsMatchesLoading] = useState(false);
+  const [tagFilters, setTagFilters] = useState<string[]>([]);
+  const [tagFilterMode, setTagFilterMode] = useState<"and" | "or">("or");
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">(() => {
     const s = searchParams.get("sortOrder");
     return s === "oldest" ? "oldest" : "newest";
@@ -227,7 +235,8 @@ const SquashAdminPage: React.FC = () => {
       teamBPlayer2Id: matchTeamBP2,
       winningTeam: matchWinningTeam,
       teamAGames,
-      teamBGames
+      teamBGames,
+      tags: matchTags
     };
     const method = editingMatchId ? "PUT" : "POST";
     if (editingMatchId) (payload as any).id = editingMatchId;
@@ -251,6 +260,7 @@ const SquashAdminPage: React.FC = () => {
       setMatchTeamBP2("");
       setMatchWinningTeam("A");
       setMatchLoserGames(0);
+      setMatchTags([]);
       searchMatches();
     } catch (e: any) {
       setError(e?.message ?? "Failed");
@@ -268,6 +278,7 @@ const SquashAdminPage: React.FC = () => {
     setMatchTeamBP2("");
     setMatchWinningTeam("A");
     setMatchLoserGames(0);
+    setMatchTags([]);
   };
 
   const startEditMatch = (m: Match) => {
@@ -280,6 +291,7 @@ const SquashAdminPage: React.FC = () => {
     setMatchTeamBP2(m.teamBPlayer2Id || "");
     setMatchWinningTeam((m.winningTeam as "A" | "B") || "A");
     setMatchLoserGames(m.winningTeam === "A" ? (m.teamBGames ?? 0) : (m.teamAGames ?? 0));
+    setMatchTags(m.tags || []);
   };
 
   const deleteMatch = async (id: string) => {
@@ -407,9 +419,32 @@ const SquashAdminPage: React.FC = () => {
     return copy;
   }, [allMatches, sortOrder]);
 
-  const totalPages = Math.max(1, Math.ceil(sortedMatches.length / PAGE_SIZE));
+  const availableTags = useMemo(() => {
+    const set = new Set<string>();
+    for (const m of allMatches) {
+      for (const t of m.tags || []) set.add(t);
+    }
+    return Array.from(set).sort();
+  }, [allMatches]);
+
+  const toggleTagFilter = (tag: string) => {
+    setTagFilters((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]));
+    setCurrentPage(1);
+  };
+
+  const clearTagFilters = () => {
+    setTagFilters([]);
+    setTagFilterMode("or");
+  };
+
+  const tagFilteredMatches = useMemo(
+    () => sortedMatches.filter((m) => matchesTagFilter(m.tags, tagFilters, tagFilterMode)),
+    [sortedMatches, tagFilters, tagFilterMode]
+  );
+
+  const totalPages = Math.max(1, Math.ceil(tagFilteredMatches.length / PAGE_SIZE));
   const start = (currentPage - 1) * PAGE_SIZE;
-  const pageMatches = sortedMatches.slice(start, start + PAGE_SIZE);
+  const pageMatches = tagFilteredMatches.slice(start, start + PAGE_SIZE);
 
   const renderMatchScore = (m: Match) => {
     const ga = m.teamAGames ?? 0;
@@ -603,6 +638,15 @@ const SquashAdminPage: React.FC = () => {
                   <option value={2}>2</option>
                 </select>
               </div>
+              <div className="col-span-2">
+                <label className="block text-xs font-semibold text-text-secondary mb-1">Tags</label>
+                <AddTagInput
+                  tags={matchTags}
+                  onTagsChange={setMatchTags}
+                  allTags={availableTags}
+                  placeholder="Add tags..."
+                />
+              </div>
               <div className="col-span-2 flex gap-2">
                 <button
                   type="submit"
@@ -761,8 +805,18 @@ const SquashAdminPage: React.FC = () => {
               )}
             </div>
             {hasSearched && (
+              <TagFilterBar
+                availableTags={availableTags}
+                selectedTags={tagFilters}
+                onToggleTag={toggleTagFilter}
+                mode={tagFilterMode}
+                onModeChange={setTagFilterMode}
+                onClear={clearTagFilters}
+              />
+            )}
+            {hasSearched && (
               <div className="rounded-md border border-border-default bg-surface-1 px-3 py-2 text-sm text-text-secondary mb-3">
-                {sortedMatches.length === 0 ? "No results" : `${sortedMatches.length} results`}
+                {tagFilteredMatches.length === 0 ? "No results" : `${tagFilteredMatches.length} results`}
               </div>
             )}
             {!hasSearched ? (
@@ -789,6 +843,13 @@ const SquashAdminPage: React.FC = () => {
                           {teamA} vs {teamB}
                         </span>
                         <span className="italic text-text-secondary">{renderMatchScore(m)}</span>
+                        {(m.tags || []).length > 0 && (
+                          <span className="flex flex-wrap gap-1">
+                            {(m.tags || []).map((t) => (
+                              <Badge key={t} label={t} />
+                            ))}
+                          </span>
+                        )}
                         <button
                           type="button"
                           onClick={() => startEditMatch(m)}
