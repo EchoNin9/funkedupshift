@@ -23,8 +23,14 @@ const BarChart = ({ data, chartRef, style }: any) => {
   );
 };
 
+import { fetchWithAuth } from "../../utils/api";
+
+function getApiBaseUrl(): string | null {
+  return (window as any).FUNKEDUPSHIFT_CONFIG?.apiBaseUrl || null;
+}
+
 export default function StatsAdminPage() {
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const chartRef = useRef<HTMLDivElement>(null);
 
@@ -38,30 +44,55 @@ export default function StatsAdminPage() {
     { label: "Sun", value: 320 },
   ]);
 
-  const [logs] = useState([
-    { id: 1, user: "User A", path: "/", time: "10:00 AM" },
-    { id: 2, user: "User A", path: "/websites", time: "10:05 AM" },
-    { id: 3, user: "User B", path: "/profile", time: "11:00 AM" },
-    { id: 4, user: "User C", path: "/squash", time: "1:15 PM" },
-  ]);
+  const [logs, setLogs] = useState<any[]>([]);
+
+  const fetchStats = async () => {
+    const apiBase = getApiBaseUrl();
+    if (!apiBase) return;
+    try {
+      const resp = await fetchWithAuth(`${apiBase}/admin/stats`);
+      if (!resp.ok) throw new Error("Failed to fetch stats");
+      const data = await resp.json();
+      
+      if (data.stats) {
+        if (data.stats.metrics && data.stats.metrics["4xx_errors"] !== undefined) {
+          // Update some stat using the metrics for demo purposes since we only have 4xx errors
+          setStatsData(prev => prev.map(d => ({...d, value: Math.max(d.value, data.stats.metrics["4xx_errors"])})));
+        }
+        if (data.stats.click_paths) {
+          setLogs(data.stats.click_paths.map((path: string, i: number) => ({
+            id: i,
+            user: "User",
+            path: path,
+            time: "Recent"
+          })));
+        }
+      }
+    } catch (err: any) {
+      setError(err.message || "Failed to load stats");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchStats();
+  }, []);
 
   const handleRecompute = async () => {
+    const apiBase = getApiBaseUrl();
+    if (!apiBase) return;
+    
     setLoading(true);
     setError(null);
     try {
-      await new Promise((resolve, reject) => {
-        setTimeout(() => {
-          if (Math.random() > 0.8) {
-            reject(new Error("Network Error"));
-          } else {
-            resolve(true);
-          }
-        }, 1500);
-      });
-      setStatsData(statsData.map(d => ({ ...d, value: Math.floor(Math.random() * 500) + 50 })));
+      const resp = await fetchWithAuth(`${apiBase}/admin/stats/recompute`, { method: "POST" });
+      if (!resp.ok) throw new Error("Network Error");
+      
+      // Since it's async, wait a bit and fetch updated stats
+      setTimeout(() => fetchStats(), 2000);
     } catch (err: any) {
       setError(err.message || "Failed to recompute stats");
-    } finally {
       setLoading(false);
     }
   };
