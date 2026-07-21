@@ -152,7 +152,8 @@ const AppLayoutContent: React.FC = () => {
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/auth" element={<AuthPage />} />
               <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
-              <Route path="*" element={<div>Not found</div>} />
+              {/* Unknown paths bounce to the root (CloudFront already serves index.html for S3 404s). */}
+              <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
             </Suspense>
             </motion.div>
