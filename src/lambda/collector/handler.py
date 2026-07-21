@@ -5,6 +5,7 @@ import datetime
 import logging
 import time
 import boto3
+from collections import Counter
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -90,7 +91,9 @@ def handler(event, context):
         log_group = os.environ.get("API_LOG_GROUP_NAME", "/aws/lambda/fus-api")
         # The API emits one structured JSON line per request: {"ts","sub","method","path"}.
         # "sub" is unique to those lines, so filter on it (the old /click/ matched nothing).
-        query = 'fields @timestamp, @message | filter @message like /"sub":/ | sort @timestamp desc | limit 50'
+        # Pull a wide window so per-path visit counts are meaningful; we rank
+        # down to the top 15 below.
+        query = 'fields @timestamp, @message | filter @message like /"sub":/ | sort @timestamp desc | limit 1000'
         start_query_resp = logs_client.start_query(
             logGroupName=log_group,
             startTime=start_time,
@@ -122,11 +125,23 @@ def handler(event, context):
             if brace != -1:
                 try:
                     p = json.loads(msg[brace:])
-                    entry = f"{p.get('sub', '?')}  {p.get('method', '')} {p.get('path', '')}".strip()
+                    entry = f"{p.get('method', '')} {p.get('path', '')}".strip()
                 except (ValueError, TypeError):
                     pass
             paths.append(entry)
-        stats["click_paths"] = paths
+        # Rank to the top 15: multi-visit rows by count desc (tie-break most
+        # recent), then fill remaining slots with the most-recent single-visit
+        # rows. `paths` is newest-first, so first-seen == most recent.
+        counts = Counter(paths)
+        seen = list(dict.fromkeys(paths))  # dedup, newest-first order preserved
+        recency = {row: i for i, row in enumerate(seen)}
+        multi = sorted((r for r in seen if counts[r] >= 2),
+                       key=lambda r: (-counts[r], recency[r]))
+        singles = [r for r in seen if counts[r] == 1]
+        top = (multi + singles)[:15]
+        stats["click_paths"] = [
+            f"{r}  (×{counts[r]})" if counts[r] > 1 else r for r in top
+        ]
     except Exception as e:
         logger.error(f"Error querying log insights: {e}")
         

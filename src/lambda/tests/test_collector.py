@@ -75,12 +75,42 @@ def test_handler_cron(mock_dynamodb, mock_cw, mock_logs, mock_s3):
     stats = body["stats"]
     assert stats["s3_log_lines"] == 2
     assert stats["metrics"]["4xx_errors"] == 42
-    assert stats["click_paths"] == ["user123  GET /admin/stats", "malformed line no json"]
+    assert stats["click_paths"] == ["GET /admin/stats", "malformed line no json"]
     
     mock_table.put_item.assert_called_once()
     put_args = mock_table.put_item.call_args[1]["Item"]
     assert put_args["PK"] == f"STATS#DAILY#{body['date']}"
     assert put_args["SK"] == "METADATA"
+
+
+def _log_row(sub, method, path):
+    payload = {"ts": "2026-07-21T06:11:37Z", "sub": sub, "method": method, "path": path}
+    return [{"field": "@message", "value": f"2026-07-21T06:11:37Z\treqid\t{json.dumps(payload)}"}]
+
+
+@patch("collector.handler.s3_client")
+@patch("collector.handler.logs_client")
+@patch("collector.handler.cw_client")
+@patch("collector.handler.dynamodb")
+def test_click_paths_top15_ranking(mock_dynamodb, mock_cw, mock_logs, mock_s3):
+    mock_dynamodb.Table.return_value = MagicMock()
+    mock_s3.get_paginator.return_value.paginate.return_value = []
+    mock_cw.get_metric_statistics.return_value = {}
+    mock_logs.start_query.return_value = {"queryId": "123"}
+
+    # Newest-first (as the query returns): /a x3, /b x2, then 20 unique singles.
+    rows = [_log_row("u", "GET", "/a")] * 3 + [_log_row("u", "GET", "/b")] * 2
+    rows += [_log_row("u", "GET", f"/s{i}") for i in range(20)]
+    mock_logs.get_query_results.return_value = {"status": "Complete", "results": rows}
+
+    body = json.loads(handler({"action": "recompute", "date": "2024-01-01"}, {})["body"])
+    cp = body["stats"]["click_paths"]
+
+    assert len(cp) == 15                       # capped at 15
+    assert cp[0] == "GET /a  (×3)"             # highest count first
+    assert cp[1] == "GET /b  (×2)"             # next by count
+    assert cp[2] == "GET /s0"                  # fill with most-recent single, no count suffix
+    assert cp[-1] == "GET /s12"                # 2 multi + 13 singles = 15 rows
 
 
 @patch("collector.handler.s3_client")
