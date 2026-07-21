@@ -809,7 +809,7 @@ resource "aws_iam_role_policy" "lambdaApi" {
       {
         Effect   = "Allow"
         Action   = ["lambda:InvokeFunction"]
-        Resource = aws_lambda_function.thumb.arn
+        Resource = [aws_lambda_function.thumb.arn, aws_lambda_function.collector.arn]
       },
       {
         Effect   = "Allow"
@@ -832,12 +832,13 @@ resource "aws_lambda_function" "api" {
 
   environment {
     variables = {
-      TABLE_NAME            = aws_dynamodb_table.main.name
-      MEDIA_BUCKET          = aws_s3_bucket.media.id
-      COGNITO_USER_POOL_ID  = aws_cognito_user_pool.main.id
-      THUMB_FUNCTION_NAME   = aws_lambda_function.thumb.function_name
-      ALPHA_VANTAGE_API_KEY = var.alphaVantageApiKey
-      ERA_API_KEY           = var.eraApiKey
+      TABLE_NAME              = aws_dynamodb_table.main.name
+      MEDIA_BUCKET            = aws_s3_bucket.media.id
+      COGNITO_USER_POOL_ID    = aws_cognito_user_pool.main.id
+      THUMB_FUNCTION_NAME     = aws_lambda_function.thumb.function_name
+      COLLECTOR_FUNCTION_NAME = aws_lambda_function.collector.function_name
+      ALPHA_VANTAGE_API_KEY   = var.alphaVantageApiKey
+      ERA_API_KEY             = var.eraApiKey
     }
   }
 }
@@ -2408,8 +2409,8 @@ resource "aws_iam_role_policy" "collector" {
         Resource = [aws_s3_bucket.cloudfrontLogs.arn, "${aws_s3_bucket.cloudfrontLogs.arn}/*"]
       },
       {
-        Effect = "Allow"
-        Action = ["cloudwatch:GetMetricData"]
+        Effect   = "Allow"
+        Action   = ["cloudwatch:GetMetricData"]
         Resource = "*"
       },
       {

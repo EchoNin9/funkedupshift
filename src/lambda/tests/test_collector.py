@@ -9,6 +9,8 @@ from unittest.mock import MagicMock, patch
 os.environ["TABLE_NAME"] = "test-table"
 os.environ["CLOUDFRONT_LOG_BUCKET"] = "test-bucket"
 os.environ["API_LOG_GROUP_NAME"] = "test-log-group"
+# collector builds boto3 clients at import; a region must exist for local runs
+os.environ.setdefault("AWS_DEFAULT_REGION", "us-east-1")
 
 from collector.handler import handler
 

@@ -1,73 +1,37 @@
-import React, { useState, useRef } from "react";
+import React, { useState } from "react";
 import { ChartBarIcon, ArrowPathIcon } from "@heroicons/react/24/outline";
-
-const BarChart = ({ data, chartRef, style }: any) => {
-  const maxVal = Math.max(...data.map((d: any) => d.value), 100);
-  return (
-    <div ref={chartRef} style={style} className="w-full h-64 border border-border-subtle rounded-lg bg-surface-1 p-4 flex items-end justify-around space-x-2">
-      {data.map((d: any, i: number) => {
-        const heightPct = (d.value / maxVal) * 100;
-        return (
-          <div key={i} className="flex flex-col items-center w-full group">
-            <div 
-              className="w-full bg-accent-500 rounded-t-sm transition-all duration-300 group-hover:bg-accent-400"
-              style={{ height: `${heightPct}%` }}
-            ></div>
-            <div className="text-xs text-text-tertiary mt-2 whitespace-nowrap overflow-hidden text-ellipsis w-full text-center">
-              {d.label}
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-};
-
 import { fetchWithAuth } from "../../utils/api";
 
 function getApiBaseUrl(): string | null {
-  return (window as any).FUNKEDUPSHIFT_CONFIG?.apiBaseUrl || null;
+  if (typeof window === "undefined") return null;
+  const raw = (window as any).API_BASE_URL as string | undefined;
+  return raw ? raw.replace(/\/$/, "") : null;
+}
+
+interface DailyStats {
+  date?: string;
+  s3_log_lines?: number;
+  metrics?: { [k: string]: number };
+  click_paths?: string[];
 }
 
 export default function StatsAdminPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const chartRef = useRef<HTMLDivElement>(null);
-
-  const [statsData, setStatsData] = useState([
-    { label: "Mon", value: 120 },
-    { label: "Tue", value: 300 },
-    { label: "Wed", value: 150 },
-    { label: "Thu", value: 400 },
-    { label: "Fri", value: 200 },
-    { label: "Sat", value: 450 },
-    { label: "Sun", value: 320 },
-  ]);
-
-  const [logs, setLogs] = useState<any[]>([]);
+  const [stats, setStats] = useState<DailyStats | null>(null);
 
   const fetchStats = async () => {
     const apiBase = getApiBaseUrl();
-    if (!apiBase) return;
+    if (!apiBase) {
+      setError("API base URL not configured");
+      setLoading(false);
+      return;
+    }
     try {
       const resp = await fetchWithAuth(`${apiBase}/admin/stats`);
       if (!resp.ok) throw new Error("Failed to fetch stats");
       const data = await resp.json();
-      
-      if (data.stats) {
-        if (data.stats.metrics && data.stats.metrics["4xx_errors"] !== undefined) {
-          // Update some stat using the metrics for demo purposes since we only have 4xx errors
-          setStatsData(prev => prev.map(d => ({...d, value: Math.max(d.value, data.stats.metrics["4xx_errors"])})));
-        }
-        if (data.stats.click_paths) {
-          setLogs(data.stats.click_paths.map((path: string, i: number) => ({
-            id: i,
-            user: "User",
-            path: path,
-            time: "Recent"
-          })));
-        }
-      }
+      setStats(data.stats && Object.keys(data.stats).length > 0 ? data.stats : null);
     } catch (err: any) {
       setError(err.message || "Failed to load stats");
     } finally {
@@ -81,21 +45,28 @@ export default function StatsAdminPage() {
 
   const handleRecompute = async () => {
     const apiBase = getApiBaseUrl();
-    if (!apiBase) return;
-    
+    if (!apiBase) {
+      setError("API base URL not configured");
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
       const resp = await fetchWithAuth(`${apiBase}/admin/stats/recompute`, { method: "POST" });
-      if (!resp.ok) throw new Error("Network Error");
-      
-      // Since it's async, wait a bit and fetch updated stats
+      if (!resp.ok) throw new Error("Failed to trigger recompute");
+      // Collector runs async; give it a moment then refetch (which clears loading).
       setTimeout(() => fetchStats(), 2000);
     } catch (err: any) {
       setError(err.message || "Failed to recompute stats");
       setLoading(false);
     }
   };
+
+  const emptyState = (
+    <p className="text-sm text-text-tertiary">
+      No data yet — run Recompute or wait for the daily collector.
+    </p>
+  );
 
   return (
     <div className="container-max">
@@ -131,43 +102,48 @@ export default function StatsAdminPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
         <div className="card p-6 bg-surface-0 border border-border-subtle rounded-xl relative">
           <h2 className="text-xl font-bold mb-4 flex items-center">
-            <ChartBarIcon className="w-6 h-6 mr-2" /> Weekly Active Users
+            <ChartBarIcon className="w-6 h-6 mr-2" />
+            Daily Snapshot{stats?.date ? ` — ${stats.date}` : ""}
           </h2>
-          
           {loading && (
-             <div className="absolute inset-0 flex items-center justify-center bg-surface-0/80 z-10 rounded-xl">
-               <div className="w-8 h-8 border-4 border-accent-500 border-t-transparent rounded-full animate-spin" />
-             </div>
+            <div className="absolute inset-0 flex items-center justify-center bg-surface-0/80 z-10 rounded-xl">
+              <div className="w-8 h-8 border-4 border-accent-500 border-t-transparent rounded-full animate-spin" />
+            </div>
           )}
-          
-          {/* chartRef MUST stay conditionally mounted, using CSS visibility to hide if needed (using opacity here) */}
-          <BarChart 
-            data={statsData} 
-            chartRef={chartRef} 
-            style={{ opacity: loading ? 0.3 : 1, transition: 'opacity 300ms' }} 
-          />
+          <div style={{ opacity: loading ? 0.3 : 1, transition: "opacity 300ms" }}>
+            {!stats ? (
+              emptyState
+            ) : (
+              <dl className="grid grid-cols-2 gap-4">
+                <div className="p-4 bg-surface-1 rounded-lg border border-border-subtle">
+                  <dt className="text-xs uppercase text-text-tertiary">CDN log lines</dt>
+                  <dd className="text-2xl font-bold text-text-primary">{stats.s3_log_lines ?? 0}</dd>
+                </div>
+                <div className="p-4 bg-surface-1 rounded-lg border border-border-subtle">
+                  <dt className="text-xs uppercase text-text-tertiary">API 4xx errors</dt>
+                  <dd className="text-2xl font-bold text-text-primary">{stats.metrics?.["4xx_errors"] ?? 0}</dd>
+                </div>
+              </dl>
+            )}
+          </div>
         </div>
-        
+
         <div className="card p-6 bg-surface-0 border border-border-subtle rounded-xl relative">
           <h2 className="text-xl font-bold mb-4">Click-path Logs Timeline</h2>
           {loading && (
-             <div className="absolute inset-0 flex items-center justify-center bg-surface-0/80 z-10 rounded-xl">
-               <div className="w-8 h-8 border-4 border-accent-500 border-t-transparent rounded-full animate-spin" />
-             </div>
+            <div className="absolute inset-0 flex items-center justify-center bg-surface-0/80 z-10 rounded-xl">
+              <div className="w-8 h-8 border-4 border-accent-500 border-t-transparent rounded-full animate-spin" />
+            </div>
           )}
-          <div className="space-y-4" style={{ opacity: loading ? 0.3 : 1, transition: 'opacity 300ms' }}>
-            {logs.map((log) => (
-              <div key={log.id} className="flex items-start space-x-3 p-3 bg-surface-1 rounded-lg border border-border-subtle">
-                <div className="w-2 h-2 mt-2 rounded-full bg-accent-500 flex-shrink-0" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-text-primary">{log.user}</p>
-                  <p className="text-xs text-text-secondary font-mono">{log.path}</p>
-                </div>
-                <div className="text-xs text-text-tertiary whitespace-nowrap">
-                  {log.time}
-                </div>
-              </div>
-            ))}
+          <div className="space-y-4" style={{ opacity: loading ? 0.3 : 1, transition: "opacity 300ms" }}>
+            {(stats?.click_paths ?? []).length === 0
+              ? emptyState
+              : (stats!.click_paths as string[]).map((path, i) => (
+                  <div key={i} className="flex items-start space-x-3 p-3 bg-surface-1 rounded-lg border border-border-subtle">
+                    <div className="w-2 h-2 mt-2 rounded-full bg-accent-500 flex-shrink-0" />
+                    <p className="text-xs text-text-secondary font-mono flex-1">{path}</p>
+                  </div>
+                ))}
           </div>
         </div>
       </div>
