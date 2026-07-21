@@ -247,6 +247,20 @@ def handler(event, context):
         method = event.get("requestContext", {}).get("http", {}).get("method", "GET")
         
         logger.info("path=%s, method=%s", path, method)
+        
+        # Structured JSON log for Insights
+        try:
+            import datetime
+            req_user = getUserInfo(event)
+            log_payload = {
+                "ts": datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0).isoformat() + "Z",
+                "sub": req_user.get("userId") or "unauthenticated",
+                "method": method,
+                "path": path,
+            }
+            logger.info(json.dumps(log_payload))
+        except Exception as e:
+            logger.warning("Failed to emit structured log: %s", e)
 
         # NOTE: every literal route below must also exist as an aws_apigatewayv2_route
         # in infra/main.tf — a handler route with no gateway route 404s without CORS
@@ -632,6 +646,12 @@ def handler(event, context):
             return putHighestRatedSites(event)
         if method == "POST" and path == "/admin/recommended/highest-rated/generate":
             return postHighestRatedGenerate(event)
+        if method == "GET" and path == "/admin/stats":
+            from api.stats import getAdminStats
+            return getAdminStats(event)
+        if method == "POST" and path == "/admin/stats/recompute":
+            from api.stats import postAdminStatsRecompute
+            return postAdminStatsRecompute(event)
         if method == "OPTIONS":
             # CORS preflight
             return jsonResponse({}, 200)

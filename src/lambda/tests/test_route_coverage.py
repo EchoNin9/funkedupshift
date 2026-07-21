@@ -33,7 +33,10 @@ INFRA_DIR = Path(__file__).resolve().parents[3] / "infra"
 # handler checks `path == "/sites"` but also a `{id}` variant exists) — add
 # only when a real mapping exists; keep empty otherwise.
 HANDLERS: list[tuple[Path, set[tuple[str, str]]]] = [
-    (LAMBDA_DIR / "api" / "handler.py", set()),
+    (LAMBDA_DIR / "api" / "handler.py", {
+        ("GET", "/admin/stats"),
+        ("POST", "/admin/stats/recompute"),
+    }),
     (LAMBDA_DIR / "tools" / "handler.py", set()),
 ]
 
