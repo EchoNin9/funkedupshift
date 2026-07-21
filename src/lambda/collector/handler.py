@@ -82,7 +82,9 @@ def handler(event, context):
                 Statistics=['Sum']
             )
             if metric_data.get('Datapoints'):
-                stats["metrics"]["4xx_errors"] = metric_data['Datapoints'][0]['Sum']
+                # CloudWatch returns Sum as a float; boto3's DynamoDB resource
+                # rejects floats. It's a whole-number count, so int() it.
+                stats["metrics"]["4xx_errors"] = int(metric_data['Datapoints'][0]['Sum'])
         except Exception as e:
             logger.error(f"Error querying metrics: {e}")
 

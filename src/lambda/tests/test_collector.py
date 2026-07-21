@@ -43,8 +43,10 @@ def test_handler_cron(mock_dynamodb, mock_cw, mock_logs, mock_s3):
     mock_body.read.side_effect = lambda amt=-1: io.BytesIO(gz_data).read(amt)
     mock_s3.get_object.return_value = {"Body": io.BytesIO(gz_data)}
     
+    # CloudWatch returns Sum as a float; the collector must int() it so the
+    # DynamoDB write doesn't choke ("Float types are not supported").
     mock_cw.get_metric_statistics.return_value = {
-        "Datapoints": [{"Sum": 42}]
+        "Datapoints": [{"Sum": 42.0}]
     }
     
     mock_logs.start_query.return_value = {"queryId": "123"}
@@ -75,6 +77,7 @@ def test_handler_cron(mock_dynamodb, mock_cw, mock_logs, mock_s3):
     stats = body["stats"]
     assert stats["s3_log_lines"] == 2
     assert stats["metrics"]["4xx_errors"] == 42
+    assert isinstance(stats["metrics"]["4xx_errors"], int)
     assert stats["click_paths"] == ["GET /admin/stats", "malformed line no json"]
     
     mock_table.put_item.assert_called_once()
