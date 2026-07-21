@@ -50,7 +50,12 @@ def test_handler_cron(mock_dynamodb, mock_cw, mock_logs, mock_s3):
     mock_logs.get_query_results.return_value = {
         "status": "Complete",
         "results": [
-            [{"field": "@message", "value": "click path 1"}]
+            # Lambda log line wrapping the structured request JSON
+            [{"field": "@message", "value":
+                '2026-07-21T06:11:37Z\treqid\t{"ts": "2026-07-21T06:11:37Z", '
+                '"sub": "user123", "method": "GET", "path": "/admin/stats"}'}],
+            # non-JSON line falls back to the raw message (truncated)
+            [{"field": "@message", "value": "malformed line no json"}],
         ]
     }
     
@@ -69,7 +74,7 @@ def test_handler_cron(mock_dynamodb, mock_cw, mock_logs, mock_s3):
     stats = body["stats"]
     assert stats["s3_log_lines"] == 2
     assert stats["metrics"]["4xx_errors"] == 42
-    assert stats["click_paths"] == ["click path 1"]
+    assert stats["click_paths"] == ["user123  GET /admin/stats", "malformed line no json"]
     
     mock_table.put_item.assert_called_once()
     put_args = mock_table.put_item.call_args[1]["Item"]

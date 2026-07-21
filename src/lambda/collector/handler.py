@@ -83,8 +83,9 @@ def handler(event, context):
     # 4. Query CloudWatch Log Insights
     try:
         log_group = os.environ.get("API_LOG_GROUP_NAME", "/aws/lambda/fus-api")
-        # simplistic top-N query for click-paths
-        query = "fields @timestamp, @message | filter @message like /click/ | sort @timestamp desc | limit 50"
+        # The API emits one structured JSON line per request: {"ts","sub","method","path"}.
+        # "sub" is unique to those lines, so filter on it (the old /click/ matched nothing).
+        query = 'fields @timestamp, @message | filter @message like /"sub":/ | sort @timestamp desc | limit 50'
         start_query_resp = logs_client.start_query(
             logGroupName=log_group,
             startTime=start_time,
@@ -107,8 +108,19 @@ def handler(event, context):
         paths = []
         for row in results:
             msg = next((f['value'] for f in row if f['field'] == '@message'), None)
-            if msg:
-                paths.append(msg[:100])
+            if not msg:
+                continue
+            # @message is a Lambda log line wrapping the JSON payload; pull the
+            # JSON out and render "sub method path". Fall back to the raw line.
+            entry = msg[:100]
+            brace = msg.find('{')
+            if brace != -1:
+                try:
+                    p = json.loads(msg[brace:])
+                    entry = f"{p.get('sub', '?')}  {p.get('method', '')} {p.get('path', '')}".strip()
+                except (ValueError, TypeError):
+                    pass
+            paths.append(entry)
         stats["click_paths"] = paths
     except Exception as e:
         logger.error(f"Error querying log insights: {e}")
