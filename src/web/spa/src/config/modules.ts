@@ -19,6 +19,13 @@ import {
   UserGroupIcon,
   TruckIcon,
   LinkIcon,
+  KeyIcon,
+  ScissorsIcon,
+  CubeTransparentIcon,
+  ServerIcon,
+  DocumentTextIcon,
+  ArrowsRightLeftIcon,
+  InformationCircleIcon,
 } from "@heroicons/react/24/outline";
 
 /** Public nav modules (sidebar/header links). */
@@ -32,6 +39,9 @@ export interface PublicModule {
   visibility?: (user: AuthUser | null) => boolean;
   /** When true, show for any logged-in user regardless of role. */
   authOnly?: boolean;
+  /** Optional: icon + short blurb, used by card-grid pages (e.g. ToolsIndexPage). */
+  icon?: React.ComponentType<{ className?: string }>;
+  description?: string;
 }
 
 /** Admin dashboard modules (cards on /admin). */
@@ -48,7 +58,7 @@ export const PUBLIC_MODULES: PublicModule[] = [
   { id: "websites", label: "Websites", path: "/websites", section: "discover", minRole: "guest" },
   { id: "media", label: "Media", path: "/media", section: "discover", minRole: "guest" },
   { id: "internet-dashboard", label: "Internet Dashboard", path: "/internet-dashboard", section: "discover", minRole: "guest" },
-  { id: "my-info", label: "My Info", path: "/my-info", section: "discover", minRole: "guest" },
+  { id: "my-info", label: "My Info", path: "/my-info", section: "discover", minRole: "guest", icon: InformationCircleIcon, description: "See what your browser, device, and network reveal about you." },
   { id: "profile", label: "Profile", path: "/profile", section: "discover", minRole: "user", authOnly: true },
   { id: "squash", label: "Squash", path: "/squash", section: "squash", minRole: "user", visibility: canAccessSquash },
   { id: "squash-admin", label: "Squash Admin", path: "/squash-admin", section: "squash", minRole: "manager", visibility: canModifySquash },
@@ -58,14 +68,14 @@ export const PUBLIC_MODULES: PublicModule[] = [
   { id: "investing", label: "Investing", path: "/investing", section: "financial", minRole: "user", visibility: canAccessInvesting },
   { id: "vehicles-expenses", label: "Vehicles Expenses", path: "/vehicles-expenses", section: "vehicles", minRole: "user", visibility: canAccessExpenses },
   { id: "general-expenses", label: "General expenses", path: "/general-expenses", section: "vehicles", minRole: "user", visibility: canAccessExpenses },
-  { id: "tools", label: "URL Shortener", path: "/tools", section: "tools", minRole: "user", authOnly: true },
-  { id: "passwordgen", label: "Password Generator", path: "/password", section: "tools", minRole: "user", authOnly: true },
-  { id: "imagetool", label: "Image Resizer", path: "/images", section: "tools", minRole: "user", authOnly: true },
-  { id: "croptool", label: "Crop Image", path: "/crop", section: "tools", minRole: "user", authOnly: true },
-  { id: "removebg", label: "Remove Background", path: "/removebg", section: "tools", minRole: "user", authOnly: true },
-  { id: "dnstool", label: "DNS Lookup", path: "/dns", section: "tools", minRole: "user", authOnly: true },
-  { id: "textshare", label: "Text Share", path: "/textshare", section: "tools", minRole: "user", authOnly: true },
-  { id: "converters", label: "Converters", path: "/converters", section: "tools", minRole: "user", authOnly: true },
+  { id: "tools", label: "URL Shortener", path: "/shortener", section: "tools", minRole: "user", authOnly: true, icon: LinkIcon, description: "Mint short links for long URLs." },
+  { id: "passwordgen", label: "Password Generator", path: "/password", section: "tools", minRole: "user", authOnly: true, icon: KeyIcon, description: "Generate strong, random passwords in your browser." },
+  { id: "imagetool", label: "Image Resizer", path: "/images", section: "tools", minRole: "user", authOnly: true, icon: PhotoIcon, description: "Resize and compress images." },
+  { id: "croptool", label: "Crop Image", path: "/crop", section: "tools", minRole: "user", authOnly: true, icon: ScissorsIcon, description: "Crop images to the size you need." },
+  { id: "removebg", label: "Remove Background", path: "/removebg", section: "tools", minRole: "user", authOnly: true, icon: CubeTransparentIcon, description: "Remove the background from a photo." },
+  { id: "dnstool", label: "DNS Lookup", path: "/dns", section: "tools", minRole: "user", authOnly: true, icon: ServerIcon, description: "Look up DNS records for any domain." },
+  { id: "textshare", label: "Text Share", path: "/textshare", section: "tools", minRole: "user", authOnly: true, icon: DocumentTextIcon, description: "Share text snippets with an expiring link." },
+  { id: "converters", label: "Converters", path: "/converters", section: "tools", minRole: "user", authOnly: true, icon: ArrowsRightLeftIcon, description: "Convert units, temperatures, and more." },
   { id: "highlights", label: "Highlights", path: "/recommended/highlights", section: "recommended", minRole: "guest" },
   { id: "highest-rated", label: "Highest Rated", path: "/recommended/highest-rated", section: "recommended", minRole: "guest" },
 ];
@@ -186,9 +196,13 @@ const MODULE_GROUPS: ModuleGroup[] = [
     id: "tools",
     label: "Tools",
     icon: LinkIcon,
-    isVisible: (u) => !!u?.userId,
+    // Visible to guests too — the /tools landing grid and My Info are usable
+    // signed-out; the remaining links open their own in-component sign-in
+    // prompt when a guest clicks through (see ShortenerPage.tsx etc).
+    isVisible: () => true,
     getLinks: () => [
-      { path: "/tools", label: "URL Shortener" },
+      { path: "/tools", label: "Tools" },
+      { path: "/shortener", label: "URL Shortener" },
       { path: "/password", label: "Password Generator" },
       { path: "/images", label: "Image Resizer" },
       { path: "/crop", label: "Crop Image" },
@@ -196,12 +210,14 @@ const MODULE_GROUPS: ModuleGroup[] = [
       { path: "/dns", label: "DNS Lookup" },
       { path: "/textshare", label: "Text Share" },
       { path: "/converters", label: "Converters" },
+      { path: "/my-info", label: "My Info" },
     ],
   },
 ];
 
-/** Module groups visible to the user for the sidebar. */
+/** Module groups visible to the user for the sidebar. Each group's own
+ *  isVisible decides guest access (only "tools" currently opts in — the rest
+ *  gate on !!user internally via their canAccess* helpers). */
 export function getVisibleModuleGroups(user: AuthUser | null): ModuleGroup[] {
-  if (!user) return [];
   return MODULE_GROUPS.filter((g) => g.isVisible(user) && g.getLinks(user).length > 0);
 }

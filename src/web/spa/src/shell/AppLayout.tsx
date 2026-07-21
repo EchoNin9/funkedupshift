@@ -52,6 +52,7 @@ const MemeGeneratorPage = lazy(() => import("../features/memes/MemeGeneratorPage
 const MemeDetailPage = lazy(() => import("../features/memes/MemeDetailPage"));
 const EditMemePage = lazy(() => import("../features/memes/EditMemePage"));
 const ShortenerPage = lazy(() => import("../features/tools/ShortenerPage"));
+const ToolsIndexPage = lazy(() => import("../features/tools/ToolsIndexPage"));
 const PasswordPage = lazy(() => import("../features/passwordgen/PasswordPage"));
 const ImagePage = lazy(() => import("../features/imagetool/ImagePage"));
 const CropPage = lazy(() => import("../features/croptool/CropPage"));
@@ -124,7 +125,9 @@ const AppLayoutContent: React.FC = () => {
               <Route path="/investing" element={<InvestingPage />} />
               <Route path="/vehicles-expenses" element={<VehiclesExpensesPage />} />
               <Route path="/general-expenses" element={<GeneralExpensesPage />} />
-              <Route path="/tools/*" element={<ShortenerPage />} />
+              {/* Landing grid — public, guest-visible; the shortener itself lives at /shortener. */}
+              <Route path="/tools" element={<ToolsIndexPage />} />
+              <Route path="/shortener" element={<ShortenerPage />} />
               <Route path="/password" element={<PasswordPage />} />
               <Route path="/images" element={<ImagePage />} />
               <Route path="/crop" element={<CropPage />} />

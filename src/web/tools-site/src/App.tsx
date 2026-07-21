@@ -6,6 +6,7 @@ import ImageToolsTool from "./ImageToolsTool";
 import DnsTool from "./DnsTool";
 import TextShareTool from "./TextShareTool";
 import ConvertersTool from "./ConvertersTool";
+import MyInfoTool from "./MyInfoTool";
 
 type View =
   | "landing"
@@ -15,7 +16,13 @@ type View =
   | "tool:dns"
   | "tool:pastebin"
   | "tool:converters"
+  | "tool:myinfo"
   | "auth";
+
+/** Tools open even when signed out — currently just My Info, which calls a
+ * public backend endpoint and reads the rest client-side. Every other tool
+ * stays locked until sign-in. */
+const ALWAYS_UNLOCKED_TOOL_IDS = new Set(["myinfo"]);
 
 interface AuthState {
   checked: boolean;
@@ -37,7 +44,8 @@ const TOOLS: ToolDef[] = [
   { id: "pastebin", name: "Text Share", description: "Share text snippets with a link that expires.", available: true },
   { id: "imagetools", name: "Image Tools", description: "Resize, crop, remove backgrounds.", available: true },
   { id: "dns", name: "DNS Lookup", description: "Look up A, MX, TXT and other DNS records for any domain.", available: true },
-  { id: "converters", name: "Converters", description: "Temperature, units, date math, and timezones, right in your browser.", available: true }
+  { id: "converters", name: "Converters", description: "Temperature, units, date math, and timezones, right in your browser.", available: true },
+  { id: "myinfo", name: "My Info", description: "See what your browser, device, and network reveal about you.", available: true }
 ];
 
 const App: React.FC = () => {
@@ -93,7 +101,8 @@ const App: React.FC = () => {
   };
 
   const openTool = (tool: ToolDef) => {
-    if (!auth.signedIn) {
+    const unlocked = auth.signedIn || ALWAYS_UNLOCKED_TOOL_IDS.has(tool.id);
+    if (!unlocked) {
       setSessionNotice(null);
       setView("auth");
       return;
@@ -133,8 +142,9 @@ const App: React.FC = () => {
             </p>
             <div className="tool-grid">
               {TOOLS.map((tool) => {
-                const locked = !auth.signedIn;
-                const clickable = auth.signedIn && tool.available;
+                const unlocked = auth.signedIn || ALWAYS_UNLOCKED_TOOL_IDS.has(tool.id);
+                const locked = !unlocked;
+                const clickable = unlocked && tool.available;
                 return (
                   <button
                     key={tool.id}
@@ -179,6 +189,9 @@ const App: React.FC = () => {
         )}
 
         {view === "tool:converters" && auth.signedIn && <ConvertersTool onBack={goLanding} />}
+
+        {/* Unlocked while signed out — public backend endpoint + client-side reads only. */}
+        {view === "tool:myinfo" && <MyInfoTool onBack={goLanding} />}
       </main>
     </div>
   );
