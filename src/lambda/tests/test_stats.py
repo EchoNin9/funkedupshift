@@ -32,6 +32,29 @@ def test_get_admin_stats_success(mock_boto3_resource):
     assert body["stats"]["users"] == 10
     assert body["stats"]["sites"] == 5
 
+@patch("api.stats.TABLE_NAME", "test_table")
+@patch("api.stats.boto3.resource")
+def test_get_admin_stats_serializes_decimals(mock_boto3_resource):
+    # collector rollups come back from the resource API as Decimal — must not 500
+    from decimal import Decimal
+    mock_table = MagicMock()
+    mock_boto3_resource.return_value.Table.return_value = mock_table
+    mock_table.get_item.return_value = {
+        "Item": {"stats": {"s3_log_lines": Decimal("42"), "metrics": {"4xx_errors": Decimal("3")}}}
+    }
+
+    event = {
+        "requestContext": {
+            "authorizer": {"jwt": {"claims": {"sub": "user123", "cognito:groups": ["admin"]}}}
+        }
+    }
+
+    resp = getAdminStats(event)
+    assert resp["statusCode"] == 200
+    body = json.loads(resp["body"])
+    assert body["stats"]["s3_log_lines"] == 42
+    assert body["stats"]["metrics"]["4xx_errors"] == 3
+
 def test_get_admin_stats_forbidden():
     event = {
         "requestContext": {
