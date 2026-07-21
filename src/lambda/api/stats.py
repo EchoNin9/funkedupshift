@@ -52,14 +52,19 @@ def postAdminStatsRecompute(event):
         return err
     
     try:
+        import datetime
+        # Recompute *today* (UTC) so the admin sees traffic they just generated;
+        # the nightly cron still handles yesterday. Without a date the collector
+        # defaults to yesterday (FUNK-62).
+        today = datetime.datetime.utcnow().strftime("%Y-%m-%d")
         lambda_client = boto3.client("lambda")
         collector_fn = os.environ.get("COLLECTOR_FUNCTION_NAME", "fus-collector")
         lambda_client.invoke(
             FunctionName=collector_fn,
             InvocationType="Event",
-            Payload=json.dumps({"action": "recompute"})
+            Payload=json.dumps({"action": "recompute", "date": today})
         )
-        return jsonResponse({"message": "Recompute triggered"})
+        return jsonResponse({"message": "Recompute triggered", "date": today})
     except Exception as e:
         logger.exception("postAdminStatsRecompute error: %s", e)
         return jsonResponse({"error": str(e)}, 500)

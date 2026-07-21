@@ -23,8 +23,14 @@ def test_handler_cron(mock_dynamodb, mock_cw, mock_logs, mock_s3):
     mock_table = MagicMock()
     mock_dynamodb.Table.return_value = mock_table
     
+    # Key must embed the target date the way CloudFront names log files:
+    # <prefix><dist>.YYYY-MM-DD-HH.<hash>.gz — the collector matches ".<date>-".
+    _yday = (datetime.datetime.utcnow() - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
     mock_s3.get_paginator.return_value.paginate.return_value = [
-        {"Contents": [{"Key": "test.gz"}]}
+        {"Contents": [
+            {"Key": f"production/E1ABCD.{_yday}-22.deadbeef.gz"},
+            {"Key": f"production/E1ABCD.2000-01-01-00.other.gz"},  # wrong day: skipped
+        ]}
     ]
     
     # Mock gzip content

@@ -98,7 +98,11 @@ def test_post_admin_stats_recompute_success(mock_env_get, mock_boto3_client):
     args, kwargs = mock_lambda.invoke.call_args
     assert kwargs["FunctionName"] == "fus-collector"
     assert kwargs["InvocationType"] == "Event"
-    assert json.loads(kwargs["Payload"]) == {"action": "recompute"}
+    payload = json.loads(kwargs["Payload"])
+    assert payload["action"] == "recompute"
+    # recompute now targets today (UTC) so fresh traffic is captured (FUNK-62)
+    import datetime
+    assert payload["date"] == datetime.datetime.utcnow().strftime("%Y-%m-%d")
 
 def test_post_admin_stats_recompute_forbidden():
     event = {

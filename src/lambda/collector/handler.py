@@ -44,20 +44,24 @@ def handler(event, context):
         "click_paths": []
     }
     
-    # 2. Parse S3 logs
+    # 2. Parse S3 logs. CloudFront keys look like
+    #   <prefix><dist-id>.YYYY-MM-DD-HH.<hash>.gz  (e.g. production/E19S....2026-07-20-22.abcd.gz)
+    # so the date lives *inside* the key, not as its prefix — match on ".<date>-".
     bucket = os.environ.get("CLOUDFRONT_LOG_BUCKET")
     if bucket:
+        prefix = os.environ.get("CLOUDFRONT_LOG_PREFIX", "")
         try:
             paginator = s3_client.get_paginator('list_objects_v2')
-            for page in paginator.paginate(Bucket=bucket, Prefix=target_date_str):
+            for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
                 for obj in page.get('Contents', []):
                     key = obj['Key']
-                    if key.endswith('.gz'):
+                    if key.endswith('.gz') and f".{target_date_str}-" in key:
                         resp = s3_client.get_object(Bucket=bucket, Key=key)
-                        # Decompress on the fly
+                        # Decompress on the fly; skip CloudFront's #Version/#Fields header lines
                         with gzip.GzipFile(fileobj=resp['Body'], mode='rb') as gz:
                             for line in gz:
-                                stats["s3_log_lines"] += 1
+                                if not line.startswith(b'#'):
+                                    stats["s3_log_lines"] += 1
         except Exception as e:
             logger.error(f"Error reading S3 logs: {e}")
             

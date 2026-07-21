@@ -2448,6 +2448,7 @@ resource "aws_lambda_function" "collector" {
     variables = {
       TABLE_NAME            = aws_dynamodb_table.main.name
       CLOUDFRONT_LOG_BUCKET = aws_s3_bucket.cloudfrontLogs.bucket
+      CLOUDFRONT_LOG_PREFIX = "production/"
     }
   }
 }
