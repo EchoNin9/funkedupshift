@@ -65,20 +65,25 @@ def handler(event, context):
         except Exception as e:
             logger.error(f"Error reading S3 logs: {e}")
             
-    # 3. Query CloudWatch metrics
-    try:
-        metric_data = cw_client.get_metric_statistics(
-            Namespace='AWS/ApiGateway',
-            MetricName='4XXError',
-            StartTime=date_obj,
-            EndTime=date_obj + datetime.timedelta(days=1),
-            Period=86400,
-            Statistics=['Sum']
-        )
-        if metric_data.get('Datapoints'):
-            stats["metrics"]["4xx_errors"] = metric_data['Datapoints'][0]['Sum']
-    except Exception as e:
-        logger.error(f"Error querying metrics: {e}")
+    # 3. Query CloudWatch metrics. HTTP API (v2) uses metric name "4xx" with an
+    #    ApiId dimension — not the REST-API "4XXError"; without the dimension the
+    #    query returns no datapoints.
+    api_id = os.environ.get("API_ID")
+    if api_id:
+        try:
+            metric_data = cw_client.get_metric_statistics(
+                Namespace='AWS/ApiGateway',
+                MetricName='4xx',
+                Dimensions=[{'Name': 'ApiId', 'Value': api_id}],
+                StartTime=date_obj,
+                EndTime=date_obj + datetime.timedelta(days=1),
+                Period=86400,
+                Statistics=['Sum']
+            )
+            if metric_data.get('Datapoints'):
+                stats["metrics"]["4xx_errors"] = metric_data['Datapoints'][0]['Sum']
+        except Exception as e:
+            logger.error(f"Error querying metrics: {e}")
 
     # 4. Query CloudWatch Log Insights
     try:

@@ -2410,7 +2410,7 @@ resource "aws_iam_role_policy" "collector" {
       },
       {
         Effect   = "Allow"
-        Action   = ["cloudwatch:GetMetricData"]
+        Action   = ["cloudwatch:GetMetricData", "cloudwatch:GetMetricStatistics"]
         Resource = "*"
       },
       {
@@ -2449,6 +2449,7 @@ resource "aws_lambda_function" "collector" {
       TABLE_NAME            = aws_dynamodb_table.main.name
       CLOUDFRONT_LOG_BUCKET = aws_s3_bucket.cloudfrontLogs.bucket
       CLOUDFRONT_LOG_PREFIX = "production/"
+      API_ID                = aws_apigatewayv2_api.main.id
     }
   }
 }
