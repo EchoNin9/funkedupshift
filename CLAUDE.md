@@ -1,7 +1,7 @@
 # CLAUDE.md — funkedupshift
 
-Project instructions for Claude Code. Read automatically at session start in
-**both** Claude Code web and CLI sessions working in this repo.
+Project instructions for Claude Code and Antigravity. Read automatically at session start in
+**both** Claude Code web and CLI sessions, as well as Antigravity sessions working in this repo.
 
 ---
 
@@ -16,10 +16,11 @@ When I say `/delegate` (optionally followed by a ticket key or task description)
 and, by default, on any **non-trivial** task in this repo — apply the DELEGATION
 PROTOCOL:
 
-- You are the **lead**; spawn subagents on the **Sonnet tier** as the **sidekick**.
+- You are the **lead**; spawn subagents on the **Sonnet tier** (for Claude) or **flash/pro** (for Antigravity) as the **sidekick**.
   - Web sessions: use the Agent/Task tool with `model: sonnet`.
   - CLI/headless: `claude-sonnet-*` (e.g. `--sidekick claude-sonnet-4-6`, or your
     installed Sonnet id). The tier matters, not the exact point release.
+  - Antigravity: use the `invoke_subagent` tool.
 - **Exploration first, delegated.** Your first action on any non-trivial task is a
   sidekick handoff: *"Map how <area> is implemented. Change nothing. Report file
   paths and relevant snippets."* Don't read repo files yourself unless the report
@@ -80,6 +81,7 @@ Give these to the sidekick so it doesn't run the slow path on every iteration.
 - **Infra:** Terraform in `infra/`.
 - **Branches/deploy:** work on `development` (auto-deploys staging); `main` is
   production. PRs go `development` → `main`. Don't push/merge `main` directly.
+  Antigravity must ALWAYS push ONLY to the `development` branch (or feature branches targeting `development`).
 
 Planning briefs and design docs live in `docs/`.
 
