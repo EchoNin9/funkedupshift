@@ -5,5 +5,8 @@ awsRegion     = "us-east-1"
 githubOrgRepo = "EchoNin9/funkedupshift"
 
 # Optional overrides for state backend (defaults in variables.tf)
-terraformStateBucket     = "fus-aws-s3-terraform-state"
-terraformStateLockTable  = "fus-terraform-state-lock"
+terraformStateBucket    = "fus-aws-s3-terraform-state"
+terraformStateLockTable = "fus-terraform-state-lock"
+
+# Social scheduling module (phase 2) — SNS alert subscriber.
+socialAlertEmail = "adam@echo9.net"

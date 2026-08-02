@@ -129,3 +129,8 @@ variable "mcpOwnerUserId" {
   default     = ""
   sensitive   = true
 }
+
+variable "socialAlertEmail" {
+  description = "Email address subscribed to fus-social-alerts (SNS) for publish failures and the daily heartbeat."
+  type        = string
+}

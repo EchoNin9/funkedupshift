@@ -97,3 +97,18 @@ output "apiInvokeUrl" {
   description = "API Gateway HTTP API invoke URL (for frontend)."
   value       = aws_apigatewayv2_stage.default.invoke_url
 }
+
+output "socialPostsTableName" {
+  description = "DynamoDB table name for scheduled social posts (infra/social.tf)."
+  value       = aws_dynamodb_table.socialPosts.name
+}
+
+output "socialMediaBucketName" {
+  description = "S3 bucket name for social post media uploads (infra/social.tf)."
+  value       = aws_s3_bucket.socialMedia.bucket
+}
+
+output "socialAlertsTopicArn" {
+  description = "SNS topic ARN for social publish failures and the daily heartbeat (infra/social.tf)."
+  value       = aws_sns_topic.socialAlerts.arn
+}
