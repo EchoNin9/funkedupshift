@@ -251,7 +251,7 @@ resource "aws_iam_role_policy" "lambdaSocial" {
       },
       {
         Effect   = "Allow"
-        Action   = ["ssm:GetParameter", "ssm:GetParameters"]
+        Action   = ["ssm:GetParameter", "ssm:GetParameters", "ssm:GetParametersByPath"]
         Resource = "arn:aws:ssm:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:parameter/funkedupshift/social/*"
       },
       {
@@ -413,6 +413,88 @@ resource "aws_lambda_permission" "allowEventbridgeSocialReconcile" {
   function_name = aws_lambda_function.socialMaintenance.function_name
   principal     = "events.amazonaws.com"
   source_arn    = aws_cloudwatch_event_rule.socialReconcile.arn
+}
+
+# ------------------------------------------------------------------------------
+# API Gateway routes (Phase 4) — reuse the existing HTTP API + Cognito JWT
+# authorizer declared in infra/main.tf (aws_apigatewayv2_api.main,
+# aws_apigatewayv2_authorizer.cognito), same precedent as the tools platform
+# in infra/tools.tf. Every route is admin-gated in social/routes.py itself
+# (group membership read from the JWT claims only — this Lambda's role has
+# no access to the main table to look up custom groups). socialApi's
+# direct-invoke behaviour (scripts/social_schedule.py,
+# scripts/social_invoke_bluesky.py) is unaffected by adding a gateway
+# trigger alongside it.
+# ------------------------------------------------------------------------------
+resource "aws_apigatewayv2_integration" "social" {
+  api_id                 = aws_apigatewayv2_api.main.id
+  integration_type       = "AWS_PROXY"
+  integration_uri        = aws_lambda_function.socialApi.invoke_arn
+  payload_format_version = "2.0"
+}
+
+resource "aws_apigatewayv2_route" "socialAccountsGet" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /social/accounts"
+  target             = "integrations/${aws_apigatewayv2_integration.social.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "socialPostsGet" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /social/posts"
+  target             = "integrations/${aws_apigatewayv2_integration.social.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "socialPostsPost" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /social/posts"
+  target             = "integrations/${aws_apigatewayv2_integration.social.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "socialPostGet" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /social/posts/{postId}"
+  target             = "integrations/${aws_apigatewayv2_integration.social.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "socialPostDelete" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "DELETE /social/posts/{postId}"
+  target             = "integrations/${aws_apigatewayv2_integration.social.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "socialPostRetryPost" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /social/posts/{postId}/retry"
+  target             = "integrations/${aws_apigatewayv2_integration.social.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "socialMediaPresignPost" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /social/media/presign"
+  target             = "integrations/${aws_apigatewayv2_integration.social.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_lambda_permission" "socialApiGateway" {
+  statement_id  = "AllowAPIGatewayInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.socialApi.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.main.execution_arn}/*/*"
 }
 
 # Note: the socialAlertEmail variable lives in infra/variables.tf, and this

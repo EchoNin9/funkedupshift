@@ -63,3 +63,35 @@ def getBlueskyCredentials(accountId):
     handle = getParameter(f"/funkedupshift/social/bluesky/{accountId}/handle", decrypt=False)
     appPassword = getParameter(f"/funkedupshift/social/bluesky/{accountId}/app-password", decrypt=True)
     return handle, appPassword
+
+
+SOCIAL_PARAMS_PREFIX = "/funkedupshift/social/"
+
+
+def listAccounts():
+    """Enumerate configured social accounts from SSM (phase 4, GET /social/accounts).
+
+    Derives platform + accountId from each parameter's path
+    (/funkedupshift/social/{platform}/{accountId}/{leaf}) and only ever reads
+    the VALUE of the "handle" leaf -- the "app-password" leaf's Value is
+    never read here, so there is no code path in this function that could
+    leak (or log) a credential even by accident.
+
+    Requires ssm:GetParametersByPath (see infra/social.tf lambdaSocial policy).
+    """
+    accountsByKey = {}
+    paginator = _client().get_paginator("get_parameters_by_path")
+    for page in paginator.paginate(Path=SOCIAL_PARAMS_PREFIX, Recursive=True, WithDecryption=False):
+        for param in page.get("Parameters", []):
+            name = param.get("Name", "")
+            relative = name[len(SOCIAL_PARAMS_PREFIX):] if name.startswith(SOCIAL_PARAMS_PREFIX) else name
+            parts = [p for p in relative.split("/") if p]
+            if len(parts) != 3:
+                continue
+            platform, accountId, leaf = parts
+            key = (platform, accountId)
+            entry = accountsByKey.setdefault(key, {"platform": platform, "accountId": accountId, "handle": ""})
+            if leaf == "handle":
+                entry["handle"] = param.get("Value", "")
+
+    return sorted(accountsByKey.values(), key=lambda a: (a["platform"], a["accountId"]))

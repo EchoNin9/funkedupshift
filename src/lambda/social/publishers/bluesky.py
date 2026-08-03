@@ -10,6 +10,7 @@ short-lived and a stale token is worse than one extra login call.
 import json
 import logging
 import re
+import unicodedata
 from datetime import datetime, timezone
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
@@ -26,10 +27,98 @@ REQUEST_TIMEOUT_SEC = 10
 
 MAX_IMAGES = 4
 MAX_IMAGE_BYTES = 1_000_000
-# Bluesky's actual limit is 300 *graphemes*. len() on a Python str counts
-# code points, which over-counts multi-codepoint grapheme clusters (flag
-# emoji, ZWJ family emoji, etc.) — approximate on the safe side for phase 1.
+# Bluesky's actual limit is 300 *graphemes*, enforced via countGraphemes()
+# below (stdlib unicodedata only -- no external grapheme-segmentation dep).
 MAX_GRAPHEMES = 300
+
+# --- grapheme counting (stdlib-only, no external deps) ------------------------
+
+_ZWJ = "\u200d"
+_VARIATION_SELECTOR_RANGE = (0xFE00, 0xFE0F)
+_SKIN_TONE_MODIFIER_RANGE = (0x1F3FB, 0x1F3FF)
+_REGIONAL_INDICATOR_RANGE = (0x1F1E6, 0x1F1FF)
+_COMBINING_CATEGORIES = ("Mn", "Mc", "Me")
+
+
+def _isRegionalIndicator(codepoint):
+    return _REGIONAL_INDICATOR_RANGE[0] <= codepoint <= _REGIONAL_INDICATOR_RANGE[1]
+
+
+def countGraphemes(text):
+    """Approximate Unicode grapheme-cluster count, stdlib-only (no regex/ICU
+    grapheme segmentation available without a third-party dep).
+
+    len(text) counts Python code points, which OVER-counts any multi-codepoint
+    cluster -- a ZWJ family emoji is 7 code points but renders (and counts,
+    per Bluesky's own limit, and per the SPA's Intl.Segmenter) as ONE
+    grapheme. This collapses the sequences that matter in practice for social
+    post text: combining marks, ZWJ joins, variation selectors, skin-tone
+    modifiers, and regional-indicator (flag) pairs -- each of those collapses
+    into a single grapheme rather than counting every code point.
+
+    Not a full UAX #29 implementation (no support for e.g. Hangul jamo
+    clustering or every exotic extended-pictographic edge case), but it
+    agrees with Intl.Segmenter on plain text and on every common emoji shape
+    (plain, ZWJ sequences, flags, skin-tone modifiers), which is what the
+    frontend actually counts against.
+    """
+    if not text:
+        return 0
+
+    count = 0
+    i = 0
+    n = len(text)
+    joinNext = False  # a ZWJ just consumed -- the next codepoint attaches to the current cluster
+
+    while i < n:
+        c = text[i]
+        codepoint = ord(c)
+        category = unicodedata.category(c)
+
+        # Combining marks always attach to the previous grapheme -- never
+        # start a new one.
+        if category in _COMBINING_CATEGORIES:
+            i += 1
+            joinNext = False
+            continue
+
+        # Variation selectors (text vs. emoji presentation) attach to the
+        # preceding base character.
+        if _VARIATION_SELECTOR_RANGE[0] <= codepoint <= _VARIATION_SELECTOR_RANGE[1]:
+            i += 1
+            joinNext = False
+            continue
+
+        # Skin-tone modifiers attach to the preceding emoji base.
+        if _SKIN_TONE_MODIFIER_RANGE[0] <= codepoint <= _SKIN_TONE_MODIFIER_RANGE[1]:
+            i += 1
+            joinNext = False
+            continue
+
+        if c == _ZWJ:
+            # A ZWJ glues the NEXT codepoint onto the cluster already
+            # counted -- it never starts (or itself counts as) a grapheme.
+            joinNext = True
+            i += 1
+            continue
+
+        if joinNext:
+            # This codepoint was joined to the previous cluster by the ZWJ
+            # just consumed -- don't start a new grapheme for it.
+            joinNext = False
+            i += 1
+            continue
+
+        if _isRegionalIndicator(codepoint) and i + 1 < n and _isRegionalIndicator(ord(text[i + 1])):
+            # A flag is exactly two regional-indicator codepoints -> one grapheme.
+            count += 1
+            i += 2
+            continue
+
+        count += 1
+        i += 1
+
+    return count
 
 
 # --- facets: URL / mention / hashtag detection with UTF-8 byte offsets --------
@@ -141,10 +230,10 @@ class BlueskyPublisher(Publisher):
     def validate(self, request):
         errors = []
         text = request.text or ""
-        if len(text) > MAX_GRAPHEMES:
+        graphemeCount = countGraphemes(text)
+        if graphemeCount > MAX_GRAPHEMES:
             errors.append(
-                f"Post text is {len(text)} characters, over Bluesky's {MAX_GRAPHEMES}-grapheme limit "
-                "(approximate count; see MAX_GRAPHEMES comment)."
+                f"Post text is {graphemeCount} graphemes, over Bluesky's {MAX_GRAPHEMES}-grapheme limit."
             )
 
         media = request.media or []

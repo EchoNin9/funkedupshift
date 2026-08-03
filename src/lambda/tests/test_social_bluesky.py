@@ -287,3 +287,70 @@ def test_get_publisher_unknown_platform_raises_cleanly():
 
     with pytest.raises(UnknownPublisherError):
         getPublisher("instagram")
+
+
+# --- countGraphemes (phase 4) -------------------------------------------------------------
+
+
+def test_grapheme_count_plain_ascii():
+    from social.publishers.bluesky import countGraphemes
+
+    assert countGraphemes("hello world") == 11
+
+
+def test_grapheme_count_combining_mark_counts_as_one():
+    from social.publishers.bluesky import countGraphemes
+
+    # "e" + COMBINING ACUTE ACCENT (U+0301) -- two code points, one grapheme.
+    text = "é"
+    assert len(text) == 2
+    assert countGraphemes(text) == 1
+
+
+def test_grapheme_count_zwj_family_emoji_is_one():
+    from social.publishers.bluesky import countGraphemes
+
+    family = "\U0001F468\u200d\U0001F469\u200d\U0001F467\u200d\U0001F466"  # man-woman-girl-boy
+    assert len(family) == 7
+    assert countGraphemes(family) == 1
+
+
+def test_grapheme_count_flag_is_one():
+    from social.publishers.bluesky import countGraphemes
+
+    flag = "\U0001F1E6\U0001F1FA"  # regional indicators A + U -> Australia flag
+    assert len(flag) == 2
+    assert countGraphemes(flag) == 1
+
+
+def test_grapheme_count_emoji_with_skin_tone_is_one():
+    from social.publishers.bluesky import countGraphemes
+
+    thumbsUp = "\U0001F44D\U0001F3FD"  # THUMBS UP + medium skin tone modifier
+    assert len(thumbsUp) == 2
+    assert countGraphemes(thumbsUp) == 1
+
+
+def test_grapheme_count_300_family_emoji_passes_validation():
+    from social.publishers.base import PublishRequest
+    from social.publishers.bluesky import BlueskyPublisher, countGraphemes
+
+    family = "\U0001F468\u200d\U0001F469\u200d\U0001F467\u200d\U0001F466"
+    text = family * 300
+    assert len(text) == 2100  # 7 code points x 300 -- would over-count under the old len()-based check
+    assert countGraphemes(text) == 300
+
+    request = PublishRequest(accountId="a", text=text, media=[], links=[])
+    errors = BlueskyPublisher().validate(request)
+    assert errors == []
+
+
+def test_grapheme_count_301_plain_chars_still_fails_validation():
+    from social.publishers.base import PublishRequest
+    from social.publishers.bluesky import BlueskyPublisher
+
+    request = PublishRequest(accountId="a", text="x" * 301, media=[], links=[])
+    errors = BlueskyPublisher().validate(request)
+    assert len(errors) == 1
+    assert "301" in errors[0]
+    assert "300" in errors[0]

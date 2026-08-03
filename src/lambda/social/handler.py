@@ -1,14 +1,21 @@
 """
-Direct-invoke Lambda handler for social publishing/scheduling.
+Lambda handler for social publishing/scheduling.
 
-Still invoked directly (no API Gateway route yet -- that's phase 4), NOT
-routed through api/handler.py / API Gateway. Returns a plain dict, never an
-API Gateway response envelope (no statusCode/body/headers).
+Serves TWO invocation shapes from the same entrypoint:
+  - API Gateway HTTP API v2 events (phase 4, socialApi Lambda routed through
+    aws_apigatewayv2_api.main -- see infra/social.tf) -- detected via
+    event["requestContext"]["http"], delegated to social/routes.py, which
+    returns a full statusCode/body/headers envelope.
+  - Direct invokes (phases 1-2, still used by scripts/social_schedule.py and
+    scripts/social_invoke_bluesky.py) -- returns a plain dict, NEVER an API
+    Gateway envelope. This path is unchanged by phase 4.
 
-Default behaviour (no "action" key in the event) is the phase-1
-immediate-publish path, preserved verbatim so scripts/social_invoke_bluesky.py
-keeps working unchanged. Phase 2 adds an "action" field for
-create/get/listMonth/cancel/retry against the DynamoDB-backed scheduler.
+Default direct-invoke behaviour (no "action" key in the event) is the
+phase-1 immediate-publish path, preserved verbatim. Phase 2 added an
+"action" field for create/get/listMonth/cancel/retry against the
+DynamoDB-backed scheduler -- those functions (_actionCreate etc.) are also
+the shared core social/routes.py calls for the HTTP path, so business logic
+lives in exactly one place.
 """
 import base64
 import logging
@@ -214,6 +221,13 @@ _ACTIONS = {
 
 def handler(event, context):
     event = event or {}
+
+    # API Gateway HTTP API v2 events always carry requestContext.http;
+    # direct invokes (scripts, EventBridge-adjacent callers) never do.
+    if event.get("requestContext", {}).get("http"):
+        from social import routes
+        return routes.route(event)
+
     action = event.get("action")
     if not action:
         return _immediatePublish(event)
