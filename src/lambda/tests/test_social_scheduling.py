@@ -192,3 +192,80 @@ def test_reschedule_one_shot_defaults_old_name_from_post_id():
         scheduling.rescheduleOneShot("post1", _isoFromNow(600))
 
     assert client.delete_schedule.call_args.kwargs["Name"] == "social-post-post1"
+
+
+# --- containerCheckScheduleNameFor (phase 5) -----------------------------------------
+
+
+def test_container_check_schedule_name_is_deterministic_and_bounded():
+    from social.scheduling import containerCheckScheduleNameFor
+
+    name1 = containerCheckScheduleNameFor("post1", "instagram", "acct-a", 3)
+    name2 = containerCheckScheduleNameFor("post1", "instagram", "acct-a", 3)
+    assert name1 == name2
+    assert len(name1) <= 64
+    assert name1.startswith("social-chk-")
+
+
+def test_container_check_schedule_name_differs_by_check_count():
+    from social.scheduling import containerCheckScheduleNameFor
+
+    name3 = containerCheckScheduleNameFor("post1", "instagram", "acct-a", 3)
+    name4 = containerCheckScheduleNameFor("post1", "instagram", "acct-a", 4)
+    assert name3 != name4
+
+
+def test_container_check_schedule_name_stays_bounded_with_long_post_id_and_account_id():
+    """Test matrix #12: social-chk-{postId}-{platform}-{accountId}-{n} would
+    overflow 64 chars with realistic (long) identifiers -- the name must
+    stay <= 64 and remain unique."""
+    from social.scheduling import containerCheckScheduleNameFor
+
+    longPostId = "a" * 40
+    longAccountId = "b" * 40
+
+    name = containerCheckScheduleNameFor(longPostId, "instagram", longAccountId, 5)
+    assert len(name) <= 64
+
+    # A different checkCount with the same (long) identifiers must still
+    # produce a distinct name -- the human-readable part alone would be
+    # truncated identically, so uniqueness depends on the hash suffix.
+    otherName = containerCheckScheduleNameFor(longPostId, "instagram", longAccountId, 6)
+    assert otherName != name
+    assert len(otherName) <= 64
+
+    # A different accountId (same length, same prefix after truncation)
+    # must also stay distinct.
+    otherAccountName = containerCheckScheduleNameFor(longPostId, "instagram", "c" * 40, 5)
+    assert otherAccountName != name
+
+
+# --- createContainerCheck -------------------------------------------------------------
+
+
+def test_create_container_check_builds_a_one_shot_schedule():
+    from social import scheduling
+
+    client = MagicMock()
+    with patch.object(scheduling, "SCHEDULE_GROUP", "fus-social"), \
+         patch.object(scheduling, "PUBLISHER_ARN", "arn:aws:lambda:us-east-1:123:function:fus-social-publisher"), \
+         patch.object(scheduling, "SCHEDULER_ROLE_ARN", "arn:aws:iam::123:role/fus-social-scheduler-role"), \
+         patch.object(scheduling, "_client", return_value=client):
+        result = scheduling.createContainerCheck("post1", "instagram", "acct-a", _isoFromNow(120), checkCount=3)
+
+    client.create_schedule.assert_called_once()
+    kwargs = client.create_schedule.call_args.kwargs
+    assert kwargs["Name"] == result["scheduleName"]
+    assert kwargs["GroupName"] == "fus-social"
+    assert kwargs["ScheduleExpressionTimezone"] == "UTC"
+    assert kwargs["FlexibleTimeWindow"] == {"Mode": "OFF"}
+    assert kwargs["ActionAfterCompletion"] == "DELETE"
+    assert kwargs["Target"]["Arn"] == "arn:aws:lambda:us-east-1:123:function:fus-social-publisher"
+    assert kwargs["Target"]["RoleArn"] == "arn:aws:iam::123:role/fus-social-scheduler-role"
+
+    import json
+    payload = json.loads(kwargs["Target"]["Input"])
+    assert payload == {
+        "job": "checkContainer", "postId": "post1", "platform": "instagram",
+        "accountId": "acct-a", "checkCount": 3,
+    }

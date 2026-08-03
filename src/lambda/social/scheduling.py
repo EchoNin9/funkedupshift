@@ -7,6 +7,7 @@ infra/social.tf aws_scheduler_schedule_group.social). A fired schedule
 self-deletes (ActionAfterCompletion=DELETE), so cancelOneShot tolerates
 ResourceNotFoundException.
 """
+import hashlib
 import json
 import logging
 import os
@@ -49,6 +50,32 @@ def sanitizeScheduleName(raw):
 
 def scheduleNameFor(postId):
     return sanitizeScheduleName(f"social-post-{postId}")
+
+
+# --- container-check schedule naming ------------------------------------------
+#
+# social-chk-{postId}-{platform}-{accountId}-{checkCount} can overflow the
+# 64-char cap once postId/accountId are realistic (e.g. UUIDs) --
+# sanitizeScheduleName only sanitizes, it doesn't dedupe after truncating, so
+# two different (postId, platform, accountId, checkCount) tuples that agree
+# on their first N chars would collide. Instead: truncate the human-readable
+# part and always append a short stable sha256-derived suffix, so the full
+# name stays deterministic, unique per tuple, and <= 64 chars.
+_CHK_PREFIX = "social-chk-"
+_CHK_HASH_LEN = 10
+
+
+def _containerCheckHashSuffix(postId, platform, accountId, checkCount):
+    raw = f"{postId}:{platform}:{accountId}:{checkCount}"
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:_CHK_HASH_LEN]
+
+
+def containerCheckScheduleNameFor(postId, platform, accountId, checkCount):
+    suffix = _containerCheckHashSuffix(postId, platform, accountId, checkCount)
+    maxHumanLen = SCHEDULE_NAME_MAX - len(_CHK_PREFIX) - len(suffix) - 1  # -1 for the joining "-"
+    human = sanitizeScheduleName(f"{postId}-{platform}-{accountId}-{checkCount}")[:max(maxHumanLen, 0)]
+    name = f"{_CHK_PREFIX}{human}-{suffix}" if human else f"{_CHK_PREFIX}{suffix}"
+    return name[:SCHEDULE_NAME_MAX]
 
 
 def _parseIsoToUtc(scheduledAt):
@@ -100,6 +127,38 @@ def createOneShot(postId, scheduledAt):
         },
     )
     return {"immediate": False, "scheduleName": name}
+
+
+def createContainerCheck(postId, platform, accountId, checkAt, checkCount):
+    """One-shot schedule mirroring createOneShot, but for resuming a pending
+    (async-container) publish -- same group, FlexibleTimeWindow off,
+    ActionAfterCompletion=DELETE, same publisher ARN target and scheduler
+    role. Input payload routes the publisher handler to checkContainer
+    instead of the normal postId-only publish path.
+
+    Returns {"scheduleName": str}.
+    """
+    name = containerCheckScheduleNameFor(postId, platform, accountId, checkCount)
+    _client().create_schedule(
+        Name=name,
+        GroupName=SCHEDULE_GROUP,
+        ScheduleExpression=toSchedulerAtExpression(checkAt),
+        ScheduleExpressionTimezone="UTC",
+        FlexibleTimeWindow={"Mode": "OFF"},
+        ActionAfterCompletion="DELETE",
+        Target={
+            "Arn": PUBLISHER_ARN,
+            "RoleArn": SCHEDULER_ROLE_ARN,
+            "Input": json.dumps({
+                "job": "checkContainer",
+                "postId": postId,
+                "platform": platform,
+                "accountId": accountId,
+                "checkCount": checkCount,
+            }),
+        },
+    )
+    return {"scheduleName": name}
 
 
 def cancelOneShot(scheduleName):

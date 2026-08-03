@@ -25,6 +25,11 @@ class PublishRequest:
     # real-world time the post was meant to go out. Also defaulted for the
     # same backward-compatibility reason.
     scheduledAt: str = ""
+    # Optional callable(containerId: str) -> None, invoked by the publisher
+    # (via storage.setTargetContainer) as soon as it has a resume handle --
+    # BEFORE the platform publish call completes -- so a crash mid-publish
+    # is recoverable. Defaulted so every existing caller/test is unaffected.
+    onContainerCreated: object = None
 
 
 @dataclass
@@ -33,12 +38,32 @@ class PublishResult:
     permalink: str = None
     platformPostId: str = None
     error: str = None
+    # True when the platform accepted the media but publishing is not yet
+    # complete (e.g. Meta's async container processing for Reels/video).
+    # The caller persists containerId and schedules a checkPending resume
+    # rather than treating this as success or failure.
+    pending: bool = False
+    # OPAQUE resume handle for a pending publish. Treat as an opaque string
+    # everywhere outside the publisher that produced it -- a publisher may
+    # encode structured state (e.g. JSON) in it.
+    containerId: str = ""
+    # How long (seconds) to wait before the next checkPending call.
+    checkAfterSec: int = 0
 
 
 class Publisher(ABC):
     """Base class every platform publisher implements."""
 
     platform: str = ""
+
+    # True  -> the fan-out loads raw bytes into the media items (Bluesky
+    #          uploads blobs directly). This is the default so every
+    #          existing publisher is unaffected.
+    # False -> the fan-out supplies a presigned URL instead, and the
+    #          publisher MUST NOT read the object into memory -- this exists
+    #          because a 300MB video would OOM the 128MB publisher Lambda if
+    #          loaded eagerly.
+    needsMediaBytes: bool = True
 
     @abstractmethod
     def validate(self, request: PublishRequest) -> list:
@@ -58,6 +83,14 @@ class Publisher(ABC):
         PublishResult(ok=False, error=...).
         """
         raise NotImplementedError
+
+    def checkPending(self, request: PublishRequest, containerId: str, checkCount: int) -> PublishResult:
+        """Resume a pending publish, given the opaque containerId returned by
+        a prior publish()/checkPending() call. NOT abstract -- platforms
+        that never return pending=True never need to implement this; the
+        default raises NotImplementedError so they are otherwise unaffected.
+        """
+        raise NotImplementedError(f"{type(self).__name__} does not support checkPending")
 
 
 class UnknownPublisherError(Exception):

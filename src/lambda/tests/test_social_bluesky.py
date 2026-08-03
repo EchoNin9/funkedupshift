@@ -302,8 +302,11 @@ def test_get_publisher_bluesky_returns_the_class():
 def test_get_publisher_unknown_platform_raises_cleanly():
     from social.publishers import UnknownPublisherError, getPublisher
 
+    # Was "instagram" until phase 3 registered it. Any string that is not a
+    # registered platform works here -- the point is the clean failure mode,
+    # not the particular name.
     with pytest.raises(UnknownPublisherError):
-        getPublisher("instagram")
+        getPublisher("myspace")
 
 
 # --- countGraphemes (phase 4) -------------------------------------------------------------
