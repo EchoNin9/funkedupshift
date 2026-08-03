@@ -152,4 +152,14 @@ def listAccounts():
             if leaf == "handle":
                 entry["handle"] = param.get("Value", "")
 
+    # Bluesky stores a "handle" leaf; Instagram does not (its identity leaf is
+    # ig-user-id, a number that means nothing to a human). Without a fallback
+    # the composer renders every Instagram account as "instagram · @", which is
+    # indistinguishable in the account picker. Fall back to the slug, which is
+    # already the human-chosen name. Writing an optional "handle" leaf for an
+    # Instagram account still overrides this.
+    for entry in accountsByKey.values():
+        if not entry["handle"]:
+            entry["handle"] = entry["accountId"]
+
     return sorted(accountsByKey.values(), key=lambda a: (a["platform"], a["accountId"]))
