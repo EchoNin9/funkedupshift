@@ -1,6 +1,7 @@
 """Unit tests for FUNK-28 (banks/transfers/computed balances) and FUNK-29 (imports)."""
 import json
 import sys
+from datetime import date, timedelta
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -114,14 +115,21 @@ def test_delete_transaction_removes_transfer_sibling():
 
 
 def test_transfers_excluded_from_budgets_and_overview():
+    # Dates are relative to today, not hardcoded: overview_payload() filters
+    # cashFlow30d to `today - 30 days`, so fixed dates make this test pass
+    # only while the wall clock happens to sit inside that window. A literal
+    # 2026-07-03 passed locally on Aug 2 and failed in CI on Aug 3 (UTC),
+    # which is a property of the calendar, not of the code under test.
+    recent = (date.today() - timedelta(days=3)).isoformat()
+    recentPlusOne = (date.today() - timedelta(days=2)).isoformat()
     txns = [
-        {"id": "1", "date": "2026-07-02", "accountId": "a1", "amount": -3000.0,
+        {"id": "1", "date": recent, "accountId": "a1", "amount": -3000.0,
          "payee": "Transfer to visa", "category": "Transfer", "transferId": "t1",
          "notes": "", "fitid": ""},
-        {"id": "2", "date": "2026-07-02", "accountId": "a2", "amount": 3000.0,
+        {"id": "2", "date": recent, "accountId": "a2", "amount": 3000.0,
          "payee": "Transfer from chequing", "category": "Transfer", "transferId": "t1",
          "notes": "", "fitid": ""},
-        {"id": "3", "date": "2026-07-03", "accountId": "a1", "amount": -50.0,
+        {"id": "3", "date": recentPlusOne, "accountId": "a1", "amount": -50.0,
          "payee": "Cafe", "category": "Dining", "transferId": "", "notes": "", "fitid": ""},
     ]
     ddb = MagicMock()
