@@ -298,3 +298,18 @@ def test_per_target_overrides_reach_publish_request():
     assert request.media[0]["alt"] == "custom alt"
     assert request.media[0]["bytes"] == b"fake-bytes"
     assert request.overrides == overrides
+
+
+# --- idempotencyKey / scheduledAt wiring (crash-safe republish, phase 5) ------------
+
+
+def test_build_publish_request_sets_idempotency_key_and_scheduled_at():
+    from social.publisher import _buildPublishRequest
+
+    parent = _parent(postId="post1")  # _parent's default scheduledAt is "2026-08-02T15:00:00Z"
+    target = _target(platform="bluesky", accountId="acct-a")
+
+    request = _buildPublishRequest(parent, target)
+
+    assert request.idempotencyKey == "post1:bluesky:acct-a"
+    assert request.scheduledAt == "2026-08-02T15:00:00Z"

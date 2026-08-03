@@ -14,6 +14,17 @@ class PublishRequest:
     media: list = field(default_factory=list)  # [{"bytes": b"...", "mimeType": "image/jpeg", "alt": "..."}]
     links: list = field(default_factory=list)  # [str, ...]
     overrides: dict = field(default_factory=dict)  # platform-specific payload tweaks
+    # Stable per (postId, platform, accountId) key. Publishers that support a
+    # deterministic record key (e.g. Bluesky's AT Protocol rkey) use this to
+    # make a maintenance-sweep republish of a crashed-mid-publish target land
+    # on the SAME record instead of creating a duplicate post. Defaulted so
+    # every existing caller/test keeps constructing PublishRequest unchanged.
+    idempotencyKey: str = ""
+    # ISO-8601 UTC scheduledAt of the parent post -- carried alongside
+    # idempotencyKey so a deterministic record key can be anchored to the
+    # real-world time the post was meant to go out. Also defaulted for the
+    # same backward-compatibility reason.
+    scheduledAt: str = ""
 
 
 @dataclass

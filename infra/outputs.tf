@@ -112,3 +112,18 @@ output "socialAlertsTopicArn" {
   description = "SNS topic ARN for social publish failures and the daily heartbeat (infra/social.tf)."
   value       = aws_sns_topic.socialAlerts.arn
 }
+
+output "socialScheduleGroupName" {
+  description = "EventBridge Scheduler group name for one-shot social post schedules (infra/social.tf)."
+  value       = aws_scheduler_schedule_group.social.name
+}
+
+output "socialPublisherArn" {
+  description = "ARN of the social publisher Lambda, the EventBridge Scheduler target (infra/social.tf)."
+  value       = local.socialPublisherArn
+}
+
+output "socialSchedulerRoleArn" {
+  description = "IAM role ARN EventBridge Scheduler assumes to invoke the social publisher Lambda (infra/social.tf)."
+  value       = aws_iam_role.socialScheduler.arn
+}

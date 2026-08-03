@@ -63,12 +63,18 @@ def _buildPublishRequest(parent, target):
         raw = media.getBytes(key)
         mediaItems.append({"bytes": raw, "mimeType": _guessMimeType(key), "alt": altByKey.get(key, "")})
 
+    postId = parent["postId"]
+    platform = target["platform"]
+    accountId = target["accountId"]
+
     return PublishRequest(
-        accountId=target["accountId"],
+        accountId=accountId,
         text=text,
         media=mediaItems,
         links=links,
         overrides=overrides,
+        idempotencyKey=f"{postId}:{platform}:{accountId}",
+        scheduledAt=parent.get("scheduledAt", ""),
     )
 
 
