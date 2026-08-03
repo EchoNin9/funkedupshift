@@ -28,6 +28,41 @@ interface MediaItem {
   progress: number;
   key?: string;
   error?: string;
+  /** Pixel dimensions, filled in asynchronously for images when readable. Left undefined for video or on read failure — aspect-ratio validation must then be skipped, not treated as a failure. */
+  width?: number;
+  height?: number;
+}
+
+/**
+ * Best-effort image dimension read. Never rejects: on any failure (unsupported
+ * API, decode error, non-image file) it resolves `undefined` so callers can
+ * skip aspect-ratio validation instead of blocking the user.
+ */
+async function readImageDimensions(file: File): Promise<{ width: number; height: number } | undefined> {
+  if (!file.type.startsWith("image/")) return undefined;
+
+  if (typeof createImageBitmap === "function") {
+    try {
+      const bitmap = await createImageBitmap(file);
+      const dims = { width: bitmap.width, height: bitmap.height };
+      bitmap.close();
+      return dims;
+    } catch {
+      // Fall through to the <img> fallback below.
+    }
+  }
+
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const img = new window.Image();
+    const finish = (dims: { width: number; height: number } | undefined) => {
+      URL.revokeObjectURL(url);
+      resolve(dims);
+    };
+    img.onload = () => finish({ width: img.naturalWidth, height: img.naturalHeight });
+    img.onerror = () => finish(undefined);
+    img.src = url;
+  });
 }
 
 const inputClass =
@@ -104,6 +139,21 @@ export default function ComposerPage() {
     return map;
   }, [accounts]);
 
+  // Derived from PLATFORM_RULES so a platform's supported media types stay
+  // defined in one place — union across selected platforms, or across every
+  // known platform when nothing is selected yet.
+  const acceptAttr = useMemo(() => {
+    const platforms =
+      selectedKeys.length > 0
+        ? Array.from(new Set(selectedKeys.map((key) => key.split(":")[0])))
+        : Object.keys(PLATFORM_RULES);
+    const mimes = new Set<string>();
+    for (const platform of platforms) {
+      PLATFORM_RULES[platform]?.allowedMime.forEach((mime) => mimes.add(mime));
+    }
+    return Array.from(mimes).join(",");
+  }, [selectedKeys]);
+
   const resolvedTextFor = useCallback(
     (key: string) => {
       if (overridesEnabled) {
@@ -156,11 +206,22 @@ export default function ComposerPage() {
         progress: 0,
       }));
       setMedia((prev) => [...prev, ...items]);
-      items.forEach((item) => startUpload(item));
+      items.forEach((item) => {
+        startUpload(item);
+        // Best-effort — never blocks the submit flow, and never throws (see
+        // readImageDimensions), so no unhandled rejection here.
+        readImageDimensions(item.file)
+          .then((dims) => {
+            if (dims) updateMediaItem(item.id, dims);
+          })
+          .catch(() => {
+            /* dimensions are optional; ignore */
+          });
+      });
       // Reset so picking the same file again still fires onChange.
       if (fileInputRef.current) fileInputRef.current.value = "";
     },
-    [startUpload]
+    [startUpload, updateMediaItem]
   );
 
   const removeMedia = useCallback((id: string) => {
@@ -185,7 +246,13 @@ export default function ComposerPage() {
 
       const uploadedMedia = media
         .filter((m) => m.status === "uploaded")
-        .map((m) => ({ name: m.file.name, type: m.file.type, size: m.file.size }));
+        .map((m) => ({
+          name: m.file.name,
+          type: m.file.type,
+          size: m.file.size,
+          width: m.width,
+          height: m.height,
+        }));
 
       const perAccount: Record<string, string[]> = {};
       for (const key of selectedKeys) {
@@ -382,7 +449,7 @@ export default function ComposerPage() {
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/jpeg,image/png,image/webp"
+            accept={acceptAttr}
             multiple
             className="hidden"
             onChange={(e) => handleFilesPicked(e.target.files)}
@@ -393,7 +460,7 @@ export default function ComposerPage() {
             className="inline-flex items-center gap-1.5 rounded-lg border border-border-hover bg-surface-2 px-3 py-1.5 text-xs font-medium text-text-primary hover:bg-surface-3 transition-colors"
           >
             <ArrowUpTrayIcon className="h-3.5 w-3.5" />
-            Add images
+            Add media
           </button>
 
           {media.length > 0 && (
@@ -403,11 +470,25 @@ export default function ComposerPage() {
                   key={m.id}
                   className="flex items-center gap-2 rounded-lg border border-border-default bg-surface-1 p-2"
                 >
-                  <img
-                    src={m.previewUrl}
-                    alt={m.file.name}
-                    className="h-10 w-10 shrink-0 rounded object-cover border border-border-subtle"
-                  />
+                  {m.file.type.startsWith("video/") ? (
+                    // <img> can't render an MP4 — a video pick would show a
+                    // broken-image icon. muted+playsInline lets the first frame
+                    // stand in as a thumbnail without autoplaying anything.
+                    <video
+                      src={m.previewUrl}
+                      muted
+                      playsInline
+                      preload="metadata"
+                      aria-label={m.file.name}
+                      className="h-10 w-10 shrink-0 rounded object-cover border border-border-subtle bg-surface-3"
+                    />
+                  ) : (
+                    <img
+                      src={m.previewUrl}
+                      alt={m.file.name}
+                      className="h-10 w-10 shrink-0 rounded object-cover border border-border-subtle"
+                    />
+                  )}
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-xs text-text-primary">{m.file.name}</p>
                     {m.status === "uploading" && (
