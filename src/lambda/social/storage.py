@@ -29,6 +29,7 @@ SOCIAL_TABLE = os.environ.get("SOCIAL_TABLE", "")
 
 STATUS_PENDING = "pending"
 STATUS_PUBLISHING = "publishing"
+STATUS_PROCESSING = "processing"  # NON-terminal: platform accepted media, publish not yet complete
 STATUS_PUBLISHED = "published"
 STATUS_FAILED = "failed"
 STATUS_CANCELLED = "cancelled"
@@ -283,6 +284,101 @@ def updateTargetStatus(postId, platform, accountId, status, expectedNotStatus=No
         if e.response.get("Error", {}).get("Code") == "ConditionalCheckFailedException":
             return False
         raise
+
+
+def setTargetContainer(postId, platform, accountId, containerId):
+    """Persist containerId + containerCreatedAt on a target WITHOUT changing
+    its status. Called BEFORE the platform publish call (via
+    PublishRequest.onContainerCreated) so a crash mid-publish is
+    recoverable -- the containerId is durable even if the process dies
+    before the publish call returns."""
+    table = _tbl()
+    now = _isoNowUtc()
+    table.update_item(
+        Key=_targetKey(postId, platform, accountId),
+        UpdateExpression="SET containerId = :c, containerCreatedAt = :cc, updatedAt = :u",
+        ExpressionAttributeValues={":c": containerId, ":cc": now, ":u": now},
+    )
+
+
+def markTargetProcessing(postId, platform, accountId, containerId, checkCount):
+    """Set status=processing (non-terminal) + persist containerId and
+    containerCheckCount. Does NOT set statusKey -- the sparse byStatusTime
+    GSI is STATUS#pending only, and a processing target must never appear
+    there (the maintenance sweep would otherwise republish a post whose
+    media is still mid-processing, duplicating it)."""
+    table = _tbl()
+    now = _isoNowUtc()
+    table.update_item(
+        Key=_targetKey(postId, platform, accountId),
+        UpdateExpression=(
+            "SET #s = :s, containerId = :c, containerCheckCount = :cnt, updatedAt = :u"
+        ),
+        ExpressionAttributeNames={"#s": "status"},
+        ExpressionAttributeValues={
+            ":s": STATUS_PROCESSING, ":c": containerId, ":cnt": checkCount, ":u": now,
+        },
+    )
+
+
+def findStuckProcessingTargets(olderThanMinutes):
+    """Target items with status == processing whose updatedAt is older than
+    the cutoff -- i.e. their container-check schedule was lost. Reuses the
+    full-Scan approach countHeartbeat already uses rather than adding a GSI
+    (low-volume table, off the hot path)."""
+    cutoff = (
+        datetime.now(timezone.utc) - timedelta(minutes=olderThanMinutes)
+    ).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+
+    table = _tbl()
+    found = []
+    kwargs = {
+        "FilterExpression": (
+            Attr("entityType").eq("socialTarget")
+            & Attr("status").eq(STATUS_PROCESSING)
+            & Attr("updatedAt").lt(cutoff)
+        )
+    }
+    while True:
+        resp = table.scan(**kwargs)
+        found.extend(resp.get("Items", []))
+        lastKey = resp.get("LastEvaluatedKey")
+        if not lastKey:
+            break
+        kwargs["ExclusiveStartKey"] = lastKey
+    return found
+
+
+def findExpiredContainerTargets(olderThanHours):
+    """Target items with status == processing whose containerCreatedAt is
+    older than the cutoff -- the platform's container has exceeded its
+    documented validity window and can never be published. Distinct from
+    findStuckProcessingTargets: containerCreatedAt is set once (at container
+    creation) and never advances, whereas updatedAt refreshes on every
+    successful check -- a target can have a fresh updatedAt yet still be
+    sitting on an expired container. Full-Scan, same rationale as
+    findStuckProcessingTargets/countHeartbeat."""
+    cutoff = (
+        datetime.now(timezone.utc) - timedelta(hours=olderThanHours)
+    ).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+
+    table = _tbl()
+    found = []
+    kwargs = {
+        "FilterExpression": (
+            Attr("entityType").eq("socialTarget")
+            & Attr("status").eq(STATUS_PROCESSING)
+            & Attr("containerCreatedAt").lt(cutoff)
+        )
+    }
+    while True:
+        resp = table.scan(**kwargs)
+        found.extend(resp.get("Items", []))
+        lastKey = resp.get("LastEvaluatedKey")
+        if not lastKey:
+            break
+        kwargs["ExclusiveStartKey"] = lastKey
+    return found
 
 
 def incrementAttempt(postId, platform, accountId):

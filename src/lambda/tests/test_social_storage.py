@@ -151,12 +151,23 @@ def test_update_parent_status_removes_status_key_on_non_pending(status):
         (["pending", "published"], "publishing"),
         (["publishing"], "publishing"),
         ([], "pending"),
+        # processing is non-terminal -- a mixed sync-published +
+        # still-processing fan-out must stay "publishing", not resolve
+        # early (test matrix #6).
+        (["processing", "published"], "publishing"),
+        (["processing"], "publishing"),
     ],
 )
 def test_derive_parent_status_rollup(targetStatuses, expected):
     from social import storage
 
     assert storage.deriveParentStatus(targetStatuses) == expected
+
+
+def test_processing_is_not_a_terminal_target_status():
+    from social import storage
+
+    assert storage.STATUS_PROCESSING not in storage.TARGET_TERMINAL_STATUSES
 
 
 def test_rollup_parent_status_queries_targets_and_persists_derived_status():
@@ -247,3 +258,118 @@ def test_increment_attempt_returns_new_count():
 
     assert newCount == 2
     assert table.update_item.call_args.kwargs["UpdateExpression"] == "ADD attemptCount :one SET updatedAt = :u"
+
+
+# --- setTargetContainer / markTargetProcessing (phase 5) --------------------------
+
+
+def test_set_target_container_persists_container_id_without_changing_status():
+    from social import storage
+
+    table = MagicMock()
+    with patch.object(storage, "_tbl", return_value=table):
+        storage.setTargetContainer("post1", "instagram", "a", "container-123")
+
+    kwargs = table.update_item.call_args.kwargs
+    assert kwargs["Key"] == {"PK": "POST#post1", "SK": "TARGET#instagram#a"}
+    assert kwargs["ExpressionAttributeValues"][":c"] == "container-123"
+    assert "containerCreatedAt" in kwargs["UpdateExpression"]
+    # Must not touch status -- this is a durability write, not a transition.
+    assert "status" not in kwargs["UpdateExpression"].lower().replace("containercreatedat", "")
+
+
+def test_mark_target_processing_sets_status_and_container_fields_no_status_key():
+    """Anti-duplicate invariant (test matrix #5): a processing target must
+    NOT carry statusKey. markTargetProcessing only ever touches the TARGET
+    item, which never had statusKey to begin with (that field lives only on
+    the parent META item) -- assert the update expression doesn't
+    reference it, so a future edit can't accidentally add it."""
+    from social import storage
+
+    table = MagicMock()
+    with patch.object(storage, "_tbl", return_value=table):
+        storage.markTargetProcessing("post1", "instagram", "a", "container-123", checkCount=2)
+
+    kwargs = table.update_item.call_args.kwargs
+    assert kwargs["ExpressionAttributeValues"][":s"] == storage.STATUS_PROCESSING
+    assert kwargs["ExpressionAttributeValues"][":c"] == "container-123"
+    assert kwargs["ExpressionAttributeValues"][":cnt"] == 2
+    assert "statusKey" not in kwargs["UpdateExpression"]
+
+
+def test_processing_target_parent_has_no_status_key_after_rollup():
+    """Test matrix #5, end to end: rolling up a parent with a processing
+    target must REMOVE statusKey (via the existing non-pending branch of
+    updateParentStatus), not set it -- otherwise the sparse byStatusTime
+    index would make the maintenance sweep republish a post whose media is
+    still mid-processing."""
+    from social import storage
+
+    table = MagicMock()
+    table.query.return_value = {
+        "Items": [
+            {"PK": "POST#post1", "SK": "META", "postId": "post1"},
+            {"PK": "POST#post1", "SK": "TARGET#instagram#a", "status": storage.STATUS_PROCESSING},
+        ]
+    }
+
+    with patch.object(storage, "_tbl", return_value=table):
+        result = storage.rollupParentStatus("post1")
+
+    assert result == storage.STATUS_PUBLISHING
+    update_kwargs = table.update_item.call_args.kwargs
+    assert "REMOVE statusKey" in update_kwargs["UpdateExpression"]
+    assert ":sk" not in update_kwargs["ExpressionAttributeValues"]
+
+
+# --- findStuckProcessingTargets / findExpiredContainerTargets (phase 5) -----------
+
+
+def test_find_stuck_processing_targets_filters_status_and_updated_at():
+    from social import storage
+
+    table = MagicMock()
+    table.scan.return_value = {"Items": []}
+
+    with patch.object(storage, "_tbl", return_value=table):
+        storage.findStuckProcessingTargets(30)
+
+    kwargs = table.scan.call_args.kwargs
+    leaves = _flattenConditionExpression(kwargs["FilterExpression"])
+    leafByAttr = {name: (op, val) for name, op, val in leaves}
+    assert leafByAttr["status"] == ("=", storage.STATUS_PROCESSING)
+    assert leafByAttr["entityType"] == ("=", "socialTarget")
+    assert leafByAttr["updatedAt"][0] == "<"
+
+
+def test_find_expired_container_targets_filters_status_and_container_created_at():
+    from social import storage
+
+    table = MagicMock()
+    table.scan.return_value = {"Items": []}
+
+    with patch.object(storage, "_tbl", return_value=table):
+        storage.findExpiredContainerTargets(24)
+
+    kwargs = table.scan.call_args.kwargs
+    leaves = _flattenConditionExpression(kwargs["FilterExpression"])
+    leafByAttr = {name: (op, val) for name, op, val in leaves}
+    assert leafByAttr["status"] == ("=", storage.STATUS_PROCESSING)
+    assert leafByAttr["containerCreatedAt"][0] == "<"
+
+
+def test_find_stuck_processing_targets_paginates():
+    from social import storage
+
+    table = MagicMock()
+    table.scan.side_effect = [
+        {"Items": [{"postId": "p1"}], "LastEvaluatedKey": {"PK": "x"}},
+        {"Items": [{"postId": "p2"}]},
+    ]
+
+    with patch.object(storage, "_tbl", return_value=table):
+        result = storage.findStuckProcessingTargets(30)
+
+    assert [i["postId"] for i in result] == ["p1", "p2"]
+    assert table.scan.call_count == 2
+    assert table.scan.call_args_list[1].kwargs["ExclusiveStartKey"] == {"PK": "x"}

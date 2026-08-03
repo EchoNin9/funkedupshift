@@ -272,6 +272,34 @@ resource "aws_iam_role_policy" "lambdaSocial" {
         }
       },
       {
+        # PutParameter on a SecureString needs its own KMS grant, separate
+        # from the read-side kms:Decrypt above: SSM encrypts the new value
+        # by calling kms:GenerateDataKey against the CMK (envelope
+        # encryption) — it does NOT call kms:Encrypt directly, so that
+        # action is deliberately not granted here. Same key, same
+        # kms:ViaService restriction as the Decrypt statement above.
+        Effect   = "Allow"
+        Action   = ["kms:GenerateDataKey"]
+        Resource = data.aws_kms_alias.ssm.target_key_arn
+        Condition = {
+          StringEquals = {
+            "kms:ViaService" = "ssm.${var.awsRegion}.amazonaws.com"
+          }
+        }
+      },
+      {
+        # Scoped to ONLY the shared Instagram user-token parameter — this is
+        # the one SSM value the module ever writes to (the monthly
+        # token_refresh job's fb_exchange_token refresh, social/token_refresh.py
+        # part 3). Deliberately narrower than the ssm:Get* statement above,
+        # which covers the whole /funkedupshift/social/* read path: nothing
+        # else in this Lambda role should ever be able to overwrite any
+        # other account's credentials.
+        Effect   = "Allow"
+        Action   = ["ssm:PutParameter"]
+        Resource = "arn:aws:ssm:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:parameter/funkedupshift/social/instagram/user-token"
+      },
+      {
         Effect   = "Allow"
         Action   = ["scheduler:CreateSchedule", "scheduler:DeleteSchedule", "scheduler:GetSchedule"]
         Resource = "arn:aws:scheduler:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:schedule/${aws_scheduler_schedule_group.social.name}/*"
@@ -387,6 +415,20 @@ resource "aws_lambda_function" "socialMaintenance" {
   }
 }
 
+resource "aws_lambda_function" "socialTokenRefresh" {
+  filename         = data.archive_file.social.output_path
+  function_name    = "fus-social-token-refresh"
+  role             = aws_iam_role.lambdaSocial.arn
+  handler          = "social.token_refresh.handler"
+  source_code_hash = data.archive_file.social.output_base64sha256
+  runtime          = "python3.13"
+  timeout          = 120
+
+  environment {
+    variables = local.socialEnvVars
+  }
+}
+
 # ------------------------------------------------------------------------------
 # Daily reconciliation sweep — the safety net, not the primary publish
 # mechanism (EventBridge Scheduler one-shots above are primary). Mirrors the
@@ -413,6 +455,33 @@ resource "aws_lambda_permission" "allowEventbridgeSocialReconcile" {
   function_name = aws_lambda_function.socialMaintenance.function_name
   principal     = "events.amazonaws.com"
   source_arn    = aws_cloudwatch_event_rule.socialReconcile.arn
+}
+
+# ------------------------------------------------------------------------------
+# Monthly Instagram token validator/heartbeat — see social/token_refresh.py.
+# Offset 30 minutes from collector_daily's 06:00 UTC (main.tf) and 15 minutes
+# from socialReconcile's 06:15 UTC daily job above, so none of the three
+# unrelated jobs cold-start at the same instant.
+# ------------------------------------------------------------------------------
+resource "aws_cloudwatch_event_rule" "socialTokenRefresh" {
+  name                = "fus-social-token-refresh-monthly"
+  description         = "Trigger the monthly Instagram token validator/heartbeat"
+  schedule_expression = "cron(30 6 1 * ? *)"
+}
+
+resource "aws_cloudwatch_event_target" "socialTokenRefreshTarget" {
+  rule      = aws_cloudwatch_event_rule.socialTokenRefresh.name
+  target_id = "socialTokenRefresh"
+  arn       = aws_lambda_function.socialTokenRefresh.arn
+  input     = jsonencode({ job = "refresh_instagram_token" })
+}
+
+resource "aws_lambda_permission" "allowEventbridgeSocialTokenRefresh" {
+  statement_id  = "AllowExecutionFromEventBridge"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.socialTokenRefresh.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.socialTokenRefresh.arn
 }
 
 # ------------------------------------------------------------------------------

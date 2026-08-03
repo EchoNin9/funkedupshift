@@ -15,3 +15,4 @@ from social.publishers.base import (  # noqa: F401
     UnknownPublisherError,
 )
 from social.publishers import bluesky  # noqa: F401  (import-time side effect: registers BlueskyPublisher)
+from social.publishers import instagram  # noqa: F401  (import-time side effect: registers InstagramPublisher)

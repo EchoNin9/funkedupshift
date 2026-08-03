@@ -65,6 +65,64 @@ def getBlueskyCredentials(accountId):
     return handle, appPassword
 
 
+def getInstagramCredentials(accountId):
+    """Return (igUserId, accessToken) for an Instagram account from SSM.
+
+    accessToken is the Page access token used for publishing (see
+    docs/social/instagram-api-notes.md §9) -- in the Facebook Login model
+    this project uses, that token is effectively non-expiring, unlike the
+    optional shared long-lived user token (see getInstagramUserToken).
+    """
+    igUserId = getParameter(f"/funkedupshift/social/instagram/{accountId}/ig-user-id", decrypt=False)
+    accessToken = getParameter(f"/funkedupshift/social/instagram/{accountId}/access-token", decrypt=True)
+    return igUserId, accessToken
+
+
+def getInstagramAppCredentials():
+    """Return (appId, appSecret) shared across all configured Instagram
+    accounts -- used for the debug_token validation call and the
+    long-lived user-token exchange (see social/token_refresh.py)."""
+    appId = getParameter("/funkedupshift/social/instagram/app-id", decrypt=False)
+    appSecret = getParameter("/funkedupshift/social/instagram/app-secret", decrypt=True)
+    return appId, appSecret
+
+
+INSTAGRAM_USER_TOKEN_PARAM = "/funkedupshift/social/instagram/user-token"
+
+
+def getInstagramUserToken():
+    """Return the shared long-lived Instagram user token, or None if it
+    isn't configured.
+
+    This parameter is OPTIONAL: it only exists for accounts where a real
+    60-day refresh cycle is wired up (see docs/social/instagram-api-notes.md
+    §9). Its absence is not an error -- token_refresh.py's monthly job is
+    still a valid validator/heartbeat run without it.
+    """
+    try:
+        return getParameter(INSTAGRAM_USER_TOKEN_PARAM, decrypt=True)
+    except SecretNotFoundError:
+        return None
+
+
+def putInstagramUserToken(newToken):
+    """Write the refreshed shared Instagram user token back to SSM as a
+    SecureString (see social/token_refresh.py, step 3 of the monthly job).
+
+    Invalidates this parameter's cache entry so a subsequent read within
+    the same warm container doesn't return the stale pre-refresh value.
+    Never logs `newToken` -- only the parameter NAME, per this module's
+    no-secrets-in-logs rule.
+    """
+    _client().put_parameter(
+        Name=INSTAGRAM_USER_TOKEN_PARAM,
+        Value=newToken,
+        Type="SecureString",
+        Overwrite=True,
+    )
+    _cache.pop((INSTAGRAM_USER_TOKEN_PARAM, True), None)
+
+
 SOCIAL_PARAMS_PREFIX = "/funkedupshift/social/"
 
 

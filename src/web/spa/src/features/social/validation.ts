@@ -8,6 +8,9 @@ export interface MediaDraftFile {
   name: string;
   type: string;
   size: number;
+  /** Pixel dimensions, when known (images only). Undefined when unread/unreadable/video — aspect-ratio checks must skip rather than fail in that case. */
+  width?: number;
+  height?: number;
 }
 
 export interface PlatformDraft {
@@ -19,10 +22,20 @@ export interface PlatformDraft {
 export interface PlatformRules {
   label: string;
   maxGraphemes: number;
+  /** Max media items (Instagram's carousel limit covers mixed image/video). */
   maxImages: number;
   maxImageBytes: number;
   allowedMime: string[];
   validate: (draft: PlatformDraft) => string[];
+  /** At least one media item is required (Instagram can't publish text-only). */
+  requiresMedia?: boolean;
+  maxHashtags?: number;
+  maxMentions?: number;
+  /** Inclusive aspect-ratio (width / height) bounds for image media. */
+  minAspectRatio?: number;
+  maxAspectRatio?: number;
+  /** Byte limit for video media, distinct from maxImageBytes. */
+  maxVideoBytes?: number;
 }
 
 /**
@@ -79,6 +92,82 @@ export const PLATFORM_RULES: Record<string, PlatformRules> = {
           errors.push(`${m.name}: ${formatBytes(m.size)} — over the ${formatBytes(rules.maxImageBytes)} limit.`);
         }
       }
+      return errors;
+    },
+  },
+  instagram: {
+    label: "Instagram",
+    maxGraphemes: 2200,
+    maxImages: 10,
+    maxImageBytes: 8_000_000,
+    maxVideoBytes: 300_000_000,
+    allowedMime: ["image/jpeg", "video/mp4"],
+    requiresMedia: true,
+    maxHashtags: 30,
+    maxMentions: 20,
+    minAspectRatio: 0.8,
+    maxAspectRatio: 1.91,
+    validate(draft) {
+      const rules = PLATFORM_RULES.instagram;
+      const errors: string[] = [];
+      const len = countGraphemes(draft.text);
+
+      if (len > rules.maxGraphemes) {
+        errors.push(`Text is ${len} characters — over the ${rules.maxGraphemes} limit.`);
+      }
+
+      const hashtags = draft.text.match(/#[^\s#@]+/g) ?? [];
+      if (rules.maxHashtags != null && hashtags.length > rules.maxHashtags) {
+        errors.push(`Too many hashtags (${hashtags.length}, max ${rules.maxHashtags}).`);
+      }
+
+      const mentions = draft.text.match(/@[^\s#@]+/g) ?? [];
+      if (rules.maxMentions != null && mentions.length > rules.maxMentions) {
+        errors.push(`Too many @ mentions (${mentions.length}, max ${rules.maxMentions}).`);
+      }
+
+      if (rules.requiresMedia && draft.media.length === 0) {
+        errors.push("Instagram requires at least one photo or video — text-only posts aren't supported.");
+      }
+
+      if (draft.media.length > rules.maxImages) {
+        errors.push(`Too many media items (${draft.media.length}, max ${rules.maxImages}).`);
+      }
+
+      for (const m of draft.media) {
+        const isVideo = m.type.startsWith("video/");
+
+        if (!rules.allowedMime.includes(m.type)) {
+          errors.push(
+            `${m.name}: unsupported file type${m.type ? ` (${m.type})` : ""} — Instagram needs JPEG images or MP4 video.`
+          );
+          continue;
+        }
+
+        if (isVideo) {
+          if (rules.maxVideoBytes != null && m.size > rules.maxVideoBytes) {
+            errors.push(`${m.name}: ${formatBytes(m.size)} — over the ${formatBytes(rules.maxVideoBytes)} video limit.`);
+          }
+        } else {
+          if (m.size > rules.maxImageBytes) {
+            errors.push(`${m.name}: ${formatBytes(m.size)} — over the ${formatBytes(rules.maxImageBytes)} limit.`);
+          }
+          if (
+            rules.minAspectRatio != null &&
+            rules.maxAspectRatio != null &&
+            m.width &&
+            m.height
+          ) {
+            const ratio = m.width / m.height;
+            if (ratio < rules.minAspectRatio || ratio > rules.maxAspectRatio) {
+              errors.push(
+                `${m.name}: aspect ratio ${ratio.toFixed(2)}:1 is outside Instagram's 4:5–1.91:1 range.`
+              );
+            }
+          }
+        }
+      }
+
       return errors;
     },
   },

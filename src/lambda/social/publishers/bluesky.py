@@ -7,6 +7,7 @@ A fresh session (com.atproto.server.createSession) is created on every
 publish() call. Deliberately not cached/refreshed: this Lambda is
 short-lived and a stale token is worse than one extra login call.
 """
+import hashlib
 import json
 import logging
 import re
@@ -30,6 +31,22 @@ MAX_IMAGE_BYTES = 1_000_000
 # Bluesky's actual limit is 300 *graphemes*, enforced via countGraphemes()
 # below (stdlib unicodedata only -- no external grapheme-segmentation dep).
 MAX_GRAPHEMES = 300
+
+# --- deterministic AT Protocol TID (record key) -------------------------------
+#
+# app.bsky.feed.post's lexicon specifies `key: tid` -- a plain hash will not
+# validate. A TID is a 64-bit integer encoded as 13 characters of this
+# sortable base32 alphabet, big-endian, 5 bits/char: bit 63 is always 0,
+# bits 62..10 are a 53-bit microsecond-since-epoch timestamp, bits 9..0 are a
+# 10-bit clock id.
+_TID_ALPHABET = "234567abcdefghijklmnopqrstuvwxyz"
+_TID_LENGTH = 13
+
+# Fixed sentinel epoch (2024-01-01T00:00:00Z) used ONLY when scheduledAt is
+# missing/unparseable, so the fallback TID is still fully deterministic --
+# never time.time(), which would break the "same inputs -> same rkey"
+# guarantee this whole mechanism depends on.
+_TID_FALLBACK_EPOCH_SECONDS = 1704067200
 
 # --- grapheme counting (stdlib-only, no external deps) ------------------------
 
@@ -219,6 +236,178 @@ def _isoNowUtc():
     return datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
 
 
+def _s32Encode(value, length=_TID_LENGTH):
+    """Encode a non-negative int as `length` chars of the TID base32
+    alphabet, big-endian (most-significant chunk first, 5 bits/char)."""
+    chars = [""] * length
+    v = value
+    for i in range(length - 1, -1, -1):
+        chars[i] = _TID_ALPHABET[v & 0x1F]
+        v >>= 5
+    return "".join(chars)
+
+
+def _parseScheduledAtEpochSeconds(scheduledAt):
+    """Parse an ISO-8601 scheduledAt (optionally 'Z'-suffixed) into epoch
+    seconds. Returns None when empty/unparseable so the caller can fall
+    back to a fixed sentinel instead of guessing."""
+    if not scheduledAt:
+        return None
+    try:
+        s = scheduledAt.strip()
+        if s.endswith("Z"):
+            s = s[:-1] + "+00:00"
+        dt = datetime.fromisoformat(s)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.timestamp()
+    except (ValueError, TypeError):
+        return None
+
+
+def _deterministicRkey(idempotencyKey, scheduledAt):
+    """Derive a deterministic, lexicon-valid AT Protocol TID from a stable
+    per-target idempotency key and the parent post's scheduledAt.
+
+    Why: a target stuck in 'publishing' (process crashed between the
+    platform ack and the DynamoDB write) gets republished by the
+    maintenance sweep. A deterministic rkey makes that republish land on
+    the exact same record instead of creating a duplicate post -- see the
+    createRecord/getRecord replay handling in _createRecord's caller.
+
+    The timestamp component is anchored to the real scheduledAt second (so
+    the TID sorts correctly among genuinely-time-ordered posts); the
+    sub-second microseconds and the clock id are both derived from a
+    SHA-256 hash of idempotencyKey, so the same inputs always produce the
+    same TID -- no randomness, no wall-clock dependency.
+    """
+    digest = hashlib.sha256(idempotencyKey.encode("utf-8")).digest()
+    subSecondSource = int.from_bytes(digest[0:8], "big")
+    clockIdSource = int.from_bytes(digest[8:16], "big")
+
+    epochSeconds = _parseScheduledAtEpochSeconds(scheduledAt)
+    if epochSeconds is None:
+        epochSeconds = _TID_FALLBACK_EPOCH_SECONDS
+
+    micros = int(epochSeconds) * 1_000_000 + (subSecondSource % 1_000_000)
+    clockid = clockIdSource % 1024
+    value = (micros << 10) | clockid
+
+    tid = _s32Encode(value, _TID_LENGTH)
+    assert len(tid) == _TID_LENGTH
+    return tid
+
+
+# --- image dimensions (stdlib-only; Pillow is not available to this Lambda) --
+
+
+def _pngDimensions(data):
+    if len(data) < 24 or data[:8] != b"\x89PNG\r\n\x1a\n" or data[12:16] != b"IHDR":
+        return None
+    width = int.from_bytes(data[16:20], "big")
+    height = int.from_bytes(data[20:24], "big")
+    return (width, height)
+
+
+_JPEG_SOF_MARKERS = frozenset(range(0xC0, 0xD0)) - {0xC4, 0xC8, 0xCC}
+
+
+def _jpegDimensions(data):
+    n = len(data)
+    if n < 4 or data[0:2] != b"\xff\xd8":
+        return None
+
+    i = 2
+    while i < n:
+        if data[i] != 0xFF:
+            return None
+        j = i + 1
+        while j < n and data[j] == 0xFF:  # skip fill bytes
+            j += 1
+        if j >= n:
+            return None
+        marker = data[j]
+        i = j + 1
+
+        if marker == 0xD9:  # EOI -- ran off the end without finding a SOF
+            return None
+        if marker == 0x01 or 0xD0 <= marker <= 0xD7:
+            # No-payload markers (TEM, restart markers) -- no length field.
+            continue
+        if i + 2 > n:
+            return None
+        segLength = int.from_bytes(data[i:i + 2], "big")
+        if marker in _JPEG_SOF_MARKERS:
+            if i + 7 > n:
+                return None
+            height = int.from_bytes(data[i + 3:i + 5], "big")
+            width = int.from_bytes(data[i + 5:i + 7], "big")
+            return (width, height)
+        if segLength < 2 or i + segLength > n:
+            return None
+        i += segLength
+    return None
+
+
+def _webpDimensions(data):
+    # 20 = 12-byte RIFF/WEBP header + 8-byte chunk header (fourcc + size);
+    # each branch below further checks its own chunk-data minimum (VP8L's
+    # smallest valid payload is 5 bytes, so a blanket 30-byte floor here
+    # would wrongly reject a minimal-but-valid VP8L file).
+    if len(data) < 20 or data[0:4] != b"RIFF" or data[8:12] != b"WEBP":
+        return None
+
+    fourcc = data[12:16]
+    chunk = data[20:]
+
+    if fourcc == b"VP8 ":
+        if len(chunk) < 10 or chunk[3:6] != b"\x9d\x01\x2a":
+            return None
+        width = int.from_bytes(chunk[6:8], "little") & 0x3FFF
+        height = int.from_bytes(chunk[8:10], "little") & 0x3FFF
+        return (width, height)
+
+    if fourcc == b"VP8L":
+        if len(chunk) < 5 or chunk[0] != 0x2F:
+            return None
+        bits = int.from_bytes(chunk[1:5], "little")
+        width = (bits & 0x3FFF) + 1
+        height = ((bits >> 14) & 0x3FFF) + 1
+        return (width, height)
+
+    if fourcc == b"VP8X":
+        if len(chunk) < 10:
+            return None
+        width = int.from_bytes(chunk[4:7], "little") + 1
+        height = int.from_bytes(chunk[7:10], "little") + 1
+        return (width, height)
+
+    return None
+
+
+def _imageDimensions(data):
+    """Return (width, height) parsed from raw image bytes (PNG, JPEG, or
+    WebP -- the three formats the presign route accepts), or None if the
+    format is unrecognised or the bytes are truncated/malformed.
+
+    Never raises: a dimension-parse failure must not break a publish --
+    callers just omit the aspectRatio key for that image.
+    """
+    if not data:
+        return None
+    try:
+        if data[:8] == b"\x89PNG\r\n\x1a\n":
+            return _pngDimensions(data)
+        if data[:2] == b"\xff\xd8":
+            return _jpegDimensions(data)
+        if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+            return _webpDimensions(data)
+    except Exception as e:  # noqa: BLE001 -- must never raise out of publish()
+        logger.warning("_imageDimensions failed to parse image bytes: %s", e)
+        return None
+    return None
+
+
 class BlueskyPublisher(Publisher):
     platform = "bluesky"
 
@@ -260,13 +449,23 @@ class BlueskyPublisher(Publisher):
         except SecretNotFoundError as e:
             return PublishResult(ok=False, error=str(e))
 
+        preflightError = self._preflightResolveHandle(handle, request.accountId)
+        if preflightError:
+            return PublishResult(ok=False, error=preflightError)
+
+        rkey = self._deterministicRkeyFor(request) if request.idempotencyKey else None
+
         try:
             accessJwt, did = self._createSession(handle, appPassword)
 
             blobs = []
             for item in request.media:
                 blob = self._uploadBlob(accessJwt, item)
-                blobs.append({"blob": blob, "alt": item.get("alt", "")})
+                blobs.append({
+                    "blob": blob,
+                    "alt": item.get("alt", ""),
+                    "dims": _imageDimensions(item.get("bytes") or b""),
+                })
 
             facets = buildFacets(request.text, lambda h: self._resolveHandle(h))
 
@@ -279,21 +478,41 @@ class BlueskyPublisher(Publisher):
             if facets:
                 record["facets"] = facets
             if blobs:
+                images = []
+                for b in blobs:
+                    image = {"alt": b["alt"], "image": b["blob"]}
+                    if b["dims"] is not None:
+                        width, height = b["dims"]
+                        image["aspectRatio"] = {"width": width, "height": height}
+                    images.append(image)
                 record["embed"] = {
                     "$type": "app.bsky.embed.images",
-                    "images": [{"alt": b["alt"], "image": b["blob"]} for b in blobs],
+                    "images": images,
                 }
-
-            resp = self._createRecord(accessJwt, did, record)
         except HTTPError as e:
             return PublishResult(ok=False, error=self._httpErrorMessage(e))
         except URLError as e:
             return PublishResult(ok=False, error=f"Network error contacting Bluesky: {e.reason}")
 
+        try:
+            resp = self._createRecord(accessJwt, did, record, rkey=rkey)
+        except HTTPError as e:
+            if rkey:
+                replay = self._checkForExistingRecord(accessJwt, did, handle, rkey)
+                if replay is not None:
+                    return replay
+            return PublishResult(ok=False, error=self._httpErrorMessage(e))
+        except URLError as e:
+            return PublishResult(ok=False, error=f"Network error contacting Bluesky: {e.reason}")
+
         uri = resp.get("uri") or ""
-        rkey = uri.rsplit("/", 1)[-1] if uri else ""
-        permalink = f"https://bsky.app/profile/{handle}/post/{rkey}" if rkey else None
+        respRkey = uri.rsplit("/", 1)[-1] if uri else ""
+        permalink = f"https://bsky.app/profile/{handle}/post/{respRkey}" if respRkey else None
         return PublishResult(ok=True, permalink=permalink, platformPostId=uri or None)
+
+    @staticmethod
+    def _deterministicRkeyFor(request):
+        return _deterministicRkey(request.idempotencyKey, request.scheduledAt)
 
     # --- XRPC calls --------------------------------------------------------------
 
@@ -323,15 +542,17 @@ class BlueskyPublisher(Publisher):
             data = json.loads(resp.read().decode("utf-8"))
         return data["blob"]
 
-    def _createRecord(self, accessJwt, did, record):
-        payload = json.dumps({
+    def _createRecord(self, accessJwt, did, record, rkey=None):
+        payload = {
             "repo": did,
             "collection": "app.bsky.feed.post",
             "record": record,
-        }).encode("utf-8")
+        }
+        if rkey:
+            payload["rkey"] = rkey
         req = Request(
             f"{BSKY_API_BASE}/xrpc/com.atproto.repo.createRecord",
-            data=payload,
+            data=json.dumps(payload).encode("utf-8"),
             headers={
                 "Content-Type": "application/json",
                 "Authorization": f"Bearer {accessJwt}",
@@ -340,6 +561,74 @@ class BlueskyPublisher(Publisher):
         )
         with urlopen(req, timeout=self.timeoutSec) as resp:
             return json.loads(resp.read().decode("utf-8"))
+
+    def _getRecord(self, accessJwt, did, rkey):
+        """GET com.atproto.repo.getRecord for (did, rkey). Raises HTTPError/
+        URLError/ValueError/KeyError on any failure -- callers decide what a
+        failure means (used only for the createRecord replay check below)."""
+        qs = urlencode({"repo": did, "collection": "app.bsky.feed.post", "rkey": rkey})
+        req = Request(
+            f"{BSKY_API_BASE}/xrpc/com.atproto.repo.getRecord?{qs}",
+            headers={"Authorization": f"Bearer {accessJwt}"},
+            method="GET",
+        )
+        with urlopen(req, timeout=self.timeoutSec) as resp:
+            return json.loads(resp.read().decode("utf-8"))
+
+    def _checkForExistingRecord(self, accessJwt, did, handle, rkey):
+        """Called when createRecord fails AND we supplied an explicit
+        (deterministic) rkey -- the record may already exist from a crashed
+        prior attempt (see _deterministicRkey's docstring). If getRecord
+        finds it, the post already went out and is ours (the rkey is
+        deterministic, so it cannot belong to anything else): return an ok
+        PublishResult. If getRecord also fails, return None so the caller
+        falls back to the ORIGINAL createRecord error, unchanged."""
+        try:
+            existing = self._getRecord(accessJwt, did, rkey)
+        except (HTTPError, URLError, ValueError, KeyError) as e:
+            logger.warning("getRecord replay check for rkey=%s failed: %s", rkey, e)
+            return None
+        if not existing:
+            return None
+        uri = f"at://{did}/app.bsky.feed.post/{rkey}"
+        permalink = f"https://bsky.app/profile/{handle}/post/{rkey}"
+        return PublishResult(ok=True, permalink=permalink, platformPostId=uri)
+
+    def _preflightResolveHandle(self, handle, accountId):
+        """Resolve `handle` before createSession so a bad handle (typo'd
+        SSM value, wrong parameter) surfaces a specific, actionable error
+        instead of createSession's opaque "invalid identifier or password"
+        for both failure modes.
+
+        Returns an error string to fail the publish, or None to proceed.
+        A transient network failure (URLError -- no HTTP response at all)
+        must NOT block an otherwise-good publish, so only a resolved
+        failure (HTTPError, or a malformed/empty response) is treated as
+        a hard failure; a URLError just logs and continues.
+        """
+        qs = urlencode({"handle": handle})
+        req = Request(f"{BSKY_API_BASE}/xrpc/com.atproto.identity.resolveHandle?{qs}", method="GET")
+        unresolvedMessage = (
+            f"Bluesky handle '{handle}' did not resolve -- check "
+            f"/funkedupshift/social/bluesky/{accountId}/handle in SSM "
+            "(use the account's actual handle, not its display name)."
+        )
+        try:
+            with urlopen(req, timeout=self.timeoutSec) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+        except HTTPError as e:
+            logger.warning("preflight resolveHandle(%s) failed to resolve: %s", handle, e)
+            return unresolvedMessage
+        except URLError as e:
+            logger.warning("preflight resolveHandle(%s) hit a transient network error, continuing: %s", handle, e)
+            return None
+        except (ValueError, KeyError) as e:
+            logger.warning("preflight resolveHandle(%s) returned an unparseable response: %s", handle, e)
+            return unresolvedMessage
+
+        if not data.get("did"):
+            return unresolvedMessage
+        return None
 
     def _resolveHandle(self, handle):
         """GET resolveHandle -> did, or None on any failure. Never raises —

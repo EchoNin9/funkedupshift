@@ -22,6 +22,14 @@ def _heartbeatCounts(pending=0, publishedLast24h=0, failed=0):
     return {"pending": pending, "publishedLast24h": publishedLast24h, "failed": failed}
 
 
+def _processingTarget(postId="post1", platform="instagram", accountId="acct-a", containerCheckCount=1):
+    return {
+        "PK": f"POST#{postId}", "SK": f"TARGET#{platform}#{accountId}",
+        "postId": postId, "platform": platform, "accountId": accountId,
+        "status": "processing", "containerCheckCount": containerCheckCount,
+    }
+
+
 # --- reconcile: retries an overdue-but-under-cap post -------------------------------
 
 
@@ -34,6 +42,8 @@ def test_reconcile_finds_overdue_pending_target_and_retries_it():
     with patch.object(storage, "findOverduePending", return_value=overdue), \
          patch.object(storage, "getPost", return_value=post), \
          patch.object(publisher, "processPost") as mockProcessPost, \
+         patch.object(storage, "findStuckProcessingTargets", return_value=[]), \
+         patch.object(storage, "findExpiredContainerTargets", return_value=[]), \
          patch.object(storage, "countHeartbeat", return_value=_heartbeatCounts()), \
          patch.object(alerts, "sendAlert") as mockAlert, \
          patch.object(alerts, "sendHeartbeat"):
@@ -48,6 +58,8 @@ def test_reconcile_passes_grace_minutes_default_to_storage():
     from social import maintenance, storage
 
     with patch.object(storage, "findOverduePending", return_value=[]) as mockFind, \
+         patch.object(storage, "findStuckProcessingTargets", return_value=[]), \
+         patch.object(storage, "findExpiredContainerTargets", return_value=[]), \
          patch.object(storage, "countHeartbeat", return_value=_heartbeatCounts()), \
          patch("social.maintenance.alerts.sendHeartbeat"):
         maintenance._reconcile()
@@ -70,6 +82,8 @@ def test_reconcile_marks_over_cap_target_failed_and_alerts_without_retrying():
          patch.object(storage, "updateTargetStatus") as mockUpdateTarget, \
          patch.object(storage, "rollupParentStatus") as mockRollup, \
          patch.object(publisher, "processPost") as mockProcessPost, \
+         patch.object(storage, "findStuckProcessingTargets", return_value=[]), \
+         patch.object(storage, "findExpiredContainerTargets", return_value=[]), \
          patch.object(storage, "countHeartbeat", return_value=_heartbeatCounts()), \
          patch.object(alerts, "sendAlert") as mockAlert, \
          patch.object(alerts, "sendHeartbeat"):
@@ -90,6 +104,8 @@ def test_reconcile_nothing_overdue_no_alert_but_heartbeat_still_sent():
     from social import alerts, maintenance, storage
 
     with patch.object(storage, "findOverduePending", return_value=[]), \
+         patch.object(storage, "findStuckProcessingTargets", return_value=[]), \
+         patch.object(storage, "findExpiredContainerTargets", return_value=[]), \
          patch.object(storage, "countHeartbeat", return_value=_heartbeatCounts()), \
          patch.object(alerts, "sendAlert") as mockAlert, \
          patch.object(alerts, "sendHeartbeat") as mockHeartbeat:
@@ -108,6 +124,8 @@ def test_heartbeat_message_includes_the_three_counts():
 
     counts = _heartbeatCounts(pending=3, publishedLast24h=7, failed=2)
     with patch.object(storage, "findOverduePending", return_value=[]), \
+         patch.object(storage, "findStuckProcessingTargets", return_value=[]), \
+         patch.object(storage, "findExpiredContainerTargets", return_value=[]), \
          patch.object(storage, "countHeartbeat", return_value=counts), \
          patch.object(alerts, "sendHeartbeat") as mockHeartbeat:
         maintenance._reconcile()
@@ -116,6 +134,80 @@ def test_heartbeat_message_includes_the_three_counts():
     assert "pending=3" in message
     assert "published_last_24h=7" in message
     assert "failed=2" in message
+
+
+def test_heartbeat_message_includes_stuck_processing_count():
+    from social import alerts, maintenance, storage
+
+    with patch.object(storage, "findOverduePending", return_value=[]), \
+         patch.object(storage, "findStuckProcessingTargets", return_value=[_processingTarget("post1")]), \
+         patch.object(storage, "findExpiredContainerTargets", return_value=[_processingTarget("post2")]), \
+         patch("social.maintenance.publisher.checkContainer"), \
+         patch.object(storage, "updateTargetStatus"), \
+         patch.object(storage, "rollupParentStatus"), \
+         patch.object(storage, "countHeartbeat", return_value=_heartbeatCounts()), \
+         patch.object(alerts, "sendAlert"), \
+         patch.object(alerts, "sendHeartbeat") as mockHeartbeat:
+        maintenance._reconcile()
+
+    message = mockHeartbeat.call_args.args[1]
+    assert "stuck_processing=2" in message
+
+
+# --- stranded-container recovery: stale processing target ----------------------------
+
+
+def test_reconcile_resumes_stale_processing_target_via_check_container():
+    """Test matrix #13: a target stuck in 'processing' with a stale
+    updatedAt (its check schedule was likely lost) gets checkContainer
+    invoked directly, exactly once, by the reconciliation sweep."""
+    from social import alerts, maintenance, storage
+
+    staleTarget = _processingTarget(postId="post1", platform="instagram", accountId="acct-a", containerCheckCount=4)
+
+    with patch.object(storage, "findOverduePending", return_value=[]), \
+         patch.object(storage, "findStuckProcessingTargets", return_value=[staleTarget]) as mockFindStuck, \
+         patch.object(storage, "findExpiredContainerTargets", return_value=[]), \
+         patch("social.maintenance.publisher.checkContainer") as mockCheckContainer, \
+         patch.object(storage, "countHeartbeat", return_value=_heartbeatCounts()), \
+         patch.object(alerts, "sendAlert") as mockAlert, \
+         patch.object(alerts, "sendHeartbeat"):
+        result = maintenance._reconcile()
+
+    mockFindStuck.assert_called_once_with(maintenance.STUCK_PROCESSING_GRACE_MINUTES)
+    mockCheckContainer.assert_called_once_with("post1", "instagram", "acct-a", 4)
+    assert result["resumedProcessing"] == [{"postId": "post1", "platform": "instagram", "accountId": "acct-a"}]
+    mockAlert.assert_not_called()  # resuming isn't itself alert-worthy
+
+
+# --- stranded-container recovery: expired container -----------------------------------
+
+
+def test_reconcile_marks_expired_container_failed_and_alerts():
+    """Test matrix #14: a target whose containerCreatedAt exceeds the 24h
+    validity window is marked failed and triggers an alert, independent of
+    the overdue-pending sweep."""
+    from social import alerts, maintenance, storage
+
+    expiredTarget = _processingTarget(postId="post2", platform="instagram", accountId="acct-b")
+
+    with patch.object(storage, "findOverduePending", return_value=[]), \
+         patch.object(storage, "findStuckProcessingTargets", return_value=[]), \
+         patch.object(storage, "findExpiredContainerTargets", return_value=[expiredTarget]) as mockFindExpired, \
+         patch.object(storage, "updateTargetStatus") as mockUpdateTarget, \
+         patch.object(storage, "rollupParentStatus") as mockRollup, \
+         patch.object(storage, "countHeartbeat", return_value=_heartbeatCounts()), \
+         patch.object(alerts, "sendAlert") as mockAlert, \
+         patch.object(alerts, "sendHeartbeat"):
+        result = maintenance._reconcile()
+
+    mockFindExpired.assert_called_once_with(maintenance.CONTAINER_VALIDITY_HOURS)
+    mockUpdateTarget.assert_called_once()
+    assert mockUpdateTarget.call_args.args[:3] == ("post2", "instagram", "acct-b")
+    assert mockUpdateTarget.call_args.args[3] == storage.STATUS_FAILED
+    mockRollup.assert_called_once_with("post2")
+    mockAlert.assert_called_once()
+    assert result["expiredContainers"] == [{"postId": "post2", "platform": "instagram", "accountId": "acct-b"}]
 
 
 # --- handler dispatch ---------------------------------------------------------------------

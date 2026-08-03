@@ -28,6 +28,13 @@ def _request():
     return PublishRequest(accountId="test-account", text="hello world", media=[], links=[])
 
 
+def _resolveHandleOk(did="did:plc:alice"):
+    """The preflight resolveHandle GET's successful response -- prepend this
+    to a urlopen side_effect list for any test whose publish() call is
+    expected to proceed past the handle-resolution pre-flight."""
+    return _mockResponse({"did": did})
+
+
 # --- session / auth threading ----------------------------------------------------
 
 
@@ -38,6 +45,7 @@ def test_create_session_called_with_identifier_and_password_jwt_threaded(mock_ur
 
     mock_creds.return_value = ("alice.bsky.social", "app-password-123")
     mock_urlopen.side_effect = [
+        _resolveHandleOk(),
         _mockResponse({"accessJwt": "jwt-abc", "did": "did:plc:alice"}),
         _mockResponse({"uri": "at://did:plc:alice/app.bsky.feed.post/rkey123", "cid": "cid1"}),
     ]
@@ -47,13 +55,13 @@ def test_create_session_called_with_identifier_and_password_jwt_threaded(mock_ur
 
     assert result.ok is True
 
-    session_call = mock_urlopen.call_args_list[0]
+    session_call = mock_urlopen.call_args_list[1]
     session_req = session_call[0][0]
     assert "createSession" in session_req.full_url
     body = json.loads(session_req.data.decode("utf-8"))
     assert body == {"identifier": "alice.bsky.social", "password": "app-password-123"}
 
-    record_call = mock_urlopen.call_args_list[1]
+    record_call = mock_urlopen.call_args_list[2]
     record_req = record_call[0][0]
     assert record_req.headers.get("Authorization") == "Bearer jwt-abc"
 
@@ -68,6 +76,7 @@ def test_record_shape_type_createdat_langs_facets_omitted_when_empty(mock_urlope
 
     mock_creds.return_value = ("alice.bsky.social", "pw")
     mock_urlopen.side_effect = [
+        _resolveHandleOk(),
         _mockResponse({"accessJwt": "jwt-abc", "did": "did:plc:alice"}),
         _mockResponse({"uri": "at://did:plc:alice/app.bsky.feed.post/rkey123", "cid": "cid1"}),
     ]
@@ -76,7 +85,7 @@ def test_record_shape_type_createdat_langs_facets_omitted_when_empty(mock_urlope
     result = publisher.publish(_request())
     assert result.ok is True
 
-    record_req = mock_urlopen.call_args_list[1][0][0]
+    record_req = mock_urlopen.call_args_list[2][0][0]
     payload = json.loads(record_req.data.decode("utf-8"))
     record = payload["record"]
 
@@ -100,6 +109,7 @@ def test_record_includes_facets_when_text_has_a_link(mock_urlopen, mock_creds):
 
     mock_creds.return_value = ("alice.bsky.social", "pw")
     mock_urlopen.side_effect = [
+        _resolveHandleOk(),
         _mockResponse({"accessJwt": "jwt-abc", "did": "did:plc:alice"}),
         _mockResponse({"uri": "at://did:plc:alice/app.bsky.feed.post/rkey123", "cid": "cid1"}),
     ]
@@ -109,7 +119,7 @@ def test_record_includes_facets_when_text_has_a_link(mock_urlopen, mock_creds):
     result = publisher.publish(request)
     assert result.ok is True
 
-    record_req = mock_urlopen.call_args_list[1][0][0]
+    record_req = mock_urlopen.call_args_list[2][0][0]
     record = json.loads(record_req.data.decode("utf-8"))["record"]
     assert "facets" in record
     assert record["facets"][0]["features"][0]["uri"] == "https://example.com"
@@ -127,12 +137,15 @@ def test_image_embed_shape_uses_inner_blob_object(mock_urlopen, mock_creds):
     mock_creds.return_value = ("alice.bsky.social", "pw")
     blob_obj = {"$type": "blob", "ref": {"$link": "bafyabc"}, "mimeType": "image/jpeg", "size": 12}
     mock_urlopen.side_effect = [
+        _resolveHandleOk(),
         _mockResponse({"accessJwt": "jwt-abc", "did": "did:plc:alice"}),
         _mockResponse({"blob": blob_obj}),  # uploadBlob response wraps blob inside "blob"
         _mockResponse({"uri": "at://did:plc:alice/app.bsky.feed.post/rkey123", "cid": "cid1"}),
     ]
 
     publisher = BlueskyPublisher()
+    # Not a real JPEG -- _imageDimensions will return None for these bytes, so
+    # this test's embed has no aspectRatio key (covered explicitly elsewhere).
     request = PublishRequest(
         accountId="a",
         text="a photo",
@@ -143,12 +156,12 @@ def test_image_embed_shape_uses_inner_blob_object(mock_urlopen, mock_creds):
     assert result.ok is True
 
     # Blob upload call: raw bytes body, mime-typed Content-Type, bearer auth.
-    blob_req = mock_urlopen.call_args_list[1][0][0]
+    blob_req = mock_urlopen.call_args_list[2][0][0]
     assert blob_req.data == b"fake-jpeg-bytes"
     assert blob_req.headers.get("Content-type") == "image/jpeg"
     assert blob_req.headers.get("Authorization") == "Bearer jwt-abc"
 
-    record_req = mock_urlopen.call_args_list[2][0][0]
+    record_req = mock_urlopen.call_args_list[3][0][0]
     record = json.loads(record_req.data.decode("utf-8"))["record"]
     assert record["embed"]["$type"] == "app.bsky.embed.images"
     assert record["embed"]["images"] == [{"alt": "a cat", "image": blob_obj}]
@@ -225,7 +238,10 @@ def test_http_error_with_bluesky_json_body_surfaces_message(mock_urlopen, mock_c
         fp=None,
     )
     http_err.read = MagicMock(return_value=error_body)
-    mock_urlopen.side_effect = http_err
+    # First call is the preflight resolveHandle (must succeed so we get past
+    # it to createSession, which is what actually fails here with the wrong
+    # password).
+    mock_urlopen.side_effect = [_resolveHandleOk(), http_err]
 
     publisher = BlueskyPublisher()
     result = publisher.publish(_request())
@@ -260,6 +276,7 @@ def test_permalink_built_correctly_from_at_uri(mock_urlopen, mock_creds):
 
     mock_creds.return_value = ("alice.bsky.social", "pw")
     mock_urlopen.side_effect = [
+        _resolveHandleOk(),
         _mockResponse({"accessJwt": "jwt-abc", "did": "did:plc:alice"}),
         _mockResponse({"uri": "at://did:plc:alice/app.bsky.feed.post/3jzz9zq2xyz2y", "cid": "cid1"}),
     ]
@@ -285,8 +302,11 @@ def test_get_publisher_bluesky_returns_the_class():
 def test_get_publisher_unknown_platform_raises_cleanly():
     from social.publishers import UnknownPublisherError, getPublisher
 
+    # Was "instagram" until phase 3 registered it. Any string that is not a
+    # registered platform works here -- the point is the clean failure mode,
+    # not the particular name.
     with pytest.raises(UnknownPublisherError):
-        getPublisher("instagram")
+        getPublisher("myspace")
 
 
 # --- countGraphemes (phase 4) -------------------------------------------------------------
@@ -354,3 +374,370 @@ def test_grapheme_count_301_plain_chars_still_fails_validation():
     assert len(errors) == 1
     assert "301" in errors[0]
     assert "300" in errors[0]
+
+
+# --- deterministic rkey (phase: crash-safe republish) -----------------------------
+
+
+def test_deterministic_rkey_same_inputs_produce_the_same_rkey():
+    from social.publishers.bluesky import _deterministicRkey
+
+    rkey1 = _deterministicRkey("post1:bluesky:acct-a", "2026-08-02T15:00:00Z")
+    rkey2 = _deterministicRkey("post1:bluesky:acct-a", "2026-08-02T15:00:00Z")
+    assert rkey1 == rkey2
+
+
+def test_deterministic_rkey_different_account_id_produces_different_rkey():
+    from social.publishers.bluesky import _deterministicRkey
+
+    rkeyA = _deterministicRkey("post1:bluesky:acct-a", "2026-08-02T15:00:00Z")
+    rkeyB = _deterministicRkey("post1:bluesky:acct-b", "2026-08-02T15:00:00Z")
+    assert rkeyA != rkeyB
+
+
+def test_deterministic_rkey_is_13_chars_of_the_sortable_base32_alphabet():
+    from social.publishers.bluesky import _TID_ALPHABET, _deterministicRkey
+
+    rkey = _deterministicRkey("post1:bluesky:acct-a", "2026-08-02T15:00:00Z")
+    assert len(rkey) == 13
+    assert all(c in _TID_ALPHABET for c in rkey)
+
+
+def test_deterministic_rkey_decoded_timestamp_same_utc_second_as_scheduled_at():
+    from social.publishers.bluesky import _TID_ALPHABET, _deterministicRkey
+
+    scheduledAt = "2026-08-02T15:00:00Z"
+    rkey = _deterministicRkey("post1:bluesky:acct-a", scheduledAt)
+
+    value = 0
+    for ch in rkey:
+        value = (value << 5) | _TID_ALPHABET.index(ch)
+    decodedMicros = value >> 10
+    decodedSeconds = decodedMicros // 1_000_000
+
+    expectedSeconds = int(datetime.fromisoformat(scheduledAt.replace("Z", "+00:00")).timestamp())
+    assert decodedSeconds == expectedSeconds
+
+
+@patch("social.publishers.bluesky.getBlueskyCredentials")
+@patch("social.publishers.bluesky.urlopen")
+def test_empty_idempotency_key_omits_rkey_from_create_record_payload(mock_urlopen, mock_creds):
+    from social.publishers.bluesky import BlueskyPublisher
+
+    mock_creds.return_value = ("alice.bsky.social", "pw")
+    mock_urlopen.side_effect = [
+        _resolveHandleOk(),
+        _mockResponse({"accessJwt": "jwt-abc", "did": "did:plc:alice"}),
+        _mockResponse({"uri": "at://did:plc:alice/app.bsky.feed.post/rkey123", "cid": "cid1"}),
+    ]
+
+    publisher = BlueskyPublisher()
+    result = publisher.publish(_request())  # idempotencyKey defaults to ""
+    assert result.ok is True
+
+    record_req = mock_urlopen.call_args_list[2][0][0]
+    payload = json.loads(record_req.data.decode("utf-8"))
+    assert "rkey" not in payload
+
+
+@patch("social.publishers.bluesky.getBlueskyCredentials")
+@patch("social.publishers.bluesky.urlopen")
+def test_nonempty_idempotency_key_includes_rkey_in_create_record_payload(mock_urlopen, mock_creds):
+    from social.publishers.base import PublishRequest
+    from social.publishers.bluesky import BlueskyPublisher, _deterministicRkey
+
+    mock_creds.return_value = ("alice.bsky.social", "pw")
+    idempotencyKey = "post1:bluesky:a"
+    scheduledAt = "2026-08-02T15:00:00Z"
+    expectedRkey = _deterministicRkey(idempotencyKey, scheduledAt)
+
+    mock_urlopen.side_effect = [
+        _resolveHandleOk(),
+        _mockResponse({"accessJwt": "jwt-abc", "did": "did:plc:alice"}),
+        _mockResponse({"uri": f"at://did:plc:alice/app.bsky.feed.post/{expectedRkey}", "cid": "cid1"}),
+    ]
+
+    request = PublishRequest(
+        accountId="a", text="hi", media=[], links=[], idempotencyKey=idempotencyKey, scheduledAt=scheduledAt,
+    )
+    publisher = BlueskyPublisher()
+    result = publisher.publish(request)
+    assert result.ok is True
+
+    record_req = mock_urlopen.call_args_list[2][0][0]
+    payload = json.loads(record_req.data.decode("utf-8"))
+    assert payload["rkey"] == expectedRkey
+
+
+@patch("social.publishers.bluesky.getBlueskyCredentials")
+@patch("social.publishers.bluesky.urlopen")
+def test_create_record_replay_getrecord_finds_it_returns_ok_with_permalink(mock_urlopen, mock_creds):
+    """A target stuck in 'publishing' gets republished by the maintenance
+    sweep -- createRecord fails (the deterministic rkey already exists from
+    the crashed prior attempt) but getRecord finds it, so this must be
+    treated as success rather than a hard failure."""
+    from social.publishers.base import PublishRequest
+    from social.publishers.bluesky import BlueskyPublisher, _deterministicRkey
+
+    mock_creds.return_value = ("alice.bsky.social", "pw")
+    idempotencyKey = "post1:bluesky:a"
+    scheduledAt = "2026-08-02T15:00:00Z"
+    expectedRkey = _deterministicRkey(idempotencyKey, scheduledAt)
+
+    error_body = json.dumps({"error": "InvalidRequest", "message": "conflict"}).encode()
+    create_record_err = HTTPError(
+        url="https://bsky.social/xrpc/com.atproto.repo.createRecord", code=400, msg="Bad Request", hdrs=None, fp=None
+    )
+    create_record_err.read = MagicMock(return_value=error_body)
+
+    mock_urlopen.side_effect = [
+        _resolveHandleOk(),
+        _mockResponse({"accessJwt": "jwt-abc", "did": "did:plc:alice"}),
+        create_record_err,
+        _mockResponse({"uri": f"at://did:plc:alice/app.bsky.feed.post/{expectedRkey}", "value": {"text": "hi"}}),
+    ]
+
+    request = PublishRequest(
+        accountId="a", text="hi", media=[], links=[], idempotencyKey=idempotencyKey, scheduledAt=scheduledAt,
+    )
+    publisher = BlueskyPublisher()
+    result = publisher.publish(request)
+
+    assert result.ok is True
+    assert expectedRkey in result.permalink
+    assert result.platformPostId == f"at://did:plc:alice/app.bsky.feed.post/{expectedRkey}"
+
+    get_record_call = mock_urlopen.call_args_list[3]
+    get_record_req = get_record_call[0][0]
+    assert "getRecord" in get_record_req.full_url
+    assert get_record_req.headers.get("Authorization") == "Bearer jwt-abc"
+
+
+@patch("social.publishers.bluesky.getBlueskyCredentials")
+@patch("social.publishers.bluesky.urlopen")
+def test_create_record_replay_getrecord_also_fails_returns_original_error(mock_urlopen, mock_creds):
+    from social.publishers.base import PublishRequest
+    from social.publishers.bluesky import BlueskyPublisher
+
+    mock_creds.return_value = ("alice.bsky.social", "pw")
+
+    error_body = json.dumps({"error": "InvalidRequest", "message": "record already exists (maybe)"}).encode()
+    create_record_err = HTTPError(
+        url="https://bsky.social/xrpc/com.atproto.repo.createRecord", code=400, msg="Bad Request", hdrs=None, fp=None
+    )
+    create_record_err.read = MagicMock(return_value=error_body)
+    get_record_err = URLError("timed out")
+
+    mock_urlopen.side_effect = [
+        _resolveHandleOk(),
+        _mockResponse({"accessJwt": "jwt-abc", "did": "did:plc:alice"}),
+        create_record_err,
+        get_record_err,
+    ]
+
+    request = PublishRequest(
+        accountId="a", text="hi", media=[], links=[],
+        idempotencyKey="post1:bluesky:a", scheduledAt="2026-08-02T15:00:00Z",
+    )
+    publisher = BlueskyPublisher()
+    result = publisher.publish(request)
+
+    assert result.ok is False
+    assert result.error == "record already exists (maybe)"
+
+
+# --- image dimensions (stdlib-only aspectRatio parsing) -----------------------------
+
+
+def _pngFixture(width, height):
+    import struct
+
+    sig = b"\x89PNG\r\n\x1a\n"
+    ihdr_data = struct.pack(">II", width, height) + b"\x08\x06\x00\x00\x00"
+    chunk = struct.pack(">I", len(ihdr_data)) + b"IHDR" + ihdr_data + b"\x00\x00\x00\x00"
+    return sig + chunk
+
+
+def _jpegFixture(width, height):
+    import struct
+
+    soi = b"\xff\xd8"
+    num_components = 1
+    payload = b"\x08" + struct.pack(">H", height) + struct.pack(">H", width) + bytes([num_components]) + b"\x01\x11\x00"
+    seg_len = 2 + len(payload)
+    sof = b"\xff\xc0" + struct.pack(">H", seg_len) + payload
+    eoi = b"\xff\xd9"
+    return soi + sof + eoi
+
+
+def _webpVp8Fixture(width, height):
+    import struct
+
+    frame_tag = b"\x00\x00\x00"
+    sync = b"\x9d\x01\x2a"
+    dims = struct.pack("<H", width & 0x3FFF) + struct.pack("<H", height & 0x3FFF)
+    chunk_data = frame_tag + sync + dims
+    chunk = b"VP8 " + struct.pack("<I", len(chunk_data)) + chunk_data
+    riff_size = 4 + len(chunk)
+    return b"RIFF" + struct.pack("<I", riff_size) + b"WEBP" + chunk
+
+
+def _webpVp8LFixture(width, height):
+    import struct
+
+    sig = b"\x2f"
+    bits = ((width - 1) & 0x3FFF) | (((height - 1) & 0x3FFF) << 14)
+    payload = sig + struct.pack("<I", bits)
+    chunk = b"VP8L" + struct.pack("<I", len(payload)) + payload
+    riff_size = 4 + len(chunk)
+    return b"RIFF" + struct.pack("<I", riff_size) + b"WEBP" + chunk
+
+
+def _webpVp8XFixture(width, height):
+    import struct
+
+    flags = b"\x00\x00\x00\x00"
+    dims = struct.pack("<I", width - 1)[:3] + struct.pack("<I", height - 1)[:3]
+    payload = flags + dims
+    chunk = b"VP8X" + struct.pack("<I", len(payload)) + payload
+    riff_size = 4 + len(chunk)
+    return b"RIFF" + struct.pack("<I", riff_size) + b"WEBP" + chunk
+
+
+def test_image_dimensions_png():
+    from social.publishers.bluesky import _imageDimensions
+
+    assert _imageDimensions(_pngFixture(120, 80)) == (120, 80)
+
+
+def test_image_dimensions_jpeg():
+    from social.publishers.bluesky import _imageDimensions
+
+    assert _imageDimensions(_jpegFixture(200, 100)) == (200, 100)
+
+
+def test_image_dimensions_webp_vp8_lossy():
+    from social.publishers.bluesky import _imageDimensions
+
+    assert _imageDimensions(_webpVp8Fixture(64, 48)) == (64, 48)
+
+
+def test_image_dimensions_webp_vp8l_lossless():
+    from social.publishers.bluesky import _imageDimensions
+
+    assert _imageDimensions(_webpVp8LFixture(64, 48)) == (64, 48)
+
+
+def test_image_dimensions_webp_vp8x_extended():
+    from social.publishers.bluesky import _imageDimensions
+
+    assert _imageDimensions(_webpVp8XFixture(500, 300)) == (500, 300)
+
+
+def test_image_dimensions_garbage_bytes_returns_none():
+    from social.publishers.bluesky import _imageDimensions
+
+    assert _imageDimensions(b"not an image, just some junk bytes") is None
+    assert _imageDimensions(b"") is None
+    assert _imageDimensions(b"\x89PNG\r\n\x1a\n\x00\x00") is None  # truncated PNG
+
+
+@patch("social.publishers.bluesky.getBlueskyCredentials")
+@patch("social.publishers.bluesky.urlopen")
+def test_malformed_image_bytes_publish_still_succeeds_no_aspect_ratio_key(mock_urlopen, mock_creds):
+    from social.publishers.base import PublishRequest
+    from social.publishers.bluesky import BlueskyPublisher
+
+    mock_creds.return_value = ("alice.bsky.social", "pw")
+    blob_obj = {"$type": "blob", "ref": {"$link": "bafyabc"}, "mimeType": "image/jpeg", "size": 3}
+    mock_urlopen.side_effect = [
+        _resolveHandleOk(),
+        _mockResponse({"accessJwt": "jwt-abc", "did": "did:plc:alice"}),
+        _mockResponse({"blob": blob_obj}),
+        _mockResponse({"uri": "at://did:plc:alice/app.bsky.feed.post/rkey123", "cid": "cid1"}),
+    ]
+
+    request = PublishRequest(
+        accountId="a", text="a photo",
+        media=[{"bytes": b"xyz", "mimeType": "image/jpeg", "alt": "junk"}],
+        links=[],
+    )
+    publisher = BlueskyPublisher()
+    result = publisher.publish(request)
+    assert result.ok is True
+
+    record_req = mock_urlopen.call_args_list[3][0][0]
+    record = json.loads(record_req.data.decode("utf-8"))["record"]
+    assert "aspectRatio" not in record["embed"]["images"][0]
+
+
+@patch("social.publishers.bluesky.getBlueskyCredentials")
+@patch("social.publishers.bluesky.urlopen")
+def test_successful_publish_with_one_image_produces_aspect_ratio_in_embed(mock_urlopen, mock_creds):
+    from social.publishers.base import PublishRequest
+    from social.publishers.bluesky import BlueskyPublisher
+
+    mock_creds.return_value = ("alice.bsky.social", "pw")
+    blob_obj = {"$type": "blob", "ref": {"$link": "bafyabc"}, "mimeType": "image/png", "size": 100}
+    png_bytes = _pngFixture(300, 150)
+    mock_urlopen.side_effect = [
+        _resolveHandleOk(),
+        _mockResponse({"accessJwt": "jwt-abc", "did": "did:plc:alice"}),
+        _mockResponse({"blob": blob_obj}),
+        _mockResponse({"uri": "at://did:plc:alice/app.bsky.feed.post/rkey123", "cid": "cid1"}),
+    ]
+
+    request = PublishRequest(
+        accountId="a", text="a photo",
+        media=[{"bytes": png_bytes, "mimeType": "image/png", "alt": "a view"}],
+        links=[],
+    )
+    publisher = BlueskyPublisher()
+    result = publisher.publish(request)
+    assert result.ok is True
+
+    record_req = mock_urlopen.call_args_list[3][0][0]
+    record = json.loads(record_req.data.decode("utf-8"))["record"]
+    assert record["embed"]["images"][0]["aspectRatio"] == {"width": 300, "height": 150}
+
+
+# --- handle pre-flight (bad handle vs. bad password) --------------------------------
+
+
+@patch("social.publishers.bluesky.getBlueskyCredentials")
+@patch("social.publishers.bluesky.urlopen")
+def test_preflight_resolve_handle_http_error_fails_clean_and_never_calls_create_session(mock_urlopen, mock_creds):
+    from social.publishers.bluesky import BlueskyPublisher
+
+    mock_creds.return_value = ("typo-dhandle.bsky.social", "pw")
+    resolve_err = HTTPError(
+        url="https://bsky.social/xrpc/com.atproto.identity.resolveHandle",
+        code=400, msg="Bad Request", hdrs=None, fp=None,
+    )
+    resolve_err.read = MagicMock(return_value=b'{"error":"InvalidRequest","message":"Unable to resolve handle"}')
+    mock_urlopen.side_effect = resolve_err
+
+    publisher = BlueskyPublisher()
+    result = publisher.publish(_request())
+
+    assert result.ok is False
+    assert "typo-dhandle.bsky.social" in result.error
+    assert mock_urlopen.call_count == 1  # only the resolveHandle preflight -- createSession never reached
+
+
+@patch("social.publishers.bluesky.getBlueskyCredentials")
+@patch("social.publishers.bluesky.urlopen")
+def test_preflight_resolve_handle_url_error_is_transient_and_publish_proceeds(mock_urlopen, mock_creds):
+    from social.publishers.bluesky import BlueskyPublisher
+
+    mock_creds.return_value = ("alice.bsky.social", "pw")
+    mock_urlopen.side_effect = [
+        URLError("Name or service not known"),  # transient preflight failure -- must not block
+        _mockResponse({"accessJwt": "jwt-abc", "did": "did:plc:alice"}),
+        _mockResponse({"uri": "at://did:plc:alice/app.bsky.feed.post/rkey123", "cid": "cid1"}),
+    ]
+
+    publisher = BlueskyPublisher()
+    result = publisher.publish(_request())
+
+    assert result.ok is True

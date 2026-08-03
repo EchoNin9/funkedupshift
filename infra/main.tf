@@ -299,6 +299,7 @@ data "aws_iam_policy_document" "terraformManage" {
       "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:function:fus-social-api",
       "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:function:fus-social-publisher",
       "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:function:fus-social-maintenance",
+      "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:function:fus-social-token-refresh",
       "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:layer:fus-pillow-layer",
       "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:layer:fus-pillow-layer:*",
       "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:layer:fus-tools-crt-layer",
