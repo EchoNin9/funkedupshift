@@ -17,10 +17,11 @@ statically and are skipped — see each handler's entry in HANDLERS for paths
 that map to a parameterised gateway route.
 
 Checks every handler in HANDLERS (currently `api/handler.py` — the main app
-API — and `tools/handler.py` — the isolated URL-shortener/tools API, see
-docs/tools-platform-phase1-brief.md) against the combined route set from all
+API — `tools/handler.py` — the isolated URL-shortener/tools API, see
+docs/tools-platform-phase1-brief.md — and `social/routes.py` — the isolated
+social-scheduling API, phase 4) against the combined route set from all
 `infra/*.tf` files, since gateway routes for a given handler may live in
-either `main.tf` or a dedicated file like `tools.tf`.
+either `main.tf` or a dedicated file like `tools.tf`/`social.tf`.
 """
 import re
 from pathlib import Path
@@ -33,8 +34,12 @@ INFRA_DIR = Path(__file__).resolve().parents[3] / "infra"
 # handler checks `path == "/sites"` but also a `{id}` variant exists) — add
 # only when a real mapping exists; keep empty otherwise.
 HANDLERS: list[tuple[Path, set[tuple[str, str]]]] = [
-    (LAMBDA_DIR / "api" / "handler.py", set()),
+    (LAMBDA_DIR / "api" / "handler.py", {
+        ("GET", "/admin/stats"),
+        ("POST", "/admin/stats/recompute"),
+    }),
     (LAMBDA_DIR / "tools" / "handler.py", set()),
+    (LAMBDA_DIR / "social" / "routes.py", set()),
 ]
 
 

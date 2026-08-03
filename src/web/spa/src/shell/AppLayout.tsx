@@ -5,6 +5,7 @@ import { useAuth } from "./AuthContext";
 import { useBranding } from "./BrandingContext";
 import { usePlatform } from "./PlatformContext";
 import { AdminLayout } from "./AdminLayout";
+import { SocialGate } from "../features/social/SocialGate";
 import { Header } from "./Header";
 import { DesktopHeaderBar } from "./DesktopHeaderBar";
 import { LeftSidebar, SidebarCollapseProvider, useSidebarCollapse } from "./LeftSidebar";
@@ -39,6 +40,7 @@ const MediaAdminPage = lazy(() => import("../features/admin/MediaAdminPage"));
 const EditSitePage = lazy(() => import("../features/admin/EditSitePage"));
 const EditMediaPage = lazy(() => import("../features/admin/EditMediaPage"));
 const EditUserPage = lazy(() => import("../features/admin/EditUserPage"));
+const StatsAdminPage = lazy(() => import("../features/admin/StatsAdminPage"));
 const SquashPage = lazy(() => import("../features/squash/SquashPage"));
 const SquashAdminPage = lazy(() => import("../features/squash/SquashAdminPage"));
 const FinancesPage = lazy(() => import("../features/finances/FinancesPage"));
@@ -51,6 +53,7 @@ const MemeGeneratorPage = lazy(() => import("../features/memes/MemeGeneratorPage
 const MemeDetailPage = lazy(() => import("../features/memes/MemeDetailPage"));
 const EditMemePage = lazy(() => import("../features/memes/EditMemePage"));
 const ShortenerPage = lazy(() => import("../features/tools/ShortenerPage"));
+const ToolsIndexPage = lazy(() => import("../features/tools/ToolsIndexPage"));
 const PasswordPage = lazy(() => import("../features/passwordgen/PasswordPage"));
 const ImagePage = lazy(() => import("../features/imagetool/ImagePage"));
 const CropPage = lazy(() => import("../features/croptool/CropPage"));
@@ -59,6 +62,8 @@ const DnsPage = lazy(() => import("../features/dnstool/DnsPage"));
 const TextSharePage = lazy(() => import("../features/textshare/TextSharePage"));
 const TextViewPage = lazy(() => import("../features/textshare/TextViewPage"));
 const ConvertersPage = lazy(() => import("../features/converters/ConvertersPage"));
+const SocialCalendarPage = lazy(() => import("../features/social/CalendarPage"));
+const SocialComposerPage = lazy(() => import("../features/social/ComposerPage"));
 
 function PageLoader() {
   return (
@@ -123,7 +128,9 @@ const AppLayoutContent: React.FC = () => {
               <Route path="/investing" element={<InvestingPage />} />
               <Route path="/vehicles-expenses" element={<VehiclesExpensesPage />} />
               <Route path="/general-expenses" element={<GeneralExpensesPage />} />
-              <Route path="/tools/*" element={<ShortenerPage />} />
+              {/* Landing grid — public, guest-visible; the shortener itself lives at /shortener. */}
+              <Route path="/tools" element={<ToolsIndexPage />} />
+              <Route path="/shortener" element={<ShortenerPage />} />
               <Route path="/password" element={<PasswordPage />} />
               <Route path="/images" element={<ImagePage />} />
               <Route path="/crop" element={<CropPage />} />
@@ -145,12 +152,21 @@ const AppLayoutContent: React.FC = () => {
                 <Route path="sites/edit/:id" element={<EditSitePage />} />
                 <Route path="media" element={<MediaAdminPage />} />
                 <Route path="media/edit/:id" element={<EditMediaPage />} />
+                <Route path="stats" element={<StatsAdminPage />} />
                 <Route path="*" element={<Navigate to="/admin" replace />} />
+              </Route>
+              {/* Admin-only social scheduler — gated by SocialGate (hasRole superadmin),
+                  same check the rest of the admin surface uses; kept off /admin/* since
+                  it's a top-level feature area. */}
+              <Route path="/social" element={<SocialGate />}>
+                <Route index element={<SocialCalendarPage />} />
+                <Route path="compose" element={<SocialComposerPage />} />
               </Route>
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/auth" element={<AuthPage />} />
               <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
-              <Route path="*" element={<div>Not found</div>} />
+              {/* Unknown paths bounce to the root (CloudFront already serves index.html for S3 404s). */}
+              <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
             </Suspense>
             </motion.div>

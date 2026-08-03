@@ -155,7 +155,7 @@ export function MobileAppShell() {
                     <Route path="/mobile-settings" element={<MobileSettingsPage />} />
                     <Route path="/auth" element={<AuthPage />} />
                     <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
-                    <Route path="*" element={<div>Not found</div>} />
+                    <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>
                 </Suspense>
               </motion.div>

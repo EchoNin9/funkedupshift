@@ -520,6 +520,11 @@ resource "aws_cloudfront_distribution" "shortener" {
       restriction_type = "none"
     }
   }
+  logging_config {
+    include_cookies = false
+    bucket          = aws_s3_bucket.cloudfrontLogs.bucket_domain_name
+    prefix          = "shortener/"
+  }
 
   viewer_certificate {
     acm_certificate_arn      = aws_acm_certificate_validation.shortener.certificate_arn
@@ -527,7 +532,10 @@ resource "aws_cloudfront_distribution" "shortener" {
     minimum_protocol_version = "TLSv1.2_2021"
   }
 
-  depends_on = [aws_acm_certificate_validation.shortener]
+  depends_on = [
+    aws_acm_certificate_validation.shortener,
+    aws_s3_bucket_ownership_controls.cloudfrontLogs
+  ]
 }
 
 # ------------------------------------------------------------------------------
@@ -641,6 +649,11 @@ resource "aws_cloudfront_distribution" "tools_site" {
       restriction_type = "none"
     }
   }
+  logging_config {
+    include_cookies = false
+    bucket          = aws_s3_bucket.cloudfrontLogs.bucket_domain_name
+    prefix          = "tools/"
+  }
 
   viewer_certificate {
     acm_certificate_arn      = aws_acm_certificate_validation.shortener.certificate_arn
@@ -648,7 +661,10 @@ resource "aws_cloudfront_distribution" "tools_site" {
     minimum_protocol_version = "TLSv1.2_2021"
   }
 
-  depends_on = [aws_acm_certificate_validation.shortener]
+  depends_on = [
+    aws_acm_certificate_validation.shortener,
+    aws_s3_bucket_ownership_controls.cloudfrontLogs
+  ]
 }
 
 # ------------------------------------------------------------------------------

@@ -222,3 +222,51 @@ export async function getPublicTextPaste(id: string): Promise<TextPastePublic> {
   const resp = await fetch(`${base}/tools/text/${encodeURIComponent(id)}`);
   return parseJsonOrThrow<TextPastePublic>(resp);
 }
+
+// --- visitor network info (My Info tool) ------------------------------------
+// Mirrors src/web/spa/src/features/myinfo/MyInfoPage.tsx's IpWhoResponse.
+
+export interface IpWhoConnection {
+  asn?: number;
+  org?: string;
+  isp?: string;
+  domain?: string;
+}
+
+export interface IpWhoTimezone {
+  id?: string;
+  abbr?: string;
+  utc?: string;
+  offset?: number;
+  is_dst?: boolean;
+}
+
+export interface IpWhoResponse {
+  success?: boolean;
+  message?: string;
+  ip?: string;
+  type?: string;
+  continent?: string;
+  country?: string;
+  country_code?: string;
+  region?: string;
+  city?: string;
+  postal?: string;
+  latitude?: number;
+  longitude?: number;
+  is_eu?: boolean;
+  calling_code?: string;
+  connection?: IpWhoConnection;
+  timezone?: IpWhoTimezone;
+}
+
+/** GET /visitor-network-info — PUBLIC, no auth. Same backend endpoint the
+ * SPA's My Info page calls; this tool must work for signed-out visitors. */
+export async function fetchVisitorNetworkInfo(): Promise<IpWhoResponse> {
+  const base = getApiBaseUrl();
+  if (!base) throw new Error("API not configured");
+  const resp = await fetch(`${base}/visitor-network-info`);
+  const json = (await resp.json().catch(() => ({}))) as IpWhoResponse & { error?: string };
+  if (!resp.ok) throw new Error(json.message || json.error || `Request failed (${resp.status})`);
+  return json;
+}

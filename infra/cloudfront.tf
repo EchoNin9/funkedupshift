@@ -92,6 +92,7 @@ locals {
 }
 
 resource "aws_cloudfront_distribution" "staging" {
+  depends_on = [aws_s3_bucket_ownership_controls.cloudfrontLogs]
   enabled             = true
   is_ipv6_enabled     = true
   comment             = "Funkedupshift staging"
@@ -148,6 +149,11 @@ resource "aws_cloudfront_distribution" "staging" {
       restriction_type = "none"
     }
   }
+  logging_config {
+    include_cookies = false
+    bucket          = aws_s3_bucket.cloudfrontLogs.bucket_domain_name
+    prefix          = "staging/"
+  }
 
   viewer_certificate {
     acm_certificate_arn      = aws_acm_certificate_validation.main.certificate_arn
@@ -157,6 +163,7 @@ resource "aws_cloudfront_distribution" "staging" {
 }
 
 resource "aws_cloudfront_distribution" "production" {
+  depends_on = [aws_s3_bucket_ownership_controls.cloudfrontLogs]
   enabled             = true
   is_ipv6_enabled     = true
   comment             = "Funkedupshift production"
@@ -212,6 +219,12 @@ resource "aws_cloudfront_distribution" "production" {
     geo_restriction {
       restriction_type = "none"
     }
+  }
+
+  logging_config {
+    include_cookies = false
+    bucket          = aws_s3_bucket.cloudfrontLogs.bucket_domain_name
+    prefix          = "production/"
   }
 
   viewer_certificate {
