@@ -164,6 +164,10 @@ const AppLayoutContent: React.FC = () => {
               </Route>
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/auth" element={<AuthPage />} />
+              {/* /privacy is the canonical URL given to Meta app review.
+                  /privacy-policy is kept because external listings already
+                  point at it -- both render the same page. */}
+              <Route path="/privacy" element={<PrivacyPolicyPage />} />
               <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
               {/* Unknown paths bounce to the root (CloudFront already serves index.html for S3 404s). */}
               <Route path="*" element={<Navigate to="/" replace />} />
