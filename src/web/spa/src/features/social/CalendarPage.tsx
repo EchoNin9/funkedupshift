@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Link, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
+  ArrowPathIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   PlusIcon,
@@ -135,6 +136,48 @@ export default function CalendarPage() {
     setReloadTick((t) => t + 1);
   }, [monthKey]);
 
+  /**
+   * Is anything actually in flight right now? Deliberately narrow, because
+   * every refetch costs an API Gateway request + Lambda + DynamoDB query:
+   *
+   *  - `publishing` means a target is mid-publish, which includes an Instagram
+   *    container still transcoding (a processing target rolls up to publishing).
+   *  - `pending` alone is NOT enough. A post scheduled next week is pending, and
+   *    watching that would mean polling forever for no reason -- so a pending
+   *    post only counts once it is due within the next couple of minutes.
+   *
+   * The result: no timer runs at all on a quiet calendar, and polling happens
+   * only while something is genuinely changing.
+   */
+  const hasLivework = useMemo(() => {
+    const soon = Date.now() + 2 * 60 * 1000;
+    return posts.some((p) => {
+      if (p.status === "publishing") return true;
+      if (p.status !== "pending") return false;
+      const ms = Date.parse(p.scheduledAt);
+      return !Number.isNaN(ms) && ms <= soon;
+    });
+  }, [posts]);
+
+  // Refetch when the tab regains focus. Costs nothing while you're away and
+  // covers the common case of coming back to check on a post.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible") handleChanged();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [handleChanged]);
+
+  // Poll only while work is in flight AND the tab is visible.
+  useEffect(() => {
+    if (!hasLivework) return;
+    const id = window.setInterval(() => {
+      if (document.visibilityState === "visible") handleChanged();
+    }, 20000);
+    return () => window.clearInterval(id);
+  }, [hasLivework, handleChanged]);
+
   const headerLabel = useMemo(() => {
     if (view === "month") return formatMonthLabel(monthKey);
     return formatDayLabel(date);
@@ -185,6 +228,15 @@ export default function CalendarPage() {
             className="ml-1 rounded-lg border border-border-hover bg-surface-2 px-3 py-1.5 text-xs font-medium text-text-primary hover:bg-surface-3 transition-colors"
           >
             Today
+          </button>
+          <button
+            type="button"
+            onClick={handleChanged}
+            aria-label="Refresh posts"
+            title={hasLivework ? "Refreshing automatically while posts are in flight" : "Refresh"}
+            className="rounded-lg border border-border-hover bg-surface-2 p-1.5 text-text-primary hover:bg-surface-3 transition-colors"
+          >
+            <ArrowPathIcon className={`h-4 w-4 ${hasLivework ? "animate-spin [animation-duration:3s]" : ""}`} />
           </button>
         </div>
 

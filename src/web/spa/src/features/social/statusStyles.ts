@@ -45,8 +45,11 @@ export const STATUS_META: Record<
   },
   cancelled: {
     label: "Cancelled",
-    dot: "bg-text-tertiary",
-    chip: "border-border-default bg-surface-3/60 text-text-tertiary line-through",
+    dot: "bg-text-tertiary/50",
+    // Deliberately the dullest chip in the set: a cancelled post is history and
+    // should recede so live posts on the same day stand out. Subtle border, no
+    // fill, faded text -- still legible, just not competing for attention.
+    chip: "border-border-subtle bg-transparent text-text-tertiary/60 line-through",
     badge: "border-border-hover text-text-tertiary",
   },
   partial: {
