@@ -1,37 +1,187 @@
-import React, { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ChevronLeftIcon, ChevronRightIcon, PlusIcon, CalendarDaysIcon } from "@heroicons/react/24/outline";
+import {
+  ArrowPathIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  PlusIcon,
+  CalendarDaysIcon,
+  Squares2X2Icon,
+  ListBulletIcon,
+} from "@heroicons/react/24/outline";
 import { Alert, SkeletonCard } from "../../components";
 import { listPosts, type SocialPost } from "./api";
 import { MonthGrid } from "./MonthGrid";
+import { DayList } from "./DayList";
 import { PostDetail } from "./PostDetail";
-import { formatMonthLabel, monthKeyFromDate, shiftMonthKey } from "./dateUtils";
+import {
+  addDaysLocal,
+  addMonthsLocal,
+  formatDayLabel,
+  formatMonthLabel,
+  localDayKey,
+  monthKeyFromDate,
+  parseDayKey,
+} from "./dateUtils";
+
+type ViewMode = "month" | "day";
+
+const VIEW_OPTIONS: { value: ViewMode; label: string; icon: typeof Squares2X2Icon }[] = [
+  { value: "month", label: "Month", icon: Squares2X2Icon },
+  { value: "day", label: "Day", icon: ListBulletIcon },
+];
+
+function parseView(raw: string | null): ViewMode {
+  return raw === "day" ? "day" : "month";
+}
+
+/** Falls back to today for a missing or malformed `?date=` param — never crashes. */
+function parseDate(raw: string | null): Date {
+  if (!raw) return new Date();
+  return parseDayKey(raw) ?? new Date();
+}
 
 export default function CalendarPage() {
-  const [monthKey, setMonthKey] = useState(() => monthKeyFromDate(new Date()));
-  const [posts, setPosts] = useState<SocialPost[]>([]);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const view = parseView(searchParams.get("view"));
+  const date = useMemo(() => parseDate(searchParams.get("date")), [searchParams]);
+  const dateKey = useMemo(() => localDayKey(date), [date]);
+  const monthKey = useMemo(() => monthKeyFromDate(date), [date]);
+
+  // Month-keyed cache so switching between Month and Day within the same month doesn't refetch.
+  const [postsByMonth, setPostsByMonth] = useState<Record<string, SocialPost[]>>({});
+  const cachedMonthsRef = useRef<Set<string>>(new Set());
+  const inFlightRef = useRef<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
-
-  const load = useCallback(async (month: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await listPosts(month);
-      setPosts(result);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not load scheduled posts.");
-      setPosts([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const [reloadTick, setReloadTick] = useState(0);
 
   useEffect(() => {
-    load(monthKey);
-  }, [monthKey, load]);
+    if (cachedMonthsRef.current.has(monthKey) || inFlightRef.current.has(monthKey)) {
+      setLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    inFlightRef.current.add(monthKey);
+
+    listPosts(monthKey)
+      .then((posts) => {
+        if (cancelled) return;
+        cachedMonthsRef.current.add(monthKey);
+        setPostsByMonth((prev) => ({ ...prev, [monthKey]: posts }));
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : "Could not load scheduled posts.");
+        setPostsByMonth((prev) => ({ ...prev, [monthKey]: [] }));
+      })
+      .finally(() => {
+        inFlightRef.current.delete(monthKey);
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+    // reloadTick forces a refetch (e.g. after a post mutation) by clearing the cache below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [monthKey, reloadTick]);
+
+  const posts = postsByMonth[monthKey] ?? [];
+
+  const dayPosts = useMemo(() => {
+    if (view !== "day") return [];
+    return posts.filter((p) => {
+      const ms = Date.parse(p.scheduledAt);
+      return !Number.isNaN(ms) && localDayKey(new Date(ms)) === dateKey;
+    });
+  }, [posts, view, dateKey]);
+
+  const setViewAndDate = useCallback(
+    (nextView: ViewMode, nextDate: Date) => {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.set("view", nextView);
+        next.set("date", localDayKey(nextDate));
+        return next;
+      });
+    },
+    [setSearchParams]
+  );
+
+  const handleViewChange = useCallback((nextView: ViewMode) => setViewAndDate(nextView, date), [date, setViewAndDate]);
+
+  const handlePrev = useCallback(() => {
+    if (view === "month") setViewAndDate("month", addMonthsLocal(date, -1));
+    else setViewAndDate("day", addDaysLocal(date, -1));
+  }, [view, date, setViewAndDate]);
+
+  const handleNext = useCallback(() => {
+    if (view === "month") setViewAndDate("month", addMonthsLocal(date, 1));
+    else setViewAndDate("day", addDaysLocal(date, 1));
+  }, [view, date, setViewAndDate]);
+
+  const handleToday = useCallback(() => setViewAndDate(view, new Date()), [view, setViewAndDate]);
+
+  const handleSelectDay = useCallback((day: Date) => setViewAndDate("day", day), [setViewAndDate]);
+
+  const handleChanged = useCallback(() => {
+    // Invalidate the currently-needed month and refetch.
+    cachedMonthsRef.current.delete(monthKey);
+    setReloadTick((t) => t + 1);
+  }, [monthKey]);
+
+  /**
+   * Is anything actually in flight right now? Deliberately narrow, because
+   * every refetch costs an API Gateway request + Lambda + DynamoDB query:
+   *
+   *  - `publishing` means a target is mid-publish, which includes an Instagram
+   *    container still transcoding (a processing target rolls up to publishing).
+   *  - `pending` alone is NOT enough. A post scheduled next week is pending, and
+   *    watching that would mean polling forever for no reason -- so a pending
+   *    post only counts once it is due within the next couple of minutes.
+   *
+   * The result: no timer runs at all on a quiet calendar, and polling happens
+   * only while something is genuinely changing.
+   */
+  const hasLivework = useMemo(() => {
+    const soon = Date.now() + 2 * 60 * 1000;
+    return posts.some((p) => {
+      if (p.status === "publishing") return true;
+      if (p.status !== "pending") return false;
+      const ms = Date.parse(p.scheduledAt);
+      return !Number.isNaN(ms) && ms <= soon;
+    });
+  }, [posts]);
+
+  // Refetch when the tab regains focus. Costs nothing while you're away and
+  // covers the common case of coming back to check on a post.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible") handleChanged();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [handleChanged]);
+
+  // Poll only while work is in flight AND the tab is visible.
+  useEffect(() => {
+    if (!hasLivework) return;
+    const id = window.setInterval(() => {
+      if (document.visibilityState === "visible") handleChanged();
+    }, 20000);
+    return () => window.clearInterval(id);
+  }, [hasLivework, handleChanged]);
+
+  const headerLabel = useMemo(() => {
+    if (view === "month") return formatMonthLabel(monthKey);
+    return formatDayLabel(date);
+  }, [view, date, monthKey]);
 
   return (
     <div className="space-y-4">
@@ -54,33 +204,67 @@ export default function CalendarPage() {
         </Link>
       </div>
 
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-1">
           <button
             type="button"
-            onClick={() => setMonthKey((m) => shiftMonthKey(m, -1))}
-            aria-label="Previous month"
+            onClick={handlePrev}
+            aria-label={`Previous ${view}`}
             className="inline-flex items-center justify-center rounded-lg border border-border-hover bg-surface-2 p-1.5 text-text-primary hover:bg-surface-3 transition-colors"
           >
             <ChevronLeftIcon className="h-4 w-4" />
           </button>
           <button
             type="button"
-            onClick={() => setMonthKey((m) => shiftMonthKey(m, 1))}
-            aria-label="Next month"
+            onClick={handleNext}
+            aria-label={`Next ${view}`}
             className="inline-flex items-center justify-center rounded-lg border border-border-hover bg-surface-2 p-1.5 text-text-primary hover:bg-surface-3 transition-colors"
           >
             <ChevronRightIcon className="h-4 w-4" />
           </button>
           <button
             type="button"
-            onClick={() => setMonthKey(monthKeyFromDate(new Date()))}
+            onClick={handleToday}
             className="ml-1 rounded-lg border border-border-hover bg-surface-2 px-3 py-1.5 text-xs font-medium text-text-primary hover:bg-surface-3 transition-colors"
           >
             Today
           </button>
+          <button
+            type="button"
+            onClick={handleChanged}
+            aria-label="Refresh posts"
+            title={hasLivework ? "Refreshing automatically while posts are in flight" : "Refresh"}
+            className="rounded-lg border border-border-hover bg-surface-2 p-1.5 text-text-primary hover:bg-surface-3 transition-colors"
+          >
+            <ArrowPathIcon className={`h-4 w-4 ${hasLivework ? "animate-spin [animation-duration:3s]" : ""}`} />
+          </button>
         </div>
-        <h2 className="text-sm font-semibold text-text-primary">{formatMonthLabel(monthKey)}</h2>
+
+        <h2 className="text-sm font-semibold text-text-primary">{headerLabel}</h2>
+
+        <div
+          role="group"
+          aria-label="Calendar view"
+          className="inline-flex items-center rounded-lg border border-border-hover bg-surface-2 p-0.5"
+        >
+          {VIEW_OPTIONS.map(({ value, label, icon: Icon }) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => handleViewChange(value)}
+              aria-pressed={view === value}
+              aria-label={`${label} view`}
+              className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                view === value
+                  ? "bg-accent-500 text-white"
+                  : "text-text-secondary hover:bg-surface-3 hover:text-text-primary"
+              }`}
+            >
+              <Icon className="h-3.5 w-3.5" />
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {error && <Alert variant="error">{error}</Alert>}
@@ -93,8 +277,17 @@ export default function CalendarPage() {
         </div>
       ) : (
         <>
-          <MonthGrid monthKey={monthKey} posts={posts} onSelectPost={(p) => setSelectedPostId(p.postId)} />
-          {posts.length === 0 && (
+          {view === "month" && (
+            <MonthGrid
+              monthKey={monthKey}
+              posts={posts}
+              onSelectPost={(p) => setSelectedPostId(p.postId)}
+              onSelectDay={handleSelectDay}
+            />
+          )}
+          {view === "day" && <DayList posts={dayPosts} onSelectPost={(p) => setSelectedPostId(p.postId)} />}
+
+          {view === "month" && posts.length === 0 && (
             <p className="text-sm text-text-tertiary text-center py-4">
               No posts scheduled this month —{" "}
               <Link to="/social/compose" className="text-nav hover:underline">
@@ -107,11 +300,7 @@ export default function CalendarPage() {
       )}
 
       {selectedPostId && (
-        <PostDetail
-          postId={selectedPostId}
-          onClose={() => setSelectedPostId(null)}
-          onChanged={() => load(monthKey)}
-        />
+        <PostDetail postId={selectedPostId} onClose={() => setSelectedPostId(null)} onChanged={handleChanged} />
       )}
     </div>
   );

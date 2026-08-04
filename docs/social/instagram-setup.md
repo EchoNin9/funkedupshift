@@ -1,5 +1,27 @@
 # Instagram setup — SSM parameters and first publish
 
+## Configured accounts (as of 2026-08-04)
+
+All four validate cleanly: token valid, scopes correct, liveness probe passing.
+IDs are not secret; tokens live only in SSM.
+
+| Instagram | ig-user-id | accountId slug |
+|---|---|---|
+| @jinksninja | `17841432563762849` | `jinksninja` |
+| @orangewhip.surf | `17841474632512586` | `orangewhip` |
+| @funkedupshift | `17841462404113828` | `funkedupshift` |
+| @simmerdownstyle | `17841446504007536` | `simmerdown` |
+
+`bigcookiemusic` is not yet an Instagram Business account. Adding it later is
+two `put-parameter` calls (§1) and needs no redeploy — accounts are discovered
+by SSM path.
+
+Meta app: **FunkedUpShift-publish**. Standard Access is sufficient because the
+owning Facebook user has a role on the app; no App Review is required.
+Permissions granted: `instagram_basic`, `instagram_content_publish`,
+`pages_show_list`, `pages_read_engagement`, `business_management`.
+
+
 Everything in phase 3 is deployed but **inert until these parameters exist**.
 The code reads them by path, so no redeploy is needed after you write them —
 `listAccounts()` discovers Instagram accounts the same way it discovers

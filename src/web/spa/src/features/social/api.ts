@@ -9,10 +9,32 @@ export function getApiBaseUrl(): string | null {
 /* ── Types ─────────────────────────────────────────────────────────── */
 
 /** Status of an individual per-account publish target. */
-export type TargetStatus = "pending" | "publishing" | "published" | "failed" | "cancelled";
+// "processing" is a non-terminal TARGET status only (see STATUS_PROCESSING in
+// src/lambda/social/storage.py): Instagram has accepted the media and is
+// transcoding it server-side while an EventBridge check polls for completion.
+// A parent post rolls that up to "publishing", so it never appears as a
+// PostStatus.
+export type TargetStatus =
+  | "pending"
+  | "publishing"
+  | "processing"
+  | "published"
+  | "failed"
+  | "cancelled";
 
-/** Status of the parent post — `partial` only ever appears here (mixed target outcomes). */
-export type PostStatus = TargetStatus | "partial";
+/**
+ * Status of the parent post. `partial` only ever appears here (mixed target
+ * outcomes), and `processing` never does — deriveParentStatus rolls a
+ * processing target up to `publishing`. Spelled out rather than derived from
+ * TargetStatus so those two asymmetries stay visible.
+ */
+export type PostStatus =
+  | "pending"
+  | "publishing"
+  | "published"
+  | "failed"
+  | "cancelled"
+  | "partial";
 
 export interface SocialAccount {
   platform: string;
