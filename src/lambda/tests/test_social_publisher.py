@@ -753,3 +753,41 @@ def test_check_container_pending_takes_precedence_over_ok_true():
     mockMarkProcessing.assert_called_once()
     for call in mockUpdateStatus.call_args_list:
         assert storage.STATUS_PUBLISHED not in call.args
+
+
+# --- mime guessing (phase 3 regression) ----------------------------------------------------
+#
+# _MIME_BY_EXT originally had no video entries, so ".mp4" fell through to the
+# image/jpeg default. Publishers branch on a "video/" prefix to decide how to
+# publish, so every Reel would have been sent to Instagram as an image_url.
+
+
+def test_guess_mime_type_maps_video_extensions():
+    from social.publisher import _guessMimeType
+
+    assert _guessMimeType("uploads/u/p/clip.mp4") == "video/mp4"
+    assert _guessMimeType("uploads/u/p/CLIP.MP4") == "video/mp4"
+    assert _guessMimeType("uploads/u/p/clip.mov") == "video/quicktime"
+
+
+def test_guess_mime_type_still_maps_images():
+    from social.publisher import _guessMimeType
+
+    assert _guessMimeType("a/b/pic.png") == "image/png"
+    assert _guessMimeType("a/b/pic.webp") == "image/webp"
+    assert _guessMimeType("a/b/pic.gif") == "image/gif"
+    assert _guessMimeType("a/b/pic.jpg") == "image/jpeg"
+    assert _guessMimeType("a/b/pic.jpeg") == "image/jpeg"
+
+
+def test_video_media_is_detected_as_video_by_the_instagram_publisher():
+    """The actual consequence of the mapping: a .mp4 key must make
+    InstagramPublisher treat the item as video, not as a photo."""
+    from social.publisher import _guessMimeType
+    from social.publishers.instagram import _isVideo
+
+    videoItem = {"key": "uploads/u/p/reel.mp4", "mimeType": _guessMimeType("uploads/u/p/reel.mp4")}
+    imageItem = {"key": "uploads/u/p/photo.jpg", "mimeType": _guessMimeType("uploads/u/p/photo.jpg")}
+
+    assert _isVideo(videoItem) is True
+    assert _isVideo(imageItem) is False

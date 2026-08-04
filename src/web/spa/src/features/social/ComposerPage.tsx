@@ -128,7 +128,7 @@ export default function ComposerPage() {
     () =>
       accounts.map((a) => ({
         id: accountKey(a.platform, a.accountId),
-        label: `${a.platform} · @${a.handle}`,
+        label: `${a.platform} · @${a.handle || a.accountId}`,
       })),
     [accounts]
   );
@@ -388,7 +388,7 @@ export default function ComposerPage() {
                 return (
                   <li key={key} className="flex items-center justify-between text-xs">
                     <span className="text-text-secondary truncate">
-                      {rules?.label ?? platform} · @{account?.handle ?? key}
+                      {rules?.label ?? platform} · @{account?.handle || key}
                     </span>
                     <span className={color}>
                       {count}
@@ -401,7 +401,7 @@ export default function ComposerPage() {
             {Object.entries(fieldErrors).map(([key, errs]) =>
               errs.length ? (
                 <Alert key={key} variant="error" className="mt-1">
-                  <span className="font-medium">{accountByKey.get(key)?.handle ?? key}: </span>
+                  <span className="font-medium">{accountByKey.get(key)?.handle || key}: </span>
                   {errs.join(" ")}
                 </Alert>
               ) : null
@@ -427,7 +427,7 @@ export default function ComposerPage() {
               {selectedKeys.map((key) => {
                 const account = accountByKey.get(key);
                 return (
-                  <FormField key={key} label={`Override — ${account?.handle ?? key}`} htmlFor={`override-${key}`}>
+                  <FormField key={key} label={`Override — ${account?.handle || key}`} htmlFor={`override-${key}`}>
                     <textarea
                       id={`override-${key}`}
                       className={textareaClass}

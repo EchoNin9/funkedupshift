@@ -99,12 +99,24 @@ def _actionCreate(event):
             allErrors.append(str(e))
             continue
         overrideText = (acc.get("overrides") or {}).get("text", text)
-        # Media bytes aren't fetched at validation time (phase 2 references
-        # them by S3 key, pulled lazily at publish time by publisher.py) --
-        # validate() itself never makes a network call, so an empty media
-        # list here just means the per-image size/count checks run against
-        # whatever count mediaKeys implies rather than real byte sizes.
-        request = PublishRequest(accountId=acc["accountId"], text=overrideText, media=[], links=links)
+        # Media BYTES aren't fetched at validation time (they're referenced by
+        # S3 key and pulled lazily at publish time), but the media LIST must
+        # still reflect what was attached: Instagram requires at least one
+        # item, so passing media=[] here made every Instagram post
+        # unschedulable regardless of what the caller attached.
+        #
+        # Descriptors carry the key and a mime type guessed from the
+        # extension -- enough for count and type rules (e.g. Instagram's
+        # JPEG-only images) to run at schedule time. Size and aspect-ratio
+        # checks need real bytes and are skipped here; both validators read
+        # "bytes" defensively and treat a missing value as size 0.
+        mediaForValidation = [
+            {"key": key, "mimeType": publisher._guessMimeType(key), "alt": ""}
+            for key in mediaKeys
+        ]
+        request = PublishRequest(
+            accountId=acc["accountId"], text=overrideText, media=mediaForValidation, links=links
+        )
         allErrors.extend(PublisherClass().validate(request))
     if allErrors:
         return {"ok": False, "errors": allErrors}
