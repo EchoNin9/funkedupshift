@@ -16,13 +16,22 @@ you've already set (e.g. in CI).
 
 Usage:
     python scripts/social_schedule.py --action create --account bluesky:test \
-        --text "hello" --at "2026-08-02T15:04:00Z" [--image uploads/me/post1/pic.jpg] \
+        --text "hello" --at "2026-08-02T15:04:00Z" \
+        [--image ./local/photo.jpg] [--image uploads/me/post1/pic.jpg] \
         [--profile echo9] [--region us-east-1]
     python scripts/social_schedule.py --action get --post-id <id>
     python scripts/social_schedule.py --action list --month 2026-08
     python scripts/social_schedule.py --action cancel --post-id <id>
     python scripts/social_schedule.py --action retry --post-id <id> --account bluesky:test
     python scripts/social_schedule.py --action list --month 2026-08 --no-terraform
+
+--image is repeatable and accepts EITHER a local file path (uploaded to
+SOCIAL_MEDIA_BUCKET automatically, under the same uploads/{createdBy}/{..}/
+{filename} convention social/media.py and social/routes.py use) OR an
+existing S3 key of media already uploaded. A value that is neither an
+existing local file nor a '/'-containing key is rejected immediately --
+that ambiguity used to resolve silently to "treat it as a key" and only
+fail later, at publish time, against a nonexistent S3 object.
 
 Requires local AWS credentials with permission to read/write the
 fus-social-posts table and the fus-social schedule group (see infra/social.tf),
@@ -172,11 +181,83 @@ def _parseAccount(raw):
     return {"platform": platform, "accountId": accountId, "overrides": {}}
 
 
-def _buildMediaKeys(imageKey):
-    # This CLI does not upload media -- --image takes the S3 key of media
-    # already uploaded under the uploads/ prefix (see social/media.py); the
-    # publisher fetches it by key at publish time.
-    return [imageKey] if imageKey else []
+def _guessContentType(filename):
+    """Extension -> Content-Type for a media upload.
+
+    Delegates to social/publisher.py's _guessMimeType so exactly one table
+    maps extensions to mime types. That matters beyond tidiness: publishers
+    branch on a "video/" prefix to decide how to publish, and Meta fetches
+    uploaded media by URL and trusts this Content-Type, so the value written
+    here and the value the publisher infers later must agree."""
+    from social.publisher import _guessMimeType
+    return _guessMimeType(filename)
+
+
+def _uploadLocalMedia(localPath, createdBy):
+    """Upload a local file to SOCIAL_MEDIA_BUCKET and return the resulting
+    S3 key, using the exact same uploads/{createdBy}/{unique}/{filename}
+    convention as social/media.py's buildKey and the presign route in
+    social/routes.py (presignMedia). Like that route, there is no postId
+    yet at this point -- a post hasn't been created -- so a fresh uuid4 hex
+    fills that slot instead, same as presignMedia does."""
+    import uuid as _uuid
+
+    from social import media
+
+    filename = os.path.basename(localPath)
+    key = media.buildKey(createdBy, _uuid.uuid4().hex, filename)
+    contentType = _guessContentType(filename)
+    bucket = os.environ.get("SOCIAL_MEDIA_BUCKET", "")
+
+    import boto3
+    from botocore.exceptions import BotoCoreError, ClientError
+
+    try:
+        boto3.client("s3").upload_file(localPath, bucket, key, ExtraArgs={"ContentType": contentType})
+    except (BotoCoreError, ClientError) as e:
+        print(f"AWS error uploading '{localPath}': {e}", file=sys.stderr)
+        print(
+            "Hint: pass --profile <name> (e.g. --profile echo9), confirm the social media "
+            "bucket exists and you have PutObject on it, or refresh expired credentials.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    print(f"Uploaded '{localPath}' -> s3://{bucket}/{key} (ContentType: {contentType})", file=sys.stderr)
+    return key
+
+
+def _resolveImageArg(rawValue, createdBy):
+    """--image accepts EITHER a local file path OR an existing S3 key:
+
+      1. Exists on local disk -> upload it, return the resulting key.
+      2. Doesn't exist locally but contains '/' (looks like an S3 key,
+         e.g. "uploads/...") -> use as-is, exactly like before.
+      3. Neither -> fail loudly right now. This is the case that used to
+         slip through silently (a bare filename like "ztest.jpg" that is
+         actually a local path, misread as an S3 key) and only blow up
+         later, confusingly, at publish time against a nonexistent S3
+         object -- so it must never reach post creation.
+    """
+    if os.path.isfile(rawValue):
+        return _uploadLocalMedia(rawValue, createdBy)
+    if "/" in rawValue:
+        return rawValue
+    print(
+        f"Error: --image '{rawValue}' is not a local file and doesn't look like an S3 key.\n"
+        "--image accepts either:\n"
+        "  - a local file path that exists (it will be uploaded for you), or\n"
+        "  - an S3 key of media already uploaded (must contain '/', e.g. uploads/me/post1/photo.jpg)",
+        file=sys.stderr,
+    )
+    sys.exit(1)
+
+
+def _buildMediaKeys(images, createdBy):
+    """Resolve every --image occurrence (repeatable) independently and in
+    order, so a mixture of local-file uploads and existing-key passthroughs
+    in one command works."""
+    return [_resolveImageArg(img, createdBy) for img in (images or [])]
 
 
 def main():
@@ -191,7 +272,11 @@ def main():
         "--at", dest="scheduledAt", default=None,
         help='ISO-8601 UTC scheduled time, e.g. "2026-08-02T15:04:00Z" (create)',
     )
-    parser.add_argument("--image", default=None, help="S3 key of an already-uploaded image to attach (create)")
+    parser.add_argument(
+        "--image", action="append", default=[],
+        help="media to attach (create), repeatable: either a local file path (uploaded "
+             "automatically) or an existing S3 key (uploads/...)",
+    )
     parser.add_argument("--post-id", dest="postId", default=None, help="postId (get/cancel/retry)")
     parser.add_argument("--month", default=None, help="YYYY-MM (list)")
     parser.add_argument("--profile", help="AWS profile (default: $AWS_PROFILE, else the boto3 default chain)")
@@ -232,14 +317,15 @@ def main():
         if not args.text or not args.scheduledAt or not args.account:
             print("--action create requires --text, --at, and at least one --account")
             sys.exit(1)
+        createdBy = os.environ.get("USER", "cli")
         event = {
             "action": "create",
             "text": args.text,
             "scheduledAt": args.scheduledAt,
             "accounts": [_parseAccount(a) for a in args.account],
-            "mediaKeys": _buildMediaKeys(args.image),
+            "mediaKeys": _buildMediaKeys(args.image, createdBy),
             "links": [],
-            "createdBy": os.environ.get("USER", "cli"),
+            "createdBy": createdBy,
         }
     elif args.action == "get":
         if not args.postId:

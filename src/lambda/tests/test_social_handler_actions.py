@@ -259,3 +259,110 @@ def test_unknown_action_returns_error():
 
     result = handler.handler({"action": "not-a-real-action"}, None)
     assert result["ok"] is False
+
+
+# --- media descriptors at validation time (phase 3 regression) -----------------------------
+#
+# _actionCreate used to validate with a hardcoded media=[]. Harmless for
+# Bluesky, whose validate() only enforces MAXIMUM counts -- but Instagram
+# requires at least one media item, so every Instagram post was unschedulable
+# no matter what the caller attached. The whole platform was unusable and 663
+# tests passed, because no test asserted what validate() actually receives.
+
+
+def _instagramAccount():
+    return [{"platform": "instagram", "accountId": "jinksninja", "overrides": {}}]
+
+
+def test_create_passes_media_descriptors_to_validate_not_an_empty_list():
+    from social import handler
+
+    seen = {}
+
+    class FakePublisher:
+        platform = "instagram"
+
+        def validate(self, request):
+            seen["media"] = request.media
+            return []
+
+    with patch.object(handler, "getPublisher", return_value=FakePublisher), \
+         patch.object(handler.scheduling, "createOneShot", return_value={"immediate": False, "scheduleName": "s"}), \
+         patch.object(handler.storage, "createPost", return_value={"parent": {}, "targets": []}):
+        handler._actionCreate({
+            "text": "WRESTLING",
+            "scheduledAt": "2026-08-04T12:00:00Z",
+            "accounts": _instagramAccount(),
+            "mediaKeys": ["uploads/u1/p1/photo.jpg"],
+        })
+
+    assert len(seen["media"]) == 1, "validate() must see the attached media, not an empty list"
+    assert seen["media"][0]["key"] == "uploads/u1/p1/photo.jpg"
+    assert seen["media"][0]["mimeType"] == "image/jpeg"
+
+
+def test_create_with_media_passes_the_real_instagram_validator():
+    """End-to-end through the actual InstagramPublisher.validate, which is what
+    the CLI hit. A JPEG attachment must schedule cleanly."""
+    from social import handler
+
+    with patch.object(handler.scheduling, "createOneShot", return_value={"immediate": False, "scheduleName": "s"}), \
+         patch.object(handler.storage, "createPost", return_value={"parent": {}, "targets": []}), \
+         patch.object(handler.storage, "getPost", return_value={"parent": {}, "targets": []}):
+        result = handler._actionCreate({
+            "text": "WRESTLING",
+            "scheduledAt": "2026-08-04T12:00:00Z",
+            "accounts": _instagramAccount(),
+            "mediaKeys": ["uploads/u1/p1/photo.jpg"],
+        })
+
+    assert "errors" not in result, f"expected a clean schedule, got {result.get('errors')}"
+
+
+def test_create_text_only_instagram_still_correctly_rejected():
+    """The requiresMedia rule must still fire when there genuinely is no media."""
+    from social import handler
+
+    result = handler._actionCreate({
+        "text": "WRESTLING",
+        "scheduledAt": "2026-08-04T12:00:00Z",
+        "accounts": _instagramAccount(),
+        "mediaKeys": [],
+    })
+
+    assert result["ok"] is False
+    assert any("at least one photo or video" in e for e in result["errors"])
+
+
+def test_create_instagram_png_rejected_at_schedule_time():
+    """Mime is guessed from the extension, so a PNG fails immediately rather
+    than at publish time hours later."""
+    from social import handler
+
+    result = handler._actionCreate({
+        "text": "WRESTLING",
+        "scheduledAt": "2026-08-04T12:00:00Z",
+        "accounts": _instagramAccount(),
+        "mediaKeys": ["uploads/u1/p1/photo.png"],
+    })
+
+    assert result["ok"] is False
+    assert any("JPEG" in e for e in result["errors"])
+
+
+def test_create_bluesky_with_media_descriptors_unaffected():
+    """Bluesky's validate() reads item['bytes'] defensively; descriptors
+    without bytes must not break it or invent a size error."""
+    from social import handler
+
+    with patch.object(handler.scheduling, "createOneShot", return_value={"immediate": False, "scheduleName": "s"}), \
+         patch.object(handler.storage, "createPost", return_value={"parent": {}, "targets": []}), \
+         patch.object(handler.storage, "getPost", return_value={"parent": {}, "targets": []}):
+        result = handler._actionCreate({
+            "text": "hello",
+            "scheduledAt": "2026-08-04T12:00:00Z",
+            "accounts": [{"platform": "bluesky", "accountId": "personal", "overrides": {}}],
+            "mediaKeys": ["uploads/u1/p1/photo.png"],
+        })
+
+    assert "errors" not in result

@@ -43,7 +43,17 @@ _MIME_BY_EXT = {
     ".png": "image/png",
     ".gif": "image/gif",
     ".webp": "image/webp",
+    # Video MUST be mapped. Publishers branch on a "video/" mime prefix to
+    # decide how to publish (Instagram sends video_url + media_type=REELS
+    # rather than image_url), so a video falling through to the image default
+    # below makes every Reel get published as though it were a photo.
+    ".mp4": "video/mp4",
+    ".mov": "video/quicktime",
+    ".m4v": "video/mp4",
 }
+# Only reached for extensions not listed above; the media presign route
+# restricts uploads to jpeg/png/webp/mp4, so this is a conservative fallback
+# rather than a real guess.
 _DEFAULT_MIME = "image/jpeg"
 
 
