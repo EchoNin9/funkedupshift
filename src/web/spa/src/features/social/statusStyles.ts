@@ -1,8 +1,16 @@
-import type { PostStatus, TargetStatus } from "./api";
+/**
+ * Keyed by string rather than `PostStatus | TargetStatus` from api.ts: the
+ * backend has a non-terminal target status ("processing", Instagram
+ * transcoding a Reel server-side — see storage.py STATUS_PROCESSING) that
+ * predates api.ts's string-literal unions picking it up. api.ts is out of
+ * scope here, so this stays permissive and falls back to `pending` for
+ * anything it doesn't recognise, same as before.
+ */
+type Status = string;
 
 /** Compact colour + label metadata for post/target status chips and badges. */
 export const STATUS_META: Record<
-  PostStatus,
+  Status,
   { label: string; dot: string; chip: string; badge: string }
 > = {
   pending: {
@@ -16,6 +24,12 @@ export const STATUS_META: Record<
     dot: "bg-n2 animate-pulse",
     chip: "border-n2/60 bg-n2/10 text-text-primary",
     badge: "border-n2 text-n2",
+  },
+  processing: {
+    label: "Processing",
+    dot: "bg-n4 animate-pulse",
+    chip: "border-n4/60 bg-n4/10 text-text-primary",
+    badge: "border-n4 text-n4",
   },
   published: {
     label: "Published",
@@ -43,6 +57,7 @@ export const STATUS_META: Record<
   },
 };
 
-export function statusMeta(status: PostStatus | TargetStatus) {
+/** Accepts a bare `string` (not `PostStatus | TargetStatus`) so runtime-only statuses like "processing" resolve correctly instead of hitting the `pending` fallback. Genuinely unknown values still fall back to `pending`. */
+export function statusMeta(status: Status) {
   return STATUS_META[status] ?? STATUS_META.pending;
 }

@@ -121,3 +121,39 @@ export function formatLocalTime(iso: string): string {
   if (Number.isNaN(ms)) return "—";
   return new Date(ms).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
 }
+
+/* ── Day view helpers ──────────────────────────────────────────────── */
+
+/**
+ * Parse a "YYYY-MM-DD" day key (as used in the `?date=` URL param) into a
+ * LOCAL midnight Date. Returns null for anything malformed or that doesn't
+ * round-trip to a real calendar date (e.g. "2026-02-30", "banana") — callers
+ * must fall back gracefully rather than crash.
+ */
+export function parseDayKey(key: string): Date | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(key);
+  if (!m) return null;
+  const year = Number(m[1]);
+  const month = Number(m[2]);
+  const day = Number(m[3]);
+  const d = new Date(year, month - 1, day);
+  if (d.getFullYear() !== year || d.getMonth() !== month - 1 || d.getDate() !== day) return null;
+  return d;
+}
+
+/** Add `delta` local calendar days to a date (handles month/year rollover). */
+export function addDaysLocal(d: Date, delta: number): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate() + delta);
+}
+
+/** First-of-month for `d` shifted by `delta` months — used for month-view nav. */
+export function addMonthsLocal(d: Date, delta: number): Date {
+  return new Date(d.getFullYear(), d.getMonth() + delta, 1);
+}
+
+/** Header label for day view, e.g. "Tuesday 4 August 2026". */
+export function formatDayLabel(d: Date): string {
+  const weekday = d.toLocaleDateString(undefined, { weekday: "long" });
+  const month = d.toLocaleDateString(undefined, { month: "long" });
+  return `${weekday} ${d.getDate()} ${month} ${d.getFullYear()}`;
+}
