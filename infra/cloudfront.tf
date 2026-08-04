@@ -10,6 +10,43 @@ resource "aws_route53_zone" "ca" {
 }
 
 # ------------------------------------------------------------------------------
+# Meta / Facebook domain verification.
+#
+# Business Manager verifies ONE specific domain, and which of the two was
+# registered there isn't recorded anywhere in this repo — so the token is
+# published on both apexes. An extra TXT record on the other domain is inert.
+#
+# Kept in Terraform rather than clicked into the console: Meta re-checks
+# verification periodically, so a record that vanishes when a zone is rebuilt
+# would silently un-verify the app. Note these are apex records ("@" in
+# registrar UIs) — `name` is the bare zone name, no subdomain.
+#
+# Safe to add: neither zone had any pre-existing TXT record, so nothing
+# (SPF, DKIM, other verifications) is being displaced. Adding another TXT
+# value at the apex later means appending to `records`, NOT creating a second
+# resource for the same name — Route 53 treats same-name TXT as one record set.
+# ------------------------------------------------------------------------------
+locals {
+  facebookDomainVerification = "facebook-domain-verification=g3433iaduoj4ui1kphq2q18hg9es83"
+}
+
+resource "aws_route53_record" "facebookVerificationCom" {
+  zone_id = aws_route53_zone.com.zone_id
+  name    = var.domainCom
+  type    = "TXT"
+  ttl     = 300
+  records = [local.facebookDomainVerification]
+}
+
+resource "aws_route53_record" "facebookVerificationCa" {
+  zone_id = aws_route53_zone.ca.zone_id
+  name    = var.domainCa
+  type    = "TXT"
+  ttl     = 300
+  records = [local.facebookDomainVerification]
+}
+
+# ------------------------------------------------------------------------------
 # ACM certificate – single cert for all domains (CloudFront requires us-east-1)
 # ------------------------------------------------------------------------------
 resource "aws_acm_certificate" "main" {
@@ -63,8 +100,8 @@ resource "aws_route53_record" "cert_validation_ca" {
 }
 
 resource "aws_acm_certificate_validation" "main" {
-  provider                = aws.us_east_1
-  certificate_arn         = aws_acm_certificate.main.arn
+  provider        = aws.us_east_1
+  certificate_arn = aws_acm_certificate.main.arn
   validation_record_fqdns = concat(
     [for r in aws_route53_record.cert_validation_com : r.fqdn],
     [for r in aws_route53_record.cert_validation_ca : r.fqdn]
@@ -92,7 +129,7 @@ locals {
 }
 
 resource "aws_cloudfront_distribution" "staging" {
-  depends_on = [aws_s3_bucket_ownership_controls.cloudfrontLogs]
+  depends_on          = [aws_s3_bucket_ownership_controls.cloudfrontLogs]
   enabled             = true
   is_ipv6_enabled     = true
   comment             = "Funkedupshift staging"
@@ -106,10 +143,10 @@ resource "aws_cloudfront_distribution" "staging" {
     origin_id   = "S3-${aws_s3_bucket.websiteStaging.id}"
 
     custom_origin_config {
-      http_port             = 80
-      https_port            = 443
+      http_port              = 80
+      https_port             = 443
       origin_protocol_policy = "http-only"
-      origin_ssl_protocols  = ["TLSv1.2"]
+      origin_ssl_protocols   = ["TLSv1.2"]
     }
   }
 
@@ -163,7 +200,7 @@ resource "aws_cloudfront_distribution" "staging" {
 }
 
 resource "aws_cloudfront_distribution" "production" {
-  depends_on = [aws_s3_bucket_ownership_controls.cloudfrontLogs]
+  depends_on          = [aws_s3_bucket_ownership_controls.cloudfrontLogs]
   enabled             = true
   is_ipv6_enabled     = true
   comment             = "Funkedupshift production"
@@ -177,10 +214,10 @@ resource "aws_cloudfront_distribution" "production" {
     origin_id   = "S3-${aws_s3_bucket.websiteProduction.id}"
 
     custom_origin_config {
-      http_port             = 80
-      https_port            = 443
+      http_port              = 80
+      https_port             = 443
       origin_protocol_policy = "http-only"
-      origin_ssl_protocols  = ["TLSv1.2"]
+      origin_ssl_protocols   = ["TLSv1.2"]
     }
   }
 
