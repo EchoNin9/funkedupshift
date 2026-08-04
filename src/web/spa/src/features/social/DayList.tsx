@@ -46,8 +46,15 @@ export function DayList({ posts, onSelectPost }: DayListProps) {
         const targets = post.targets ?? [];
         const mediaCount = mediaCountFor(post);
 
+        // A cancelled post is history: mute the whole card so live posts on the
+        // same day stand out. .card's border is status-blind on its own.
+        const muted = post.status === "cancelled";
+
         return (
-          <li key={post.postId} className="card card-flat overflow-hidden">
+          <li
+            key={post.postId}
+            className={`card card-flat overflow-hidden ${muted ? "card-muted" : ""}`}
+          >
             <button
               type="button"
               onClick={() => onSelectPost(post)}

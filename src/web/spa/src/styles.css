@@ -122,6 +122,14 @@
     transition: transform .15s var(--pop-spring), box-shadow .15s ease;
   }
   .card:hover { transform: translate(-2px, -2px); box-shadow: 9px 9px 0 rgb(var(--color-n1)); }
+  /* Recede a card whose content is history (e.g. a cancelled scheduled post)
+     so live items alongside it stand out. .card sets `border` as a shorthand
+     with a raw colour, so this overrides border-color specifically. */
+  .card-muted {
+    border-color: rgb(var(--color-border-default));
+    opacity: .7;
+  }
+  .card-muted:hover { opacity: 1; }
   /* opt-out for dense/non-interactive cards that shouldn't lift */
   .card-flat { box-shadow: none; }
   .card-flat:hover { transform: none; box-shadow: none; }
