@@ -134,3 +134,8 @@ variable "socialAlertEmail" {
   description = "Email address subscribed to fus-social-alerts (SNS) for publish failures and the daily heartbeat."
   type        = string
 }
+
+variable "lipsyncAlertEmail" {
+  description = "Email address subscribed to fus-lipsync-alerts (SNS) for reconciliation alerts and the daily heartbeat."
+  type        = string
+}

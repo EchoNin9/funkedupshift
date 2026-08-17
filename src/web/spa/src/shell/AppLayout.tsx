@@ -6,6 +6,7 @@ import { useBranding } from "./BrandingContext";
 import { usePlatform } from "./PlatformContext";
 import { AdminLayout } from "./AdminLayout";
 import { SocialGate } from "../features/social/SocialGate";
+import { LipsyncGate } from "../features/lipsync/LipsyncGate";
 import { Header } from "./Header";
 import { DesktopHeaderBar } from "./DesktopHeaderBar";
 import { LeftSidebar, SidebarCollapseProvider, useSidebarCollapse } from "./LeftSidebar";
@@ -64,6 +65,7 @@ const TextViewPage = lazy(() => import("../features/textshare/TextViewPage"));
 const ConvertersPage = lazy(() => import("../features/converters/ConvertersPage"));
 const SocialCalendarPage = lazy(() => import("../features/social/CalendarPage"));
 const SocialComposerPage = lazy(() => import("../features/social/ComposerPage"));
+const LipsyncPage = lazy(() => import("../features/lipsync/LipsyncPage"));
 
 function PageLoader() {
   return (
@@ -161,6 +163,12 @@ const AppLayoutContent: React.FC = () => {
               <Route path="/social" element={<SocialGate />}>
                 <Route index element={<SocialCalendarPage />} />
                 <Route path="compose" element={<SocialComposerPage />} />
+              </Route>
+              {/* Admin-only lip-sync studio -- gated by LipsyncGate (hasRole superadmin),
+                  the same check the social scheduler uses. Kept off /admin/* since it's
+                  a top-level feature area, mirroring /social. */}
+              <Route path="/lipsync" element={<LipsyncGate />}>
+                <Route index element={<LipsyncPage />} />
               </Route>
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/auth" element={<AuthPage />} />
