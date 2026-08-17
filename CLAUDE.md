@@ -65,9 +65,18 @@ Give these to the sidekick so it doesn't run the slow path on every iteration.
 - Frontend: `cd src/web/spa && npm ci && npm run build`
 
 **Known baselines (don't chase these):**
-- `test_api_handler.py` has 2 pre-existing PIL-related failures — expected.
 - `npm run typecheck` reports several pre-existing type errors and is **not** the
   gate — use `npm run build`. Any *new* failure you introduce is yours to fix.
+
+**The pytest suite is otherwise fully green** — 896 passing as of 2026-08-17.
+An older note here claimed "2 pre-existing PIL-related failures in
+`test_api_handler.py`"; that is **stale** and those failures no longer occur.
+Treat any pytest failure you see as real rather than waving it through as an
+expected baseline.
+
+Run pytest via the project venv: `.venv/bin/python -m pytest src/lambda/tests -q`
+(a bare `pytest`/`python` may hit a pyenv shim that lacks `dnspython` and fails
+at collection on `test_tools_dns.py`).
 
 ---
 
@@ -76,7 +85,15 @@ Give these to the sidekick so it doesn't run the slow path on every iteration.
 - **Frontend:** React SPA in `src/web/spa/` (Vite) → S3 behind CloudFront.
 - **API:** HTTP API Gateway → Python Lambda dispatcher `src/lambda/api/handler.py`
   (literal `method + path` chains; feature logic in per-feature modules).
+- **Isolated feature modules:** some features live outside the main API with
+  their own handler, table, bucket and `infra/<name>.tf` —
+  `src/lambda/social/` (scheduling), `src/lambda/tools/` (shortener/DNS),
+  `src/lambda/lipsync/` (AI video & lip-sync, see `docs/lipsync-design.md`).
+  Adding a route to any of them needs a matching `aws_apigatewayv2_route`;
+  `tests/test_route_coverage.py` fails otherwise.
 - **Auth:** Cognito (JWT authorizer), groups `admin` / `manager` / `user`.
+  Frontend naming trap: the Cognito group `admin` maps to the frontend
+  `UserRole` value **`superadmin`** — there is no `"admin"` role literal.
 - **Data:** single-table DynamoDB (`PK`/`SK` + GSIs).
 - **Infra:** Terraform in `infra/`.
 - **Branches/deploy:** work on `development` (auto-deploys staging); `main` is
@@ -110,3 +127,30 @@ or a prod bug.
    (`{meta && <canvas ref={...}/>}`) makes the first interaction a silent
    no-op (image tool first-file-pick bug — both frontends). Keep it mounted,
    hide with CSS.
+
+---
+
+## Hard-won gotchas — lipsync session (2026-08-17)
+
+1. **fal.ai queue URLs are not one shape.** Submit uses the FULL model id
+   (`POST /fal-ai/kling-video/ai-avatar/v2/pro`), but status and result key off
+   the **owner/app prefix only** (`GET /fal-ai/kling-video/requests/{id}/status`).
+   Using the full id on a poll returns **HTTP 405**. fal's own published
+   OpenAPI schema documents the full path for all three operations and is
+   **wrong** — verified against the live service (valid routes 401
+   unauthenticated, invalid ones 405). This only bites model ids with more
+   than two path segments, so a 2-segment model like `veed/lipsync` works end
+   to end and hides the bug. See `lipsync/providers/fal.py::queueAppId`.
+2. **A test that asserts the implementation's URL isn't a test.** The above
+   shipped green because the test asserted exactly the string the code built.
+   When pinning an external API's contract, verify the shape against the real
+   service, not against your own code.
+3. **`MagicMock`-backed DynamoDB tests never exercise boto3's serializer.**
+   A raw Python `float` written to DynamoDB raises `TypeError: Float types are
+   not supported` in production but passes every mocked test. Convert to
+   `Decimal(str(v))` at the write choke point, and assert the *type*, not just
+   numeric equality — a bare float passes `== 12.3`.
+4. **zsh does not word-split unquoted variables** the way bash does. A bundled
+   flag string (`R="--profile x --region y"; aws ... $R`) is passed as ONE
+   argument and the command errors. Combined with `|| echo "NOT FOUND"` this
+   reads as "resource missing" and can fake a failed deploy. Use inline flags.

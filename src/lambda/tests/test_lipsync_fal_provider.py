@@ -296,8 +296,52 @@ def test_check_status_completed_fetches_result_and_extracts_video_url(mock_urlop
     assert mock_urlopen.call_count == 2
     statusReq = mock_urlopen.call_args_list[0][0][0]
     resultReq = mock_urlopen.call_args_list[1][0][0]
-    assert statusReq.full_url == "https://queue.fal.run/fal-ai/kling-video/ai-avatar/v2/pro/requests/req-abc/status"
-    assert resultReq.full_url == "https://queue.fal.run/fal-ai/kling-video/ai-avatar/v2/pro/requests/req-abc"
+    # owner/app prefix ONLY -- the full model id here returns 405 from fal.
+    # See test_status_url_uses_owner_app_prefix_not_full_model_id below.
+    assert statusReq.full_url == "https://queue.fal.run/fal-ai/kling-video/requests/req-abc/status"
+    assert resultReq.full_url == "https://queue.fal.run/fal-ai/kling-video/requests/req-abc"
+
+
+def test_queue_app_id_truncates_to_owner_and_app():
+    """Regression: fal routes queue status/result on the owner/app prefix only.
+
+    A deep model id (fal-ai/kling-video/ai-avatar/v2/pro) submitted fine but
+    failed its first poll in staging with HTTP 405, because the poll URL was
+    built from the full id. Verified against the live service: the two-segment
+    form returns 401 unauthenticated (route exists), the full-path form returns
+    405 (route rejects GET). fal's published OpenAPI schema documents the full
+    path for all three operations and is wrong.
+    """
+    from lipsync.providers.fal import FalProvider
+
+    assert FalProvider.queueAppId("fal-ai/kling-video/ai-avatar/v2/pro") == "fal-ai/kling-video"
+    # Already two segments -- unchanged. This is why relip never hit the bug.
+    assert FalProvider.queueAppId("veed/lipsync") == "veed/lipsync"
+    assert FalProvider.queueAppId("owner/app/extra") == "owner/app"
+    # Tolerate stray slashes rather than emitting a URL with an empty segment.
+    assert FalProvider.queueAppId("/fal-ai/kling-video/ai-avatar/") == "fal-ai/kling-video"
+
+
+@patch("lipsync.providers.fal.getFalApiKey", return_value="test-fal-key")
+@patch("lipsync.providers.fal.urlopen")
+def test_submit_uses_full_model_id_while_status_uses_prefix(mock_urlopen, mock_key):
+    """The two URLs are deliberately different shapes -- pin both together so a
+    future refactor can't quietly unify them back into the broken form."""
+    mock_urlopen.side_effect = [
+        _mockResponse({"request_id": "req-xyz"}),
+        _mockResponse({"status": "IN_QUEUE"}),
+    ]
+    from lipsync.providers.fal import FalProvider
+
+    inputUrls = {"imageUrl": "https://s3.example/image.jpg", "audioUrl": "https://s3.example/audio.wav"}
+    provider = FalProvider()
+    provider.submit(_job(), inputUrls)
+    provider.checkStatus(_job(providerJobId="req-xyz"))
+
+    submitUrl = mock_urlopen.call_args_list[0][0][0].full_url
+    statusUrl = mock_urlopen.call_args_list[1][0][0].full_url
+    assert submitUrl == "https://queue.fal.run/fal-ai/kling-video/ai-avatar/v2/pro"
+    assert statusUrl == "https://queue.fal.run/fal-ai/kling-video/requests/req-xyz/status"
 
 
 @patch("lipsync.providers.fal.getFalApiKey", return_value="test-fal-key")

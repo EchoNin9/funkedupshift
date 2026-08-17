@@ -9,15 +9,19 @@ Queue API shape (verified directly against fal.ai's own API reference and
 model pages, not just docs/lipsync-design.md's summary -- see this module's
 MODE_MODELS comment for one place that summary turned out to be wrong):
 
-    POST  https://queue.fal.run/{model_id}                     (submit)
+    POST  https://queue.fal.run/{model_id}                    (submit)
       -> {"request_id", "status_url", "response_url", "cancel_url", ...}
-    GET   https://queue.fal.run/{model_id}/requests/{id}/status (poll)
+    GET   https://queue.fal.run/{app_id}/requests/{id}/status (poll)
       -> {"status": "IN_QUEUE" | "IN_PROGRESS" | "COMPLETED" | "FAILED", ...}
-    GET   https://queue.fal.run/{model_id}/requests/{id}        (result)
+    GET   https://queue.fal.run/{app_id}/requests/{id}        (result)
       -> {"video": {"url": ..., "content_type", "file_name", "file_size"},
           "duration": <float, avatar model only -- veed/lipsync omits it,
           which is why runner.py re-measures the copied output itself
           instead of trusting this field>}
+
+Note {model_id} vs {app_id}: submit takes the FULL model id, but status and
+result key off the owner/app prefix only (see FalProvider.queueAppId). Using
+the full id on a poll returns HTTP 405.
 
 Auth: header `Authorization: Key <FAL_KEY>` on every call (submit, status,
 and result) -- fal's status/result endpoints are account-scoped, not public.
@@ -108,14 +112,36 @@ class FalProvider(LipsyncProvider):
             raise ProviderError("fal submit response is missing request_id")
         return SubmitResult(providerJobId=requestId, statusUrl=data.get("status_url", ""))
 
+    @staticmethod
+    def queueAppId(model):
+        """Status/result URLs key off the OWNER/APP prefix, not the full model id.
+
+        Submitting uses the full id (POST /fal-ai/kling-video/ai-avatar/v2/pro),
+        but the queue routes status and result on the first two segments only:
+
+            GET /fal-ai/kling-video/requests/{id}/status      -> 401 (route exists)
+            GET /fal-ai/kling-video/ai-avatar/v2/pro/requests/{id}/status -> 405
+
+        fal's published OpenAPI schema for this endpoint lists the FULL path for
+        all three operations, which is wrong -- verified empirically against the
+        live service (unauthenticated: valid routes 401, invalid ones 405).
+
+        This only bites models with >2 path segments, which is why `veed/lipsync`
+        worked end to end while `fal-ai/kling-video/ai-avatar/v2/pro` failed on
+        its first poll with HTTP 405.
+        """
+        parts = [p for p in str(model).split("/") if p]
+        return "/".join(parts[:2])
+
     def checkStatus(self, job):
         model = job.get("model") or self.modelFor(job["mode"])
+        appId = self.queueAppId(model)
         requestId = job.get("providerJobId")
         if not requestId:
             return StatusResult(state=STATE_FAILED, error="job has no providerJobId to check")
 
         try:
-            statusData = self._get(f"{QUEUE_BASE}/{model}/requests/{requestId}/status")
+            statusData = self._get(f"{QUEUE_BASE}/{appId}/requests/{requestId}/status")
         except (HTTPError, URLError) as e:
             return StatusResult(state=STATE_FAILED, error=self._safeErrStr(e))
         except ValueError as e:
@@ -128,7 +154,7 @@ class FalProvider(LipsyncProvider):
             return StatusResult(state=state)
 
         try:
-            resultData = self._get(f"{QUEUE_BASE}/{model}/requests/{requestId}")
+            resultData = self._get(f"{QUEUE_BASE}/{appId}/requests/{requestId}")
         except (HTTPError, URLError) as e:
             return StatusResult(state=STATE_FAILED, error=self._safeErrStr(e))
         except ValueError as e:

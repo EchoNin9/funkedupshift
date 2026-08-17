@@ -32,7 +32,7 @@ export const MODE_META: Record<
   avatar: {
     label: "Avatar",
     hint: "Portrait image + audio → talking-head video.",
-    model: "fal-ai/kling-video/v2/pro/ai-avatar",
+    model: "fal-ai/kling-video/ai-avatar/v2/pro",
     pricePerSec: "$0.115/s",
   },
   relip: {
