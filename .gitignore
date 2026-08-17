@@ -1,0 +1,9 @@
+# Node dependencies — CI installs these with `npm ci` (see .github/workflows/),
+# so the tree is never deployed from git. Previously tracked (~10.7k files, 95%
+# of everything tracked in this repo); untracked 2026-08-17.
+node_modules/
+
+# Python bytecode — regenerated on every test run.
+__pycache__/
+*.pyc
+*.pyo
