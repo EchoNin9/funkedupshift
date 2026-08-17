@@ -3,6 +3,11 @@
 # of everything tracked in this repo); untracked 2026-08-17.
 node_modules/
 
+# SPA build output — CI runs `npm run build` then
+# `aws s3 sync src/web/spa/dist s3://$BUCKET/ --delete` on every deploy, so the
+# committed copy is rebuilt and overwritten, never read. Untracked 2026-08-17.
+src/web/spa/dist/
+
 # Python bytecode — regenerated on every test run.
 __pycache__/
 *.pyc
