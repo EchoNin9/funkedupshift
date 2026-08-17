@@ -294,6 +294,114 @@ def test_create_job_unknown_model_override_400():
     assert status == 400
 
 
+def test_create_job_unknown_model_override_never_reaches_storage_or_fal():
+    """The 400 must happen before any job row is written -- unknown/cross-mode
+    model rejection happens before storage.createJob is ever called."""
+    with patch.object(storage, "createJob") as mockCreate:
+        status, payload = _call(_routeEvent("POST", "/lipsync/jobs", _createJobBody(model="not-a-real-model")))
+
+    assert status == 400
+    mockCreate.assert_not_called()
+
+
+def test_create_job_cross_mode_model_override_400():
+    """A relip-only model (veed/lipsync) must never be accepted on an avatar
+    job, even though both mode and the model individually are each valid."""
+    status, payload = _call(_routeEvent(
+        "POST", "/lipsync/jobs", _createJobBody(mode="avatar", model="veed/lipsync"),
+    ))
+    assert status == 400
+
+
+def test_create_job_cross_mode_model_override_never_reaches_storage():
+    with patch.object(storage, "createJob") as mockCreate:
+        status, payload = _call(_routeEvent(
+            "POST", "/lipsync/jobs", _createJobBody(mode="avatar", model="veed/lipsync"),
+        ))
+
+    assert status == 400
+    mockCreate.assert_not_called()
+
+
+def test_create_job_non_default_same_mode_model_override_is_accepted():
+    mocks = _patchCreateJobHappy()
+    with mocks[0], mocks[1], mocks[2], mocks[3] as mockCreate, mocks[4]:
+        status, payload = _call(_routeEvent(
+            "POST", "/lipsync/jobs", _createJobBody(model="fal-ai/kling-video/ai-avatar/v2/standard"),
+        ))
+
+    assert status == 201
+    assert mockCreate.call_args.kwargs["model"] == "fal-ai/kling-video/ai-avatar/v2/standard"
+
+
+# --- POST /lipsync/jobs: prompt --------------------------------------------------------
+
+
+def test_create_job_prompt_required_model_with_no_prompt_400():
+    status, payload = _call(_routeEvent(
+        "POST", "/lipsync/jobs", _createJobBody(model="fal-ai/infinitalk"),
+    ))
+    assert status == 400
+
+
+def test_create_job_prompt_required_model_with_no_prompt_never_reaches_storage():
+    with patch.object(storage, "createJob") as mockCreate:
+        status, payload = _call(_routeEvent(
+            "POST", "/lipsync/jobs", _createJobBody(model="fal-ai/infinitalk"),
+        ))
+
+    assert status == 400
+    mockCreate.assert_not_called()
+
+
+def test_create_job_prompt_required_model_with_prompt_201():
+    mocks = _patchCreateJobHappy()
+    with mocks[0], mocks[1], mocks[2], mocks[3] as mockCreate, mocks[4]:
+        status, payload = _call(_routeEvent(
+            "POST", "/lipsync/jobs",
+            _createJobBody(model="fal-ai/infinitalk", prompt="a robot waving hello"),
+        ))
+
+    assert status == 201
+    assert mockCreate.call_args.kwargs["prompt"] == "a robot waving hello"
+
+
+def test_create_job_prompt_optional_model_with_prompt_is_stored():
+    mocks = _patchCreateJobHappy()
+    with mocks[0], mocks[1], mocks[2], mocks[3] as mockCreate, mocks[4]:
+        status, payload = _call(_routeEvent(
+            "POST", "/lipsync/jobs", _createJobBody(prompt="an optional prompt"),
+        ))
+
+    assert status == 201
+    assert mockCreate.call_args.kwargs["prompt"] == "an optional prompt"
+
+
+def test_create_job_prompt_omitted_defaults_to_empty_string():
+    mocks = _patchCreateJobHappy()
+    with mocks[0], mocks[1], mocks[2], mocks[3] as mockCreate, mocks[4]:
+        status, payload = _call(_routeEvent("POST", "/lipsync/jobs", _createJobBody()))
+
+    assert status == 201
+    assert mockCreate.call_args.kwargs["prompt"] == ""
+
+
+def test_create_job_prompt_on_a_model_that_does_not_accept_it_is_still_201():
+    """routes.createJob doesn't reject this -- it's stored on the job record
+    regardless (audit trail), and it's _buildInput's job at submit time to
+    drop it rather than forward it to a model with no prompt field. See
+    test_lipsync_fal_provider.py's build-input coverage for that half."""
+    mocks = _patchCreateJobHappy(headObject={"contentLength": 5000, "contentType": "video/mp4"})
+    with mocks[0], mocks[1], mocks[2], mocks[3] as mockCreate, mocks[4]:
+        status, payload = _call(_routeEvent(
+            "POST", "/lipsync/jobs",
+            _createJobBody(mode="relip", imageKey=None, videoKey="uploads/u/video/v.mp4", prompt="ignored anyway"),
+        ))
+
+    assert status == 201
+    assert mockCreate.call_args.kwargs["prompt"] == "ignored anyway"
+
+
 def test_create_job_image_not_found_400():
     with patch.object(media, "headObject", return_value=None):
         status, payload = _call(_routeEvent("POST", "/lipsync/jobs", _createJobBody()))

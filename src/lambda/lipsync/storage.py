@@ -106,7 +106,7 @@ def _statusKeyFor(status):
 
 
 def createJob(jobId, mode, provider, model, audioKey, createdBy, consentAttested,
-              imageKey="", videoKey="", ttlDays=DEFAULT_TTL_DAYS):
+              imageKey="", videoKey="", prompt="", ttlDays=DEFAULT_TTL_DAYS):
     now = _isoNowUtc()
     item = {
         "PK": f"JOB#{jobId}",
@@ -124,6 +124,7 @@ def createJob(jobId, mode, provider, model, audioKey, createdBy, consentAttested
         "imageKey": imageKey or "",
         "videoKey": videoKey or "",
         "audioKey": audioKey or "",
+        "prompt": prompt or "",
         "outputKey": "",
         "providerJobId": "",
         "checkCount": 0,

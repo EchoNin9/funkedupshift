@@ -9,7 +9,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { Alert, useClickOutside } from "../../components";
 import { cancelJob, getJob, getJobOutputUrl, isTerminalStatus, type LipsyncJob } from "./api";
-import { MODE_META, statusMeta } from "./statusStyles";
+import { MODE_META, modelLabel, statusMeta } from "./statusStyles";
 import { formatDateTime, formatExpiry, isExpiringSoon } from "./dateUtils";
 
 // Background poll cadence — matches the runner's fastest backoff step (15s,
@@ -189,6 +189,8 @@ export function JobDetail({ jobId, onClose, onChanged }: JobDetailProps) {
               </div>
 
               <dl className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+                <dt className="text-text-tertiary">Model</dt>
+                <dd className="text-text-primary">{modelLabel(job.model)}</dd>
                 <dt className="text-text-tertiary">Created</dt>
                 <dd className="text-text-primary">{formatDateTime(job.createdAt)}</dd>
                 <dt className="text-text-tertiary">Updated</dt>
@@ -199,6 +201,12 @@ export function JobDetail({ jobId, onClose, onChanged }: JobDetailProps) {
                   <>
                     <dt className="text-text-tertiary">Duration</dt>
                     <dd className="text-text-primary">{job.durationSec.toFixed(1)}s</dd>
+                  </>
+                )}
+                {job.prompt && (
+                  <>
+                    <dt className="text-text-tertiary">Prompt</dt>
+                    <dd className="text-text-primary break-words">{job.prompt}</dd>
                   </>
                 )}
               </dl>

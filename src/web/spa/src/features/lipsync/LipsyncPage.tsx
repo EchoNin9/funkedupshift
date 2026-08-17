@@ -24,7 +24,7 @@ import {
   type LipsyncMode,
   type MediaKind,
 } from "./api";
-import { MODE_META, statusMeta } from "./statusStyles";
+import { DEFAULT_MODELS, MODE_META, modelLabel, modelMeta, modelsForMode, statusMeta } from "./statusStyles";
 import { formatDateTime, formatExpiry, isExpiringSoon } from "./dateUtils";
 import { JobDetail } from "./JobDetail";
 
@@ -218,6 +218,7 @@ function JobCard({ job, onSelect }: { job: LipsyncJob; onSelect: () => void }) {
             AI-generated
           </span>
         </div>
+        <p className="text-xs text-text-tertiary">{modelLabel(job.model)}</p>
         <p className="text-xs text-text-tertiary">Created {formatDateTime(job.createdAt)}</p>
         <p className={`text-xs ${expiring ? "text-amber-400" : "text-text-tertiary"}`}>
           Expires {formatExpiry(job.expiresAt)}
@@ -231,6 +232,8 @@ function JobCard({ job, onSelect }: { job: LipsyncJob; onSelect: () => void }) {
 export default function LipsyncPage() {
   /* ── Create form state ──────────────────────────────────────────── */
   const [mode, setMode] = useState<LipsyncMode>("avatar");
+  const [model, setModel] = useState<string>(DEFAULT_MODELS.avatar);
+  const [prompt, setPrompt] = useState("");
   const [imageItem, setImageItem] = useState<UploadItem | null>(null);
   const [videoItem, setVideoItem] = useState<UploadItem | null>(null);
   const [audioItem, setAudioItem] = useState<UploadItem | null>(null);
@@ -238,6 +241,27 @@ export default function LipsyncPage() {
   const [generalErrors, setGeneralErrors] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const modelOptions = useMemo(() => modelsForMode(mode), [mode]);
+  const selectedModelMeta = modelMeta(model);
+  const promptRequired = selectedModelMeta?.promptRequired ?? false;
+
+  // Mode owns model (each mode has its own valid model set) -- switching
+  // modes always resets to that mode's default so a relip model can never
+  // stay selected on an avatar job or vice versa. Any prompt is cleared too
+  // if the new model doesn't accept one, so a value the field no longer even
+  // shows can't be silently carried into the next submit.
+  const changeMode = useCallback((newMode: LipsyncMode) => {
+    setMode(newMode);
+    const nextModel = DEFAULT_MODELS[newMode];
+    setModel(nextModel);
+    if (!modelMeta(nextModel)?.acceptsPrompt) setPrompt("");
+  }, []);
+
+  const changeModel = useCallback((newModel: string) => {
+    setModel(newModel);
+    if (!modelMeta(newModel)?.acceptsPrompt) setPrompt("");
+  }, []);
 
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
@@ -452,6 +476,7 @@ export default function LipsyncPage() {
     setVideoItem(null);
     setAudioItem(null);
     setConsentAttested(false);
+    setPrompt("");
     setGeneralErrors([]);
   }, [imageItem, videoItem, audioItem]);
 
@@ -474,6 +499,12 @@ export default function LipsyncPage() {
         errors.push("Remove or retry the failed upload.");
       }
       if (!consentAttested) errors.push("Confirm you have the right to use this likeness.");
+      // Mirrors the server rule (providers/fal.py's promptRequired, enforced
+      // again in routes.createJob) -- this client-side copy is UX only, the
+      // 400 the server would return either way is the real guard.
+      if (promptRequired && !prompt.trim()) {
+        errors.push(`${selectedModelMeta?.label ?? "This model"} requires a prompt.`);
+      }
 
       setGeneralErrors(errors);
       if (errors.length > 0) return;
@@ -482,9 +513,11 @@ export default function LipsyncPage() {
       try {
         const payload: CreateJobInput = {
           mode,
+          model,
           audioKey: audioItem!.key!,
           consentAttested,
           ...(mode === "avatar" ? { imageKey: imageItem!.key! } : { videoKey: videoItem!.key! }),
+          ...(prompt.trim() ? { prompt: prompt.trim() } : {}),
         };
         const created = await createJob(payload);
         resetForm();
@@ -501,7 +534,20 @@ export default function LipsyncPage() {
         setSubmitting(false);
       }
     },
-    [submitting, mode, imageItem, videoItem, audioItem, consentAttested, resetForm, handleChanged]
+    [
+      submitting,
+      mode,
+      model,
+      prompt,
+      promptRequired,
+      selectedModelMeta,
+      imageItem,
+      videoItem,
+      audioItem,
+      consentAttested,
+      resetForm,
+      handleChanged,
+    ]
   );
 
   const modeInfo = MODE_META[mode];
@@ -541,7 +587,7 @@ export default function LipsyncPage() {
                 <button
                   key={value}
                   type="button"
-                  onClick={() => setMode(value)}
+                  onClick={() => changeMode(value)}
                   aria-pressed={mode === value}
                   className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
                     mode === value
@@ -554,9 +600,22 @@ export default function LipsyncPage() {
                 </button>
               ))}
             </div>
-            <p className="mt-1.5 text-xs text-text-tertiary">
-              {modeInfo.hint} · {modeInfo.model} · {modeInfo.pricePerSec}
-            </p>
+            <p className="mt-1.5 text-xs text-text-tertiary">{modeInfo.hint}</p>
+          </FormField>
+
+          <FormField label="Model" required>
+            <select
+              value={model}
+              onChange={(e) => changeModel(e.target.value)}
+              aria-label="Model"
+              className="w-full rounded-lg border border-border-hover bg-surface-0 px-3 py-2 text-sm text-text-primary"
+            >
+              {modelOptions.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.label} · {m.price}
+                </option>
+              ))}
+            </select>
           </FormField>
 
           {/* key forces a distinct instance per mode — without it React
@@ -613,6 +672,25 @@ export default function LipsyncPage() {
             <p className="mt-1 text-xs text-text-tertiary">Up to 20s. Longer clips are rejected by the server.</p>
           </FormField>
 
+          {selectedModelMeta?.acceptsPrompt && (
+            <FormField label="Prompt" required={promptRequired}>
+              <textarea
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                required={promptRequired}
+                placeholder={
+                  promptRequired
+                    ? "Required for this model — describe the motion or scene…"
+                    : "Optional — describe the motion or scene…"
+                }
+                className="w-full min-h-[5rem] resize-y rounded-lg border border-border-hover bg-surface-0 px-3 py-2 text-sm text-text-primary"
+              />
+              {promptRequired && (
+                <p className="mt-1 text-xs text-text-tertiary">{selectedModelMeta.label} requires a prompt.</p>
+              )}
+            </FormField>
+          )}
+
           <FormField label="Likeness consent" required>
             <label className="flex items-start gap-2 text-sm text-text-secondary select-none cursor-pointer">
               <input
@@ -631,7 +709,7 @@ export default function LipsyncPage() {
           <div className="flex items-center gap-2 pt-2">
             <button
               type="submit"
-              disabled={submitting || !consentAttested}
+              disabled={submitting || !consentAttested || (promptRequired && !prompt.trim())}
               className="inline-flex items-center justify-center gap-2 rounded-lg bg-accent-500 px-4 py-2 text-sm font-medium text-white hover:bg-accent-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {submitting ? "Submitting…" : "Generate clip"}

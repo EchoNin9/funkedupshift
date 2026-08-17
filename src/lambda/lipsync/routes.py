@@ -235,6 +235,7 @@ def createJob(event, claims):
     imageKey = str(body.get("imageKey") or "").strip()
     videoKey = str(body.get("videoKey") or "").strip()
     modelOverride = body.get("model") or None
+    prompt = str(body.get("prompt") or "").strip()
     consentAttested = body.get("consentAttested")
 
     errors = []
@@ -262,6 +263,14 @@ def createJob(event, claims):
         model = provider.modelFor(mode, modelOverride)
     except (UnknownProviderError, ValidationError) as e:
         return jsonResponse({"errors": [str(e)]}, 400)
+
+    # Mirrors the frontend's "keep submit disabled until a required prompt is
+    # filled" UX rule server-side (client validation there is UX only, never
+    # trusted) -- checked via the provider so this stays provider-agnostic,
+    # same as the modelFor() call just above never importing lipsync.providers.fal
+    # directly.
+    if provider.promptRequired(model) and not prompt:
+        return jsonResponse({"errors": [f"model {model!r} requires a prompt"]}, 400)
 
     # Upload-size caps (design doc: "Upload size caps at presign time" --
     # the frozen PresignRequest contract carries no size field, so this is
@@ -316,6 +325,7 @@ def createJob(event, claims):
         audioKey=audioKey,
         imageKey=imageKey,
         videoKey=videoKey,
+        prompt=prompt,
         createdBy=claims.get("sub", ""),
         consentAttested=True,
     )

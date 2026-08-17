@@ -21,24 +21,138 @@ export function statusMeta(status: LipsyncJobStatus) {
 }
 
 /**
- * Static per-mode copy, sourced from docs/lipsync-design.md's Scope table.
- * Informational only — never sent to the API. The backend defaults `model`
- * per mode, so the create form doesn't expose a model picker.
+ * Static per-mode copy (label + one-line hint for the mode toggle). Model
+ * identity and pricing used to live here too (one hardcoded string per
+ * mode), back when the backend only ever offered one model per mode and
+ * rejected any override. Now that `providers/fal.py::MODEL_CATALOG` offers
+ * several models per mode, that display data has moved to MODEL_CATALOG
+ * below, keyed by model id instead of mode -- see that constant.
  */
-export const MODE_META: Record<
-  LipsyncMode,
-  { label: string; hint: string; model: string; pricePerSec: string }
-> = {
+export const MODE_META: Record<LipsyncMode, { label: string; hint: string }> = {
   avatar: {
     label: "Avatar",
     hint: "Portrait image + audio → talking-head video.",
-    model: "fal-ai/kling-video/ai-avatar/v2/pro",
-    pricePerSec: "$0.115/s",
   },
   relip: {
     label: "Re-lip",
     hint: "Existing video + audio → re-synced lip movement.",
-    model: "veed/lipsync",
-    pricePerSec: "$0.07/s",
   },
 };
+
+/**
+ * Mirrors the backend catalog (src/lambda/lipsync/providers/fal.py's
+ * MODEL_CATALOG) for display purposes -- model ids here MUST match that
+ * catalog's keys EXACTLY, since `id` is sent verbatim as CreateJobInput.model.
+ * This is display/picker data only; the backend re-validates the model server
+ * side regardless of what this list offers (routes.createJob never trusts the
+ * client) -- see that module's docstring.
+ *
+ * Kept as a hand-synced mirror rather than fetched from the API: the create-
+ * job contract is frozen at {mode, audioKey, imageKey?, videoKey?, model?,
+ * prompt?, consentAttested} (docs/lipsync-design.md) with no catalog-listing
+ * route, so there is nothing to fetch this from.
+ *
+ * `price` strings are INDICATIVE ONLY, not verified against a live fal
+ * account -- same caveat as the backend catalog's comment. Where fal's own
+ * pricing pages disagreed (VEED) the string says so; where no figure was
+ * sourced at all, it says "not verified" rather than inventing one.
+ */
+export interface LipsyncModelMeta {
+  mode: LipsyncMode;
+  label: string;
+  price: string;
+  /** Whether this model has a prompt input at all -- false hides the prompt field entirely rather than showing one that would be silently ignored. */
+  acceptsPrompt: boolean;
+  promptRequired: boolean;
+}
+
+export const MODEL_CATALOG: Record<string, LipsyncModelMeta> = {
+  "fal-ai/kling-video/ai-avatar/v2/pro": {
+    mode: "avatar",
+    label: "Kling Avatar v2 Pro",
+    price: "~$0.115/s",
+    acceptsPrompt: true,
+    promptRequired: false,
+  },
+  "fal-ai/kling-video/ai-avatar/v2/standard": {
+    mode: "avatar",
+    label: "Kling Avatar v2 Standard",
+    price: "not verified",
+    acceptsPrompt: true,
+    promptRequired: false,
+  },
+  "fal-ai/kling-video/v1/standard/ai-avatar": {
+    mode: "avatar",
+    label: "Kling Avatar v1 Standard",
+    price: "not verified",
+    acceptsPrompt: true,
+    promptRequired: false,
+  },
+  "fal-ai/infinitalk": {
+    mode: "avatar",
+    label: "InfiniteTalk",
+    price: "not verified",
+    acceptsPrompt: true,
+    promptRequired: true,
+  },
+  "veed/lipsync": {
+    mode: "relip",
+    label: "VEED Lipsync",
+    price: "uncertain — sources disagree ($0.07/s vs $0.40/min)",
+    acceptsPrompt: false,
+    promptRequired: false,
+  },
+  "fal-ai/sync-lipsync/v2": {
+    mode: "relip",
+    label: "Sync Lipsync v2",
+    price: "~$3/min",
+    acceptsPrompt: false,
+    promptRequired: false,
+  },
+  "fal-ai/latentsync": {
+    mode: "relip",
+    label: "LatentSync",
+    price: "~$0.20 (clips up to 40s)",
+    acceptsPrompt: false,
+    promptRequired: false,
+  },
+  "fal-ai/musetalk": {
+    mode: "relip",
+    label: "MuseTalk",
+    price: "not verified",
+    acceptsPrompt: false,
+    promptRequired: false,
+  },
+  "fal-ai/pixverse/lipsync": {
+    mode: "relip",
+    label: "PixVerse Lipsync",
+    price: "~$0.04/s",
+    acceptsPrompt: false,
+    promptRequired: false,
+  },
+};
+
+/** Same two defaults the backend falls back to when CreateJobInput carries no `model` (providers/fal.py's DEFAULT_MODELS). */
+export const DEFAULT_MODELS: Record<LipsyncMode, string> = {
+  avatar: "fal-ai/kling-video/ai-avatar/v2/pro",
+  relip: "veed/lipsync",
+};
+
+/** Models valid for `mode`, in MODEL_CATALOG's declaration order -- what the create form's picker lists. */
+export function modelsForMode(mode: LipsyncMode): Array<{ id: string } & LipsyncModelMeta> {
+  return Object.entries(MODEL_CATALOG)
+    .filter(([, meta]) => meta.mode === mode)
+    .map(([id, meta]) => ({ id, ...meta }));
+}
+
+export function modelMeta(modelId: string | undefined): ({ id: string } & LipsyncModelMeta) | undefined {
+  if (!modelId) return undefined;
+  const meta = MODEL_CATALOG[modelId];
+  return meta ? { id: modelId, ...meta } : undefined;
+}
+
+/** Human label for a job's model, falling back to the raw id for a job whose model isn't in this mirror (e.g. catalog drift, or the rare "unknown" edge case). */
+export function modelLabel(modelId: string | undefined): string {
+  if (!modelId) return "Unknown model";
+  return MODEL_CATALOG[modelId]?.label ?? modelId;
+}

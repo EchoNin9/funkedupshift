@@ -65,6 +65,18 @@ class LipsyncProvider(ABC):
         provider-side model string)."""
         raise NotImplementedError
 
+    def promptRequired(self, model: str) -> bool:
+        """Whether `model` (a value previously returned by modelFor) requires
+        a client-supplied prompt to submit successfully. Default False, not
+        abstract -- most providers/models have no such requirement. Overridden
+        by FalProvider, which answers from its MODEL_CATALOG (e.g.
+        fal-ai/infinitalk requires one, every other current model doesn't).
+        routes.createJob calls this -- through the provider instance, never by
+        importing a concrete provider module -- to 400 a create-job request
+        for a prompt-required model with no prompt, before a job row is ever
+        written."""
+        return False
+
     @abstractmethod
     def validate(self, job: dict) -> None:
         """Raise ValidationError if `job` (the DynamoDB job item, or an

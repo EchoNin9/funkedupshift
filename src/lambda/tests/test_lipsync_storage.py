@@ -69,9 +69,25 @@ def test_create_job_writes_expected_item_shape():
     assert written["checkCount"] == 0
     assert written["providerJobId"] == ""
     assert written["outputKey"] == ""
+    assert written["prompt"] == ""  # not passed -- defaults to empty string, not omitted
     assert "durationSec" not in written  # omitted until completion, see storage.py's docstring
     assert isinstance(written["expiresAt"], int)
     assert item == written
+
+
+def test_create_job_stores_prompt_when_given():
+    from lipsync import storage
+
+    table = MagicMock()
+    with patch.object(storage, "_tbl", return_value=table):
+        storage.createJob(
+            jobId="job1", mode="avatar", provider="fal", model="fal-ai/infinitalk",
+            audioKey="uploads/u/audio/a.wav", createdBy="user-123", consentAttested=True,
+            imageKey="uploads/u/image/i.jpg", prompt="a robot waving hello",
+        )
+
+    written = table.put_item.call_args.kwargs["Item"]
+    assert written["prompt"] == "a robot waving hello"
 
 
 def test_create_job_expires_at_is_roughly_90_days_out():

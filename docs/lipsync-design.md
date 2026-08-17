@@ -1,7 +1,9 @@
 # AI video & lip-sync module — design
 
-**Status:** approved design, not yet implemented
-**Date:** 2026-08-16
+**Status:** implemented and deployed to staging (2026-08-17). Relip mode
+confirmed working end to end; avatar mode fixed after an HTTP 405 caused by
+fal's split submit/poll URL shapes — see `providers/fal.py::queueAppId`.
+**Date:** 2026-08-16 (design), 2026-08-17 (model picker added)
 **Module name:** `lipsync` (avoids collision with existing `media` video handling)
 
 ---
@@ -10,16 +12,23 @@
 
 Generate ≤15s talking-head clips from speech audio, in two modes:
 
-| Mode | Input | fal.ai model | Price |
+| Mode | Input | Default fal.ai model | Price |
 |---|---|---|---|
-| `avatar` | portrait image + audio | `fal-ai/kling-video/ai-avatar/v2/pro` | $0.115/s |
-| `relip` | existing video + audio | `veed/lipsync` | $0.07/s |
+| `avatar` | portrait image + audio | `fal-ai/kling-video/ai-avatar/v2/pro` | ~$0.115/s |
+| `relip` | existing video + audio | `veed/lipsync` | uncertain -- fal pricing pages disagree ($0.07/s vs $0.40/min) |
 
 > The avatar model id segment order is `ai-avatar/v2/pro`, **not**
 > `v2/pro/ai-avatar`. An earlier draft of this doc had it backwards, which
-> would have 404'd every avatar submission. Authoritative list lives in
-> `providers/fal.py::MODE_MODELS`; verify against fal's live API reference
-> before changing it.
+> would have 404'd every avatar submission.
+>
+> **Multiple models per mode (added after initial launch).** The table above
+> shows only each mode's *default* -- `CreateJobInput.model` can override it
+> with any other model valid for that mode. The authoritative, richer catalog
+> (every model, its fal input field mapping, prompt support, and indicative
+> pricing) lives in `providers/fal.py::MODEL_CATALOG`, mirrored for display
+> in the frontend's `features/lipsync/statusStyles.ts::MODEL_CATALOG` --
+> verify against fal's live API reference before changing either. The two
+> defaults above are `providers/fal.py::DEFAULT_MODELS`.
 
 **v1 is gated to the Cognito `admin` group.** No quota code. Job records are
 user-scoped (`createdBy`) so opening the feature to `manager`/`user` later is a
@@ -122,6 +131,7 @@ SK = META
 | `createdBy` | Cognito username — carried now, enforced later |
 | `createdAt` / `updatedAt` | ISO8601 UTC |
 | `imageKey` / `videoKey` / `audioKey` | S3 keys of inputs |
+| `prompt` | optional text input, forwarded to fal only for models that accept one |
 | `outputKey` | S3 key of the finished mp4 |
 | `durationSec` | measured from output, used for cost attribution |
 | `providerJobId` | fal `request_id` |
@@ -191,7 +201,7 @@ All routes require the Cognito JWT authorizer **and** `admin` group membership.
 | Method | Path | Body / params | Response |
 |---|---|---|---|
 | `POST` | `/lipsync/media/presign` | `{filename, contentType, kind}` where `kind ∈ image\|video\|audio` | `{uploadUrl, key}` |
-| `POST` | `/lipsync/jobs` | `{mode, audioKey, imageKey?, videoKey?, model?, consentAttested}` | `{jobId, status}` |
+| `POST` | `/lipsync/jobs` | `{mode, audioKey, imageKey?, videoKey?, model?, prompt?, consentAttested}` | `{jobId, status}` |
 | `GET` | `/lipsync/jobs` | `?status=&limit=&cursor=` | `{jobs: [...], cursor}` |
 | `GET` | `/lipsync/jobs/{jobId}` | — | `{job}` |
 | `DELETE` | `/lipsync/jobs/{jobId}` | — | `{jobId, status: "cancelled"}` |
@@ -202,6 +212,14 @@ All routes require the Cognito JWT authorizer **and** `admin` group membership.
 - `mode == "avatar"` requires `imageKey`, rejects `videoKey`
 - `mode == "relip"` requires `videoKey`, rejects `imageKey`
 - `audioKey` always required
+- `model`, when supplied, must exist in the provider's catalog **and** belong
+  to `mode` -- a relip-only model on an avatar job (or vice versa) is a 400,
+  same as an unrecognised model id. Omitting it resolves to that mode's
+  default.
+- `prompt` is optional except when the resolved model requires one (currently
+  only `fal-ai/infinitalk`), in which case an empty/missing prompt is a 400.
+  A prompt supplied for a model with no prompt input is accepted and stored
+  but silently never forwarded to fal.
 - `consentAttested` must be `true` — reject with 400 otherwise
 - Audio duration ≤ 20s (hard cap; 15s is the target, 20s is the ceiling).
   **Fails closed** — audio whose duration cannot be probed is rejected with a

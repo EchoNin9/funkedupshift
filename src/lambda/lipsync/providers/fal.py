@@ -7,7 +7,7 @@ handling, no third-party deps, never echoing response bodies in errors).
 
 Queue API shape (verified directly against fal.ai's own API reference and
 model pages, not just docs/lipsync-design.md's summary -- see this module's
-MODE_MODELS comment for one place that summary turned out to be wrong):
+MODEL_CATALOG comment for one place that summary turned out to be wrong):
 
     POST  https://queue.fal.run/{model_id}                    (submit)
       -> {"request_id", "status_url", "response_url", "cancel_url", ...}
@@ -50,18 +50,135 @@ logger.setLevel(logging.INFO)
 QUEUE_BASE = "https://queue.fal.run"
 REQUEST_TIMEOUT_SEC = 20
 
-# NOTE on the avatar model id: docs/lipsync-design.md's Scope table (and the
-# frontend's features/lipsync/statusStyles.ts, which the design doc's model
-# string was presumably copied from -- that field is display-only, "never
-# sent to the API") both write this as "fal-ai/kling-video/v2/pro/ai-avatar".
-# That path-segment ordering is wrong: fal's own API reference
+# NOTE on the avatar default's model id: docs/lipsync-design.md's Scope table
+# (and, until this catalog existed, the frontend's
+# features/lipsync/statusStyles.ts, which the design doc's model string was
+# presumably copied from -- that field was display-only, "never sent to the
+# API") both wrote this as "fal-ai/kling-video/v2/pro/ai-avatar". That
+# path-segment ordering is wrong: fal's own API reference
 # (fal.ai/models/fal-ai/kling-video/ai-avatar/v2/pro/api, confirmed live)
 # gives the real id as "fal-ai/kling-video/ai-avatar/v2/pro". Submitting to
 # the design doc's spelling 404s at fal for every single avatar-mode job, so
-# this is the corrected id, not the documented one -- flagged in the
+# this is the corrected id, not the documented one -- flagged in the original
 # implementation report per the brief's "if you believe something in it is
-# wrong, report that back rather than silently deviating" instruction.
-MODE_MODELS = {
+# wrong, report that back rather than silently deviating" instruction, and
+# carried forward here as the `avatar` entry in DEFAULT_MODELS.
+#
+# --- Model catalog ------------------------------------------------------------
+#
+# Every fal.ai model this provider can submit to, keyed by the FULL model id
+# fal expects on submit (queueAppId derives the shorter status/result prefix
+# from this at call time -- see that method's docstring; nothing below needs
+# to duplicate that logic). Verified directly against fal's live OpenAPI
+# schema and its queue routing (2026-08-17) -- field names are EXACT, do not
+# "correct" them by pattern-matching neighbouring entries:
+#
+#   - fal-ai/musetalk takes `source_video_url`, NOT `video_url` like every
+#     other relip model. This is exactly why the submit payload is built from
+#     a PER-MODEL field map (see `fields` below and _buildInput) instead of a
+#     per-mode assumption -- a per-mode map cannot express this one model's
+#     different field name.
+#   - fal-ai/infinitalk REQUIRES `prompt`. Every other avatar model treats it
+#     as optional; every relip model doesn't accept it at all.
+#
+# Per entry:
+#   mode           "avatar" | "relip"
+#   label          human-readable, shown in the frontend's model picker
+#   fields         fal input field name -> key in the `inputUrls` dict
+#                  runner.py's _buildInputUrls builds (imageUrl/videoUrl/
+#                  audioUrl) -- i.e. everything EXCEPT the prompt, which has
+#                  no URL and is sourced from the job record directly.
+#   promptField    fal's field name for a text prompt on this model, or None
+#                  if the model has no prompt input at all (in which case a
+#                  client-supplied prompt must be dropped, never forwarded as
+#                  an unrecognised field -- see _buildInput).
+#   promptRequired True only for fal-ai/infinitalk today.
+#   price          INDICATIVE ONLY, sourced from fal's public model pages at
+#                  authoring time -- NOT verified against a live fal account.
+#                  Treat as a rough guide for the picker, never as a billing
+#                  guarantee. Where sources actively disagreed (VEED), the
+#                  string says so instead of picking one; where no figure was
+#                  sourced at all (three of the four Kling variants, plus
+#                  MuseTalk), it says "not verified" rather than inventing a
+#                  number.
+MODEL_CATALOG = {
+    "fal-ai/kling-video/ai-avatar/v2/pro": {
+        "mode": "avatar",
+        "label": "Kling Avatar v2 Pro",
+        "fields": {"image_url": "imageUrl", "audio_url": "audioUrl"},
+        "promptField": "prompt",
+        "promptRequired": False,
+        "price": "~$0.115/s",
+    },
+    "fal-ai/kling-video/ai-avatar/v2/standard": {
+        "mode": "avatar",
+        "label": "Kling Avatar v2 Standard",
+        "fields": {"image_url": "imageUrl", "audio_url": "audioUrl"},
+        "promptField": "prompt",
+        "promptRequired": False,
+        "price": "not verified",
+    },
+    "fal-ai/kling-video/v1/standard/ai-avatar": {
+        "mode": "avatar",
+        "label": "Kling Avatar v1 Standard",
+        "fields": {"image_url": "imageUrl", "audio_url": "audioUrl"},
+        "promptField": "prompt",
+        "promptRequired": False,
+        "price": "not verified",
+    },
+    "fal-ai/infinitalk": {
+        "mode": "avatar",
+        "label": "InfiniteTalk",
+        "fields": {"image_url": "imageUrl", "audio_url": "audioUrl"},
+        "promptField": "prompt",
+        "promptRequired": True,
+        "price": "not verified",
+    },
+    "veed/lipsync": {
+        "mode": "relip",
+        "label": "VEED Lipsync",
+        "fields": {"video_url": "videoUrl", "audio_url": "audioUrl"},
+        "promptField": None,
+        "promptRequired": False,
+        "price": "uncertain -- fal pricing pages disagree ($0.07/s vs $0.40/min)",
+    },
+    "fal-ai/sync-lipsync/v2": {
+        "mode": "relip",
+        "label": "Sync Lipsync v2",
+        "fields": {"video_url": "videoUrl", "audio_url": "audioUrl"},
+        "promptField": None,
+        "promptRequired": False,
+        "price": "~$3/min",
+    },
+    "fal-ai/latentsync": {
+        "mode": "relip",
+        "label": "LatentSync",
+        "fields": {"video_url": "videoUrl", "audio_url": "audioUrl"},
+        "promptField": None,
+        "promptRequired": False,
+        "price": "~$0.20 (clips up to 40s)",
+    },
+    "fal-ai/musetalk": {
+        "mode": "relip",
+        "label": "MuseTalk",
+        "fields": {"source_video_url": "videoUrl", "audio_url": "audioUrl"},
+        "promptField": None,
+        "promptRequired": False,
+        "price": "not verified",
+    },
+    "fal-ai/pixverse/lipsync": {
+        "mode": "relip",
+        "label": "PixVerse Lipsync",
+        "fields": {"video_url": "videoUrl", "audio_url": "audioUrl"},
+        "promptField": None,
+        "promptRequired": False,
+        "price": "~$0.04/s",
+    },
+}
+
+# Model used when CreateJobInput carries no `model` override -- unchanged
+# from the pre-catalog behaviour (same two ids as the old MODE_MODELS).
+DEFAULT_MODELS = {
     "avatar": "fal-ai/kling-video/ai-avatar/v2/pro",
     "relip": "veed/lipsync",
 }
@@ -69,7 +186,7 @@ MODE_MODELS = {
 
 class FalProvider(LipsyncProvider):
     name = "fal"
-    supportedModes = frozenset(MODE_MODELS)
+    supportedModes = frozenset(DEFAULT_MODELS)
 
     def __init__(self, timeoutSec=REQUEST_TIMEOUT_SEC):
         self.timeoutSec = timeoutSec
@@ -77,12 +194,20 @@ class FalProvider(LipsyncProvider):
     # --- LipsyncProvider interface -------------------------------------------
 
     def modelFor(self, mode, override=None):
-        if mode not in MODE_MODELS:
+        if mode not in DEFAULT_MODELS:
             raise ValidationError(f"fal provider does not support mode={mode!r}")
-        canonical = MODE_MODELS[mode]
-        if override and override != canonical:
-            raise ValidationError(f"unsupported model override {override!r} for mode={mode!r}")
-        return canonical
+        if not override:
+            return DEFAULT_MODELS[mode]
+        entry = MODEL_CATALOG.get(override)
+        if entry is None:
+            raise ValidationError(f"unknown model {override!r}")
+        if entry["mode"] != mode:
+            raise ValidationError(f"model {override!r} is not valid for mode={mode!r}")
+        return override
+
+    def promptRequired(self, model):
+        entry = MODEL_CATALOG.get(model)
+        return bool(entry and entry["promptRequired"])
 
     def validate(self, job):
         mode = job.get("mode")
@@ -94,11 +219,26 @@ class FalProvider(LipsyncProvider):
             raise ValidationError("relip mode requires videoKey")
         if not job.get("audioKey"):
             raise ValidationError("audioKey is required")
+        # Defense in depth: routes.createJob already resolves/validates
+        # `model` through modelFor (and the prompt requirement through
+        # promptRequired) before a job is ever written, so this should be
+        # unreachable in the normal flow -- but submit() calls validate()
+        # again at runner time against whatever the job record actually
+        # holds, so a corrupted/hand-edited record still fails safely here
+        # instead of reaching _buildInput with an unknown catalog key.
+        model = job.get("model") or DEFAULT_MODELS.get(mode)
+        entry = MODEL_CATALOG.get(model)
+        if entry is None:
+            raise ValidationError(f"unknown model {model!r}")
+        if entry["mode"] != mode:
+            raise ValidationError(f"model {model!r} is not valid for mode={mode!r}")
+        if entry["promptRequired"] and not str(job.get("prompt") or "").strip():
+            raise ValidationError(f"model {model!r} requires a prompt")
 
     def submit(self, job, inputUrls):
         self.validate(job)
         model = job.get("model") or self.modelFor(job["mode"])
-        payload = self._buildInput(job, inputUrls)
+        payload = self._buildInput(model, job, inputUrls)
 
         try:
             data = self._post(f"{QUEUE_BASE}/{model}", payload)
@@ -168,10 +308,29 @@ class FalProvider(LipsyncProvider):
     # --- request building ------------------------------------------------------
 
     @staticmethod
-    def _buildInput(job, inputUrls):
-        if job["mode"] == "avatar":
-            return {"image_url": inputUrls["imageUrl"], "audio_url": inputUrls["audioUrl"]}
-        return {"video_url": inputUrls["videoUrl"], "audio_url": inputUrls["audioUrl"]}
+    def _buildInput(model, job, inputUrls):
+        """Build the fal submit payload from MODEL_CATALOG[model]["fields"] --
+        deliberately PER MODEL, not per mode, because fal-ai/musetalk's field
+        name (`source_video_url`) differs from every other relip model's
+        (`video_url`); a per-mode assumption cannot express that. `inputUrls`
+        supplies the URL-valued fields (see runner._buildInputUrls); `prompt`
+        is the one non-URL field and is sourced from the job record directly.
+
+        A prompt is forwarded only when this model has a promptField AND the
+        job actually carries one -- a prompt sent for a model with no prompt
+        input is silently dropped here rather than forwarded as a field fal
+        doesn't recognise. (Required-but-missing is rejected far earlier, at
+        routes.createJob / validate() -- by the time this runs the job either
+        has a prompt or didn't need one.)
+        """
+        entry = MODEL_CATALOG[model]
+        payload = {falField: inputUrls[urlKey] for falField, urlKey in entry["fields"].items()}
+        promptField = entry["promptField"]
+        if promptField:
+            prompt = str(job.get("prompt") or "").strip()
+            if prompt:
+                payload[promptField] = prompt
+        return payload
 
     # --- low-level HTTP + error handling -----------------------------------------
 

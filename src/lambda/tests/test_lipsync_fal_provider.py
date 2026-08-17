@@ -67,22 +67,22 @@ def test_get_provider_unknown_raises_typed_error():
 
 
 def test_model_for_returns_canonical_model_per_mode():
-    from lipsync.providers.fal import FalProvider, MODE_MODELS
+    from lipsync.providers.fal import DEFAULT_MODELS, FalProvider
 
     provider = FalProvider()
-    assert provider.modelFor("avatar") == MODE_MODELS["avatar"]
-    assert provider.modelFor("relip") == MODE_MODELS["relip"]
+    assert provider.modelFor("avatar") == DEFAULT_MODELS["avatar"]
+    assert provider.modelFor("relip") == DEFAULT_MODELS["relip"]
 
 
 def test_model_for_avatar_model_id_matches_fals_real_api_not_the_design_docs_typo():
     """docs/lipsync-design.md and the frontend's statusStyles.ts (display-only,
-    never sent to the API) both spell this
+    never sent to the API) both spelled this
     'fal-ai/kling-video/v2/pro/ai-avatar' -- verified against fal's own API
     reference, that ordering 404s. This test pins the CORRECTED id so a
     future refactor can't silently drift back to the wrong one."""
-    from lipsync.providers.fal import MODE_MODELS
+    from lipsync.providers.fal import DEFAULT_MODELS
 
-    assert MODE_MODELS["avatar"] == "fal-ai/kling-video/ai-avatar/v2/pro"
+    assert DEFAULT_MODELS["avatar"] == "fal-ai/kling-video/ai-avatar/v2/pro"
 
 
 def test_model_for_unknown_mode_raises_validation_error():
@@ -94,10 +94,20 @@ def test_model_for_unknown_mode_raises_validation_error():
 
 
 def test_model_for_accepts_matching_override():
-    from lipsync.providers.fal import FalProvider, MODE_MODELS
+    from lipsync.providers.fal import DEFAULT_MODELS, FalProvider
 
     provider = FalProvider()
-    assert provider.modelFor("avatar", override=MODE_MODELS["avatar"]) == MODE_MODELS["avatar"]
+    assert provider.modelFor("avatar", override=DEFAULT_MODELS["avatar"]) == DEFAULT_MODELS["avatar"]
+
+
+def test_model_for_accepts_non_default_same_mode_override():
+    """The brief's whole point: modelFor must accept ANY catalog model that
+    belongs to the mode, not just each mode's default."""
+    from lipsync.providers.fal import FalProvider
+
+    provider = FalProvider()
+    assert provider.modelFor("avatar", override="fal-ai/infinitalk") == "fal-ai/infinitalk"
+    assert provider.modelFor("relip", override="fal-ai/musetalk") == "fal-ai/musetalk"
 
 
 def test_model_for_rejects_mismatched_override():
@@ -106,6 +116,27 @@ def test_model_for_rejects_mismatched_override():
 
     with pytest.raises(ValidationError):
         FalProvider().modelFor("avatar", override="some/other-model")
+
+
+def test_model_for_rejects_unknown_override_not_in_catalog():
+    from lipsync.providers.base import ValidationError
+    from lipsync.providers.fal import FalProvider
+
+    with pytest.raises(ValidationError):
+        FalProvider().modelFor("relip", override="fal-ai/not-a-real-model")
+
+
+def test_model_for_rejects_cross_mode_override():
+    """A relip model must never be usable on an avatar job, or vice versa --
+    this is the core guard the richer catalog exists to enforce."""
+    from lipsync.providers.base import ValidationError
+    from lipsync.providers.fal import FalProvider
+
+    provider = FalProvider()
+    with pytest.raises(ValidationError):
+        provider.modelFor("avatar", override="veed/lipsync")
+    with pytest.raises(ValidationError):
+        provider.modelFor("relip", override="fal-ai/infinitalk")
 
 
 # --- validate ------------------------------------------------------------------------
@@ -154,6 +185,96 @@ def test_validate_passes_for_a_well_formed_job_of_either_mode():
 
     FalProvider().validate(_job(mode="avatar"))  # must not raise
     FalProvider().validate(_job(mode="relip"))  # must not raise
+
+
+def test_validate_rejects_unknown_model_on_the_job_record():
+    """Defense in depth: submit() calls validate() again at runner time
+    against whatever the job record actually holds, independent of the
+    request-time modelFor() check in routes.createJob."""
+    from lipsync.providers.base import ValidationError
+    from lipsync.providers.fal import FalProvider
+
+    job = _job(mode="avatar", model="fal-ai/not-a-real-model")
+    with pytest.raises(ValidationError):
+        FalProvider().validate(job)
+
+
+def test_validate_rejects_cross_mode_model_on_the_job_record():
+    from lipsync.providers.base import ValidationError
+    from lipsync.providers.fal import FalProvider
+
+    job = _job(mode="avatar", model="veed/lipsync")
+    with pytest.raises(ValidationError):
+        FalProvider().validate(job)
+
+
+def test_validate_rejects_prompt_required_model_with_no_prompt():
+    from lipsync.providers.base import ValidationError
+    from lipsync.providers.fal import FalProvider
+
+    job = _job(mode="avatar", model="fal-ai/infinitalk")
+    with pytest.raises(ValidationError):
+        FalProvider().validate(job)
+
+
+def test_validate_accepts_prompt_required_model_with_a_prompt():
+    from lipsync.providers.fal import FalProvider
+
+    job = _job(mode="avatar", model="fal-ai/infinitalk", prompt="a robot waving hello")
+    FalProvider().validate(job)  # must not raise
+
+
+# --- promptRequired ------------------------------------------------------------------
+
+
+def test_prompt_required_true_only_for_infinitalk():
+    from lipsync.providers.fal import FalProvider, MODEL_CATALOG
+
+    provider = FalProvider()
+    for modelId, entry in MODEL_CATALOG.items():
+        assert provider.promptRequired(modelId) is entry["promptRequired"]
+    assert provider.promptRequired("fal-ai/infinitalk") is True
+    assert provider.promptRequired("veed/lipsync") is False
+
+
+def test_prompt_required_false_for_unknown_model():
+    """Never raise from a metadata lookup -- an unknown model simply isn't
+    prompt-required (routes.createJob already rejects it via modelFor before
+    this could matter in practice)."""
+    from lipsync.providers.fal import FalProvider
+
+    assert FalProvider().promptRequired("not-a-real-model") is False
+
+
+# --- catalog integrity -----------------------------------------------------------------
+
+
+def test_catalog_every_entry_has_mode_label_and_field_map():
+    from lipsync.providers.fal import MODEL_CATALOG
+
+    for modelId, entry in MODEL_CATALOG.items():
+        assert entry["mode"] in ("avatar", "relip"), modelId
+        assert entry["label"], modelId
+        assert entry["fields"], modelId
+        assert isinstance(entry["promptRequired"], bool), modelId
+        assert entry["price"], modelId
+
+
+def test_catalog_default_models_exist_in_catalog_and_match_their_mode():
+    from lipsync.providers.fal import DEFAULT_MODELS, MODEL_CATALOG
+
+    for mode, modelId in DEFAULT_MODELS.items():
+        assert modelId in MODEL_CATALOG
+        assert MODEL_CATALOG[modelId]["mode"] == mode
+
+
+def test_catalog_prompt_required_implies_a_prompt_field():
+    """A model can't require a prompt it has no field for."""
+    from lipsync.providers.fal import MODEL_CATALOG
+
+    for modelId, entry in MODEL_CATALOG.items():
+        if entry["promptRequired"]:
+            assert entry["promptField"], modelId
 
 
 # --- submit --------------------------------------------------------------------------
@@ -320,6 +441,112 @@ def test_queue_app_id_truncates_to_owner_and_app():
     assert FalProvider.queueAppId("owner/app/extra") == "owner/app"
     # Tolerate stray slashes rather than emitting a URL with an empty segment.
     assert FalProvider.queueAppId("/fal-ai/kling-video/ai-avatar/") == "fal-ai/kling-video"
+
+
+def test_queue_app_id_covers_every_catalog_model():
+    """Table-driven over the whole catalog -- see the brief's requirement that
+    adding a model can't silently skip verifying its status/result routing.
+    Also cross-checks the expected table against MODEL_CATALOG's own key set,
+    so a model added to one but not the other fails loudly here."""
+    from lipsync.providers.fal import MODEL_CATALOG, FalProvider
+
+    expected = {
+        "fal-ai/kling-video/ai-avatar/v2/pro": "fal-ai/kling-video",
+        "fal-ai/kling-video/ai-avatar/v2/standard": "fal-ai/kling-video",
+        "fal-ai/kling-video/v1/standard/ai-avatar": "fal-ai/kling-video",
+        "fal-ai/infinitalk": "fal-ai/infinitalk",
+        "veed/lipsync": "veed/lipsync",
+        "fal-ai/sync-lipsync/v2": "fal-ai/sync-lipsync",
+        "fal-ai/latentsync": "fal-ai/latentsync",
+        "fal-ai/musetalk": "fal-ai/musetalk",
+        "fal-ai/pixverse/lipsync": "fal-ai/pixverse",
+    }
+    assert set(expected) == set(MODEL_CATALOG)
+    for modelId, appId in expected.items():
+        assert FalProvider.queueAppId(modelId) == appId
+
+
+# --- _buildInput: per-model field mapping -----------------------------------------------
+
+
+def test_build_input_musetalk_emits_source_video_url_not_video_url():
+    """The trap the whole per-model field map exists to catch: musetalk's fal
+    field is `source_video_url`, not `video_url` like every other relip
+    model."""
+    from lipsync.providers.fal import FalProvider
+
+    inputUrls = {"videoUrl": "https://s3.example/video.mp4", "audioUrl": "https://s3.example/audio.wav"}
+    payload = FalProvider._buildInput("fal-ai/musetalk", _job(mode="relip", model="fal-ai/musetalk"), inputUrls)
+
+    assert payload == {
+        "source_video_url": "https://s3.example/video.mp4",
+        "audio_url": "https://s3.example/audio.wav",
+    }
+    assert "video_url" not in payload
+
+
+@pytest.mark.parametrize(
+    "modelId",
+    [
+        "fal-ai/kling-video/ai-avatar/v2/pro",
+        "fal-ai/kling-video/ai-avatar/v2/standard",
+        "fal-ai/kling-video/v1/standard/ai-avatar",
+        "fal-ai/infinitalk",
+    ],
+)
+def test_build_input_kling_and_infinitalk_models_emit_image_url(modelId):
+    from lipsync.providers.fal import FalProvider
+
+    inputUrls = {"imageUrl": "https://s3.example/image.jpg", "audioUrl": "https://s3.example/audio.wav"}
+    job = _job(mode="avatar", model=modelId, prompt="a robot waving hello")
+    payload = FalProvider._buildInput(modelId, job, inputUrls)
+
+    assert payload["image_url"] == "https://s3.example/image.jpg"
+    assert payload["audio_url"] == "https://s3.example/audio.wav"
+
+
+def test_build_input_other_relip_models_emit_video_url_not_source_video_url():
+    from lipsync.providers.fal import FalProvider
+
+    inputUrls = {"videoUrl": "https://s3.example/video.mp4", "audioUrl": "https://s3.example/audio.wav"}
+    for modelId in ("veed/lipsync", "fal-ai/sync-lipsync/v2", "fal-ai/latentsync", "fal-ai/pixverse/lipsync"):
+        job = _job(mode="relip", model=modelId)
+        payload = FalProvider._buildInput(modelId, job, inputUrls)
+        assert payload["video_url"] == "https://s3.example/video.mp4"
+        assert "source_video_url" not in payload
+
+
+def test_build_input_prompt_forwarded_when_model_accepts_it_and_job_has_one():
+    from lipsync.providers.fal import FalProvider
+
+    inputUrls = {"imageUrl": "https://s3.example/image.jpg", "audioUrl": "https://s3.example/audio.wav"}
+    job = _job(mode="avatar", model="fal-ai/kling-video/ai-avatar/v2/pro", prompt="a robot waving hello")
+    payload = FalProvider._buildInput("fal-ai/kling-video/ai-avatar/v2/pro", job, inputUrls)
+
+    assert payload["prompt"] == "a robot waving hello"
+
+
+def test_build_input_prompt_omitted_when_model_accepts_it_but_job_has_none():
+    from lipsync.providers.fal import FalProvider
+
+    inputUrls = {"imageUrl": "https://s3.example/image.jpg", "audioUrl": "https://s3.example/audio.wav"}
+    job = _job(mode="avatar", model="fal-ai/kling-video/ai-avatar/v2/pro")
+    payload = FalProvider._buildInput("fal-ai/kling-video/ai-avatar/v2/pro", job, inputUrls)
+
+    assert "prompt" not in payload
+
+
+def test_build_input_prompt_dropped_not_forwarded_for_a_model_that_does_not_accept_it():
+    """A relip model has no prompt field at all -- a client-supplied prompt
+    must be dropped, never sent to fal as a field it doesn't recognise."""
+    from lipsync.providers.fal import FalProvider
+
+    inputUrls = {"videoUrl": "https://s3.example/video.mp4", "audioUrl": "https://s3.example/audio.wav"}
+    job = _job(mode="relip", model="veed/lipsync", prompt="this should never be sent")
+    payload = FalProvider._buildInput("veed/lipsync", job, inputUrls)
+
+    assert "prompt" not in payload
+    assert payload == {"video_url": "https://s3.example/video.mp4", "audio_url": "https://s3.example/audio.wav"}
 
 
 @patch("lipsync.providers.fal.getFalApiKey", return_value="test-fal-key")

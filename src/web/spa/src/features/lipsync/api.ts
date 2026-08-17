@@ -43,6 +43,8 @@ export interface LipsyncJob {
   imageKey?: string;
   videoKey?: string;
   audioKey?: string;
+  /** Present only when the job's model accepts a prompt AND one was supplied. Absent on jobs created before this field existed. */
+  prompt?: string;
   outputKey?: string;
   durationSec?: number;
   providerJobId?: string;
@@ -83,6 +85,8 @@ export interface CreateJobInput {
   imageKey?: string;
   videoKey?: string;
   model?: string;
+  /** Only meaningful for models that accept it -- see MODEL_CATALOG in statusStyles.ts. */
+  prompt?: string;
   consentAttested: boolean;
 }
 
