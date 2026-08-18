@@ -324,3 +324,40 @@ export async function updateUserBudget(username: string, input: UpdateBudgetInpu
   });
   return parseJsonOrThrow<UpdateBudgetResponse>(resp);
 }
+
+
+// --- user lookup (for the budget grant form's autocomplete) --------------------------
+
+export interface DirectoryUser {
+  username: string;
+  email: string;
+}
+
+/**
+ * Users from the MAIN app's admin API, not the lipsync module.
+ *
+ * The lipsync Lambda is deliberately isolated -- it has no Cognito access and
+ * no reach into the main app's table (see infra/lipsync.tf's isolation
+ * comment), so it cannot enumerate users itself. The SPA can, because
+ * `GET /admin/users` already exists and the same JWT authorises both.
+ *
+ * Used ONLY to populate a datalist. A budget can still be granted to an email
+ * that isn't in this list -- that is the point of keying budgets on email
+ * rather than on a Cognito sub, so an admin can allocate to someone before
+ * their first sign-in. Failure here degrades to "no suggestions", never to a
+ * blocked form.
+ */
+export async function listDirectoryUsers(): Promise<DirectoryUser[]> {
+  const base = getApiBaseUrl();
+  if (!base) return [];
+  try {
+    const resp = await fetchWithAuth(`${base}/admin/users?limit=100`);
+    if (!resp.ok) return [];
+    const data = (await resp.json()) as { users?: Array<{ username?: string; email?: string }> };
+    return (data.users ?? [])
+      .map((u) => ({ username: u.username ?? "", email: u.email ?? "" }))
+      .filter((u) => u.email);
+  } catch {
+    return [];
+  }
+}

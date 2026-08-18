@@ -10,7 +10,14 @@ import {
 import { useAuth, hasRole } from "../../shell/AuthContext";
 import { AdminPageHeader } from "../admin/AdminPageHeader";
 import { Alert } from "../../components";
-import { ApiError, listAdminBudgets, updateUserBudget, type AdminUserBudget } from "./api";
+import {
+  ApiError,
+  listAdminBudgets,
+  listDirectoryUsers,
+  updateUserBudget,
+  type AdminUserBudget,
+  type DirectoryUser,
+} from "./api";
 import { centsToDollarsInput, formatCents, formatCentsRemaining, parseDollarsToCents } from "./money";
 import { formatDateTime } from "./dateUtils";
 
@@ -231,12 +238,26 @@ function GrantBudgetForm({ onGranted }: { onGranted: () => void }) {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
+  const [directory, setDirectory] = useState<DirectoryUser[]>([]);
+
+  // Suggestions only. A budget may be granted to an address that isn't here
+  // yet (that's why budgets key on email, not on a Cognito sub), so a failed
+  // lookup must never block the form.
+  useEffect(() => {
+    let cancelled = false;
+    listDirectoryUsers().then((users) => {
+      if (!cancelled) setDirectory(users);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmedUsername = username.trim();
     if (!trimmedUsername) {
-      setFormError("Enter the exact Cognito username.");
+      setFormError("Enter the user's email address.");
       return;
     }
     const cents = parseDollarsToCents(dollars);
@@ -303,16 +324,29 @@ function GrantBudgetForm({ onGranted }: { onGranted: () => void }) {
       <div className="flex flex-wrap items-end gap-3">
         <div>
           <label htmlFor="grant-username" className="block text-xs text-text-tertiary mb-1">
-            Cognito username
+            User email
           </label>
+          {/* Budgets key on EMAIL (routes.py::_budgetIdentity), so this must be
+              an address, not a Cognito username -- granting to "jdoe" would
+              create a budget that never matches anyone. The datalist suggests
+              known users while still allowing a not-yet-registered address. */}
           <input
             id="grant-username"
-            type="text"
+            type="email"
+            list="lipsync-user-emails"
+            autoComplete="off"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            placeholder="e.g. jdoe"
-            className={`${inputClass} w-48`}
+            placeholder="name@example.com"
+            className={`${inputClass} w-64`}
           />
+          <datalist id="lipsync-user-emails">
+            {directory.map((u) => (
+              <option key={u.email} value={u.email}>
+                {u.username && u.username !== u.email ? u.username : ""}
+              </option>
+            ))}
+          </datalist>
         </div>
         <div>
           <label htmlFor="grant-amount" className="block text-xs text-text-tertiary mb-1">
