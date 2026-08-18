@@ -111,6 +111,53 @@ export interface CancelJobResponse {
   status: LipsyncJobStatus;
 }
 
+/**
+ * Budget types mirror docs/lipsync-design.md's "Budgets and spend control"
+ * section. All money fields are integer cents -- format with
+ * features/lipsync/money.ts, never with a raw toFixed.
+ */
+export interface LipsyncBudget {
+  budgetCents: number;
+  spentCents: number;
+  reservedCents: number;
+  remainingCents: number;
+}
+
+/** One row of GET /lipsync/admin/budgets's `budgets` array. */
+export interface AdminUserBudget {
+  username: string;
+  budgetCents: number;
+  spentCents: number;
+  reservedCents: number;
+  remainingCents: number;
+  /** ISO-8601 UTC, absent for a user who has never been granted a budget. */
+  updatedAt?: string;
+  updatedBy?: string;
+  note?: string;
+}
+
+export interface AdminBudgetsResponse {
+  budgets: AdminUserBudget[];
+  /** null when fal's account API was unreachable -- render "unavailable", never a misleading $0.00. */
+  falBalanceCents: number | null;
+  /** ISO-8601 UTC, null alongside falBalanceCents. */
+  falBalanceFetchedAt: string | null;
+  totalGrantedCents: number;
+  totalSpentCents: number;
+}
+
+export interface UpdateBudgetInput {
+  budgetCents: number;
+  note?: string;
+}
+
+export interface UpdateBudgetResponse {
+  username: string;
+  budgetCents: number;
+  spentCents: number;
+  remainingCents: number;
+}
+
 export class ApiError extends Error {
   status: number;
   errors?: string[];
@@ -175,6 +222,18 @@ export async function getJobOutputUrl(jobId: string): Promise<string> {
   return data.url;
 }
 
+/**
+ * GET /lipsync/budget — the caller's own budget. A brand-new user may have
+ * no budget record at all; callers should treat a 404 ApiError the same as
+ * a zero budget rather than surfacing it as an error (see
+ * docs/lipsync-design.md: "no budget record at all, which means $0").
+ */
+export async function getBudget(): Promise<LipsyncBudget> {
+  const base = requireBase();
+  const resp = await fetchWithAuth(`${base}/lipsync/budget`);
+  return parseJsonOrThrow<LipsyncBudget>(resp);
+}
+
 /* ── Writes ────────────────────────────────────────────────────────── */
 
 /** POST /lipsync/jobs */
@@ -237,4 +296,31 @@ export function uploadFileToS3(
     xhr.onerror = () => reject(new Error("Upload failed — network error"));
     xhr.send(file);
   });
+}
+
+/* ── Admin (Cognito `admin` group / frontend "superadmin" role only) ─── */
+
+/** GET /lipsync/admin/budgets — every user's budget, plus the live fal balance and totals. */
+export async function listAdminBudgets(): Promise<AdminBudgetsResponse> {
+  const base = requireBase();
+  const resp = await fetchWithAuth(`${base}/lipsync/admin/budgets`);
+  const data = await parseJsonOrThrow<Partial<AdminBudgetsResponse>>(resp);
+  return {
+    budgets: data.budgets ?? [],
+    falBalanceCents: data.falBalanceCents ?? null,
+    falBalanceFetchedAt: data.falBalanceFetchedAt ?? null,
+    totalGrantedCents: data.totalGrantedCents ?? 0,
+    totalSpentCents: data.totalSpentCents ?? 0,
+  };
+}
+
+/** PUT /lipsync/admin/budgets/{username} — grant/adjust one user's budget. */
+export async function updateUserBudget(username: string, input: UpdateBudgetInput): Promise<UpdateBudgetResponse> {
+  const base = requireBase();
+  const resp = await fetchWithAuth(`${base}/lipsync/admin/budgets/${encodeURIComponent(username)}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  return parseJsonOrThrow<UpdateBudgetResponse>(resp);
 }

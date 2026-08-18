@@ -544,3 +544,32 @@ resource "aws_lambda_permission" "lipsyncApiGateway" {
 # lipsyncAlertsTopicArn, lipsyncRunnerArn, lipsyncSchedulerRoleArn) live in
 # infra/outputs.tf -- both are the established shared files for those
 # declarations, so this file declares resources only.
+
+# --- Budget routes -------------------------------------------------------------
+# The module is open to any authenticated user; /lipsync/admin/* is additionally
+# gated on the Cognito `admin` group inside the handler (routes.route checks the
+# path prefix before dispatch). API Gateway only enforces the JWT.
+
+resource "aws_apigatewayv2_route" "lipsyncBudgetGet" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /lipsync/budget"
+  target             = "integrations/${aws_apigatewayv2_integration.lipsync.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "lipsyncAdminBudgetsGet" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /lipsync/admin/budgets"
+  target             = "integrations/${aws_apigatewayv2_integration.lipsync.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "lipsyncAdminBudgetPut" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "PUT /lipsync/admin/budgets/{username}"
+  target             = "integrations/${aws_apigatewayv2_integration.lipsync.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}

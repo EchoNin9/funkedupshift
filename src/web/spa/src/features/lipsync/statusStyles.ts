@@ -64,6 +64,23 @@ export interface LipsyncModelMeta {
   /** Whether this model has a prompt input at all -- false hides the prompt field entirely rather than showing one that would be silently ignored. */
   acceptsPrompt: boolean;
   promptRequired: boolean;
+  /**
+   * Display-only fields below, added for the "estimated cost before submit"
+   * UX (docs/lipsync-design.md's "Cost estimation" section) -- NOT part of
+   * the hand-synced id/mode/promptRequired contract test_lipsync_catalog_sync.py
+   * enforces, so these are free to exist only on this side.
+   *
+   * `priceVerified` false means `price` above is either "not verified" (no
+   * figure sourced at all) or a range fal's own docs disagree on (VEED) --
+   * either way `pricePerSecCents`/`flatCents` below is a documented
+   * *conservative* stand-in, not a real quote, and estimateCostCents()'s
+   * callers are expected to say so rather than presenting false precision.
+   */
+  priceVerified: boolean;
+  /** Rate used by estimateCostCents() below: `ceil(durationSec * pricePerSecCents)`. Omit when `flatCents` applies instead. */
+  pricePerSecCents?: number;
+  /** A flat per-clip price instead of a per-second rate (LatentSync bills one flat fee up to its 40s cap, comfortably above this module's 20s hard cap). */
+  flatCents?: number;
 }
 
 export const MODEL_CATALOG: Record<string, LipsyncModelMeta> = {
@@ -73,6 +90,8 @@ export const MODEL_CATALOG: Record<string, LipsyncModelMeta> = {
     price: "~$0.115/s",
     acceptsPrompt: true,
     promptRequired: false,
+    priceVerified: true,
+    pricePerSecCents: 11.5,
   },
   "fal-ai/kling-video/ai-avatar/v2/standard": {
     mode: "avatar",
@@ -80,6 +99,12 @@ export const MODEL_CATALOG: Record<string, LipsyncModelMeta> = {
     price: "not verified",
     acceptsPrompt: true,
     promptRequired: false,
+    // No sourced figure for this model -- conservative fallback equal to the
+    // highest verified *avatar*-mode rate in this catalog (Kling v2 Pro,
+    // 11.5c/s) so the estimate never reads lower than a model we do have a
+    // real number for.
+    priceVerified: false,
+    pricePerSecCents: 11.5,
   },
   "fal-ai/kling-video/v1/standard/ai-avatar": {
     mode: "avatar",
@@ -87,6 +112,8 @@ export const MODEL_CATALOG: Record<string, LipsyncModelMeta> = {
     price: "not verified",
     acceptsPrompt: true,
     promptRequired: false,
+    priceVerified: false,
+    pricePerSecCents: 11.5,
   },
   "fal-ai/infinitalk": {
     mode: "avatar",
@@ -94,6 +121,8 @@ export const MODEL_CATALOG: Record<string, LipsyncModelMeta> = {
     price: "not verified",
     acceptsPrompt: true,
     promptRequired: true,
+    priceVerified: false,
+    pricePerSecCents: 11.5,
   },
   "veed/lipsync": {
     mode: "relip",
@@ -101,6 +130,10 @@ export const MODEL_CATALOG: Record<string, LipsyncModelMeta> = {
     price: "uncertain — sources disagree ($0.07/s vs $0.40/min)",
     acceptsPrompt: false,
     promptRequired: false,
+    // Disagreeing sources gave $0.07/s and $0.40/min (~0.0067/s) -- use the
+    // higher of the two so the estimate errs toward over-quoting, not under.
+    priceVerified: false,
+    pricePerSecCents: 7,
   },
   "fal-ai/sync-lipsync/v2": {
     mode: "relip",
@@ -108,6 +141,8 @@ export const MODEL_CATALOG: Record<string, LipsyncModelMeta> = {
     price: "~$3/min",
     acceptsPrompt: false,
     promptRequired: false,
+    priceVerified: true,
+    pricePerSecCents: 5, // $3/min ÷ 60s
   },
   "fal-ai/latentsync": {
     mode: "relip",
@@ -115,6 +150,12 @@ export const MODEL_CATALOG: Record<string, LipsyncModelMeta> = {
     price: "~$0.20 (clips up to 40s)",
     acceptsPrompt: false,
     promptRequired: false,
+    // Flat fee, not per-second -- every clip this module accepts (≤20s hard
+    // cap, see MAX_AUDIO_DURATION_SEC in LipsyncPage.tsx) is well under
+    // LatentSync's own 40s ceiling, so the estimate is the flat amount
+    // regardless of measured duration.
+    priceVerified: true,
+    flatCents: 20,
   },
   "fal-ai/musetalk": {
     mode: "relip",
@@ -122,6 +163,10 @@ export const MODEL_CATALOG: Record<string, LipsyncModelMeta> = {
     price: "not verified",
     acceptsPrompt: false,
     promptRequired: false,
+    // No sourced figure -- conservative fallback equal to the highest
+    // verified *relip*-mode rate in this catalog (Sync Lipsync v2, 5c/s).
+    priceVerified: false,
+    pricePerSecCents: 5,
   },
   "fal-ai/pixverse/lipsync": {
     mode: "relip",
@@ -129,6 +174,8 @@ export const MODEL_CATALOG: Record<string, LipsyncModelMeta> = {
     price: "~$0.04/s",
     acceptsPrompt: false,
     promptRequired: false,
+    priceVerified: true,
+    pricePerSecCents: 4,
   },
 };
 
@@ -155,4 +202,25 @@ export function modelMeta(modelId: string | undefined): ({ id: string } & Lipsyn
 export function modelLabel(modelId: string | undefined): string {
   if (!modelId) return "Unknown model";
   return MODEL_CATALOG[modelId]?.label ?? modelId;
+}
+
+/**
+ * Estimated cost in integer cents for a clip of `durationSec` on `modelId`.
+ * UX only -- mirrors the backend's documented formula
+ * (`ceil(durationSec * pricePerSecCents)`, docs/lipsync-design.md's "Cost
+ * estimation" section) so the number shown before submit is in the same
+ * ballpark as what the server will actually reserve. The server re-derives
+ * and enforces its own estimate at creation time regardless; this never
+ * replaces that check, it just gives the user a heads-up (and a reason a
+ * disabled submit button is disabled) before they wait on an upload.
+ *
+ * Returns null when there isn't enough information yet (no model resolved,
+ * or no readable audio duration) rather than guessing.
+ */
+export function estimateCostCents(modelId: string | undefined, durationSec: number | undefined): number | null {
+  const meta = modelMeta(modelId);
+  if (!meta || durationSec == null || !Number.isFinite(durationSec) || durationSec <= 0) return null;
+  if (meta.flatCents != null) return meta.flatCents;
+  if (meta.pricePerSecCents != null) return Math.ceil(durationSec * meta.pricePerSecCents);
+  return null;
 }

@@ -196,16 +196,127 @@ Sub-60s lead times schedule nothing and check inline, matching
 
 ## API contract (frozen — frontend and backend build against this)
 
-All routes require the Cognito JWT authorizer **and** `admin` group membership.
+All routes require the Cognito JWT authorizer. Job routes are open to **any
+authenticated user**; `/lipsync/admin/*` additionally requires the Cognito
+`admin` group.
 
-| Method | Path | Body / params | Response |
-|---|---|---|---|
-| `POST` | `/lipsync/media/presign` | `{filename, contentType, kind}` where `kind ∈ image\|video\|audio` | `{uploadUrl, key}` |
-| `POST` | `/lipsync/jobs` | `{mode, audioKey, imageKey?, videoKey?, model?, prompt?, consentAttested}` | `{jobId, status}` |
-| `GET` | `/lipsync/jobs` | `?status=&limit=&cursor=` | `{jobs: [...], cursor}` |
-| `GET` | `/lipsync/jobs/{jobId}` | — | `{job}` |
-| `DELETE` | `/lipsync/jobs/{jobId}` | — | `{jobId, status: "cancelled"}` |
-| `GET` | `/lipsync/jobs/{jobId}/output` | — | `{url}` presigned GET, TTL 300s |
+| Method | Path | Body / params | Response | Who |
+|---|---|---|---|---|
+| `POST` | `/lipsync/media/presign` | `{filename, contentType, kind}` where `kind ∈ image\|video\|audio` | `{uploadUrl, key}` | user |
+| `POST` | `/lipsync/jobs` | `{mode, audioKey, imageKey?, videoKey?, model?, prompt?, consentAttested}` | `{jobId, status}` | user |
+| `GET` | `/lipsync/jobs` | `?status=&limit=&cursor=` | `{jobs: [...], cursor}` | user (own only) |
+| `GET` | `/lipsync/jobs/{jobId}` | — | `{job}` | user (own only) |
+| `DELETE` | `/lipsync/jobs/{jobId}` | — | `{jobId, status: "cancelled"}` | user (own only) |
+| `GET` | `/lipsync/jobs/{jobId}/output` | — | `{url}` presigned GET, TTL 300s | user (own only) |
+| `GET` | `/lipsync/budget` | — | `{budgetCents, spentCents, reservedCents, remainingCents}` | user |
+| `GET` | `/lipsync/admin/budgets` | — | `{budgets: [...], falBalanceCents, falBalanceFetchedAt, totalGrantedCents, totalSpentCents}` | admin |
+| `PUT` | `/lipsync/admin/budgets/{username}` | `{budgetCents, note?}` | `{username, budgetCents, spentCents, remainingCents}` | admin |
+
+> **Ownership is now a security boundary, not a convenience.** Before this
+> change every route was admin-only, so a table-wide scan was harmless. With
+> the module open to all users, `GET /lipsync/jobs` MUST be scoped to the
+> caller's `createdBy` via the `byCreator` GSI, and the four `{jobId}` routes
+> MUST 404 (not 403 — don't leak existence) when the job belongs to someone
+> else. Admins may see all jobs. This is the single highest-risk part of
+> opening the gate.
+
+---
+
+## Budgets and spend control
+
+Opening the module to all users makes the fal API key a live payment path for
+anyone with an account. Budgets are what stand between that and your card.
+
+**Model chosen:** one-time allowance, hard block, $0 default.
+
+- A budget is a granted dollar amount that **depletes and does not reset**.
+  An admin tops it up.
+- A brand-new user has **no budget record at all**, which means $0 — they can
+  open the module and see the UI, but cannot spend until an admin grants them
+  something. A new account can never cost money by itself.
+- A job is rejected upfront when its estimated cost exceeds the remaining
+  budget. In-flight jobs always finish.
+
+### Budget record
+
+Same `lipsyncJobs` table, different key prefix (single-table style):
+
+```
+PK = USER#{username}   SK = BUDGET
+```
+
+| Attribute | Notes |
+|---|---|
+| `budgetCents` | total granted, integer cents — never floats, see below |
+| `spentCents` | settled spend |
+| `reservedCents` | held for in-flight jobs, released or settled on completion |
+| `updatedAt` / `updatedBy` | audit trail for grants |
+| `note` | optional admin note on the grant |
+
+`remainingCents = budgetCents - spentCents - reservedCents`
+
+Budget items carry neither `statusKey` nor `createdBy`, so they stay out of
+both existing GSIs. The admin list is a scan filtered on `SK = BUDGET`,
+matching the Scan-is-fine-at-this-volume precedent already in `storage.py`.
+
+**All money is integer cents.** Never floats — DynamoDB rejects raw Python
+floats outright (see CLAUDE.md gotcha), and float arithmetic on currency
+accumulates error across many small charges.
+
+### Reserve → settle → release
+
+A naive "check remaining, then create" is a TOCTOU hole: a user could submit
+ten jobs concurrently, each passing the check before any of them completes.
+So spend is **reserved atomically at creation**:
+
+1. `createJob` estimates cost, then does a **conditional** update incrementing
+   `reservedCents`, guarded on
+   `budgetCents - spentCents - reservedCents >= estimate`. A failed condition
+   is a 402-style rejection (use 400 with a clear message), and **no fal call
+   is made**.
+2. On `completed`: move the reservation to `spentCents` (decrement
+   `reservedCents`, increment `spentCents`).
+3. On `failed` / `cancelled`: **release** the reservation, charging the user
+   nothing. fal may still have billed us — that gap is exactly what the
+   reconciliation view exists to surface.
+
+Every one of these is a conditional write, same discipline as the job status
+machine.
+
+### Cost estimation, and why it is approximate
+
+fal exposes an account balance endpoint but **no per-request cost endpoint**
+(`/v1/account/requests` 404s; the only breakdown is an async FOCUS billing
+export). So per-job cost is estimated:
+
+```
+estimateCents = ceil(durationSec * pricePerSecCents(model))
+```
+
+The catalog's price strings are display-only. Add a **numeric**
+`pricePerSecCents` per model plus a `priceVerified` bool. For models whose
+real price could not be confirmed, use a documented conservative fallback
+equal to the highest known rate, so a budget is never *under*-charged, and
+mark them so the UI can say the estimate is conservative.
+
+### fal balance
+
+`GET https://api.fal.ai/v1/account/billing?expand=credits`, header
+`Authorization: Key <FAL_KEY>`. Verified live: returns 401 unauthenticated,
+so the route is real; the exact response field names must be confirmed
+against a real call and the parser must tolerate an unexpected shape rather
+than crash.
+
+Cache the balance in DynamoDB (`PK=SYSTEM#FAL`, `SK=BALANCE`) with a ~60s
+freshness window so a page load doesn't hammer fal. Admin UI shows the value
+plus how long ago it was fetched, with a manual refresh.
+
+**Never expose the fal balance to non-admin users** — it is account financial
+data. Users see only their own budget.
+
+**Low-balance killswitch:** when the live fal balance is below a configured
+floor, reject new jobs regardless of individual budgets. This is the backstop
+for estimate drift, since estimates can only ever be approximate.
 
 ### Validation rules (enforced server-side, not just in the UI)
 

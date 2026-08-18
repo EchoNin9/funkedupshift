@@ -65,6 +65,25 @@ class LipsyncProvider(ABC):
         provider-side model string)."""
         raise NotImplementedError
 
+    def estimateCostCents(self, model: str, durationSec) -> int:
+        """Estimated cost of one clip in whole cents, rounded UP.
+
+        Non-abstract with a 0 default so a provider that cannot price its own
+        work does not block; FalProvider overrides it from MODEL_PRICING.
+        routes.createJob calls this through the provider instance -- same
+        discipline as promptRequired, so routes.py never imports a concrete
+        provider module.
+
+        Rounding UP is deliberate: under-charging a budget leaks money, and a
+        sub-cent error repeated across many jobs is a slow leak.
+        """
+        return 0
+
+    def priceIsVerified(self, model: str) -> bool:
+        """False when this model's rate is a conservative stand-in rather than
+        a sourced figure, so the UI can avoid presenting false precision."""
+        return False
+
     def promptRequired(self, model: str) -> bool:
         """Whether `model` (a value previously returned by modelFor) requires
         a client-supplied prompt to submit successfully. Default False, not

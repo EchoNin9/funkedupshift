@@ -46,7 +46,7 @@ except ImportError:
             "body": json.dumps(body) if not isinstance(body, str) else body,
         }
 
-from lipsync import media, storage
+from lipsync import billing, budget, media, storage
 from lipsync.providers import UnknownProviderError, ValidationError, getProvider
 
 logger = logging.getLogger(__name__)
@@ -105,6 +105,50 @@ def _parseGroups(rawGroups):
         return []
     parts = stripped.split(",") if "," in stripped else stripped.split()
     return [p.strip().strip("\"'") for p in parts if p.strip().strip("\"'")]
+
+
+def _isAdmin(claims):
+    return "admin" in _parseGroups((claims or {}).get("cognito:groups"))
+
+
+def _requireAuth(event):
+    """Any signed-in caller. Returns (claims, None) or (None, errorResponse).
+
+    The module used to be admin-only, so every route went through
+    _requireAdmin. It is now open to all authenticated users, which makes
+    per-row OWNERSHIP the security boundary instead of the route gate -- see
+    _ownedJobOr404.
+    """
+    claims = _getClaims(event)
+    if not claims:
+        return None, jsonResponse({"error": "unauthorized"}, 401)
+    return claims, None
+
+
+def _budgetIdentity(claims):
+    """Key a budget by email, falling back to the Cognito sub.
+
+    Email is deliberate: an admin grants a budget to a person, and needs to be
+    able to do that before that person has ever signed in (at which point no
+    sub is known to them). Ownership of JOBS still keys on `sub` -- these are
+    separate identifiers for separate purposes and must not be conflated.
+    """
+    return (claims or {}).get("email") or (claims or {}).get("sub") or ""
+
+
+def _ownedJobOr404(jobId, claims):
+    """Returns (job, None) when the caller may see this job, else (None, 404).
+
+    404 rather than 403 is deliberate: a 403 confirms that the id exists,
+    which lets any user probe for other users' job ids. Admins bypass the
+    ownership check.
+    """
+    job = storage.getJob(jobId)
+    if job is None:
+        return None, jsonResponse({"error": "not found"}, 404)
+    if not _isAdmin(claims) and job.get("createdBy") != (claims or {}).get("sub"):
+        return None, jsonResponse({"error": "not found"}, 404)
+    return job, None
 
 
 def _requireAdmin(event):
@@ -316,19 +360,56 @@ def createJob(event, claims):
             {"errors": [f"Audio is {durationSec:.1f}s, over the {MAX_AUDIO_DURATION_SEC}s limit."]}, 400
         )
 
+    # --- spend control -------------------------------------------------------
+    # Everything below happens BEFORE any job record is written and before the
+    # runner is invoked, so a rejected job costs nothing and leaves no trace.
+    identity = _budgetIdentity(claims)
+    estimateCents = getProvider(DEFAULT_PROVIDER).estimateCostCents(model, durationSec)
+
+    # Killswitch: a hard floor on the REAL money, independent of any user's
+    # budget, because per-job cost can only ever be estimated. Applies only
+    # when a balance was actually read -- an unreachable fal must not become a
+    # total outage (see billing.getBalance).
+    balance = billing.getBalance()
+    if balance.available and balance.cents < billing.LOW_BALANCE_FLOOR_CENTS:
+        return jsonResponse(
+            {"errors": ["Lip-sync is temporarily unavailable: the account balance is too low. "
+                        "An administrator needs to top up the fal.ai account."]}, 400
+        )
+
+    if not budget.reserve(identity, estimateCents):
+        current = budget.getBudget(identity)
+        if not current["exists"]:
+            return jsonResponse(
+                {"errors": ["You don't have a lip-sync budget yet. Ask an administrator to allocate one."]}, 400
+            )
+        return jsonResponse(
+            {"errors": [f"This clip is estimated at ${estimateCents / 100:.2f} but you have "
+                        f"${current['remainingCents'] / 100:.2f} remaining."]}, 400
+        )
+
     jobId = uuid.uuid4().hex
-    job = storage.createJob(
-        jobId=jobId,
-        mode=mode,
-        provider=DEFAULT_PROVIDER,
-        model=model,
-        audioKey=audioKey,
-        imageKey=imageKey,
-        videoKey=videoKey,
-        prompt=prompt,
-        createdBy=claims.get("sub", ""),
-        consentAttested=True,
-    )
+    try:
+        job = storage.createJob(
+            jobId=jobId,
+            mode=mode,
+            provider=DEFAULT_PROVIDER,
+            model=model,
+            audioKey=audioKey,
+            imageKey=imageKey,
+            videoKey=videoKey,
+            prompt=prompt,
+            createdBy=claims.get("sub", ""),
+            consentAttested=True,
+            reservedCents=estimateCents,
+        )
+        # The runner settles the hold long after the request is gone, so the
+        # identity the hold was placed against travels on the job itself.
+        storage.setBudgetIdentity(jobId, identity)
+    except Exception:
+        # Never strand a hold on a job that was never created.
+        budget.release(identity, estimateCents)
+        raise
 
     _invokeRunnerAsync(jobId)
 
@@ -338,7 +419,7 @@ def createJob(event, claims):
 # --- GET /lipsync/jobs?status=&limit=&cursor= ---------------------------------------
 
 
-def listJobs(event):
+def listJobs(event, claims):
     qs = event.get("queryStringParameters") or {}
 
     status = (qs.get("status") or "").strip() or None
@@ -355,43 +436,100 @@ def listJobs(event):
 
     cursor = qs.get("cursor") or None
 
-    jobs, nextCursor = storage.listJobs(status=status, limit=limit, cursor=cursor)
+    # Non-admins see ONLY their own jobs. Passing None here for a normal user
+    # would return every user's jobs -- the module is no longer admin-only.
+    scope = None if _isAdmin(claims) else claims.get("sub", "")
+    jobs, nextCursor = storage.listJobs(status=status, limit=limit, cursor=cursor, createdBy=scope)
     return jsonResponse({"jobs": jobs, "cursor": nextCursor})
 
 
 # --- GET /lipsync/jobs/{jobId} -------------------------------------------------------
 
 
-def getJobById(event, jobId):
-    job = storage.getJob(jobId)
-    if job is None:
-        return jsonResponse({"error": "not found"}, 404)
+def getJobById(event, jobId, claims):
+    job, err = _ownedJobOr404(jobId, claims)
+    if err:
+        return err
     return jsonResponse({"job": job})
 
 
 # --- DELETE /lipsync/jobs/{jobId} ----------------------------------------------------
 
 
-def cancelJobRoute(event, jobId):
+def cancelJobRoute(event, jobId, claims):
+    job, err = _ownedJobOr404(jobId, claims)
+    if err:
+        return err
     result = storage.cancelJob(jobId)
     if result is None:
         return jsonResponse({"error": "not found"}, 404)
     if result is False:
         return jsonResponse({"error": "job is already finished and cannot be cancelled"}, 409)
+    # Cancelling frees the hold -- the user is charged nothing for work that
+    # never ran. Guarded by budgetSettled so a cancel racing the runner's own
+    # settlement can't release twice.
+    budget.finalizeJobHold(job, actualCents=None)
     return jsonResponse({"jobId": jobId, "status": result["status"]})
 
 
 # --- GET /lipsync/jobs/{jobId}/output ------------------------------------------------
 
 
-def getJobOutput(event, jobId):
-    job = storage.getJob(jobId)
-    if job is None:
-        return jsonResponse({"error": "not found"}, 404)
+def getJobOutput(event, jobId, claims):
+    job, err = _ownedJobOr404(jobId, claims)
+    if err:
+        return err
     if job.get("status") != storage.STATUS_COMPLETED or not job.get("outputKey"):
         return jsonResponse({"error": "output is not available for this job"}, 400)
     url = media.presignGet(job["outputKey"], expiresIn=media.OUTPUT_URL_EXPIRES_IN)
     return jsonResponse({"url": url})
+
+
+# --- GET /lipsync/budget -------------------------------------------------------------
+
+
+def getMyBudget(event, claims):
+    """The caller's own budget. Never exposes the fal account balance -- that
+    is account financial data and belongs only to the admin view."""
+    return jsonResponse(budget.getBudget(_budgetIdentity(claims)))
+
+
+# --- GET /lipsync/admin/budgets ------------------------------------------------------
+
+
+def getAdminBudgets(event):
+    """Every budget, plus the real fal balance and the aggregate totals, so an
+    admin can see when the sum of what has been promised exceeds the money
+    that actually exists."""
+    qs = event.get("queryStringParameters") or {}
+    force = str(qs.get("refresh", "")).lower() in ("1", "true", "yes")
+
+    budgets = budget.listBudgets()
+    payload = {"budgets": budgets, **budget.totals(budgets)}
+    payload.update(billing.getBalance(force=force).toDict())
+    return jsonResponse(payload)
+
+
+# --- PUT /lipsync/admin/budgets/{username} -------------------------------------------
+
+
+def putAdminBudget(event, claims, username):
+    body = _jsonBody(event)
+    if body is None:
+        return jsonResponse({"error": "invalid JSON body"}, 400)
+    if not username:
+        return jsonResponse({"errors": ["username is required."]}, 400)
+
+    raw = body.get("budgetCents")
+    if isinstance(raw, bool) or not isinstance(raw, int):
+        return jsonResponse({"errors": ["budgetCents must be an integer number of cents."]}, 400)
+    if raw < 0:
+        return jsonResponse({"errors": ["budgetCents must not be negative."]}, 400)
+
+    updated = budget.setBudget(
+        username, raw, updatedBy=_budgetIdentity(claims), note=str(body.get("note") or "")[:500],
+    )
+    return jsonResponse(updated)
 
 
 # --- dispatch ------------------------------------------------------------------------
@@ -403,16 +541,27 @@ def route(event):
         path = event.get("requestContext", {}).get("http", {}).get("path", "")
     method = event.get("requestContext", {}).get("http", {}).get("method", "GET")
 
-    claims, err = _requireAdmin(event)
+    claims, err = _requireAuth(event)
     if err:
         return err
+
+    # Admin-only surface. Checked before dispatch so a new /lipsync/admin/*
+    # route can never be added without inheriting the group check.
+    if path.startswith("/lipsync/admin/"):
+        _, adminErr = _requireAdmin(event)
+        if adminErr:
+            return adminErr
 
     if method == "POST" and path == "/lipsync/media/presign":
         return presignMedia(event, claims)
     if method == "POST" and path == "/lipsync/jobs":
         return createJob(event, claims)
     if method == "GET" and path == "/lipsync/jobs":
-        return listJobs(event)
+        return listJobs(event, claims)
+    if method == "GET" and path == "/lipsync/budget":
+        return getMyBudget(event, claims)
+    if method == "GET" and path == "/lipsync/admin/budgets":
+        return getAdminBudgets(event)
 
     pathParams = event.get("pathParameters") or {}
     parts = [p for p in path.split("/") if p]
@@ -421,15 +570,21 @@ def route(event):
     if len(parts) == 3 and parts[0] == "lipsync" and parts[1] == "jobs":
         jobId = pathParams.get("jobId") or parts[2]
         if method == "GET":
-            return getJobById(event, jobId)
+            return getJobById(event, jobId, claims)
         if method == "DELETE":
-            return cancelJobRoute(event, jobId)
+            return cancelJobRoute(event, jobId, claims)
+
+    # /lipsync/admin/budgets/{username}
+    if len(parts) == 4 and parts[0] == "lipsync" and parts[1] == "admin" and parts[2] == "budgets":
+        targetUser = pathParams.get("username") or parts[3]
+        if method == "PUT":
+            return putAdminBudget(event, claims, targetUser)
 
     # /lipsync/jobs/{jobId}/output
     if len(parts) == 4 and parts[0] == "lipsync" and parts[1] == "jobs" and parts[3] == "output":
         jobId = pathParams.get("jobId") or parts[2]
         if method == "GET":
-            return getJobOutput(event, jobId)
+            return getJobOutput(event, jobId, claims)
 
     return jsonResponse({"error": "not found"}, 404)
 

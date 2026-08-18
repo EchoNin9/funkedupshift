@@ -184,6 +184,79 @@ DEFAULT_MODELS = {
 }
 
 
+# --- Pricing ---------------------------------------------------------------------
+#
+# Budget enforcement needs EXACT integer arithmetic, so rates are held in
+# TENTHS OF A CENT per second. Kling v2 Pro is $0.115/s = 11.5c/s, which is not
+# an integer number of cents -- storing 115 tenths keeps it exact and avoids
+# floats entirely (DynamoDB rejects raw Python floats, and float currency
+# arithmetic accumulates error across many small charges).
+#
+# fal has NO per-request cost endpoint (/v1/account/requests 404s; the only
+# breakdown is an async FOCUS billing export), so per-job cost can only ever be
+# ESTIMATED. Where a real figure could not be sourced, the entry uses a
+# conservative stand-in equal to the highest verified rate for that MODE, so a
+# budget is never UNDER-charged -- a user may get slightly less value than
+# their dollar figure suggests, rather than the account owner getting a
+# surprise bill. `verified` False is surfaced in the UI so the estimate is not
+# presented as a real quote.
+#
+# `flatTenthCents` is for models billed per clip rather than per second
+# (LatentSync charges one flat fee up to 40s, comfortably above this module's
+# 20s hard cap), in which case duration does not enter the estimate at all.
+CONSERVATIVE_AVATAR_TENTH_CENTS_PER_SEC = 115  # Kling v2 Pro, the highest verified avatar rate
+CONSERVATIVE_RELIP_TENTH_CENTS_PER_SEC = 50    # Sync Lipsync v2, the highest verified relip rate
+
+MODEL_PRICING = {
+    "fal-ai/kling-video/ai-avatar/v2/pro": {"tenthCentsPerSec": 115, "verified": True},
+    "fal-ai/kling-video/ai-avatar/v2/standard": {
+        "tenthCentsPerSec": CONSERVATIVE_AVATAR_TENTH_CENTS_PER_SEC, "verified": False},
+    "fal-ai/kling-video/v1/standard/ai-avatar": {
+        "tenthCentsPerSec": CONSERVATIVE_AVATAR_TENTH_CENTS_PER_SEC, "verified": False},
+    "fal-ai/infinitalk": {
+        "tenthCentsPerSec": CONSERVATIVE_AVATAR_TENTH_CENTS_PER_SEC, "verified": False},
+    # Sources disagreed ($0.07/s vs $0.40/min ~= $0.0067/s) -- take the higher.
+    "veed/lipsync": {"tenthCentsPerSec": 70, "verified": False},
+    "fal-ai/sync-lipsync/v2": {"tenthCentsPerSec": 50, "verified": True},  # $3/min
+    "fal-ai/latentsync": {"flatTenthCents": 200, "verified": True},        # ~$0.20 flat
+    "fal-ai/musetalk": {
+        "tenthCentsPerSec": CONSERVATIVE_RELIP_TENTH_CENTS_PER_SEC, "verified": False},
+    "fal-ai/pixverse/lipsync": {"tenthCentsPerSec": 40, "verified": True},
+}
+
+
+def estimateCostCents(model, durationSec):
+    """Estimated cost of one clip, in whole cents, rounded UP.
+
+    Rounding up is deliberate: a budget that under-charges leaks money, and a
+    fraction-of-a-cent rounding error in the user's favour, repeated, is a
+    slow leak. An unknown model falls back to the most expensive rate in the
+    catalog rather than to zero -- a pricing gap must never become a free job.
+    """
+    from decimal import ROUND_CEILING, Decimal
+
+    pricing = MODEL_PRICING.get(model)
+    if pricing is None:
+        worst = max(
+            [p.get("tenthCentsPerSec", 0) for p in MODEL_PRICING.values()]
+            + [p.get("flatTenthCents", 0) for p in MODEL_PRICING.values()]
+        )
+        pricing = {"tenthCentsPerSec": worst, "verified": False}
+
+    if "flatTenthCents" in pricing:
+        tenths = Decimal(pricing["flatTenthCents"])
+    else:
+        seconds = Decimal(str(max(0, durationSec or 0)))
+        tenths = seconds * Decimal(pricing["tenthCentsPerSec"])
+
+    return int((tenths / 10).to_integral_value(rounding=ROUND_CEILING))
+
+
+def priceIsVerified(model):
+    pricing = MODEL_PRICING.get(model)
+    return bool(pricing and pricing.get("verified"))
+
+
 class FalProvider(LipsyncProvider):
     name = "fal"
     supportedModes = frozenset(DEFAULT_MODELS)
@@ -204,6 +277,12 @@ class FalProvider(LipsyncProvider):
         if entry["mode"] != mode:
             raise ValidationError(f"model {override!r} is not valid for mode={mode!r}")
         return override
+
+    def estimateCostCents(self, model, durationSec):
+        return estimateCostCents(model, durationSec)
+
+    def priceIsVerified(self, model):
+        return priceIsVerified(model)
 
     def promptRequired(self, model):
         entry = MODEL_CATALOG.get(model)

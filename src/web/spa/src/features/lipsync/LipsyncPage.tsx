@@ -14,18 +14,30 @@ import { Alert, FormField, SkeletonCard } from "../../components";
 import {
   ApiError,
   createJob,
+  getBudget,
   isTerminalStatus,
   listJobs,
   presignMedia,
   uploadFileToS3,
   type CreateJobInput,
+  type LipsyncBudget,
   type LipsyncJob,
   type LipsyncJobStatus,
   type LipsyncMode,
   type MediaKind,
 } from "./api";
-import { DEFAULT_MODELS, MODE_META, modelLabel, modelMeta, modelsForMode, statusMeta } from "./statusStyles";
+import {
+  DEFAULT_MODELS,
+  MODE_META,
+  estimateCostCents,
+  modelLabel,
+  modelMeta,
+  modelsForMode,
+  statusMeta,
+} from "./statusStyles";
 import { formatDateTime, formatExpiry, isExpiringSoon } from "./dateUtils";
+import { formatCents, formatCentsRemaining } from "./money";
+import { BudgetSummary } from "./BudgetSummary";
 import { JobDetail } from "./JobDetail";
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
@@ -277,6 +289,56 @@ export default function LipsyncPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /* ── Budget ──────────────────────────────────────────────────────── */
+  const [budget, setBudget] = useState<LipsyncBudget | null>(null);
+  const [budgetLoading, setBudgetLoading] = useState(true);
+  const [budgetError, setBudgetError] = useState<string | null>(null);
+
+  const loadBudget = useCallback(async () => {
+    setBudgetLoading(true);
+    setBudgetError(null);
+    try {
+      const data = await getBudget();
+      setBudget(data);
+    } catch (err) {
+      // A brand-new user can have no budget record at all, which the API
+      // may surface as a 404 -- treat that the same as a zero budget rather
+      // than an error (docs/lipsync-design.md: "no budget record at all,
+      // which means $0"). Any other failure degrades gracefully: the rest
+      // of the page still renders, see BudgetSummary's error state.
+      if (err instanceof ApiError && err.status === 404) {
+        setBudget({ budgetCents: 0, spentCents: 0, reservedCents: 0, remainingCents: 0 });
+      } else {
+        setBudgetError(err instanceof Error ? err.message : "Could not load your budget.");
+      }
+    } finally {
+      setBudgetLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadBudget();
+  }, [loadBudget]);
+
+  // Estimated cost for the currently-picked model + audio duration -- UX
+  // only, mirrors the backend's documented formula (see estimateCostCents's
+  // docstring). Needs a readable audio duration, which is only known once
+  // pickAudio's best-effort probe resolves.
+  const estimateCents = useMemo(
+    () => estimateCostCents(model, audioItem?.durationSec),
+    [model, audioItem?.durationSec]
+  );
+
+  // Blocks submit outright once we know for certain it can't fit -- either
+  // no budget at all (remaining <= 0, independent of whether we have an
+  // estimate yet) or a known estimate that exceeds what's left. Stays false
+  // (does not block) whenever the answer is merely unknown -- e.g. the
+  // budget fetch failed, or duration hasn't been read yet -- since the
+  // server is the real gate either way and a false block would be worse UX
+  // than an occasional server-side 400.
+  const noBudget = budget != null && budget.remainingCents <= 0;
+  const overBudget = noBudget || (budget != null && estimateCents != null && estimateCents > budget.remainingCents);
+
   /* ── Job list state ─────────────────────────────────────────────── */
   const [jobs, setJobs] = useState<LipsyncJob[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
@@ -505,6 +567,21 @@ export default function LipsyncPage() {
       if (promptRequired && !prompt.trim()) {
         errors.push(`${selectedModelMeta?.label ?? "This model"} requires a prompt.`);
       }
+      // Same idea for budget: the button is already disabled once overBudget
+      // is true, but a form can still submit via Enter, so check again here.
+      // This is still UX only -- the server holds the real reservation check
+      // and can 400 regardless (see the catch block below for how that
+      // surfaces), this just avoids a pointless round trip when we already
+      // know it can't fit.
+      if (overBudget) {
+        errors.push(
+          noBudget
+            ? "You have no lipsync budget — ask an admin to grant you one."
+            : `Estimated cost (${formatCents(estimateCents)}) exceeds your remaining budget (${formatCentsRemaining(
+                budget?.remainingCents
+              )}).`
+        );
+      }
 
       setGeneralErrors(errors);
       if (errors.length > 0) return;
@@ -525,6 +602,10 @@ export default function LipsyncPage() {
         // Jump straight to the detail modal so progress is easy to watch.
         setSelectedJobId(created.jobId);
       } catch (err) {
+        // The server's reservation check (docs/lipsync-design.md's "Reserve
+        // → settle → release") can 400 here even when the client-side
+        // estimate above said it fit -- estimates are approximate by design.
+        // Surface whatever message it sent rather than a generic one.
         if (err instanceof ApiError && err.errors && err.errors.length) {
           setSubmitError(err.errors.join(" "));
         } else {
@@ -532,6 +613,10 @@ export default function LipsyncPage() {
         }
       } finally {
         setSubmitting(false);
+        // Refresh regardless of outcome: a success moves cents into
+        // reservedCents, and a budget-related failure means the displayed
+        // remaining was already stale.
+        loadBudget();
       }
     },
     [
@@ -545,8 +630,13 @@ export default function LipsyncPage() {
       videoItem,
       audioItem,
       consentAttested,
+      overBudget,
+      noBudget,
+      estimateCents,
+      budget,
       resetForm,
       handleChanged,
+      loadBudget,
     ]
   );
 
@@ -563,6 +653,8 @@ export default function LipsyncPage() {
         <VideoCameraIcon className="h-6 w-6 text-accent" />
         Lipsync Studio
       </motion.h1>
+
+      <BudgetSummary budget={budget} loading={budgetLoading} error={budgetError} />
 
       <section className="max-w-2xl space-y-4">
         {submitError && <Alert variant="error">{submitError}</Alert>}
@@ -672,6 +764,30 @@ export default function LipsyncPage() {
             <p className="mt-1 text-xs text-text-tertiary">Up to 20s. Longer clips are rejected by the server.</p>
           </FormField>
 
+          {estimateCents != null && (
+            <div
+              className={`rounded-lg border px-3 py-2 text-xs ${
+                overBudget && !noBudget
+                  ? "border-red-500/60 bg-red-500/10 text-red-300"
+                  : "border-border-default bg-surface-1 text-text-secondary"
+              }`}
+            >
+              <p>
+                Estimated cost: <span className="font-medium text-text-primary">~{formatCents(estimateCents)}</span>
+                {selectedModelMeta && !selectedModelMeta.priceVerified && (
+                  <span className="text-text-tertiary"> — conservative estimate, this model's price isn't confirmed</span>
+                )}
+              </p>
+              {budget && !noBudget && (
+                <p className={overBudget ? "mt-1 text-red-300" : "mt-1 text-text-tertiary"}>
+                  {overBudget
+                    ? `This exceeds your remaining budget of ${formatCentsRemaining(budget.remainingCents)}.`
+                    : `You have ${formatCentsRemaining(budget.remainingCents)} remaining.`}
+                </p>
+              )}
+            </div>
+          )}
+
           {selectedModelMeta?.acceptsPrompt && (
             <FormField label="Prompt" required={promptRequired}>
               <textarea
@@ -709,7 +825,8 @@ export default function LipsyncPage() {
           <div className="flex items-center gap-2 pt-2">
             <button
               type="submit"
-              disabled={submitting || !consentAttested || (promptRequired && !prompt.trim())}
+              disabled={submitting || !consentAttested || (promptRequired && !prompt.trim()) || overBudget}
+              title={overBudget ? "This clip's estimated cost doesn't fit your remaining budget." : undefined}
               className="inline-flex items-center justify-center gap-2 rounded-lg bg-accent-500 px-4 py-2 text-sm font-medium text-white hover:bg-accent-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {submitting ? "Submitting…" : "Generate clip"}

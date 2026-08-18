@@ -28,6 +28,7 @@ import {
   InformationCircleIcon,
   MegaphoneIcon,
   VideoCameraIcon,
+  BanknotesIcon,
 } from "@heroicons/react/24/outline";
 
 /** Public nav modules (sidebar/header links). */
@@ -78,6 +79,7 @@ export const PUBLIC_MODULES: PublicModule[] = [
   { id: "dnstool", label: "DNS Lookup", path: "/dns", section: "tools", minRole: "user", authOnly: true, icon: ServerIcon, description: "Look up DNS records for any domain." },
   { id: "textshare", label: "Text Share", path: "/textshare", section: "tools", minRole: "user", authOnly: true, icon: DocumentTextIcon, description: "Share text snippets with an expiring link." },
   { id: "converters", label: "Converters", path: "/converters", section: "tools", minRole: "user", authOnly: true, icon: ArrowsRightLeftIcon, description: "Convert units, temperatures, and more." },
+  { id: "lipsync", label: "Lipsync Studio", path: "/lipsync", section: "tools", minRole: "user", authOnly: true, icon: VideoCameraIcon, description: "Generate AI talking-head clips from a photo or video plus audio." },
   { id: "highlights", label: "Highlights", path: "/recommended/highlights", section: "recommended", minRole: "guest" },
   { id: "highest-rated", label: "Highest Rated", path: "/recommended/highest-rated", section: "recommended", minRole: "guest" },
 ];
@@ -92,7 +94,7 @@ export const ADMIN_MODULES: AdminModule[] = [
   { id: "squash", label: "Squash", path: "/squash-admin", description: "Manage squash players and matches.", icon: TrophyIcon, minRole: "manager" },
   { id: "stats", label: "Stats", path: "/admin/stats", description: "View app statistics and per-user click paths.", icon: ChartBarIcon, minRole: "superadmin" },
   { id: "social", label: "Social Scheduler", path: "/social", description: "Schedule and publish posts to connected social accounts.", icon: MegaphoneIcon, minRole: "superadmin" },
-  { id: "lipsync", label: "Lipsync Studio", path: "/lipsync", description: "Generate AI talking-head clips from a photo or video plus audio.", icon: VideoCameraIcon, minRole: "superadmin" },
+  { id: "lipsync-budgets", label: "Lipsync Budgets", path: "/admin/lipsync-budgets", description: "Review the fal balance and manage each user's lipsync spend budget.", icon: BanknotesIcon, minRole: "superadmin" },
 ];
 
 /** Sections for sidebar grouping, in display order. */
@@ -131,7 +133,7 @@ export interface ModuleLink {
 }
 
 /** Admin Home sidebar modules (Branding, Membership, Websites, etc.) – excludes Squash/Financial which live under Modules. */
-const ADMIN_HOME_IDS = ["branding", "membership", "websites", "media", "internet-dashboard", "recommended", "stats", "social", "lipsync"] as const;
+const ADMIN_HOME_IDS = ["branding", "membership", "websites", "media", "internet-dashboard", "recommended", "stats", "social", "lipsync-budgets"] as const;
 
 /** Admin modules for the Admin Home sidebar section, in display order. */
 export function getAdminHomeModules(user: AuthUser | null): AdminModule[] {
@@ -215,6 +217,7 @@ const MODULE_GROUPS: ModuleGroup[] = [
       { path: "/textshare", label: "Text Share" },
       { path: "/converters", label: "Converters" },
       { path: "/my-info", label: "My Info" },
+      { path: "/lipsync", label: "Lipsync Studio" },
     ],
   },
 ];

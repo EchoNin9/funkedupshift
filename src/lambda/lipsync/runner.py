@@ -15,7 +15,7 @@ Invocation shapes (see routes._invokeRunnerAsync and scheduling.createCheck):
 import logging
 from datetime import datetime, timedelta, timezone
 
-from lipsync import alerts, media, scheduling, storage
+from lipsync import budget, alerts, media, scheduling, storage
 from lipsync.providers import (
     STATE_COMPLETED,
     STATE_IN_PROGRESS,
@@ -116,6 +116,7 @@ def submitJob(jobId):
     except Exception as e:  # noqa: BLE001 -- must never raise out of the handler
         logger.exception("submitJob: submit failed for jobId=%s", jobId)
         storage.transitionStatus(jobId, storage.STATUS_SUBMITTING, storage.STATUS_FAILED, error=_userSafe(e))
+        _finalizeBudget(jobId, None)
         alerts.sendAlert(f"Lipsync job {jobId} failed to submit", str(e))
         return {"ok": False, "jobId": jobId, "error": str(e)}
 
@@ -150,6 +151,7 @@ def checkJob(jobId, checkCount):
     except Exception as e:  # noqa: BLE001 -- must never raise out of the handler
         logger.exception("checkJob: checkStatus failed for jobId=%s", jobId)
         storage.transitionStatus(jobId, storage.STATUS_PROCESSING, storage.STATUS_FAILED, error=_userSafe(e))
+        _finalizeBudget(jobId, None)
         alerts.sendAlert(f"Lipsync job {jobId} failed while checking status", str(e))
         return {"ok": False, "jobId": jobId, "error": str(e)}
 
@@ -161,6 +163,7 @@ def checkJob(jobId, checkCount):
 
     # STATE_FAILED, or any state providers.checkStatus already normalised
     # to FAILED (an unrecognised status string, a malformed response, ...).
+    _finalizeBudget(jobId, None)
     storage.transitionStatus(
         jobId, storage.STATUS_PROCESSING, storage.STATUS_FAILED, error=result.error or "Generation failed.",
     )
@@ -204,6 +207,33 @@ def _handleStillRunning(jobId, checkCount):
     return {"ok": True, "jobId": jobId, "status": storage.STATUS_PROCESSING, "scheduled": True}
 
 
+def _finalizeBudget(jobId, durationSec):
+    """Settle or release the job's budget hold.
+
+    `durationSec is None` releases the hold -- the job failed, so the user
+    pays nothing. fal may still have billed the account for a render that
+    failed after a successful submit (exactly what the HTTP 405 incident
+    did); that gap is deliberate and shows up in the admin's
+    estimated-vs-actual reconciliation rather than being silently passed on
+    to the user.
+
+    Never lets a ledger problem fail the job: the job's own status is the
+    user-visible outcome and must not depend on the accounting write.
+    """
+    try:
+        job = storage.getJob(jobId)
+        if not job:
+            return
+        actual = None
+        if durationSec is not None:
+            from lipsync.providers import getProvider
+            actual = getProvider(job.get("provider") or "fal").estimateCostCents(
+                job.get("model"), durationSec)
+        budget.finalizeJobHold(job, actualCents=actual)
+    except Exception:  # noqa: BLE001
+        logger.exception("could not finalize budget hold for jobId=%s", jobId)
+
+
 def _handleCompleted(jobId, result):
     try:
         outputKey, durationSec = _copyOutput(jobId, result.outputUrl)
@@ -213,6 +243,7 @@ def _handleCompleted(jobId, result):
             jobId, storage.STATUS_PROCESSING, storage.STATUS_FAILED,
             error="Generation finished, but we couldn't retrieve the video.",
         )
+        _finalizeBudget(jobId, None)
         alerts.sendAlert(f"Lipsync job {jobId}: output copy failed", str(e))
         return {"ok": True, "jobId": jobId, "status": storage.STATUS_FAILED, "reason": "output copy failed"}
 
@@ -220,6 +251,12 @@ def _handleCompleted(jobId, result):
     if durationSec is not None:
         fields["durationSec"] = durationSec
     moved = storage.transitionStatus(jobId, storage.STATUS_PROCESSING, storage.STATUS_COMPLETED, **fields)
+    if moved:
+        # Settle the hold against the MEASURED output duration, not the
+        # estimate made at submit time -- the two differ whenever the
+        # generated clip isn't exactly as long as the source audio. The
+        # difference goes back to the user's available balance.
+        _finalizeBudget(jobId, durationSec)
     if not moved:
         # Cancelled in the narrow window between checkStatus() returning
         # COMPLETED and this write -- cancel wins; the copied output is

@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
-import { useAuth, hasRole } from "../../shell/AuthContext";
+import { useAuth } from "../../shell/AuthContext";
 
 function PageLoader() {
   return (
@@ -11,11 +11,14 @@ function PageLoader() {
 }
 
 /**
- * Admin-only gate for the /lipsync routes, mirroring features/social/SocialGate.tsx
- * (redirect guests to /auth, show Access Denied for signed-in non-admins).
- * docs/lipsync-design.md gates v1 to the Cognito `admin` group, which the
- * frontend maps to the "superadmin" role (see AuthContext.mapGroupsToRole) —
- * the same check SocialGate uses for its own admin-only routes.
+ * Auth-only gate for the /lipsync routes -- any signed-in user, no role
+ * check. v1 gated this to the Cognito `admin` group (frontend "superadmin"
+ * role); docs/lipsync-design.md's API contract update opened the job routes
+ * to any authenticated user while keeping `/lipsync/admin/*` (budgets)
+ * admin-only, so this gate now only needs to keep guests out, same as
+ * shell/AdminLayout.tsx's redirect-to-/auth pattern. The admin-only budgets
+ * view lives at its own route/gate (see features/lipsync/LipsyncBudgetsPage.tsx),
+ * not here.
  */
 export function LipsyncGate() {
   const { user, isLoading } = useAuth();
@@ -29,11 +32,11 @@ export function LipsyncGate() {
     return <PageLoader />;
   }
 
-  if (!user || !hasRole(user, "superadmin")) {
+  if (!user) {
     return (
       <div className="container-max section-padding text-center">
         <h1 className="text-2xl font-display font-extrabold uppercase text-text-primary mb-4">Access Denied</h1>
-        <p className="text-text-secondary">You don&rsquo;t have permission to access the lipsync studio.</p>
+        <p className="text-text-secondary">Sign in to access the lipsync studio.</p>
       </div>
     );
   }

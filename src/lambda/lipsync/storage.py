@@ -106,7 +106,8 @@ def _statusKeyFor(status):
 
 
 def createJob(jobId, mode, provider, model, audioKey, createdBy, consentAttested,
-              imageKey="", videoKey="", prompt="", ttlDays=DEFAULT_TTL_DAYS):
+              imageKey="", videoKey="", prompt="", reservedCents=0,
+              ttlDays=DEFAULT_TTL_DAYS):
     now = _isoNowUtc()
     item = {
         "PK": f"JOB#{jobId}",
@@ -130,6 +131,12 @@ def createJob(jobId, mode, provider, model, audioKey, createdBy, consentAttested
         "checkCount": 0,
         "expiresAt": _epochSecondsInDays(ttlDays),
         "consentAttested": bool(consentAttested),
+        # Budget hold placed by routes.createJob BEFORE this write. Carried on
+        # the job so the runner knows how much to settle or release without
+        # re-deriving it, and so `budgetSettled` can make that a one-time
+        # transition (a replayed runner invocation must not charge twice).
+        "reservedCents": Decimal(int(reservedCents)),
+        "budgetSettled": False,
         "error": "",
     }
     table = _tbl()
@@ -252,7 +259,7 @@ def cancelJob(jobId):
 # --- reads -----------------------------------------------------------------------
 
 
-def listJobs(status=None, limit=DEFAULT_LIST_LIMIT, cursor=None):
+def listJobs(status=None, limit=DEFAULT_LIST_LIMIT, cursor=None, createdBy=None):
     """Full-Scan listing, sorted by createdAt descending (newest first).
 
     Neither declared GSI supports "all jobs, newest first, optionally
@@ -276,8 +283,19 @@ def listJobs(status=None, limit=DEFAULT_LIST_LIMIT, cursor=None):
     table = _tbl()
     items = []
     kwargs = {}
+    # createdBy is a SECURITY boundary, not a convenience filter: this module
+    # is open to all authenticated users, so an unscoped scan would return
+    # every user's jobs to every caller. Only an admin may pass None.
+    conditions = []
     if status:
-        kwargs["FilterExpression"] = Attr("status").eq(status)
+        conditions.append(Attr("status").eq(status))
+    if createdBy is not None:
+        conditions.append(Attr("createdBy").eq(createdBy))
+    if conditions:
+        expr = conditions[0]
+        for extra in conditions[1:]:
+            expr = expr & extra
+        kwargs["FilterExpression"] = expr
     while True:
         resp = table.scan(**kwargs)
         items.extend(resp.get("Items", []))
@@ -347,3 +365,18 @@ def countByStatus():
             break
         kwargs["ExclusiveStartKey"] = lastKey
     return counts
+
+
+def setBudgetIdentity(jobId, identity):
+    """Record which budget a job's hold was placed against.
+
+    The runner settles that hold long after the HTTP request (and its JWT
+    claims) are gone, and jobs key ownership on the Cognito `sub` while
+    budgets key on email -- so the budget identity has to travel on the job
+    rather than being re-derived later.
+    """
+    _tbl().update_item(
+        Key=_jobKey(jobId),
+        UpdateExpression="SET budgetIdentity = :identity",
+        ExpressionAttributeValues={":identity": identity or ""},
+    )
