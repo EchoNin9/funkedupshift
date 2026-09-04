@@ -127,3 +127,28 @@ output "socialSchedulerRoleArn" {
   description = "IAM role ARN EventBridge Scheduler assumes to invoke the social publisher Lambda (infra/social.tf)."
   value       = aws_iam_role.socialScheduler.arn
 }
+
+output "lipsyncJobsTableName" {
+  description = "DynamoDB table name for lipsync jobs (infra/lipsync.tf)."
+  value       = aws_dynamodb_table.lipsyncJobs.name
+}
+
+output "lipsyncMediaBucketName" {
+  description = "S3 bucket name for lipsync input uploads and generated clips (infra/lipsync.tf)."
+  value       = aws_s3_bucket.lipsyncMedia.bucket
+}
+
+output "lipsyncAlertsTopicArn" {
+  description = "SNS topic ARN for lipsync reconciliation alerts and the daily heartbeat (infra/lipsync.tf)."
+  value       = aws_sns_topic.lipsyncAlerts.arn
+}
+
+output "lipsyncRunnerArn" {
+  description = "ARN of the lipsync runner Lambda, the EventBridge Scheduler target (infra/lipsync.tf)."
+  value       = local.lipsyncRunnerArn
+}
+
+output "lipsyncSchedulerRoleArn" {
+  description = "IAM role ARN EventBridge Scheduler assumes to invoke the lipsync runner Lambda (infra/lipsync.tf)."
+  value       = aws_iam_role.lipsyncScheduler.arn
+}

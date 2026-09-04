@@ -18,10 +18,12 @@ that map to a parameterised gateway route.
 
 Checks every handler in HANDLERS (currently `api/handler.py` — the main app
 API — `tools/handler.py` — the isolated URL-shortener/tools API, see
-docs/tools-platform-phase1-brief.md — and `social/routes.py` — the isolated
-social-scheduling API, phase 4) against the combined route set from all
-`infra/*.tf` files, since gateway routes for a given handler may live in
-either `main.tf` or a dedicated file like `tools.tf`/`social.tf`.
+docs/tools-platform-phase1-brief.md — `social/routes.py` — the isolated
+social-scheduling API, phase 4 — and `lipsync/routes.py` — the isolated
+AI video/lip-sync API, see docs/lipsync-design.md) against the combined
+route set from all `infra/*.tf` files, since gateway routes for a given
+handler may live in either `main.tf` or a dedicated file like
+`tools.tf`/`social.tf`/`lipsync.tf`.
 """
 import re
 from pathlib import Path
@@ -40,6 +42,7 @@ HANDLERS: list[tuple[Path, set[tuple[str, str]]]] = [
     }),
     (LAMBDA_DIR / "tools" / "handler.py", set()),
     (LAMBDA_DIR / "social" / "routes.py", set()),
+    (LAMBDA_DIR / "lipsync" / "routes.py", set()),
 ]
 
 

@@ -6,6 +6,7 @@ import { useBranding } from "./BrandingContext";
 import { usePlatform } from "./PlatformContext";
 import { AdminLayout } from "./AdminLayout";
 import { SocialGate } from "../features/social/SocialGate";
+import { LipsyncGate } from "../features/lipsync/LipsyncGate";
 import { Header } from "./Header";
 import { DesktopHeaderBar } from "./DesktopHeaderBar";
 import { LeftSidebar, SidebarCollapseProvider, useSidebarCollapse } from "./LeftSidebar";
@@ -64,6 +65,8 @@ const TextViewPage = lazy(() => import("../features/textshare/TextViewPage"));
 const ConvertersPage = lazy(() => import("../features/converters/ConvertersPage"));
 const SocialCalendarPage = lazy(() => import("../features/social/CalendarPage"));
 const SocialComposerPage = lazy(() => import("../features/social/ComposerPage"));
+const LipsyncPage = lazy(() => import("../features/lipsync/LipsyncPage"));
+const LipsyncBudgetsPage = lazy(() => import("../features/lipsync/LipsyncBudgetsPage"));
 
 function PageLoader() {
   return (
@@ -153,6 +156,7 @@ const AppLayoutContent: React.FC = () => {
                 <Route path="media" element={<MediaAdminPage />} />
                 <Route path="media/edit/:id" element={<EditMediaPage />} />
                 <Route path="stats" element={<StatsAdminPage />} />
+                <Route path="lipsync-budgets" element={<LipsyncBudgetsPage />} />
                 <Route path="*" element={<Navigate to="/admin" replace />} />
               </Route>
               {/* Admin-only social scheduler — gated by SocialGate (hasRole superadmin),
@@ -161,6 +165,15 @@ const AppLayoutContent: React.FC = () => {
               <Route path="/social" element={<SocialGate />}>
                 <Route index element={<SocialCalendarPage />} />
                 <Route path="compose" element={<SocialComposerPage />} />
+              </Route>
+              {/* Lip-sync studio -- open to any signed-in user (see LipsyncGate,
+                  which only redirects guests to /auth, no role check). Kept off
+                  /admin/* since it's a top-level feature area, mirroring /social.
+                  The budgets management view stays admin-only, at /admin/lipsync-budgets
+                  above (LipsyncBudgetsPage self-gates on hasRole superadmin, same as
+                  BrandingPage/InternetDashboardAdminPage). */}
+              <Route path="/lipsync" element={<LipsyncGate />}>
+                <Route index element={<LipsyncPage />} />
               </Route>
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/auth" element={<AuthPage />} />

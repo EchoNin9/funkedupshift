@@ -10,3 +10,6 @@ terraformStateLockTable = "fus-terraform-state-lock"
 
 # Social scheduling module (phase 2) — SNS alert subscriber.
 socialAlertEmail = "adam@echo9.net"
+
+# AI video / lip-sync module — SNS alert subscriber (reconciliation + heartbeat).
+lipsyncAlertEmail = "adam@echo9.net"
