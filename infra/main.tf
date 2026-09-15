@@ -204,7 +204,9 @@ data "aws_iam_policy_document" "terraformManage" {
       "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/fus-tools-lambda-role",
       "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/fus-collector-lambda-role",
       "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/fus-social-lambda-role",
-      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/fus-social-scheduler-role"
+      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/fus-social-scheduler-role",
+      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/fus-lipsync-lambda-role",
+      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/fus-lipsync-scheduler-role"
     ]
   }
   # S3 website buckets – full manage for Terraform (s3:* avoids provider refresh whack-a-mole)
@@ -252,7 +254,9 @@ data "aws_iam_policy_document" "terraformManage" {
       "arn:aws:dynamodb:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:table/${var.dynamoTableName}",
       "arn:aws:dynamodb:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:table/${var.toolsDynamoTableName}",
       "arn:aws:dynamodb:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:table/fus-social-posts",
-      "arn:aws:dynamodb:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:table/fus-social-posts/index/*"
+      "arn:aws:dynamodb:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:table/fus-social-posts/index/*",
+      "arn:aws:dynamodb:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:table/fus-lipsync-jobs",
+      "arn:aws:dynamodb:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:table/fus-lipsync-jobs/index/*"
     ]
   }
   # Text-share table (FUNK-40) — Canada data residency, so this table lives
@@ -300,6 +304,9 @@ data "aws_iam_policy_document" "terraformManage" {
       "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:function:fus-social-publisher",
       "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:function:fus-social-maintenance",
       "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:function:fus-social-token-refresh",
+      "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:function:fus-lipsync-api",
+      "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:function:fus-lipsync-runner",
+      "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:function:fus-lipsync-maintenance",
       "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:layer:fus-pillow-layer",
       "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:layer:fus-pillow-layer:*",
       "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:layer:fus-tools-crt-layer",
@@ -366,7 +373,8 @@ data "aws_iam_policy_document" "terraformManage" {
     effect  = "Allow"
     actions = ["sns:*"]
     resources = [
-      "arn:aws:sns:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:fus-social-alerts"
+      "arn:aws:sns:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:fus-social-alerts",
+      "arn:aws:sns:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:fus-lipsync-alerts"
     ]
   }
   statement {
@@ -381,7 +389,8 @@ data "aws_iam_policy_document" "terraformManage" {
       "scheduler:UntagResource"
     ]
     resources = [
-      "arn:aws:scheduler:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:schedule-group/fus-social"
+      "arn:aws:scheduler:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:schedule-group/fus-social",
+      "arn:aws:scheduler:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:schedule-group/fus-lipsync"
     ]
   }
   statement {
@@ -392,6 +401,18 @@ data "aws_iam_policy_document" "terraformManage" {
     effect    = "Allow"
     actions   = ["kms:ListAliases", "kms:DescribeKey"]
     resources = ["*"]
+  }
+  # --- lipsync module (infra/lipsync.tf) -------------------------------------
+  # Same story as the social block above: staging's AdministratorAccess hid the
+  # gap, production's main-branch apply failed on every lipsync resource.
+  statement {
+    sid     = "TerraformManageLipsyncMediaBucket"
+    effect  = "Allow"
+    actions = ["s3:*"]
+    resources = [
+      "arn:aws:s3:::fus-lipsync-media-${data.aws_caller_identity.current.account_id}",
+      "arn:aws:s3:::fus-lipsync-media-${data.aws_caller_identity.current.account_id}/*"
+    ]
   }
 }
 
