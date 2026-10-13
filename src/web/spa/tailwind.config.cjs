@@ -31,42 +31,7 @@ module.exports = {
         n3: "rgb(var(--color-n3) / <alpha-value>)",
         n4: "rgb(var(--color-n4) / <alpha-value>)",
         nav: "rgb(var(--color-nav) / <alpha-value>)",
-        ink: "rgb(var(--color-ink) / <alpha-value>)",
-        primary: {
-          50: "#fff7ed",
-          100: "#ffedd5",
-          200: "#fed7aa",
-          300: "#fdba74",
-          400: "#fb923c",
-          500: "#f97316",
-          600: "#ea580c",
-          700: "#c2410c",
-          800: "#9a3412",
-          900: "#7c2d12",
-        },
-        secondary: {
-          50: "#f8fafc",
-          100: "#f1f5f9",
-          200: "#e2e8f0",
-          300: "#cbd5e1",
-          400: "#94a3b8",
-          500: "#64748b",
-          600: "#475569",
-          700: "#334155",
-          800: "#1e293b",
-          900: "#0f172a",
-        },
-        brand: {
-          orange: "#ff6b35",
-          navy: "#004e89",
-          teal: "#06d6a0"
-        },
-        rasta: {
-          red: "#e50203",
-          yellow: "#fdde13",
-          green: "#14a113",
-          "soft-green": "#3d7a3d"
-        }
+        ink: "rgb(var(--color-ink) / <alpha-value>)"
       },
       fontFamily: {
         sans: ["Space Grotesk", "system-ui", "sans-serif"],
