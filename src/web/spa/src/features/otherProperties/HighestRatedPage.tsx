@@ -85,21 +85,21 @@ const HighestRatedPage: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold tracking-tight text-amber-200">
+      <h1 className="text-2xl font-semibold tracking-tight text-warning">
         Highest rated
       </h1>
-      <div className="rounded-xl border border-amber-800/60 bg-gradient-to-br from-amber-900/40 to-amber-950/60 p-4 shadow-lg">
-        <p className="text-sm font-medium text-amber-100">
+      <div className="rounded-xl border border-warning/60 bg-gradient-to-br from-amber-900/40 to-amber-950/60 p-4 shadow-lg">
+        <p className="text-sm font-medium text-warning">
           Top sites and media rated by our community
         </p>
-        <p className="mt-1 text-xs text-amber-200/80">
+        <p className="mt-1 text-xs text-warning/80">
           Click a card below for more detail
         </p>
         {canEdit && (
           <p className="mt-2">
             <Link
               to="/admin/recommended?tab=highest-rated"
-              className="text-amber-300 hover:text-amber-200 font-semibold text-sm"
+              className="text-warning hover:text-warning font-semibold text-sm"
             >
               Edit list
             </Link>
@@ -121,7 +121,7 @@ const HighestRatedPage: React.FC = () => {
           {canEdit && (
             <Link
               to="/admin/recommended?tab=highest-rated"
-              className="text-amber-400 hover:text-amber-300"
+              className="text-warning hover:text-warning"
             >
               Generate cache
             </Link>
@@ -135,10 +135,10 @@ const HighestRatedPage: React.FC = () => {
             const status = (item.status || "up").toLowerCase();
             const statusClass =
               status === "up"
-                ? "border-amber-400/50 bg-amber-400/20 text-amber-200"
+                ? "border-warning/50 bg-warning/20 text-warning"
                 : status === "degraded"
-                ? "border-amber-500/50 bg-amber-500/15 text-amber-200"
-                : "border-amber-600/50 bg-amber-600/15 text-amber-200";
+                ? "border-warning/50 bg-warning/15 text-warning"
+                : "border-warning/50 bg-warning/15 text-warning";
             const hasDescription = (item.description || "").trim().length > 0;
             const displayTitle = item.title || item.domain;
             const isMedia = item.type === "media";
@@ -178,20 +178,20 @@ const HighestRatedPage: React.FC = () => {
                     </a>
                   )}
                   <span
-                    className="absolute left-0 top-full mt-1 px-2 py-1.5 rounded bg-surface-2 border border-amber-700/60 text-xs text-amber-200 break-all max-w-[280px] shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-10 pointer-events-none"
+                    className="absolute left-0 top-full mt-1 px-2 py-1.5 rounded bg-surface-2 border border-warning/60 text-xs text-warning break-all max-w-[280px] shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-10 pointer-events-none"
                     role="tooltip"
                   >
                     {isMedia ? item.link : item.link}
                   </span>
                 </span>
                 {item.averageRating != null && (
-                  <div className="mt-1 flex items-center gap-0.5 text-amber-300">
+                  <div className="mt-1 flex items-center gap-0.5 text-warning">
                     <StarIcon className="h-3.5 w-3.5" />
                     <span className="font-medium">{item.averageRating}</span>
                   </div>
                 )}
                 {hasDescription && (
-                  <div className="mt-2 text-xs text-amber-200/90 leading-relaxed break-words">
+                  <div className="mt-2 text-xs text-warning/90 leading-relaxed break-words">
                     {item.description}
                   </div>
                 )}
@@ -204,13 +204,13 @@ const HighestRatedPage: React.FC = () => {
       <Dialog open={!!selectedItem} onClose={() => setSelectedItem(null)} className="relative z-50">
         <div className="fixed inset-0 bg-black/50" aria-hidden="true" />
         <div className="fixed inset-0 flex items-center justify-center p-4">
-          <Dialog.Panel className="mx-auto w-full max-w-xl rounded-xl border border-amber-800/60 bg-gradient-to-br from-amber-900/40 to-amber-950/60 p-6 shadow-xl">
+          <Dialog.Panel className="mx-auto w-full max-w-xl rounded-xl border border-warning/60 bg-gradient-to-br from-amber-900/40 to-amber-950/60 p-6 shadow-xl">
             {selectedItem && (
               <div className="relative flex min-h-[12rem] items-center justify-center">
                 <button
                   type="button"
                   onClick={() => setSelectedItem(null)}
-                  className="absolute right-0 top-0 rounded p-1 text-amber-400 hover:bg-amber-800/40 hover:text-amber-200"
+                  className="absolute right-0 top-0 rounded p-1 text-warning hover:bg-warning/40 hover:text-warning"
                   aria-label="Close modal"
                 >
                   <XMarkIcon className="h-6 w-6" />
@@ -218,14 +218,14 @@ const HighestRatedPage: React.FC = () => {
                 {selectedItem.logoUrl ? (
                   <img
                     src={selectedItem.logoUrl}
-                    alt=""
+                    alt={selectedItem.title || selectedItem.domain}
                     className="max-h-48 max-w-full object-contain"
                     onError={(e) => {
                       (e.currentTarget as HTMLImageElement).style.visibility = "hidden";
                     }}
                   />
                 ) : (
-                  <div className="h-24 w-24 rounded-lg border border-amber-700/60 bg-amber-900/40" />
+                  <div className="h-24 w-24 rounded-lg border border-warning/60 bg-warning/40" />
                 )}
               </div>
             )}

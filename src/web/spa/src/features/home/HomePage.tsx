@@ -146,8 +146,8 @@ const ROLES = [
     label: "Everyone",
     description:
       "Browse all sites and media without signing in. Ratings and metadata are public by design.",
-    accent: "border-emerald-500/30 bg-emerald-500/5",
-    iconColor: "text-emerald-400",
+    accent: "border-success/30 bg-success/5",
+    iconColor: "text-success",
     number: "01",
   },
   {
@@ -164,8 +164,8 @@ const ROLES = [
     label: "Admins",
     description:
       "Curate the corpus, manage categories and groups, and control branding from a single admin surface.",
-    accent: "border-amber-500/30 bg-amber-500/5",
-    iconColor: "text-amber-400",
+    accent: "border-warning/30 bg-warning/5",
+    iconColor: "text-warning",
     number: "03",
   },
 ];
@@ -286,7 +286,7 @@ const HomePage: React.FC = () => {
         <div className="relative z-30 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-28">
           <div className="max-w-3xl space-y-7">
             <motion.p
-              className="text-xs sm:text-sm font-display font-extrabold uppercase tracking-[0.3em] text-accent"
+              className="text-xs sm:text-sm font-display font-extrabold uppercase tracking-[0.3em] text-accent-text"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
@@ -357,7 +357,7 @@ const HomePage: React.FC = () => {
             variants={staggerContainer}
           >
             <motion.p
-              className="text-xs font-display font-extrabold uppercase tracking-[0.3em] text-accent mb-4"
+              className="text-xs font-display font-extrabold uppercase tracking-[0.3em] text-accent-text mb-4"
               variants={fadeUp}
               custom={0}
             >
@@ -412,7 +412,7 @@ const HomePage: React.FC = () => {
                       {user ? "No access" : "Sign in to unlock"}
                     </span>
                   ) : (
-                    <span className="mt-6 inline-flex items-center gap-1.5 text-sm font-display font-extrabold uppercase tracking-tight text-accent transition-all group-hover:gap-2.5">
+                    <span className="mt-6 inline-flex items-center gap-1.5 text-sm font-display font-extrabold uppercase tracking-tight text-accent-text transition-all group-hover:gap-2.5">
                       Open
                       <ArrowRightIcon className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                     </span>

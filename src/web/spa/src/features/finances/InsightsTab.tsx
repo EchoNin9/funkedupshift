@@ -110,7 +110,7 @@ const InsightsTab: React.FC<{ ctx: FinancesContext }> = ({ ctx }) => {
             {data.forecast.map((f) => (
               <p key={f.month}>
                 {f.month}:{" "}
-                <span className={`font-medium ${f.projectedNet >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                <span className={`font-medium ${f.projectedNet >= 0 ? "text-success" : "text-danger"}`}>
                   {fmtMoney(f.projectedNet)}
                 </span>
               </p>

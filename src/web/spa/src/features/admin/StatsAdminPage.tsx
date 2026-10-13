@@ -94,7 +94,7 @@ export default function StatsAdminPage() {
       </div>
 
       {error && (
-        <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg">
+        <div className="mb-6 p-4 bg-danger/10 border border-danger/20 text-danger rounded-lg">
           {error}
         </div>
       )}

@@ -145,7 +145,7 @@ const RulesSection: React.FC<{ categories: string[] }> = ({ categories }) => {
             <button
               type="button"
               onClick={() => removeRule(idx)}
-              className="text-xs text-text-tertiary hover:text-red-400"
+              className="text-xs text-text-tertiary hover:text-danger"
             >
               Remove
             </button>

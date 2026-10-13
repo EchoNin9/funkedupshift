@@ -276,8 +276,8 @@ const SquashPage: React.FC = () => {
     return (
       <div className="space-y-4">
         <h1 className="text-xl font-semibold text-text-primary">Squash Doubles</h1>
-        <div className="rounded-md bg-red-900/30 border border-red-800/50 px-4 py-3 text-sm text-red-200">
-          Sign in required. <Link to="/auth" className="underline hover:text-red-100">Sign in</Link>
+        <div className="rounded-md bg-danger/20 border border-danger/20 px-4 py-3 text-sm text-danger">
+          Sign in required. <Link to="/auth" className="underline hover:text-danger">Sign in</Link>
         </div>
       </div>
     );
@@ -287,7 +287,7 @@ const SquashPage: React.FC = () => {
     return (
       <div className="space-y-4">
         <h1 className="text-xl font-semibold text-text-primary">Squash Doubles</h1>
-        <div className="rounded-md bg-amber-900/30 border border-amber-800/50 px-4 py-3 text-sm text-amber-200">
+        <div className="rounded-md bg-warning/30 border border-warning/50 px-4 py-3 text-sm text-warning">
           You do not have access to the Squash section. Join the Squash group or contact an admin.
         </div>
       </div>
@@ -308,7 +308,7 @@ const SquashPage: React.FC = () => {
 
       {(message || error) && (
         <div
-          className={`rounded-md px-4 py-3 text-sm ${error ? "bg-red-900/30 border border-red-800/50 text-red-200" : "bg-emerald-900/30 border border-emerald-800/50 text-emerald-200"}`}
+          className={`rounded-md px-4 py-3 text-sm ${error ? "bg-danger/20 border border-danger/20 text-danger" : "bg-success/30 border border-success/50 text-success"}`}
         >
           {error || message}
         </div>
@@ -347,7 +347,7 @@ const SquashPage: React.FC = () => {
               onFocus={() => setPlayerDropdownOpen(true)}
               placeholder="Search players..."
               autoComplete="off"
-              className="block w-full rounded-md border border-border-hover bg-surface-2 px-3 py-2 text-sm text-text-primary focus:border-accent-500 focus:outline-none"
+              className="block w-full rounded-md border border-border-hover bg-surface-2 px-3 py-2 text-sm text-text-primary focus:border-accent-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-n3"
             />
             {playerDropdownOpen && (
               <div className="absolute top-full left-0 right-0 mt-1 bg-surface-2 border border-border-hover rounded-md max-h-48 overflow-y-auto scrollbar-thin z-10">

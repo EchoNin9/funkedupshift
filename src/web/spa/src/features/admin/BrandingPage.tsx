@@ -496,7 +496,7 @@ const BrandingPage: React.FC = () => {
               <div className="inline-flex items-center gap-3 rounded-lg border border-border-default bg-surface-1 p-2">
                 <img
                   src={hero.imageUrl}
-                  alt=""
+                  alt="Current hero image"
                   className="h-24 w-auto max-w-[12rem] rounded-md object-cover"
                 />
                 <button

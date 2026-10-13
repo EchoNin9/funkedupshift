@@ -466,7 +466,7 @@ const WebsitesAdminPage: React.FC = () => {
                 <img src={logoPreview} alt="Preview" className="h-16 w-16 rounded-lg border border-border-hover object-cover" />
               </div>
             )}
-            {logoError && <p className="mt-1 text-xs text-red-400">{logoError}</p>}
+            {logoError && <p className="mt-1 text-xs text-danger">{logoError}</p>}
           </div>
           <FormField label="Categories (optional)">
             <SearchableSelect
@@ -574,12 +574,12 @@ const WebsitesAdminPage: React.FC = () => {
                             type="button"
                             onClick={() => handleDeleteCategory(c.id)}
                             disabled={deletingId === c.id}
-                            className="rounded-md border border-red-500/60 px-3 py-1.5 text-xs font-medium text-red-400 hover:bg-red-500/20 disabled:opacity-50"
+                            className="rounded-md border border-danger/60 px-3 py-1.5 text-xs font-medium text-danger hover:bg-danger/20 disabled:opacity-50"
                           >
                             {deletingId === c.id ? "Deleting…" : "Delete"}
                           </button>
                         </div>
-                        {updateError && <p className="text-xs text-red-400">{updateError}</p>}
+                        {updateError && <p className="text-xs text-danger">{updateError}</p>}
                       </form>
                     ) : (
                       <div className="flex items-center justify-between gap-2">
@@ -595,7 +595,7 @@ const WebsitesAdminPage: React.FC = () => {
                           type="button"
                           onClick={() => handleDeleteCategory(c.id)}
                           disabled={deletingId === c.id}
-                          className="rounded px-2 py-1 text-xs font-medium text-red-400 hover:bg-red-500/20 disabled:opacity-50 shrink-0"
+                          className="rounded px-2 py-1 text-xs font-medium text-danger hover:bg-danger/20 disabled:opacity-50 shrink-0"
                           aria-label="Delete category"
                         >
                           {deletingId === c.id ? "…" : "Delete"}

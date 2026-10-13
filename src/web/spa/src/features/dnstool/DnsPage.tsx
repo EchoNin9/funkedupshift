@@ -88,7 +88,7 @@ const DnsPage: React.FC = () => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
       >
-        <ServerIcon className="h-6 w-6 text-accent" />
+        <ServerIcon className="h-6 w-6 text-accent-text" />
         DNS Lookup
       </motion.h1>
       <p className="text-sm text-text-secondary">
@@ -130,7 +130,7 @@ const DnsPage: React.FC = () => {
       <div className="space-y-4">
         {sections.map((section) => (
           <div key={section.type} className="rounded-xl border border-border-default bg-surface-2/80 p-4">
-            <h2 className="text-sm font-semibold text-accent mb-2">{section.type}</h2>
+            <h2 className="text-sm font-semibold text-accent-text mb-2">{section.type}</h2>
             {section.loading && <p className="text-sm text-text-tertiary">Looking up…</p>}
             {!section.loading && section.error && <Alert variant="error">{section.error}</Alert>}
             {!section.loading && section.result && section.result.status !== "ok" && (

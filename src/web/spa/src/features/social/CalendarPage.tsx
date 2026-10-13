@@ -192,7 +192,7 @@ export default function CalendarPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
         >
-          <CalendarDaysIcon className="h-6 w-6 text-accent" />
+          <CalendarDaysIcon className="h-6 w-6 text-accent-text" />
           Social Scheduler
         </motion.h1>
         <Link
@@ -290,7 +290,7 @@ export default function CalendarPage() {
           {view === "month" && posts.length === 0 && (
             <p className="text-sm text-text-tertiary text-center py-4">
               No posts scheduled this month —{" "}
-              <Link to="/social/compose" className="text-nav hover:underline">
+              <Link to="/social/compose" className="text-nav-text hover:underline">
                 create one
               </Link>
               .

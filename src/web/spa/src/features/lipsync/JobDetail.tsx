@@ -168,7 +168,7 @@ export function JobDetail({ jobId, onClose, onChanged }: JobDetailProps) {
                 >
                   {statusMeta(job.status).label}
                 </span>
-                <span className="inline-flex items-center gap-1 rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">
+                <span className="inline-flex items-center gap-1 rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent-text">
                   <SparklesIcon className="h-3 w-3" />
                   AI-generated
                 </span>
@@ -182,7 +182,7 @@ export function JobDetail({ jobId, onClose, onChanged }: JobDetailProps) {
                 <dt className="text-text-tertiary">Updated</dt>
                 <dd className="text-text-primary">{formatDateTime(job.updatedAt)}</dd>
                 <dt className="text-text-tertiary">Expires</dt>
-                <dd className={expiring ? "text-amber-400" : "text-text-primary"}>{formatExpiry(job.expiresAt)}</dd>
+                <dd className={expiring ? "text-warning" : "text-text-primary"}>{formatExpiry(job.expiresAt)}</dd>
                 {typeof job.durationSec === "number" && (
                   <>
                     <dt className="text-text-tertiary">Duration</dt>
@@ -199,7 +199,7 @@ export function JobDetail({ jobId, onClose, onChanged }: JobDetailProps) {
 
               {!isTerminal && (
                 <div className="flex items-center gap-2 rounded-lg border border-border-default bg-surface-1 p-3 text-sm text-text-secondary">
-                  <ArrowPathIcon className="h-4 w-4 shrink-0 animate-spin text-accent" />
+                  <ArrowPathIcon className="h-4 w-4 shrink-0 animate-spin text-accent-text" />
                   Generating your clip — this can take a few minutes. This panel updates automatically.
                 </div>
               )}
@@ -264,7 +264,7 @@ export function JobDetail({ jobId, onClose, onChanged }: JobDetailProps) {
                     type="button"
                     onClick={handleCancel}
                     disabled={cancelling}
-                    className="inline-flex items-center gap-1.5 rounded-md border border-red-500/60 bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="inline-flex items-center gap-1.5 rounded-md border border-danger/60 bg-danger/10 px-3 py-1.5 text-xs font-medium text-danger hover:bg-danger/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <TrashIcon className="h-3.5 w-3.5" />
                     {cancelling ? "Cancelling…" : "Cancel clip"}

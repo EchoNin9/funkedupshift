@@ -114,7 +114,7 @@ const AccountsManager: React.FC<{ accounts: Account[]; onChanged: () => void }> 
             <span key={a.id} className="text-text-tertiary">
               {a.displayName ?? a.name}
               <button type="button" onClick={() => startEdit(a)} className="ml-1 text-accent-500 hover:text-orange-400">edit</button>
-              <button type="button" onClick={() => remove(a)} className="ml-1 hover:text-red-400">delete</button>
+              <button type="button" onClick={() => remove(a)} className="ml-1 hover:text-danger">delete</button>
             </span>
           ))}
         </div>

@@ -468,7 +468,7 @@ const ListTab: React.FC<ListTabProps> = ({ config }) => {
                 )
               )}
               {config.id === "highestRated" && entry.averageRating != null && (
-                <span className="flex items-center gap-0.5 text-amber-400 text-xs">
+                <span className="flex items-center gap-0.5 text-warning text-xs">
                   <StarIcon className="h-3.5 w-3.5" />
                   {entry.averageRating}
                 </span>
@@ -477,7 +477,7 @@ const ListTab: React.FC<ListTabProps> = ({ config }) => {
                   type="button"
                   onClick={() => handleRemove(entry)}
                   disabled={isSaving || editingIndex !== null}
-                className="flex-shrink-0 rounded-md border border-red-500/60 bg-red-500/10 px-2 py-1 text-xs font-medium text-red-300 hover:bg-red-500/20 disabled:opacity-50"
+                className="flex-shrink-0 rounded-md border border-danger/60 bg-danger/10 px-2 py-1 text-xs font-medium text-danger hover:bg-danger/20 disabled:opacity-50"
               >
                 Remove
               </button>

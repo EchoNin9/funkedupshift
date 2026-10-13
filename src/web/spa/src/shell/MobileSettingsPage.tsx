@@ -55,7 +55,7 @@ export default function MobileSettingsPage() {
           </h2>
           <button
             onClick={signOut}
-            className="w-full px-4 py-3 min-h-[44px] text-left text-sm text-red-400 bg-surface-1 rounded-lg"
+            className="w-full px-4 py-3 min-h-[44px] text-left text-sm text-danger bg-surface-1 rounded-lg"
           >
             Sign Out
           </button>

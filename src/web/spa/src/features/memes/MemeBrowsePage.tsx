@@ -471,7 +471,9 @@ const MemeBrowsePage: React.FC = () => {
                     {thumb ? (
                       <img
                         src={thumb}
-                        alt=""
+                        alt={title}
+                        loading="lazy"
+                        decoding="async"
                         className="w-full object-cover"
                         onError={(e) => {
                           (e.currentTarget as HTMLImageElement).style.visibility = "hidden";
@@ -494,7 +496,7 @@ const MemeBrowsePage: React.FC = () => {
                         </span>
                       )}
                       {typeof m.averageRating === "number" && (
-                        <span className="inline-flex rounded-full bg-surface-2 px-2 py-0.5 text-[11px] text-amber-300">
+                        <span className="inline-flex rounded-full bg-surface-2 px-2 py-0.5 text-[11px] text-warning">
                           {m.averageRating.toFixed(1)}★
                         </span>
                       )}

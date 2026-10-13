@@ -278,7 +278,7 @@ const MembershipPage: React.FC = () => {
     (cognitoGroups || []).forEach((g) => {
       const display = ROLE_DISPLAY[g] || g;
       const cls =
-        g === "admin" ? "bg-amber-500/20 text-amber-200" : g === "manager" ? "bg-blue-500/20 text-blue-200" : "bg-surface-3/30 text-text-secondary";
+        g === "admin" ? "bg-warning/20 text-warning" : g === "manager" ? "bg-blue-500/20 text-blue-200" : "bg-surface-3/30 text-text-secondary";
       items.push(
         <span key={`c-${g}`} className={`inline-block px-2 py-0.5 rounded text-xs mr-1 ${cls}`}>
           {display}
@@ -287,7 +287,7 @@ const MembershipPage: React.FC = () => {
     });
     (customGroups || []).forEach((g) => {
       items.push(
-        <span key={`x-${g}`} className="inline-block px-2 py-0.5 rounded text-xs mr-1 bg-emerald-500/20 text-emerald-200">
+        <span key={`x-${g}`} className="inline-block px-2 py-0.5 rounded text-xs mr-1 bg-success/20 text-success">
           {g}
         </span>
       );
@@ -778,12 +778,12 @@ const MembershipPage: React.FC = () => {
                             type="button"
                             onClick={() => handleDeleteGroup(g.name)}
                             disabled={deletingName === g.name}
-                            className="rounded-md border border-red-500/60 px-3 py-1.5 text-xs font-medium text-red-400 hover:bg-red-500/20 disabled:opacity-50"
+                            className="rounded-md border border-danger/60 px-3 py-1.5 text-xs font-medium text-danger hover:bg-danger/20 disabled:opacity-50"
                           >
                             {deletingName === g.name ? "Deleting…" : "Delete"}
                           </button>
                         </div>
-                        {updateError && <p className="text-xs text-red-400">{updateError}</p>}
+                        {updateError && <p className="text-xs text-danger">{updateError}</p>}
                       </form>
                     ) : (
                       <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -806,7 +806,7 @@ const MembershipPage: React.FC = () => {
                             type="button"
                             onClick={() => handleDeleteGroup(g.name)}
                             disabled={deletingName === g.name}
-                            className="rounded-md border border-red-500/60 px-2 py-1 text-xs font-medium text-red-400 hover:bg-red-500/20 disabled:opacity-50"
+                            className="rounded-md border border-danger/60 px-2 py-1 text-xs font-medium text-danger hover:bg-danger/20 disabled:opacity-50"
                           >
                             {deletingName === g.name ? "Deleting…" : "Delete"}
                           </button>
@@ -860,7 +860,7 @@ const MembershipPage: React.FC = () => {
                     type="button"
                     onClick={() => toggleCustom(g.name, newRoleCustom, setNewRoleCustom)}
                     className={`rounded-md px-2 py-1 text-xs font-medium ${
-                      newRoleCustom.includes(g.name) ? "bg-emerald-500/30 text-emerald-200" : "border border-border-hover text-text-secondary hover:bg-surface-3"
+                      newRoleCustom.includes(g.name) ? "bg-success/30 text-success" : "border border-border-hover text-text-secondary hover:bg-surface-3"
                     }`}
                   >
                     {g.name}
@@ -920,7 +920,7 @@ const MembershipPage: React.FC = () => {
                                 key={g.name}
                                 type="button"
                                 onClick={() => toggleCustom(g.name, editRoleCustom, setEditRoleCustom)}
-                                className={`rounded-md px-2 py-1 text-xs ${editRoleCustom.includes(g.name) ? "bg-emerald-500/30 text-emerald-200" : "border border-border-hover text-text-secondary"}`}
+                                className={`rounded-md px-2 py-1 text-xs ${editRoleCustom.includes(g.name) ? "bg-success/30 text-success" : "border border-border-hover text-text-secondary"}`}
                               >
                                 {g.name}
                               </button>
@@ -942,12 +942,12 @@ const MembershipPage: React.FC = () => {
                             type="button"
                             onClick={() => handleDeleteRole(r.name)}
                             disabled={deletingRole === r.name}
-                            className="rounded-md border border-red-500/60 px-3 py-1.5 text-xs text-red-400 hover:bg-red-500/20 disabled:opacity-50"
+                            className="rounded-md border border-danger/60 px-3 py-1.5 text-xs text-danger hover:bg-danger/20 disabled:opacity-50"
                           >
                             {deletingRole === r.name ? "Deleting…" : "Delete"}
                           </button>
                         </div>
-                        {roleUpdateError && <p className="text-xs text-red-400">{roleUpdateError}</p>}
+                        {roleUpdateError && <p className="text-xs text-danger">{roleUpdateError}</p>}
                       </form>
                     ) : (
                       <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -960,7 +960,7 @@ const MembershipPage: React.FC = () => {
                               </span>
                             ))}
                             {(r.customGroups ?? []).map((g) => (
-                              <span key={`x-${g}`} className="inline-block px-2 py-0.5 rounded text-xs bg-emerald-500/20 text-emerald-200">
+                              <span key={`x-${g}`} className="inline-block px-2 py-0.5 rounded text-xs bg-success/20 text-success">
                                 {g}
                               </span>
                             ))}
@@ -974,7 +974,7 @@ const MembershipPage: React.FC = () => {
                             type="button"
                             onClick={() => handleDeleteRole(r.name)}
                             disabled={deletingRole === r.name}
-                            className="rounded-md border border-red-500/60 px-2 py-1 text-xs text-red-400 hover:bg-red-500/20 disabled:opacity-50"
+                            className="rounded-md border border-danger/60 px-2 py-1 text-xs text-danger hover:bg-danger/20 disabled:opacity-50"
                           >
                             {deletingRole === r.name ? "Deleting…" : "Delete"}
                           </button>

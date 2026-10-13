@@ -114,11 +114,12 @@ export default function ReceiptScanner({ apiBase, onFieldsExtracted, onClose }: 
   return (
     <Dialog
       open
-      onClose={onClose}
+      // ponytail: no outside-click close so a stray tap can't discard a half-filled receipt; Escape still closes
+      onClose={() => {}}
       className="fixed inset-0 z-50 bg-black/60 flex items-end justify-center"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
-      <Dialog.Panel className="w-full max-w-lg bg-surface-1 rounded-t-2xl p-5 space-y-4 max-h-[85vh] overflow-y-auto">
+      <Dialog.Panel onKeyDown={(e) => e.key === "Escape" && onClose()} className="w-full max-w-lg bg-surface-1 rounded-t-2xl p-5 space-y-4 max-h-[85vh] overflow-y-auto">
         <div className="flex items-center justify-between">
           <Dialog.Title as="h2" className="text-lg font-semibold text-text-primary">Scan Fuel Receipt</Dialog.Title>
           <button type="button" onClick={onClose} aria-label="Close" className="flex h-11 w-11 -m-1.5 items-center justify-center text-text-tertiary">
@@ -217,7 +218,7 @@ export default function ReceiptScanner({ apiBase, onFieldsExtracted, onClose }: 
             {preview && (
               <img src={preview} alt="Receipt" className="mx-auto max-h-32 rounded-lg object-contain" />
             )}
-            <p className="text-sm text-red-400 text-center">{error}</p>
+            <p className="text-sm text-danger text-center">{error}</p>
             <div className="flex gap-2 justify-center">
               <button
                 onClick={handleCapture}

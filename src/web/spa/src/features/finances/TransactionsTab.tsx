@@ -419,7 +419,7 @@ const TransactionsTab: React.FC<{ ctx: FinancesContext }> = ({ ctx }) => {
                   )}
                 </td>
                 <td className="px-4 py-3 text-sm text-text-secondary">{t.category}</td>
-                <td className={`px-4 py-3 text-sm text-right font-medium ${t.amount < 0 ? "text-red-400" : "text-emerald-400"}`}>
+                <td className={`px-4 py-3 text-sm text-right font-medium ${t.amount < 0 ? "text-danger" : "text-success"}`}>
                   {fmtMoney(t.amount)}
                 </td>
                 <td className="px-4 py-3 text-sm text-right space-x-3">
@@ -428,7 +428,7 @@ const TransactionsTab: React.FC<{ ctx: FinancesContext }> = ({ ctx }) => {
                       <button type="button" onClick={() => startEdit(t)} className="text-accent-500 hover:text-orange-400">
                         Edit
                       </button>
-                      <button type="button" onClick={() => remove(t)} className="text-text-tertiary hover:text-red-400">
+                      <button type="button" onClick={() => remove(t)} className="text-text-tertiary hover:text-danger">
                         Delete
                       </button>
                     </>

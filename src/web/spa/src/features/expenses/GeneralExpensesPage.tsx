@@ -594,7 +594,7 @@ const GeneralExpensesPage: React.FC = () => {
                     type="button"
                     onClick={() => handleDeleteSection(selectedSectionId)}
                     disabled={saving}
-                    className="text-sm text-red-400 hover:text-red-300"
+                    className="text-sm text-danger hover:text-danger"
                   >
                     Delete section
                   </button>
@@ -820,7 +820,7 @@ const GeneralExpensesPage: React.FC = () => {
                               <button
                                 type="button"
                                 onClick={() => removeAttachment(a.key)}
-                                className="text-red-400 hover:text-red-300 shrink-0"
+                                className="text-danger hover:text-danger shrink-0"
                               >
                                 Remove
                               </button>
@@ -894,7 +894,7 @@ const GeneralExpensesPage: React.FC = () => {
                                   type="button"
                                   onClick={() => handleDeleteEntry(entry.id)}
                                   disabled={saving}
-                                  className="text-sm text-red-400 hover:text-red-300"
+                                  className="text-sm text-danger hover:text-danger"
                                 >
                                   Delete
                                 </button>

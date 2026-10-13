@@ -127,11 +127,12 @@ export default function GeneralReceiptScanner({ apiBase, onFieldsExtracted, onCl
   return (
     <Dialog
       open
-      onClose={onClose}
+      // ponytail: no outside-click close so a stray tap can't discard a half-filled receipt; Escape still closes
+      onClose={() => {}}
       className="fixed inset-0 z-50 bg-black/60 flex items-end justify-center"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
-      <Dialog.Panel className="w-full max-w-lg bg-surface-1 rounded-t-2xl p-5 space-y-4 max-h-[90vh] overflow-y-auto">
+      <Dialog.Panel onKeyDown={(e) => e.key === "Escape" && onClose()} className="w-full max-w-lg bg-surface-1 rounded-t-2xl p-5 space-y-4 max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between">
           <Dialog.Title as="h2" className="text-lg font-semibold text-text-primary">Scan Receipt</Dialog.Title>
@@ -250,7 +251,7 @@ export default function GeneralReceiptScanner({ apiBase, onFieldsExtracted, onCl
             {preview && (
               <img src={preview} alt="Receipt" className="mx-auto max-h-28 rounded-lg object-contain" />
             )}
-            <p className="text-sm text-red-400 text-center">{error}</p>
+            <p className="text-sm text-danger text-center">{error}</p>
             <div className="flex gap-2 justify-center">
               <button
                 onClick={handleCapture}

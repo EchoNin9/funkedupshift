@@ -229,7 +229,7 @@ const RemoveBgPage: React.FC = () => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
       >
-        <CubeTransparentIcon className="h-6 w-6 text-accent" />
+        <CubeTransparentIcon className="h-6 w-6 text-accent-text" />
         Remove Background
       </motion.h1>
       <p className="text-sm text-text-secondary">
