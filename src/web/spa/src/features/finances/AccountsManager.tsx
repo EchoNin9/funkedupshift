@@ -73,7 +73,7 @@ const AccountsManager: React.FC<{ accounts: Account[]; onChanged: () => void }> 
         <button
           type="button"
           onClick={() => { setOpen(!open); setEditingId(null); setForm(EMPTY); }}
-          className="ml-auto rounded-md bg-accent-500 px-3 py-1.5 text-sm font-medium text-surface-0 hover:bg-orange-500"
+          className="ml-auto rounded-md bg-accent-500 px-3 py-1.5 text-sm font-medium text-ink hover:bg-accent-400"
         >
           {open ? "Close" : "Add account"}
         </button>
@@ -101,7 +101,7 @@ const AccountsManager: React.FC<{ accounts: Account[]; onChanged: () => void }> 
             type="button"
             onClick={submit}
             disabled={busy || !form.name}
-            className="rounded-md bg-accent-500 px-3 py-2 text-sm font-medium text-surface-0 hover:bg-orange-500 disabled:opacity-50"
+            className="rounded-md bg-accent-500 px-3 py-2 text-sm font-medium text-ink hover:bg-accent-400 disabled:opacity-50"
           >
             {busy ? "Saving…" : editingId ? "Save account" : "Create account"}
           </button>
@@ -113,7 +113,7 @@ const AccountsManager: React.FC<{ accounts: Account[]; onChanged: () => void }> 
           {locals.map((a) => (
             <span key={a.id} className="text-text-tertiary">
               {a.displayName ?? a.name}
-              <button type="button" onClick={() => startEdit(a)} className="ml-1 text-accent-500 hover:text-orange-400">edit</button>
+              <button type="button" onClick={() => startEdit(a)} className="ml-1 text-accent-text hover:text-accent-text">edit</button>
               <button type="button" onClick={() => remove(a)} className="ml-1 hover:text-danger">delete</button>
             </span>
           ))}

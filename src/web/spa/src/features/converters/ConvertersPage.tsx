@@ -163,7 +163,7 @@ const ZonePicker: React.FC<{ label: string; value: string; onChange: (z: string)
             onClick={() => onChange(z)}
             className={`rounded-full border px-2.5 py-1 text-xs ${
               value === z
-                ? "border-accent-500 text-accent-400"
+                ? "border-accent-500 text-accent-text"
                 : "border-border-hover text-text-tertiary hover:text-text-primary"
             }`}
           >
@@ -328,7 +328,7 @@ const ConvertersPage: React.FC = () => {
             onClick={() => setTab(t.id)}
             className={`min-h-[44px] flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors ${
               tab === t.id
-                ? "bg-accent-500/20 text-accent-400"
+                ? "bg-accent-500/20 text-accent-text"
                 : "text-text-secondary hover:text-text-primary hover:bg-surface-3"
             }`}
           >
@@ -390,7 +390,7 @@ const ConvertersPage: React.FC = () => {
                 onClick={() => selectDimension(key)}
                 className={`rounded-full border px-3 py-1 text-xs ${
                   dimKey === key
-                    ? "border-accent-500 text-accent-400"
+                    ? "border-accent-500 text-accent-text"
                     : "border-border-hover text-text-tertiary hover:text-text-primary"
                 }`}
               >
@@ -517,7 +517,7 @@ const ConvertersPage: React.FC = () => {
                 {tzResult.time} on {tzResult.date} ({tzResult.weekday}) in {toZone}
               </p>
               {tzResult.dayOffset !== 0 && (
-                <div className="rounded-md border border-accent-500/40 bg-accent-500/10 px-3 py-2 text-sm text-accent-400">
+                <div className="rounded-md border border-accent-500/40 bg-accent-500/10 px-3 py-2 text-sm text-accent-text">
                   {tzResult.dayOffset > 0 ? "Next day" : "Previous day"} relative to the source date.
                 </div>
               )}

@@ -33,13 +33,13 @@ export const STATUS_META: Record<
   },
   published: {
     label: "Published",
-    dot: "bg-emerald-500",
+    dot: "bg-success",
     chip: "border-success/60 bg-success/10 text-text-primary",
     badge: "border-success text-success",
   },
   failed: {
     label: "Failed",
-    dot: "bg-red-500",
+    dot: "bg-danger",
     chip: "border-danger/60 bg-danger/10 text-text-primary",
     badge: "border-danger text-danger",
   },

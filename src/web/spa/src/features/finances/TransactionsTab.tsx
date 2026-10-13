@@ -163,7 +163,7 @@ const TransactionsTab: React.FC<{ ctx: FinancesContext }> = ({ ctx }) => {
 
   const pill = (active: boolean) =>
     `rounded-full border border-accent-500 px-3 py-1 text-xs font-medium ${
-      active ? "bg-accent-500 text-surface-0" : "text-accent-500 hover:bg-surface-2"
+      active ? "bg-accent-500 text-surface-0" : "text-accent-text hover:bg-surface-2"
     }`;
   const input = "rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary";
 
@@ -198,21 +198,21 @@ const TransactionsTab: React.FC<{ ctx: FinancesContext }> = ({ ctx }) => {
             <button
               type="button"
               onClick={() => setShowImport(!showImport)}
-              className="rounded-md border border-accent-500 px-3 py-2 text-sm font-medium text-accent-500 hover:bg-surface-2"
+              className="rounded-md border border-accent-500 px-3 py-2 text-sm font-medium text-accent-text hover:bg-surface-2"
             >
               {showImport ? "Close import" : "Import file"}
             </button>
             <button
               type="button"
               onClick={() => { setShowXfer(!showXfer); setXfer(EMPTY_XFER); }}
-              className="rounded-md border border-accent-500 px-3 py-2 text-sm font-medium text-accent-500 hover:bg-surface-2"
+              className="rounded-md border border-accent-500 px-3 py-2 text-sm font-medium text-accent-text hover:bg-surface-2"
             >
               {showXfer ? "Close transfer" : "Record transfer"}
             </button>
             <button
               type="button"
               onClick={() => { setShowForm(!showForm); setEditingId(null); setForm(EMPTY_FORM); }}
-              className="rounded-md bg-accent-500 px-3 py-2 text-sm font-medium text-surface-0 hover:bg-orange-500"
+              className="rounded-md bg-accent-500 px-3 py-2 text-sm font-medium text-ink hover:bg-accent-400"
             >
               {showForm ? "Close" : "Add transaction"}
             </button>
@@ -247,7 +247,7 @@ const TransactionsTab: React.FC<{ ctx: FinancesContext }> = ({ ctx }) => {
               type="button"
               onClick={submitTransfer}
               disabled={busy || !xfer.date || !xfer.amount || !xfer.fromAccountId || !xfer.toAccountId}
-              className="rounded-md bg-accent-500 px-3 py-2 text-sm font-medium text-surface-0 hover:bg-orange-500 disabled:opacity-50"
+              className="rounded-md bg-accent-500 px-3 py-2 text-sm font-medium text-ink hover:bg-accent-400 disabled:opacity-50"
             >
               {busy ? "Saving…" : "Record transfer"}
             </button>
@@ -286,7 +286,7 @@ const TransactionsTab: React.FC<{ ctx: FinancesContext }> = ({ ctx }) => {
               type="button"
               onClick={submit}
               disabled={busy || !form.date || !form.amount}
-              className="rounded-md bg-accent-500 px-3 py-2 text-sm font-medium text-surface-0 hover:bg-orange-500 disabled:opacity-50"
+              className="rounded-md bg-accent-500 px-3 py-2 text-sm font-medium text-ink hover:bg-accent-400 disabled:opacity-50"
             >
               {busy ? "Saving…" : "Save"}
             </button>
@@ -352,7 +352,7 @@ const TransactionsTab: React.FC<{ ctx: FinancesContext }> = ({ ctx }) => {
             {ctx.categories.filter((c) => c !== "Transfer").map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
           <button type="button" onClick={bulkCategorize} disabled={busy || !bulkCategory}
-            className="rounded-md bg-accent-500 px-3 py-1.5 text-sm font-medium text-surface-0 hover:bg-orange-500 disabled:opacity-50">
+            className="rounded-md bg-accent-500 px-3 py-1.5 text-sm font-medium text-ink hover:bg-accent-400 disabled:opacity-50">
             {busy ? "Applying…" : "Apply"}
           </button>
           <button type="button" onClick={() => setSelectedIds([])}
@@ -381,8 +381,8 @@ const TransactionsTab: React.FC<{ ctx: FinancesContext }> = ({ ctx }) => {
               <th className="px-4 py-3 text-right text-xs font-medium text-text-secondary uppercase">
                 {visible.length > 0 && (
                   <span
-                    className={`mb-1 block ml-auto w-fit rounded-full px-2.5 py-0.5 text-xs font-semibold normal-case text-surface-0 ${
-                      resultsTotal >= 0 ? "bg-emerald-500" : "bg-orange-500"
+                    className={`mb-1 block ml-auto w-fit rounded-full px-2.5 py-0.5 text-xs font-semibold normal-case text-on-success ${
+                      resultsTotal >= 0 ? "bg-success" : "bg-danger !text-on-danger"
                     }`}
                     title="Total of all transactions in the current results"
                   >
@@ -425,7 +425,7 @@ const TransactionsTab: React.FC<{ ctx: FinancesContext }> = ({ ctx }) => {
                 <td className="px-4 py-3 text-sm text-right space-x-3">
                   {!readOnly && t.source === "local" && (
                     <>
-                      <button type="button" onClick={() => startEdit(t)} className="text-accent-500 hover:text-orange-400">
+                      <button type="button" onClick={() => startEdit(t)} className="text-accent-text hover:text-accent-text">
                         Edit
                       </button>
                       <button type="button" onClick={() => remove(t)} className="text-text-tertiary hover:text-danger">

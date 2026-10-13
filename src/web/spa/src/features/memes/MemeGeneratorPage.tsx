@@ -436,7 +436,7 @@ const MemeGeneratorPage: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => addTextBox(zone.id)}
-                              className="text-accent-500 transition-colors hover:text-orange-400 text-xs"
+                              className="text-accent-text transition-colors hover:text-accent-text text-xs"
                             >
                               Add
                             </button>
@@ -555,7 +555,7 @@ const MemeGeneratorPage: React.FC = () => {
             type="button"
             onClick={handleSubmit}
             disabled={!imageSrc || isSubmitting}
-            className="w-full rounded-md bg-accent-500 px-4 py-3 text-sm font-semibold text-surface-0 hover:bg-orange-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full rounded-md bg-accent-500 px-4 py-3 text-sm font-semibold text-ink hover:bg-accent-400 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSubmitting ? "Saving…" : "Save meme"}
           </button>

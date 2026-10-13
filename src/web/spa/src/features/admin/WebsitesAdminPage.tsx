@@ -477,7 +477,7 @@ const WebsitesAdminPage: React.FC = () => {
             {categories.length === 0 && (
               <p className="mt-1 text-xs text-text-tertiary">
                 No categories.{" "}
-                <button type="button" onClick={() => setTab("categories")} className="text-accent-500 hover:underline">
+                <button type="button" onClick={() => setTab("categories")} className="text-accent-text hover:underline">
                   Create categories
                 </button>
               </p>

@@ -109,7 +109,7 @@ const SectionCard: React.FC<{
       : accent === "cyan"
       ? "border-n3/40 from-n3/10 to-surface-1/90"
       : accent === "orange"
-      ? "border-orange-800/55 from-orange-900/35 to-orange-950/55"
+      ? "border-accent/40 from-accent/10 to-surface-1/90"
       : "border-border-default from-surface-2/80 to-surface-1/90";
   return (
     <div

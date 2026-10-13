@@ -40,6 +40,9 @@ module.exports = {
         "danger": "rgb(var(--color-danger) / <alpha-value>)",
         "warning": "rgb(var(--color-warning) / <alpha-value>)",
         "success": "rgb(var(--color-success) / <alpha-value>)",
+        "on-danger": "rgb(var(--color-on-danger) / <alpha-value>)",
+        "on-warning": "rgb(var(--color-on-warning) / <alpha-value>)",
+        "on-success": "rgb(var(--color-on-success) / <alpha-value>)",
         ink: "rgb(var(--color-ink) / <alpha-value>)"
       },
       fontFamily: {

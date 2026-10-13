@@ -300,7 +300,7 @@ const SquashPage: React.FC = () => {
 
       {canModify && (
         <p className="text-sm text-text-secondary">
-          <Link to="/squash-admin" className="text-accent-500 hover:text-orange-400">
+          <Link to="/squash-admin" className="text-accent-text hover:text-accent-text">
             Squash Admin
           </Link>
         </p>
@@ -416,7 +416,7 @@ const SquashPage: React.FC = () => {
               type="button"
               onClick={searchMatches}
               disabled={isLoading}
-              className="rounded-md bg-accent-500 px-4 py-2 text-sm font-medium text-surface-0 hover:bg-orange-500 disabled:opacity-50"
+              className="rounded-md bg-accent-500 px-4 py-2 text-sm font-medium text-ink hover:bg-accent-400 disabled:opacity-50"
             >
               {isLoading ? "Searching…" : "Search"}
             </button>

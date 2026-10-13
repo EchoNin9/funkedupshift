@@ -66,7 +66,7 @@ const BudgetsTab: React.FC<{ ctx: FinancesContext }> = ({ ctx }) => {
             type="button"
             onClick={addBudget}
             disabled={busy || !newCategory || !newLimit}
-            className="rounded-md bg-accent-500 px-3 py-2 text-sm font-medium text-surface-0 hover:bg-orange-500 disabled:opacity-50"
+            className="rounded-md bg-accent-500 px-3 py-2 text-sm font-medium text-ink hover:bg-accent-400 disabled:opacity-50"
           >
             Add budget
           </button>
@@ -98,7 +98,7 @@ const BudgetsTab: React.FC<{ ctx: FinancesContext }> = ({ ctx }) => {
               </div>
               <div className="mt-2 h-2 w-full rounded-full bg-surface-3">
                 <div
-                  className={`h-2 rounded-full ${over ? "bg-red-400" : "bg-accent-500"}`}
+                  className={`h-2 rounded-full ${over ? "bg-danger" : "bg-accent-500"}`}
                   style={{ width: `${pct}%` }}
                 />
               </div>
