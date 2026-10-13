@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from "react";
+import { useThemeName } from "../../shell/theme";
 import { createChart, CandlestickSeries, type IChartApi, type UTCTimestamp } from "lightweight-charts";
 
 export interface Candle {
@@ -18,6 +19,7 @@ function themeColor(varName: string, fallback: string): string {
 const CandleChart: React.FC<{ candles: Candle[] }> = ({ candles }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
+  const themeName = useThemeName();
 
   useEffect(() => {
     const el = containerRef.current;
@@ -53,7 +55,7 @@ const CandleChart: React.FC<{ candles: Candle[] }> = ({ candles }) => {
       chart.remove();
       chartRef.current = null;
     };
-  }, [candles]);
+  }, [candles, themeName]);
 
   return <div ref={containerRef} className="h-72 w-full" />;
 };

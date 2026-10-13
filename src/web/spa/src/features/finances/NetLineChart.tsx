@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from "react";
+import { useThemeName } from "../../shell/theme";
 import { createChart, AreaSeries, type IChartApi } from "lightweight-charts";
 
 function themeColor(varName: string, fallback: string): string {
@@ -10,6 +11,7 @@ function themeColor(varName: string, fallback: string): string {
 const NetLineChart: React.FC<{ points: { date: string; value: number }[] }> = ({ points }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
+  const themeName = useThemeName();
 
   useEffect(() => {
     const el = containerRef.current;
@@ -41,7 +43,7 @@ const NetLineChart: React.FC<{ points: { date: string; value: number }[] }> = ({
       chart.remove();
       chartRef.current = null;
     };
-  }, [points]);
+  }, [points, themeName]);
 
   return <div ref={containerRef} className="h-64 w-full" />;
 };
