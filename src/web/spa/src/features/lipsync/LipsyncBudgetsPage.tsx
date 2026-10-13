@@ -122,7 +122,7 @@ export default function LipsyncBudgetsPage() {
         <div className="rounded-xl border border-border-default bg-surface-1 p-4">
           <p className="text-xs font-medium uppercase tracking-wider text-text-tertiary">fal account balance</p>
           {summary.falBalanceCents == null ? (
-            <p className="mt-1 flex items-center gap-1.5 text-lg font-display font-extrabold uppercase tracking-tight text-amber-400">
+            <p className="mt-1 flex items-center gap-1.5 text-lg font-display font-extrabold uppercase tracking-tight text-warning">
               <ExclamationTriangleIcon className="h-5 w-5 shrink-0" />
               Balance unavailable
             </p>
@@ -138,25 +138,25 @@ export default function LipsyncBudgetsPage() {
 
         <div
           className={`rounded-xl border p-4 ${
-            overCommitted ? "border-red-500/60 bg-red-500/10" : "border-border-default bg-surface-1"
+            overCommitted ? "border-danger/60 bg-danger/10" : "border-border-default bg-surface-1"
           }`}
         >
           <p
             className={`text-xs font-medium uppercase tracking-wider ${
-              overCommitted ? "text-red-300" : "text-text-tertiary"
+              overCommitted ? "text-danger" : "text-text-tertiary"
             }`}
           >
             Total granted
           </p>
           <p
             className={`mt-1 text-2xl font-display font-extrabold uppercase tracking-tight ${
-              overCommitted ? "text-red-300" : "text-text-primary"
+              overCommitted ? "text-danger" : "text-text-primary"
             }`}
           >
             {formatCents(summary.totalGrantedCents)}
           </p>
           {overCommitted && (
-            <p className="mt-1 flex items-center gap-1 text-xs font-medium text-red-300">
+            <p className="mt-1 flex items-center gap-1 text-xs font-medium text-danger">
               <ExclamationTriangleIcon className="h-3.5 w-3.5 shrink-0" />
               Exceeds fal balance by {formatCents(summary.totalGrantedCents - (summary.falBalanceCents ?? 0))}
             </p>
@@ -469,7 +469,7 @@ function BudgetRow({ budget, onSaved }: BudgetRowProps) {
       </td>
       <td
         className={`px-4 py-3 text-right text-sm tabular-nums whitespace-nowrap ${
-          remainingNegative ? "text-red-400" : "text-text-primary"
+          remainingNegative ? "text-danger" : "text-text-primary"
         }`}
       >
         {remainingNegative ? formatCents(budget.remainingCents) : formatCentsRemaining(budget.remainingCents)}
@@ -506,7 +506,7 @@ function BudgetRow({ budget, onSaved }: BudgetRowProps) {
               onClick={save}
               disabled={saving}
               aria-label={`Save budget for ${budget.username}`}
-              className="rounded-md p-1.5 text-emerald-400 hover:bg-surface-3 transition-colors disabled:opacity-50"
+              className="rounded-md p-1.5 text-success hover:bg-surface-3 transition-colors disabled:opacity-50"
             >
               <CheckIcon className="h-4 w-4" />
             </button>
@@ -515,7 +515,7 @@ function BudgetRow({ budget, onSaved }: BudgetRowProps) {
               onClick={cancelEdit}
               disabled={saving}
               aria-label={`Cancel editing ${budget.username}`}
-              className="rounded-md p-1.5 text-text-tertiary hover:bg-surface-3 hover:text-red-400 transition-colors disabled:opacity-50"
+              className="rounded-md p-1.5 text-text-tertiary hover:bg-surface-3 hover:text-danger transition-colors disabled:opacity-50"
             >
               <XMarkIcon className="h-4 w-4" />
             </button>
@@ -530,7 +530,7 @@ function BudgetRow({ budget, onSaved }: BudgetRowProps) {
             <PencilIcon className="h-4 w-4" />
           </button>
         )}
-        {rowError && <p className="mt-1 max-w-[10rem] text-right text-xs text-red-400">{rowError}</p>}
+        {rowError && <p className="mt-1 max-w-[10rem] text-right text-xs text-danger">{rowError}</p>}
       </td>
     </tr>
   );

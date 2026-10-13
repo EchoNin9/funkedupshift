@@ -428,7 +428,7 @@ const MemeGeneratorPage: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => removeTextBox(zone.id)}
-                              className="text-red-400 hover:text-red-300 text-xs"
+                              className="text-danger hover:text-danger text-xs"
                             >
                               Remove
                             </button>

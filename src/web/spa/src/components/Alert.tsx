@@ -1,8 +1,8 @@
 import React from "react";
 
 const styles = {
-  error: "border-red-500/60 bg-red-500/10 text-red-200",
-  success: "border-emerald-500/60 bg-emerald-500/10 text-emerald-200",
+  error: "border-danger/60 bg-danger/10 text-danger",
+  success: "border-success/60 bg-success/10 text-success",
 };
 
 interface AlertProps {

@@ -245,7 +245,7 @@ const CropPage: React.FC = () => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
       >
-        <ScissorsIcon className="h-6 w-6 text-accent" />
+        <ScissorsIcon className="h-6 w-6 text-accent-text" />
         Crop Image
       </motion.h1>
       <p className="text-sm text-text-secondary">Processed locally — images never leave your browser.</p>

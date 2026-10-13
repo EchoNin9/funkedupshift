@@ -95,7 +95,7 @@ const SharingTab: React.FC<{ ctx: FinancesContext }> = () => {
             <span className="text-sm text-text-primary">{s.granteeEmail}</span>
             <span className="text-xs text-text-tertiary">{s.sections.join(", ")}</span>
             <button type="button" onClick={() => revoke(s)}
-              className="ml-auto text-xs text-text-tertiary hover:text-red-400">
+              className="ml-auto text-xs text-text-tertiary hover:text-danger">
               Revoke
             </button>
           </div>

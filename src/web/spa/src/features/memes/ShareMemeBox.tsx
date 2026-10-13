@@ -83,7 +83,7 @@ const ShareMemeBox: React.FC<ShareMemeBoxProps> = ({ memeId, title = "", classNa
               className="inline-flex items-center gap-1.5 rounded-md border border-border-hover bg-surface-2 px-3 py-2 text-sm text-text-primary transition-colors hover:bg-surface-3 hover:border-border-hover"
             >
               {item.icon ? (
-                <span className="text-emerald-400">{item.icon}</span>
+                <span className="text-success">{item.icon}</span>
               ) : (
                 <ClipboardDocumentIcon className="h-4 w-4 text-text-secondary" />
               )}

@@ -315,7 +315,7 @@ const ConvertersPage: React.FC = () => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
       >
-        <ArrowsRightLeftIcon className="h-6 w-6 text-accent" />
+        <ArrowsRightLeftIcon className="h-6 w-6 text-accent-text" />
         Converters
       </motion.h1>
       <p className="text-sm text-text-secondary">Runs locally — nothing leaves your browser.</p>
@@ -428,7 +428,7 @@ const ConvertersPage: React.FC = () => {
       {tab === "date" && (
         <div className="space-y-4">
           <div className={cardClass}>
-            <h2 className="text-sm font-semibold text-accent">Days from a date</h2>
+            <h2 className="text-sm font-semibold text-accent-text">Days from a date</h2>
             <div className="flex flex-wrap gap-2">
               <input
                 type="date"
@@ -452,7 +452,7 @@ const ConvertersPage: React.FC = () => {
           </div>
 
           <div className={cardClass}>
-            <h2 className="text-sm font-semibold text-accent">Days between two dates</h2>
+            <h2 className="text-sm font-semibold text-accent-text">Days between two dates</h2>
             <div className="flex flex-wrap gap-2">
               <input type="date" value={dateA} onChange={(e) => setDateA(e.target.value)} className={fieldClass} />
               <input type="date" value={dateB} onChange={(e) => setDateB(e.target.value)} className={fieldClass} />
@@ -461,7 +461,7 @@ const ConvertersPage: React.FC = () => {
           </div>
 
           <div className={cardClass}>
-            <h2 className="text-sm font-semibold text-accent">Unix timestamp &rarr; date</h2>
+            <h2 className="text-sm font-semibold text-accent-text">Unix timestamp &rarr; date</h2>
             <input
               type="number"
               value={unixTs}
@@ -478,7 +478,7 @@ const ConvertersPage: React.FC = () => {
           </div>
 
           <div className={cardClass}>
-            <h2 className="text-sm font-semibold text-accent">Date &rarr; Unix timestamp</h2>
+            <h2 className="text-sm font-semibold text-accent-text">Date &rarr; Unix timestamp</h2>
             <input
               type="datetime-local"
               value={localDt}
@@ -489,7 +489,7 @@ const ConvertersPage: React.FC = () => {
           </div>
 
           <div className={cardClass}>
-            <h2 className="text-sm font-semibold text-accent">Age from birthdate</h2>
+            <h2 className="text-sm font-semibold text-accent-text">Age from birthdate</h2>
             <input
               type="date"
               value={birthdate}

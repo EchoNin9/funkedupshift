@@ -174,8 +174,8 @@ function UploadSlot({ kindLabel, icon: Icon, accept, item, inputRef, onFile, onR
                 <div className="h-full bg-accent-500 transition-[width]" style={{ width: `${item.progress}%` }} />
               </div>
             )}
-            {item.status === "uploaded" && <p className="text-xs text-emerald-400">Uploaded</p>}
-            {item.status === "error" && <p className="text-xs text-red-400 break-words">{item.error}</p>}
+            {item.status === "uploaded" && <p className="text-xs text-success">Uploaded</p>}
+            {item.status === "error" && <p className="text-xs text-danger break-words">{item.error}</p>}
           </div>
           <div className="flex shrink-0 flex-col gap-1">
             {item.status === "error" && (
@@ -192,7 +192,7 @@ function UploadSlot({ kindLabel, icon: Icon, accept, item, inputRef, onFile, onR
               type="button"
               onClick={onRemove}
               aria-label={`Remove ${kindLabel}`}
-              className="rounded-md p-1 text-text-tertiary hover:bg-surface-3 hover:text-red-400 transition-colors"
+              className="rounded-md p-1 text-text-tertiary hover:bg-surface-3 hover:text-danger transition-colors"
             >
               <XCircleIcon className="h-4 w-4" />
             </button>
@@ -225,17 +225,17 @@ function JobCard({ job, onSelect }: { job: LipsyncJob; onSelect: () => void }) {
               {status.label}
             </span>
           </div>
-          <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">
+          <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent-text">
             <SparklesIcon className="h-3 w-3" />
             AI-generated
           </span>
         </div>
         <p className="text-xs text-text-tertiary">{modelLabel(job.model)}</p>
         <p className="text-xs text-text-tertiary">Created {formatDateTime(job.createdAt)}</p>
-        <p className={`text-xs ${expiring ? "text-amber-400" : "text-text-tertiary"}`}>
+        <p className={`text-xs ${expiring ? "text-warning" : "text-text-tertiary"}`}>
           Expires {formatExpiry(job.expiresAt)}
         </p>
-        {job.status === "failed" && job.error && <p className="break-words text-xs text-red-400">{job.error}</p>}
+        {job.status === "failed" && job.error && <p className="break-words text-xs text-danger">{job.error}</p>}
       </button>
     </li>
   );
@@ -650,7 +650,7 @@ export default function LipsyncPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
       >
-        <VideoCameraIcon className="h-6 w-6 text-accent" />
+        <VideoCameraIcon className="h-6 w-6 text-accent-text" />
         Lipsync Studio
       </motion.h1>
 
@@ -768,7 +768,7 @@ export default function LipsyncPage() {
             <div
               className={`rounded-lg border px-3 py-2 text-xs ${
                 overBudget && !noBudget
-                  ? "border-red-500/60 bg-red-500/10 text-red-300"
+                  ? "border-danger/60 bg-danger/10 text-danger"
                   : "border-border-default bg-surface-1 text-text-secondary"
               }`}
             >
@@ -779,7 +779,7 @@ export default function LipsyncPage() {
                 )}
               </p>
               {budget && !noBudget && (
-                <p className={overBudget ? "mt-1 text-red-300" : "mt-1 text-text-tertiary"}>
+                <p className={overBudget ? "mt-1 text-danger" : "mt-1 text-text-tertiary"}>
                   {overBudget
                     ? `This exceeds your remaining budget of ${formatCentsRemaining(budget.remainingCents)}.`
                     : `You have ${formatCentsRemaining(budget.remainingCents)} remaining.`}
@@ -816,7 +816,7 @@ export default function LipsyncPage() {
                 className="mt-0.5 h-4 w-4 rounded border-border-hover"
               />
               <span className="inline-flex items-start gap-1.5">
-                <ShieldCheckIcon className="h-4 w-4 shrink-0 text-accent" />
+                <ShieldCheckIcon className="h-4 w-4 shrink-0 text-accent-text" />
                 I have the right to use this likeness
               </span>
             </label>

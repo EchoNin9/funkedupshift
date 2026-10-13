@@ -95,7 +95,7 @@ const ImpersonationSelector: React.FC = () => {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex items-center justify-center gap-1.5 min-h-[44px] min-w-[44px] sm:min-w-0 sm:px-2 sm:py-1.5 rounded-md px-2 py-1.5 text-xs font-medium text-amber-400 hover:bg-amber-500/10 transition-colors duration-150"
+        className="flex items-center justify-center gap-1.5 min-h-[44px] min-w-[44px] sm:min-w-0 sm:px-2 sm:py-1.5 rounded-md px-2 py-1.5 text-xs font-medium text-warning hover:bg-warning/10 transition-colors duration-150"
         title="Impersonate user or role"
       >
         <UserCircleIcon className="h-4 w-4" />

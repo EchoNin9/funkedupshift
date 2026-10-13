@@ -82,7 +82,7 @@ const BudgetsTab: React.FC<{ ctx: FinancesContext }> = ({ ctx }) => {
             <div key={b.category} className="rounded-xl border border-border-default bg-surface-1 p-4">
               <div className="flex flex-wrap items-center gap-3">
                 <p className="text-sm font-medium text-text-primary">{b.category}</p>
-                <p className={`text-sm ${over ? "text-red-400 font-semibold" : "text-text-secondary"}`}>
+                <p className={`text-sm ${over ? "text-danger font-semibold" : "text-text-secondary"}`}>
                   {fmtMoney(actual)} / {fmtMoney(b.monthlyLimit)}
                   {over && " — over budget"}
                 </p>
@@ -90,7 +90,7 @@ const BudgetsTab: React.FC<{ ctx: FinancesContext }> = ({ ctx }) => {
                   <button
                     type="button"
                     onClick={() => save(budgets.filter((x) => x.category !== b.category))}
-                    className="ml-auto text-xs text-text-tertiary hover:text-red-400"
+                    className="ml-auto text-xs text-text-tertiary hover:text-danger"
                   >
                     Remove
                   </button>

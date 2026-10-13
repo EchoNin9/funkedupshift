@@ -260,7 +260,7 @@ const InternetDashboardAdminPage: React.FC = () => {
                 type="button"
                 onClick={() => handleRemove(domain)}
                 disabled={isSaving || sites.length <= 1}
-                className="flex-shrink-0 rounded-md border border-red-500/60 bg-red-500/10 px-2 py-1 text-xs font-medium text-red-300 hover:bg-red-500/20 disabled:opacity-50"
+                className="flex-shrink-0 rounded-md border border-danger/60 bg-danger/10 px-2 py-1 text-xs font-medium text-danger hover:bg-danger/20 disabled:opacity-50"
               >
                 Remove
               </button>

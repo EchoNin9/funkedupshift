@@ -408,7 +408,7 @@ const MediaAdminPage: React.FC = () => {
               Videos get an auto-generated thumbnail from the 3–4 sec frame. Change it when editing.
             </p>
             {file?.type.startsWith("video/") && thumbnailFile && (
-              <p className="mt-1 text-xs text-emerald-400">
+              <p className="mt-1 text-xs text-success">
                 Custom thumbnail: {thumbnailFile.name}{" "}
                 <button type="button" onClick={() => setShowThumbnailDialog(true)} className="text-accent-500 hover:underline">
                   Change
@@ -571,12 +571,12 @@ const MediaAdminPage: React.FC = () => {
                             type="button"
                             onClick={() => handleDeleteCategory(c.id)}
                             disabled={deletingId === c.id}
-                            className="rounded-md border border-red-500/60 px-3 py-1.5 text-xs font-medium text-red-400 hover:bg-red-500/20 disabled:opacity-50"
+                            className="rounded-md border border-danger/60 px-3 py-1.5 text-xs font-medium text-danger hover:bg-danger/20 disabled:opacity-50"
                           >
                             {deletingId === c.id ? "Deleting…" : "Delete"}
                           </button>
                         </div>
-                        {updateError && <p className="text-xs text-red-400">{updateError}</p>}
+                        {updateError && <p className="text-xs text-danger">{updateError}</p>}
                       </form>
                     ) : (
                       <div className="flex items-center justify-between gap-2">
@@ -592,7 +592,7 @@ const MediaAdminPage: React.FC = () => {
                           type="button"
                           onClick={() => handleDeleteCategory(c.id)}
                           disabled={deletingId === c.id}
-                          className="rounded px-2 py-1 text-xs font-medium text-red-400 hover:bg-red-500/20 disabled:opacity-50 shrink-0"
+                          className="rounded px-2 py-1 text-xs font-medium text-danger hover:bg-danger/20 disabled:opacity-50 shrink-0"
                           aria-label="Delete category"
                         >
                           {deletingId === c.id ? "…" : "Delete"}

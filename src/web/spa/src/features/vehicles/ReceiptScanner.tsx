@@ -212,7 +212,7 @@ export default function ReceiptScanner({ apiBase, onFieldsExtracted, onClose }: 
             {preview && (
               <img src={preview} alt="Receipt" className="mx-auto max-h-32 rounded-lg object-contain" />
             )}
-            <p className="text-sm text-red-400 text-center">{error}</p>
+            <p className="text-sm text-danger text-center">{error}</p>
             <div className="flex gap-2 justify-center">
               <button
                 onClick={handleCapture}

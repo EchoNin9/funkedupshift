@@ -421,7 +421,7 @@ const InvestingPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => saveTracker(tracker.filter((s) => s !== sym))}
-                  className="text-text-tertiary hover:text-red-400"
+                  className="text-text-tertiary hover:text-danger"
                   aria-label={`Stop tracking ${sym}`}
                 >
                   ×

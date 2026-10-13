@@ -520,7 +520,7 @@ const WebsitesPage: React.FC = () => {
                     {typeof site.averageRating === "number"
                       ? <Stars avg={site.averageRating} />
                       : <span className="text-xs text-text-tertiary">Unrated</span>}
-                    <span className="inline-flex items-center gap-1 font-display text-xs font-extrabold uppercase tracking-tight text-accent transition-all group-hover:gap-2">
+                    <span className="inline-flex items-center gap-1 font-display text-xs font-extrabold uppercase tracking-tight text-accent-text transition-all group-hover:gap-2">
                       Open →
                     </span>
                   </div>
