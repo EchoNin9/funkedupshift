@@ -351,7 +351,7 @@ const MemeGeneratorPage: React.FC = () => {
           <div className="rounded-xl border border-border-default bg-surface-1 p-4">
             <label className="block text-xs font-medium text-text-secondary mb-2">Image</label>
             <div className="flex flex-col gap-2">
-              <input
+              <input aria-label="Image"
                 type="file"
                 accept="image/jpeg,image/png,image/gif,image/webp,image/bmp"
                 onChange={(e) => e.target.files?.[0] && loadImageFromFile(e.target.files[0])}
@@ -359,7 +359,7 @@ const MemeGeneratorPage: React.FC = () => {
               />
               <span className="text-xs text-text-tertiary">or</span>
               <div className="flex gap-2">
-                <input
+                <input aria-label="Paste image URL"
                   type="url"
                   value={imageUrl}
                   onChange={(e) => setImageUrl(e.target.value)}
@@ -444,14 +444,14 @@ const MemeGeneratorPage: React.FC = () => {
                         </div>
                         {tb && (
                           <div className="space-y-1">
-                            <input
+                            <input aria-label="Text"
                               type="text"
                               value={tb.text}
                               onChange={(e) => updateTextBox(zone.id, { text: e.target.value })}
                               placeholder="Text"
                               className="w-full rounded border border-border-hover bg-surface-1 px-2 py-1 text-xs text-text-primary"
                             />
-                            <select
+                            <select aria-label="Font"
                               value={tb.font}
                               onChange={(e) => updateTextBox(zone.id, { font: e.target.value })}
                               className="w-full rounded border border-border-hover bg-surface-1 px-2 py-1 text-[11px] text-text-secondary"
@@ -461,13 +461,13 @@ const MemeGeneratorPage: React.FC = () => {
                               ))}
                             </select>
                             <div className="flex gap-1">
-                              <input
+                              <input aria-label="Text color"
                                 type="color"
                                 value={tb.color}
                                 onChange={(e) => updateTextBox(zone.id, { color: e.target.value })}
                                 className="h-6 w-8 cursor-pointer rounded border border-border-hover"
                               />
-                              <input
+                              <input aria-label="Font size"
                                 type="number"
                                 value={tb.size}
                                 onChange={(e) => updateTextBox(zone.id, { size: Number(e.target.value) || 32 })}
@@ -492,7 +492,7 @@ const MemeGeneratorPage: React.FC = () => {
             <div>
               <label className="block text-xs font-medium text-text-secondary mb-1">Title (optional)</label>
               <div className="flex gap-2">
-                <input
+                <input aria-label="Title (optional)"
                   type="text"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
@@ -511,7 +511,7 @@ const MemeGeneratorPage: React.FC = () => {
             </div>
             <div>
               <label className="block text-xs font-medium text-text-secondary mb-1">Description (optional)</label>
-              <textarea
+              <textarea aria-label="Description (optional)"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Optional description"

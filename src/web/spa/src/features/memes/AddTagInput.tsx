@@ -118,7 +118,7 @@ const AddTagInput: React.FC<AddTagInputProps> = ({
 
   return (
     <div ref={containerRef} className={`relative ${className}`}>
-      <input
+      <input aria-label="Add tag"
         ref={inputRef}
         type="text"
         value={input}

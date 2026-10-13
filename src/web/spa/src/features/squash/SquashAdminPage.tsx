@@ -692,7 +692,7 @@ const SquashAdminPage: React.FC = () => {
               />
               <div className="relative max-w-[14rem] min-w-[12rem]" ref={playerDropdownRef}>
                 <label className="block text-xs font-semibold text-text-secondary mb-1">Filter by players</label>
-                <input
+                <input aria-label="Filter by players"
                   type="text"
                   value={playerSearch}
                   onChange={(e) => setPlayerSearch(e.target.value)}

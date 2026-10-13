@@ -375,14 +375,14 @@ const EditSitePage: React.FC = () => {
               </label>
             </div>
           )}
-          <input
+          <input aria-label="Logo file"
             type="file"
             accept="image/png,image/jpeg,image/gif,image/webp"
             onChange={onLogoChange}
             className="block w-full text-xs text-text-secondary file:mr-3 file:rounded-md file:border-0 file:bg-surface-3 file:px-3 file:py-1.5 file:text-text-primary"
           />
           <p className="mt-2 text-xs text-text-tertiary">Or paste image URL (image will be copied to S3 on save):</p>
-          <input
+          <input aria-label="Logo image URL"
             type="url"
             value={logoImageUrl}
             onChange={(e) => {
@@ -417,7 +417,7 @@ const EditSitePage: React.FC = () => {
             ))}
           </div>
           <div className="flex gap-2">
-            <input
+            <input aria-label="Add tag"
               type="text"
               value={tagsInput}
               onChange={(e) => setTagsInput(e.target.value)}

@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Dialog } from "@headlessui/react";
 import { CameraIcon, XMarkIcon, CheckIcon } from "@heroicons/react/24/outline";
 import { CameraSource } from "@capacitor/camera";
 import { takePhoto, base64ToBlob } from "../../hooks/useCamera";
@@ -124,15 +125,18 @@ export default function GeneralReceiptScanner({ apiBase, onFieldsExtracted, onCl
     "w-full rounded-md border border-border-hover bg-surface-3 px-3 py-2 text-sm text-text-primary placeholder-text-tertiary";
 
   return (
-    <div
+    <Dialog
+      open
+      // ponytail: no outside-click close so a stray tap can't discard a half-filled receipt; Escape still closes
+      onClose={() => {}}
       className="fixed inset-0 z-50 bg-black/60 flex items-end justify-center"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
-      <div className="w-full max-w-lg bg-surface-1 rounded-t-2xl p-5 space-y-4 max-h-[90vh] overflow-y-auto">
+      <Dialog.Panel onKeyDown={(e) => e.key === "Escape" && onClose()} className="w-full max-w-lg bg-surface-1 rounded-t-2xl p-5 space-y-4 max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-text-primary">Scan Receipt</h2>
-          <button onClick={onClose} className="p-1 text-text-tertiary hover:text-text-primary">
+          <Dialog.Title as="h2" className="text-lg font-semibold text-text-primary">Scan Receipt</Dialog.Title>
+          <button type="button" onClick={onClose} aria-label="Close" className="flex h-11 w-11 -m-1.5 items-center justify-center text-text-tertiary hover:text-text-primary">
             <XMarkIcon className="w-6 h-6" />
           </button>
         </div>
@@ -183,7 +187,7 @@ export default function GeneralReceiptScanner({ apiBase, onFieldsExtracted, onCl
             <div className="space-y-2">
               <div>
                 <label className="block text-xs text-text-secondary mb-1">Date</label>
-                <input
+                <input aria-label="Date"
                   type="date"
                   value={draft.date}
                   onChange={(e) => setDraft((d) => ({ ...d, date: e.target.value }))}
@@ -192,7 +196,7 @@ export default function GeneralReceiptScanner({ apiBase, onFieldsExtracted, onCl
               </div>
               <div>
                 <label className="block text-xs text-text-secondary mb-1">Price ($)</label>
-                <input
+                <input aria-label="Price ($)"
                   type="text"
                   inputMode="decimal"
                   value={draft.price}
@@ -203,7 +207,7 @@ export default function GeneralReceiptScanner({ apiBase, onFieldsExtracted, onCl
               </div>
               <div>
                 <label className="block text-xs text-text-secondary mb-1">Vendor</label>
-                <input
+                <input aria-label="Vendor"
                   type="text"
                   value={draft.vendor}
                   onChange={(e) => setDraft((d) => ({ ...d, vendor: e.target.value }))}
@@ -213,7 +217,7 @@ export default function GeneralReceiptScanner({ apiBase, onFieldsExtracted, onCl
               </div>
               <div>
                 <label className="block text-xs text-text-secondary mb-1">Description</label>
-                <textarea
+                <textarea aria-label="Description"
                   value={draft.description}
                   onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))}
                   placeholder="Items purchased"
@@ -264,7 +268,7 @@ export default function GeneralReceiptScanner({ apiBase, onFieldsExtracted, onCl
             </div>
           </div>
         )}
-      </div>
-    </div>
+      </Dialog.Panel>
+    </Dialog>
   );
 }

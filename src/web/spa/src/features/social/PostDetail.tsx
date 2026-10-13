@@ -5,7 +5,8 @@ import {
   TrashIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
-import { Alert, useClickOutside } from "../../components";
+import { Dialog } from "@headlessui/react";
+import { Alert } from "../../components";
 import { deletePost, getPost, retryPost, type PostTarget, type SocialPostDetail } from "./api";
 import { statusMeta } from "./statusStyles";
 import { formatLocalDateTime, formatUtcLabel } from "./dateUtils";
@@ -23,10 +24,6 @@ export function PostDetail({ postId, onClose, onChanged }: PostDetailProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busyKey, setBusyKey] = useState<string | null>(null);
-  const dialogRef = useRef<HTMLDivElement>(null);
-
-  useClickOutside(dialogRef, onClose, true);
-
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -43,14 +40,6 @@ export function PostDetail({ postId, onClose, onChanged }: PostDetailProps) {
   useEffect(() => {
     load();
   }, [load]);
-
-  useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [onClose]);
 
   const handleRetry = useCallback(
     async (target?: PostTarget) => {
@@ -89,20 +78,16 @@ export function PostDetail({ postId, onClose, onChanged }: PostDetailProps) {
   const parentMeta = detail ? statusMeta(detail.parent.status) : null;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="post-detail-title"
-    >
-      <div
-        ref={dialogRef}
+    <Dialog open onClose={onClose} className="relative z-50">
+      <div className="fixed inset-0 bg-black/60" aria-hidden="true" />
+      <div className="fixed inset-0 flex items-center justify-center p-4">
+      <Dialog.Panel
         className="w-full max-w-lg rounded-xl border border-border-hover bg-surface-2 shadow-xl max-h-[85vh] overflow-y-auto scrollbar-thin"
       >
         <div className="flex items-start justify-between gap-3 border-b border-border-default p-4">
-          <h2 id="post-detail-title" className="text-lg font-display font-extrabold uppercase tracking-tight text-text-primary">
+          <Dialog.Title as="h2"  className="text-lg font-display font-extrabold uppercase tracking-tight text-text-primary">
             Post detail
-          </h2>
+          </Dialog.Title>
           <button
             type="button"
             onClick={onClose}
@@ -222,7 +207,8 @@ export function PostDetail({ postId, onClose, onChanged }: PostDetailProps) {
             </>
           )}
         </div>
+      </Dialog.Panel>
       </div>
-    </div>
+    </Dialog>
   );
 }

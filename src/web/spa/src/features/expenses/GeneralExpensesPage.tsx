@@ -1,4 +1,5 @@
 import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Dialog } from "@headlessui/react";
 import { useAuth, canAccessExpenses } from "../../shell/AuthContext";
 import { fetchWithAuth } from "../../utils/api";
 import { Alert } from "../../components";
@@ -513,7 +514,7 @@ const GeneralExpensesPage: React.FC = () => {
             <div className="rounded-lg border border-border-hover bg-surface-2 p-4">
               <h2 className="text-sm font-semibold text-text-secondary mb-3">Add section</h2>
               <div className="flex flex-wrap gap-2">
-                <input
+                <input aria-label="Section name"
                   type="text"
                   placeholder="Section name"
                   value={newSectionName}
@@ -537,7 +538,7 @@ const GeneralExpensesPage: React.FC = () => {
                   <div className="flex items-center gap-2">
                     {renamingSectionId === selectedSectionId ? (
                       <div className="flex flex-wrap items-center gap-2">
-                        <input
+                        <input aria-label="Section name"
                           type="text"
                           value={renameValue}
                           onChange={(e) => setRenameValue(e.target.value)}
@@ -612,7 +613,7 @@ const GeneralExpensesPage: React.FC = () => {
                     <div className="px-4 pb-4 pt-1 border-t border-border-hover grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                       <div>
                         <label className="block text-xs text-text-tertiary mb-1">Start date</label>
-                        <input
+                        <input aria-label="Start date"
                           type="date"
                           value={filters.startDate}
                           onChange={(e) => setFilters((f) => ({ ...f, startDate: e.target.value }))}
@@ -621,7 +622,7 @@ const GeneralExpensesPage: React.FC = () => {
                       </div>
                       <div>
                         <label className="block text-xs text-text-tertiary mb-1">End date</label>
-                        <input
+                        <input aria-label="End date"
                           type="date"
                           value={filters.endDate}
                           onChange={(e) => setFilters((f) => ({ ...f, endDate: e.target.value }))}
@@ -630,7 +631,7 @@ const GeneralExpensesPage: React.FC = () => {
                       </div>
                       <div>
                         <label className="block text-xs text-text-tertiary mb-1">Search (vendor / description)</label>
-                        <input
+                        <input aria-label="Search (vendor / description)"
                           type="text"
                           value={filters.search}
                           onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value }))}
@@ -640,7 +641,7 @@ const GeneralExpensesPage: React.FC = () => {
                       </div>
                       <div>
                         <label className="block text-xs text-text-tertiary mb-1">Reimbursed</label>
-                        <select
+                        <select aria-label="Reimbursed"
                           value={filters.reimbursed}
                           onChange={(e) =>
                             setFilters((f) => ({
@@ -657,7 +658,7 @@ const GeneralExpensesPage: React.FC = () => {
                       </div>
                       <div>
                         <label className="block text-xs text-text-tertiary mb-1">Sort</label>
-                        <select
+                        <select aria-label="Sort"
                           value={filters.sortNewestFirst ? "newest" : "oldest"}
                           onChange={(e) =>
                             setFilters((f) => ({ ...f, sortNewestFirst: e.target.value === "newest" }))
@@ -731,7 +732,7 @@ const GeneralExpensesPage: React.FC = () => {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="block text-xs text-text-tertiary mb-1">Date</label>
-                        <input
+                        <input aria-label="Date"
                           type="date"
                           value={form.date}
                           onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
@@ -740,7 +741,7 @@ const GeneralExpensesPage: React.FC = () => {
                       </div>
                       <div>
                         <label className="block text-xs text-text-tertiary mb-1">Price</label>
-                        <input
+                        <input aria-label="Price"
                           type="text"
                           inputMode="decimal"
                           value={form.price}
@@ -751,7 +752,7 @@ const GeneralExpensesPage: React.FC = () => {
                       </div>
                       <div className="sm:col-span-2">
                         <label className="block text-xs text-text-tertiary mb-1">Vendor</label>
-                        <input
+                        <input aria-label="Vendor"
                           type="text"
                           value={form.vendor}
                           onChange={(e) => setForm((f) => ({ ...f, vendor: e.target.value }))}
@@ -760,7 +761,7 @@ const GeneralExpensesPage: React.FC = () => {
                       </div>
                       <div className="sm:col-span-2">
                         <label className="block text-xs text-text-tertiary mb-1">Description</label>
-                        <textarea
+                        <textarea aria-label="Description"
                           value={form.description}
                           onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
                           rows={2}
@@ -935,16 +936,14 @@ const GeneralExpensesPage: React.FC = () => {
       )}
 
       {preview && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70"
-          role="dialog"
-          aria-modal="true"
+        <Dialog
+          open
+          onClose={() => setPreview(null)}
           aria-label="Attachment preview"
-          onClick={() => setPreview(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70"
         >
-          <div
+          <Dialog.Panel
             className="bg-surface-2 rounded-lg border border-border-hover max-w-4xl w-full max-h-[90vh] flex flex-col shadow-xl"
-            onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between px-4 py-2 border-b border-border-hover">
               <span className="text-sm font-medium text-text-primary truncate pr-2">{preview.filename}</span>
@@ -971,8 +970,8 @@ const GeneralExpensesPage: React.FC = () => {
                 />
               )}
             </div>
-          </div>
-        </div>
+          </Dialog.Panel>
+        </Dialog>
       )}
     </div>
   );

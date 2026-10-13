@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Dialog } from "@headlessui/react";
 import { useAuth, hasRole } from "../../shell/AuthContext";
 import { AdminPageHeader } from "./AdminPageHeader";
 import { AdminTabs } from "./AdminTabs";
@@ -416,18 +417,15 @@ const MediaAdminPage: React.FC = () => {
               </p>
             )}
             {showThumbnailDialog && file?.type.startsWith("video/") && (
-              <div
+              <Dialog
+                open
+                onClose={() => setShowThumbnailDialog(false)}
                 className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="thumbnail-dialog-title"
-                onClick={() => setShowThumbnailDialog(false)}
               >
-                <div
+                <Dialog.Panel
                   className="rounded-lg border border-border-hover bg-surface-2 p-6 shadow-xl max-w-sm w-full mx-4"
-                  onClick={(e) => e.stopPropagation()}
                 >
-                  <h2 id="thumbnail-dialog-title" className="text-lg font-medium text-text-primary mb-2">Add thumbnail</h2>
+                  <Dialog.Title as="h2" className="text-lg font-medium text-text-primary mb-2">Add thumbnail</Dialog.Title>
                   <p className="text-sm text-text-secondary mb-4">Choose a custom thumbnail image for this video (optional).</p>
                   <input
                     ref={thumbnailInputRef}
@@ -452,8 +450,8 @@ const MediaAdminPage: React.FC = () => {
                       Skip
                     </button>
                   </div>
-                </div>
-              </div>
+                </Dialog.Panel>
+              </Dialog>
             )}
             {filePreview && (
               <div className="mt-2">
@@ -536,7 +534,7 @@ const MediaAdminPage: React.FC = () => {
                   <li key={c.id} className="rounded-lg border border-border-default bg-surface-1 px-3 py-2 text-sm">
                     {editingId === c.id ? (
                       <form onSubmit={handleUpdateCategory} className="space-y-2">
-                        <input
+                        <input aria-label="Name"
                           type="text"
                           value={editName}
                           onChange={(e) => setEditName(e.target.value)}
@@ -545,7 +543,7 @@ const MediaAdminPage: React.FC = () => {
                           className="input-field w-full"
                           autoFocus
                         />
-                        <input
+                        <input aria-label="Description (optional)"
                           type="text"
                           value={editDescription}
                           onChange={(e) => setEditDescription(e.target.value)}
