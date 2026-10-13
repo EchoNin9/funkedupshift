@@ -69,7 +69,7 @@ const TABS: TabConfig[] = [
     emptyMessage: "No highlights yet. Generate from the highlight category or add a URL above.",
     generateSuccessMessage: "Cache generated from sites in the highlight category.",
     saveSuccessMessage: "Highlights list saved.",
-    buttonClass: "bg-violet-600 hover:bg-violet-500",
+    buttonClass: "bg-n3 hover:bg-n3/80 !text-ink",
     viewPath: "/recommended/highlights",
   },
   {

@@ -15,7 +15,7 @@ import {
   CurrencyDollarIcon,
   LinkIcon,
 } from "@heroicons/react/24/outline";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { useAuth } from "./AuthContext";
 import { useBranding } from "./BrandingContext";
 import {
@@ -163,6 +163,7 @@ function AccordionSection({
 }) {
   const [expanded, setExpanded] = useState(defaultExpanded ?? false);
   const location = useLocation();
+  const reduceMotion = useReducedMotion();
   const isActive = links.some(
     (m) =>
       location.pathname === m.path || location.pathname.startsWith(m.path + "/")
@@ -204,7 +205,7 @@ function AccordionSection({
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.15, ease: "easeOut" }}
+            transition={{ duration: reduceMotion ? 0 : 0.15, ease: "easeOut" }}
             className="overflow-hidden"
           >
             <div className="flex flex-col gap-0.5 py-1">
