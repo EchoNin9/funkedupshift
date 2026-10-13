@@ -170,7 +170,7 @@ const SiteDetailPage: React.FC = () => {
             {site.logoUrl ? (
               <img
                 src={site.logoUrl}
-                alt=""
+                alt={site.title || site.url || "Site logo"}
                 className="h-full w-full object-cover"
                 onError={(e) => {
                   (e.currentTarget as HTMLImageElement).style.visibility = "hidden";

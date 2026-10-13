@@ -471,7 +471,9 @@ const MemeBrowsePage: React.FC = () => {
                     {thumb ? (
                       <img
                         src={thumb}
-                        alt=""
+                        alt={title}
+                        loading="lazy"
+                        decoding="async"
                         className="w-full object-cover"
                         onError={(e) => {
                           (e.currentTarget as HTMLImageElement).style.visibility = "hidden";
