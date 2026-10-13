@@ -353,6 +353,8 @@ const ImagePage: React.FC = () => {
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerUp}
+          onLostPointerCapture={handlePointerUp}
         />
         {selection && (
           <div

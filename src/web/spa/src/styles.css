@@ -227,4 +227,7 @@
 @media (prefers-reduced-motion: reduce) {
   .pop-marquee__track, .pop-blob, .pop-pulse { animation: none; }
   .card, .btn-primary, .btn-secondary { transition: none; }
+  .animate-pulse, .animate-fade-in { animation: none; }
+  /* Keep loading signal: spinners stay, but slow down. */
+  .animate-spin { animation-duration: 2.5s; }
 }
