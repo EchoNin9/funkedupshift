@@ -627,7 +627,7 @@ const ProfilePage: React.FC = () => {
         <div className="space-y-6">
           <section className="rounded-xl border border-border-default bg-surface-1 p-4">
             <h2 className="text-sm font-semibold text-text-primary mb-3">User info</h2>
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto"><table className="w-full text-sm">
               <tbody>
                 <tr>
                   <td className="py-1 pr-4 font-medium text-text-secondary w-28">Email</td>
@@ -642,7 +642,7 @@ const ProfilePage: React.FC = () => {
                   <td className="text-text-secondary">{lastLoginText}</td>
                 </tr>
               </tbody>
-            </table>
+            </table></div>
           </section>
 
           <section className="rounded-xl border border-border-default bg-surface-1 p-4">

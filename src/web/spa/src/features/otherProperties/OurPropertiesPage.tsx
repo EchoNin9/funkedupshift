@@ -81,14 +81,14 @@ const OurPropertiesPage: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold tracking-tight text-violet-200">
+      <h1 className="text-2xl font-semibold tracking-tight text-n3">
         Highlights and faves
       </h1>
-      <div className="rounded-xl border border-violet-800/60 bg-gradient-to-br from-violet-900/40 to-violet-950/60 p-4 shadow-lg">
-        <p className="text-sm font-medium text-violet-100">
+      <div className="rounded-xl border border-n3/40 bg-gradient-to-br from-n3/10 to-surface-1/90 p-4 shadow-lg">
+        <p className="text-sm font-medium text-text-primary">
           Our curated list of exceptional sites
         </p>
-        <p className="mt-1 text-xs text-violet-200/80">
+        <p className="mt-1 text-xs text-text-secondary">
           Click a card below for more detail
         </p>
         {canEdit && (
@@ -183,7 +183,7 @@ const OurPropertiesPage: React.FC = () => {
       <Dialog open={!!selectedSite} onClose={() => setSelectedSite(null)} className="relative z-50">
         <div className="fixed inset-0 bg-black/50" aria-hidden="true" />
         <div className="fixed inset-0 flex items-center justify-center p-4">
-          <Dialog.Panel className="mx-auto w-full max-w-xl rounded-xl border border-violet-800/60 bg-gradient-to-br from-violet-900/40 to-violet-950/60 p-6 shadow-xl">
+          <Dialog.Panel className="mx-auto w-full max-w-xl rounded-xl border border-n3/40 bg-gradient-to-br from-n3/10 to-surface-1/90 p-6 shadow-xl">
             {selectedSite && (
               <div className="relative flex min-h-[12rem] items-center justify-center">
                 <button

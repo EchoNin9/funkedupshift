@@ -337,7 +337,7 @@ const EditUserPage: React.FC = () => {
       <form onSubmit={handleSave} className="card p-6 space-y-6 max-w-2xl">
         <div className="rounded-lg border border-border-default bg-surface-1 p-4">
           <h2 className="text-sm font-medium text-text-secondary mb-3">User info</h2>
-          <table className="text-sm">
+          <div className="overflow-x-auto"><table className="text-sm">
             <tbody>
               <tr>
                 <td className="py-1 pr-4 font-medium text-text-secondary w-28">Email</td>
@@ -354,7 +354,7 @@ const EditUserPage: React.FC = () => {
                 </td>
               </tr>
             </tbody>
-          </table>
+          </table></div>
         </div>
 
         <FormField label="System roles">
