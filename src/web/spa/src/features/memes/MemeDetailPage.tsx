@@ -197,7 +197,7 @@ const MemeDetailPage: React.FC = () => {
                 type="button"
                 onClick={handleDelete}
                 disabled={isDeleting}
-                className="rounded-md bg-red-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-red-500 disabled:opacity-50"
+                className="rounded-md bg-danger px-2.5 py-1 text-xs font-semibold text-on-danger hover:bg-danger/90 disabled:opacity-50"
               >
                 {isDeleting ? "Deleting…" : "Confirm"}
               </button>

@@ -79,7 +79,7 @@ const FinancesPage: React.FC = () => {
       {ctx.owner && (
         <div className="rounded-md border border-accent-500 bg-surface-1 px-4 py-2 text-sm text-text-primary">
           Viewing <span className="font-medium">{ownerEmail}</span>&apos;s finances (read-only).{" "}
-          <NavLink to="/finances" className="text-accent-500 hover:text-orange-400">
+          <NavLink to="/finances" className="text-accent-text hover:text-accent-text">
             Back to mine
           </NavLink>
         </div>

@@ -556,7 +556,7 @@ const MediaPage: React.FC = () => {
                     {canEdit && (
                       <Link
                         to={`/admin/media/edit/${encodeURIComponent(m.PK)}`}
-                        className="inline-flex items-center gap-1 text-[11px] text-text-secondary hover:text-accent-400 transition-colors"
+                        className="inline-flex items-center gap-1 text-[11px] text-text-secondary hover:text-accent-text transition-colors"
                       >
                         <PencilSquareIcon className="h-3.5 w-3.5" />
                         Edit

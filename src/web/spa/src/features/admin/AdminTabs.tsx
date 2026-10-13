@@ -24,7 +24,7 @@ export function AdminTabs({ tabs, activeId, onSelect }: AdminTabsProps) {
           onClick={() => onSelect(tab.id)}
           className={`min-h-[44px] flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors ${
             activeId === tab.id
-              ? "bg-accent-500/20 text-accent-400"
+              ? "bg-accent-500/20 text-accent-text"
               : "text-text-secondary hover:text-text-primary hover:bg-surface-3"
           }`}
         >

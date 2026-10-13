@@ -12,7 +12,7 @@ export interface Candle {
 
 function themeColor(varName: string, fallback: string): string {
   const raw = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
-  return raw ? `rgb(${raw})` : fallback;
+  return raw ? `rgb(${raw.split(/\s+/).join(", ")})` : fallback;
 }
 
 const CandleChart: React.FC<{ candles: Candle[] }> = ({ candles }) => {
@@ -38,10 +38,10 @@ const CandleChart: React.FC<{ candles: Candle[] }> = ({ candles }) => {
     });
     // Up/down pair validated for CVD separation + dark-surface contrast (dataviz)
     const series = chart.addSeries(CandlestickSeries, {
-      upColor: "#10b981",
-      downColor: "#ef4444",
-      wickUpColor: "#10b981",
-      wickDownColor: "#ef4444",
+      upColor: themeColor("--color-success", "#10b981"),
+      downColor: themeColor("--color-danger", "#ef4444"),
+      wickUpColor: themeColor("--color-success", "#10b981"),
+      wickDownColor: themeColor("--color-danger", "#ef4444"),
       borderVisible: false,
     });
     series.setData(

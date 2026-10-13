@@ -59,7 +59,7 @@ const InsightsTab: React.FC<{ ctx: FinancesContext }> = ({ ctx }) => {
             type="button"
             onClick={runSummary}
             disabled={busy}
-            className="ml-auto rounded-md border border-accent-500 px-3 py-2 text-sm font-medium text-accent-500 hover:bg-surface-2 disabled:opacity-50"
+            className="ml-auto rounded-md border border-accent-500 px-3 py-2 text-sm font-medium text-accent-text hover:bg-surface-2 disabled:opacity-50"
           >
             {busy ? "Summarizing…" : "AI summary"}
           </button>

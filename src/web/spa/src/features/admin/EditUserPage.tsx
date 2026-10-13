@@ -403,7 +403,7 @@ const EditUserPage: React.FC = () => {
         <FormField label="Custom groups">
           {allCustomGroups.length === 0 ? (
             <p className="text-sm text-text-tertiary">
-              No custom groups. <Link to="/admin/membership?tab=groups" className="text-accent-500 hover:underline">Create groups</Link>.
+              No custom groups. <Link to="/admin/membership?tab=groups" className="text-accent-text hover:underline">Create groups</Link>.
             </p>
           ) : (
             <>
@@ -471,7 +471,7 @@ const EditUserPage: React.FC = () => {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="rounded-md bg-accent-500 px-4 py-2 text-sm font-semibold text-surface-0 hover:bg-orange-500 disabled:opacity-50"
+            className="rounded-md bg-accent-500 px-4 py-2 text-sm font-semibold text-ink hover:bg-accent-400 disabled:opacity-50"
           >
             {isSubmitting ? "Saving…" : "Save"}
           </button>

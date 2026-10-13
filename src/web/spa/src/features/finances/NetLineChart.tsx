@@ -3,7 +3,7 @@ import { createChart, AreaSeries, type IChartApi } from "lightweight-charts";
 
 function themeColor(varName: string, fallback: string): string {
   const raw = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
-  return raw ? `rgb(${raw})` : fallback;
+  return raw ? `rgb(${raw.split(/\s+/).join(", ")})` : fallback;
 }
 
 /** Area chart of {date, value} points (cash flow / forecast). */
@@ -29,9 +29,9 @@ const NetLineChart: React.FC<{ points: { date: string; value: number }[] }> = ({
       rightPriceScale: { borderVisible: false },
     });
     const series = chart.addSeries(AreaSeries, {
-      lineColor: "#10b981",
-      topColor: "rgba(16, 185, 129, 0.3)",
-      bottomColor: "rgba(16, 185, 129, 0.0)",
+      lineColor: themeColor("--color-success", "#10b981"),
+      topColor: themeColor("--color-success", "#10b981").replace(/^rgb\((.*)\)$/, "rgba($1, 0.3)"),
+      bottomColor: themeColor("--color-success", "#10b981").replace(/^rgb\((.*)\)$/, "rgba($1, 0)"),
       lineWidth: 2,
     });
     series.setData(points.map((p) => ({ time: p.date, value: p.value })));

@@ -1218,7 +1218,7 @@ const VehiclesExpensesPage: React.FC = () => {
                     <button
                       onClick={() => handleRenameVehicle(selectedVehicleId, renameValue)}
                       disabled={saving || !renameValue.trim()}
-                      className="text-sm text-accent-400 hover:text-accent-300"
+                      className="text-sm text-accent-text hover:text-accent-text"
                     >
                       Save
                     </button>
@@ -1740,7 +1740,7 @@ const VehiclesExpensesPage: React.FC = () => {
                                 <button
                                   onClick={() => handleUpdateFuel(entry.id)}
                                   disabled={saving || !editFuelForm.date || !editFuelForm.fuelPrice || !editFuelForm.fuelLitres || !editFuelForm.odometerKm}
-                                  className="text-accent-400 hover:text-accent-300 text-sm mr-2"
+                                  className="text-accent-text hover:text-accent-text text-sm mr-2"
                                 >
                                   Save
                                 </button>
@@ -2022,7 +2022,7 @@ const VehiclesExpensesPage: React.FC = () => {
                               placeholder="Edit tags"
                             />
                             <div className="flex gap-2">
-                              <button onClick={() => handleUpdateMaintenance(entry.id)} disabled={saving} className="text-accent-400 hover:text-accent-300 text-sm">Save</button>
+                              <button onClick={() => handleUpdateMaintenance(entry.id)} disabled={saving} className="text-accent-text hover:text-accent-text text-sm">Save</button>
                               <button onClick={() => setEditingMaintenanceId(null)} disabled={saving} className="text-text-secondary hover:text-text-primary text-sm">Cancel</button>
                             </div>
                           </div>
@@ -2066,7 +2066,7 @@ const VehiclesExpensesPage: React.FC = () => {
                                 {(entry.attachments || []).map((a) => (
                                   <li key={a.key}>
                                     {a.url ? (
-                                      <a href={a.url} target="_blank" rel="noreferrer" className="text-accent-400 hover:text-accent-300">
+                                      <a href={a.url} target="_blank" rel="noreferrer" className="text-accent-text hover:text-accent-text">
                                         {a.filename || a.key}
                                       </a>
                                     ) : (

@@ -30,7 +30,7 @@ const PrivacyPolicyPage: React.FC = () => {
     <main className="container-max section-padding">
       <div className="max-w-3xl">
         <div className="flex items-center gap-3 mb-4">
-          <ShieldCheckIcon className="h-8 w-8 shrink-0 text-accent-500" />
+          <ShieldCheckIcon className="h-8 w-8 shrink-0 text-accent-text" />
           <h1 className="text-4xl sm:text-5xl font-display font-extrabold uppercase tracking-tight text-text-primary">
             Privacy Policy
           </h1>
@@ -72,7 +72,7 @@ const PrivacyPolicyPage: React.FC = () => {
               We are the party responsible for the personal information described
               in this policy. You can reach us at{" "}
               <a
-                className="text-accent-500 underline underline-offset-2"
+                className="text-accent-text underline underline-offset-2"
                 href={`mailto:${CONTACT_EMAIL}`}
               >
                 {CONTACT_EMAIL}
@@ -292,7 +292,7 @@ const PrivacyPolicyPage: React.FC = () => {
             <p>
               Email{" "}
               <a
-                className="text-accent-500 underline underline-offset-2"
+                className="text-accent-text underline underline-offset-2"
                 href={`mailto:${CONTACT_EMAIL}`}
               >
                 {CONTACT_EMAIL}
@@ -305,7 +305,7 @@ const PrivacyPolicyPage: React.FC = () => {
             <p>
               To have your account and its associated data deleted, email{" "}
               <a
-                className="text-accent-500 underline underline-offset-2"
+                className="text-accent-text underline underline-offset-2"
                 href={`mailto:${CONTACT_EMAIL}`}
               >
                 {CONTACT_EMAIL}
@@ -369,7 +369,7 @@ const PrivacyPolicyPage: React.FC = () => {
             <p>
               Questions, access requests, and deletion requests all go to{" "}
               <a
-                className="text-accent-500 underline underline-offset-2"
+                className="text-accent-text underline underline-offset-2"
                 href={`mailto:${CONTACT_EMAIL}`}
               >
                 {CONTACT_EMAIL}

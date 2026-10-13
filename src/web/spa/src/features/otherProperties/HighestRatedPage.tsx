@@ -88,7 +88,7 @@ const HighestRatedPage: React.FC = () => {
       <h1 className="text-2xl font-semibold tracking-tight text-warning">
         Highest rated
       </h1>
-      <div className="rounded-xl border border-warning/60 bg-gradient-to-br from-amber-900/40 to-amber-950/60 p-4 shadow-lg">
+      <div className="rounded-xl border border-warning/60 bg-gradient-to-br from-warning/15 to-surface-1/90 p-4 shadow-lg">
         <p className="text-sm font-medium text-warning">
           Top sites and media rated by our community
         </p>
@@ -204,7 +204,7 @@ const HighestRatedPage: React.FC = () => {
       <Dialog open={!!selectedItem} onClose={() => setSelectedItem(null)} className="relative z-50">
         <div className="fixed inset-0 bg-black/50" aria-hidden="true" />
         <div className="fixed inset-0 flex items-center justify-center p-4">
-          <Dialog.Panel className="mx-auto w-full max-w-xl rounded-xl border border-warning/60 bg-gradient-to-br from-amber-900/40 to-amber-950/60 p-6 shadow-xl">
+          <Dialog.Panel className="mx-auto w-full max-w-xl rounded-xl border border-warning/60 bg-gradient-to-br from-warning/15 to-surface-1/90 p-6 shadow-xl">
             {selectedItem && (
               <div className="relative flex min-h-[12rem] items-center justify-center">
                 <button

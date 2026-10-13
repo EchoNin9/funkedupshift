@@ -83,7 +83,7 @@ const TABS: TabConfig[] = [
     emptyMessage: "No items yet. Generate from top 12 by star rating or add a URL above.",
     generateSuccessMessage: "Cache generated from top 12 sites and media by star rating.",
     saveSuccessMessage: "Highest rated list saved.",
-    buttonClass: "bg-amber-600 hover:bg-amber-500",
+    buttonClass: "bg-warning hover:bg-warning/90 !text-on-warning",
     viewPath: "/recommended/highest-rated",
   },
 ];
@@ -412,7 +412,7 @@ const ListTab: React.FC<ListTabProps> = ({ config }) => {
         <button
           type="submit"
           disabled={isSaving || !newUrl.trim()}
-          className="rounded-md bg-accent-500 px-4 py-2 text-sm font-medium text-surface-0 hover:bg-orange-500 disabled:opacity-50"
+          className="rounded-md bg-accent-500 px-4 py-2 text-sm font-medium text-ink hover:bg-accent-400 disabled:opacity-50"
         >
           Add
         </button>
@@ -461,7 +461,7 @@ const ListTab: React.FC<ListTabProps> = ({ config }) => {
                   <button
                     type="button"
                     onClick={() => startEdit(index)}
-                    className="font-medium text-text-primary break-all flex-1 text-left hover:text-accent-500 hover:underline"
+                    className="font-medium text-text-primary break-all flex-1 text-left hover:text-accent-text hover:underline"
                   >
                     {domainFromUrl(entry.url || "")}
                   </button>

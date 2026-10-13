@@ -77,7 +77,7 @@ export function MobileBottomTabs() {
             end={tab.path === "/"}
             className={({ isActive }) =>
               `flex flex-col items-center justify-center flex-1 h-full transition-colors duration-150 ${
-                isActive ? "text-accent-500" : "text-text-tertiary"
+                isActive ? "text-accent-text" : "text-text-tertiary"
               }`
             }
           >

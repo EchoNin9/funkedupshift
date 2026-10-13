@@ -493,7 +493,7 @@ const SquashAdminPage: React.FC = () => {
       <h1 className="text-xl font-semibold text-text-primary">Squash Admin</h1>
 
       <p className="text-sm text-text-secondary">
-        <Link to="/squash" className="text-accent-500 hover:text-orange-400">
+        <Link to="/squash" className="text-accent-text hover:text-accent-text">
           Squash
         </Link>
       </p>
@@ -651,7 +651,7 @@ const SquashAdminPage: React.FC = () => {
                 <button
                   type="submit"
                   disabled={isMatchSubmitting}
-                  className="rounded-md bg-accent-500 px-4 py-2 text-sm font-medium text-surface-0 hover:bg-orange-500 disabled:opacity-50"
+                  className="rounded-md bg-accent-500 px-4 py-2 text-sm font-medium text-ink hover:bg-accent-400 disabled:opacity-50"
                 >
                   {editingMatchId ? "Update match" : "Add match"}
                 </button>
@@ -763,7 +763,7 @@ const SquashAdminPage: React.FC = () => {
                   type="button"
                   onClick={searchMatches}
                   disabled={isMatchesLoading}
-                  className="rounded-md bg-accent-500 px-4 py-2 text-sm font-medium text-surface-0 hover:bg-orange-500 disabled:opacity-50"
+                  className="rounded-md bg-accent-500 px-4 py-2 text-sm font-medium text-ink hover:bg-accent-400 disabled:opacity-50"
                 >
                   {isMatchesLoading ? "Searching…" : "Search"}
                 </button>
@@ -968,7 +968,7 @@ const SquashAdminPage: React.FC = () => {
                 <button
                   type="submit"
                   disabled={isPlayerSubmitting}
-                  className="rounded-md bg-accent-500 px-4 py-2 text-sm font-medium text-surface-0 hover:bg-orange-500 disabled:opacity-50"
+                  className="rounded-md bg-accent-500 px-4 py-2 text-sm font-medium text-ink hover:bg-accent-400 disabled:opacity-50"
                 >
                   {editingPlayerId ? "Update player" : "Add player"}
                 </button>

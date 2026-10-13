@@ -30,6 +30,7 @@
     --color-n1-text: 255 43 214; --color-n2-text: 255 230 0; --color-n3-text: 0 229 255; --color-n4-text: 182 255 61;
     --color-nav-text: 57 255 122; --color-accent-text: 255 43 214;
     --color-danger: 248 113 113; --color-warning: 251 191 36; --color-success: 52 211 153;
+    --color-on-danger: 20 8 26; --color-on-warning: 20 8 26; --color-on-success: 20 8 26;
     --color-ink: 20 8 26;     /* brutalist border/shadow ink */
 
     --pop-spring: cubic-bezier(.34, 1.56, .64, 1);
@@ -58,6 +59,7 @@
     --color-n1-text: 190 0 155; --color-n2-text: 125 95 0; --color-n3-text: 0 105 125; --color-n4-text: 70 115 0;
     --color-nav-text: 0 125 50; --color-accent-text: 190 0 155;
     --color-danger: 185 28 28; --color-warning: 146 64 14; --color-success: 4 120 87;
+    --color-on-danger: 255 255 255; --color-on-warning: 255 255 255; --color-on-success: 255 255 255;
     --color-ink: 20 8 26;
   }
 

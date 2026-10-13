@@ -128,7 +128,7 @@ const DashboardPage: React.FC = () => {
         </p>
         {hasRole(user ?? null, "superadmin") && (
           <p className="mt-2">
-            <Link to="/admin/internet-dashboard" className="text-accent-500 hover:text-orange-400 text-sm">
+            <Link to="/admin/internet-dashboard" className="text-accent-text hover:text-accent-text text-sm">
               Edit sites list
             </Link>
           </p>

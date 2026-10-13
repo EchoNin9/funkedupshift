@@ -556,7 +556,7 @@ const GeneralExpensesPage: React.FC = () => {
                           type="button"
                           onClick={() => handleRenameSection(selectedSectionId, renameValue)}
                           disabled={saving || !renameValue.trim()}
-                          className="text-sm text-accent-400 hover:text-accent-300"
+                          className="text-sm text-accent-text hover:text-accent-text"
                         >
                           Save
                         </button>
@@ -801,7 +801,7 @@ const GeneralExpensesPage: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
-                        className="text-sm text-accent-400 hover:text-accent-300"
+                        className="text-sm text-accent-text hover:text-accent-text"
                       >
                         Add files…
                       </button>
@@ -878,7 +878,7 @@ const GeneralExpensesPage: React.FC = () => {
                                 {" — "}
                                 <span className="font-medium">${Number(entry.price || 0).toFixed(2)}</span>
                                 {entry.reimbursed && (
-                                  <span className="ml-2 text-xs text-accent-400">Reimbursed</span>
+                                  <span className="ml-2 text-xs text-accent-text">Reimbursed</span>
                                 )}
                               </p>
                               <div className="flex gap-2">
@@ -913,7 +913,7 @@ const GeneralExpensesPage: React.FC = () => {
                                     <button
                                       type="button"
                                       onClick={() => openAttachment(a)}
-                                      className="text-accent-400 hover:text-accent-300 text-left underline-offset-2 hover:underline"
+                                      className="text-accent-text hover:text-accent-text text-left underline-offset-2 hover:underline"
                                     >
                                       {a.filename || a.key}
                                     </button>
