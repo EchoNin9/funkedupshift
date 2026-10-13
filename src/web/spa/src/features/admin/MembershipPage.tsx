@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { Dialog } from "@headlessui/react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Bars3Icon, UserGroupIcon, Squares2X2Icon, KeyIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { useAuth, hasRole } from "../../shell/AuthContext";
@@ -585,29 +586,27 @@ const MembershipPage: React.FC = () => {
               {membershipNavItems.find((i) => i.id === activeTab)?.label ?? "Menu"}
             </span>
           </div>
-          {membershipSidebarOpen && (
-            <>
-              <div
-                className="fixed inset-0 z-40 bg-surface-1/80 backdrop-blur-sm md:hidden"
-                aria-hidden
+          <Dialog open={membershipSidebarOpen} onClose={() => setMembershipSidebarOpen(false)} className="relative z-50 md:hidden">
+            <div
+              className="fixed inset-0 z-40 bg-surface-1/80 backdrop-blur-sm md:hidden"
+              aria-hidden
+            />
+            <Dialog.Panel
+              as="aside"
+              className="fixed top-0 left-0 z-50 w-64 h-full bg-surface-1 border-r border-border-default md:hidden overflow-y-auto pt-16"
+              aria-label="Membership navigation"
+            >
+              <button
+                type="button"
                 onClick={() => setMembershipSidebarOpen(false)}
-              />
-              <aside
-                className="fixed top-0 left-0 z-50 w-64 h-full bg-surface-1 border-r border-border-default md:hidden overflow-y-auto pt-16"
-                aria-label="Membership navigation"
+                className="absolute top-4 right-4 p-2 text-text-secondary hover:text-white"
+                aria-label="Close menu"
               >
-                <button
-                  type="button"
-                  onClick={() => setMembershipSidebarOpen(false)}
-                  className="absolute top-4 right-4 p-2 text-text-secondary hover:text-white"
-                  aria-label="Close menu"
-                >
-                  <XMarkIcon className="w-6 h-6" />
-                </button>
-                {sidebarContent}
-              </aside>
-            </>
-          )}
+                <XMarkIcon className="w-6 h-6" />
+              </button>
+              {sidebarContent}
+            </Dialog.Panel>
+          </Dialog>
 
           {/* Main content */}
           <div className="space-y-6">

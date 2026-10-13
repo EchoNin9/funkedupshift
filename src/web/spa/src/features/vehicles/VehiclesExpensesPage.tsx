@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState, useRef, lazy, Suspense } from "react";
+import React, { useId, useCallback, useEffect, useState, useRef, lazy, Suspense } from "react";
 import { useAuth, canAccessExpenses } from "../../shell/AuthContext";
 import { usePlatform } from "../../shell/PlatformContext";
 import { fetchWithAuth } from "../../utils/api";
@@ -186,6 +186,7 @@ function calcFuelMetrics(
 }
 
 const VehiclesExpensesPage: React.FC = () => {
+  const uid = useId();
   const { user } = useAuth();
   const { isNative } = usePlatform();
   const canAccess = canAccessExpenses(user);
@@ -1432,8 +1433,8 @@ const VehiclesExpensesPage: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="mb-2 block text-xs text-text-tertiary">Attachments</label>
-                  <input aria-label="Attachments"
+                  <label htmlFor={`${uid}-f1`} className="mb-2 block text-xs text-text-tertiary">Attachments</label>
+                  <input id={`${uid}-f1`} aria-label="Attachments"
                     type="file"
                     multiple
                     accept=".pdf,.jpg,.jpeg,.png,.txt,.csv,.doc,.docx,.xls,.xlsx,.webp,.gif"
@@ -1504,8 +1505,8 @@ const VehiclesExpensesPage: React.FC = () => {
               <div className="px-4 pb-4 pt-1 border-t border-border-hover space-y-3">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                   <div>
-                    <label className="block text-xs text-text-tertiary mb-1">Start date</label>
-                    <input aria-label="Start date"
+                    <label htmlFor={`${uid}-f2`} className="block text-xs text-text-tertiary mb-1">Start date</label>
+                    <input id={`${uid}-f2`} aria-label="Start date"
                       type="date"
                       value={filters.startDate}
                       onChange={(e) => setFilters((f) => ({ ...f, startDate: e.target.value }))}
@@ -1513,8 +1514,8 @@ const VehiclesExpensesPage: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-text-tertiary mb-1">End date</label>
-                    <input aria-label="End date"
+                    <label htmlFor={`${uid}-f3`} className="block text-xs text-text-tertiary mb-1">End date</label>
+                    <input id={`${uid}-f3`} aria-label="End date"
                       type="date"
                       value={filters.endDate}
                       onChange={(e) => setFilters((f) => ({ ...f, endDate: e.target.value }))}
@@ -1522,8 +1523,8 @@ const VehiclesExpensesPage: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-text-tertiary mb-1">Sort order</label>
-                    <select aria-label="Sort order"
+                    <label htmlFor={`${uid}-f4`} className="block text-xs text-text-tertiary mb-1">Sort order</label>
+                    <select id={`${uid}-f4`} aria-label="Sort order"
                       value={filters.sortNewestFirst ? "newest" : "oldest"}
                       onChange={(e) =>
                         setFilters((f) => ({ ...f, sortNewestFirst: e.target.value === "newest" }))
@@ -1538,9 +1539,9 @@ const VehiclesExpensesPage: React.FC = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="flex gap-2 items-end">
                     <div className="flex-1">
-                      <label className="block text-xs text-text-tertiary mb-1">Fuel price ($)</label>
+                      <label htmlFor={`${uid}-f5`} className="block text-xs text-text-tertiary mb-1">Fuel price ($)</label>
                       <div className="flex gap-2">
-                        <select aria-label="Fuel price ($)"
+                        <select id={`${uid}-f5`} aria-label="Fuel price ($)"
                           value={filters.fuelPriceOp}
                           onChange={(e) =>
                             setFilters((f) => ({
@@ -1566,9 +1567,9 @@ const VehiclesExpensesPage: React.FC = () => {
                   </div>
                   <div className="flex gap-2 items-end">
                     <div className="flex-1">
-                      <label className="block text-xs text-text-tertiary mb-1">$/L</label>
+                      <label htmlFor={`${uid}-f6`} className="block text-xs text-text-tertiary mb-1">$/L</label>
                       <div className="flex gap-2">
-                        <select aria-label="$/L"
+                        <select id={`${uid}-f6`} aria-label="$/L"
                           value={filters.pricePerLOp}
                           onChange={(e) =>
                             setFilters((f) => ({
@@ -1869,8 +1870,8 @@ const VehiclesExpensesPage: React.FC = () => {
                 <div className="px-4 pb-4 pt-1 border-t border-border-hover space-y-3">
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                     <div>
-                      <label className="block text-xs text-text-tertiary mb-1">Start date</label>
-                      <input aria-label="Start date"
+                      <label htmlFor={`${uid}-f7`} className="block text-xs text-text-tertiary mb-1">Start date</label>
+                      <input id={`${uid}-f7`} aria-label="Start date"
                         type="date"
                         value={maintenanceFilters.startDate}
                         onChange={(e) => setMaintenanceFilters((f) => ({ ...f, startDate: e.target.value }))}
@@ -1878,8 +1879,8 @@ const VehiclesExpensesPage: React.FC = () => {
                       />
                     </div>
                     <div>
-                      <label className="block text-xs text-text-tertiary mb-1">End date</label>
-                      <input aria-label="End date"
+                      <label htmlFor={`${uid}-f8`} className="block text-xs text-text-tertiary mb-1">End date</label>
+                      <input id={`${uid}-f8`} aria-label="End date"
                         type="date"
                         value={maintenanceFilters.endDate}
                         onChange={(e) => setMaintenanceFilters((f) => ({ ...f, endDate: e.target.value }))}
@@ -1887,8 +1888,8 @@ const VehiclesExpensesPage: React.FC = () => {
                       />
                     </div>
                     <div>
-                      <label className="block text-xs text-text-tertiary mb-1">Sort order</label>
-                      <select aria-label="Sort order"
+                      <label htmlFor={`${uid}-f9`} className="block text-xs text-text-tertiary mb-1">Sort order</label>
+                      <select id={`${uid}-f9`} aria-label="Sort order"
                         value={maintenanceFilters.sortNewestFirst ? "newest" : "oldest"}
                         onChange={(e) =>
                           setMaintenanceFilters((f) => ({ ...f, sortNewestFirst: e.target.value === "newest" }))
@@ -1900,8 +1901,8 @@ const VehiclesExpensesPage: React.FC = () => {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-xs text-text-tertiary mb-1">Vendor contains</label>
-                      <input aria-label="Vendor contains"
+                      <label htmlFor={`${uid}-f10`} className="block text-xs text-text-tertiary mb-1">Vendor contains</label>
+                      <input id={`${uid}-f10`} aria-label="Vendor contains"
                         type="text"
                         value={maintenanceFilters.vendorQuery}
                         onChange={(e) => setMaintenanceFilters((f) => ({ ...f, vendorQuery: e.target.value }))}
@@ -1913,9 +1914,9 @@ const VehiclesExpensesPage: React.FC = () => {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="flex gap-2 items-end">
                       <div className="flex-1">
-                        <label className="block text-xs text-text-tertiary mb-1">Price ($)</label>
+                        <label htmlFor={`${uid}-f11`} className="block text-xs text-text-tertiary mb-1">Price ($)</label>
                         <div className="flex gap-2">
-                          <select aria-label="Price ($)"
+                          <select id={`${uid}-f11`} aria-label="Price ($)"
                             value={maintenanceFilters.priceOp}
                             onChange={(e) =>
                               setMaintenanceFilters((f) => ({
@@ -1941,9 +1942,9 @@ const VehiclesExpensesPage: React.FC = () => {
                     </div>
                     <div className="flex gap-2 items-end">
                       <div className="flex-1">
-                        <label className="block text-xs text-text-tertiary mb-1">Mileage (km)</label>
+                        <label htmlFor={`${uid}-f12`} className="block text-xs text-text-tertiary mb-1">Mileage (km)</label>
                         <div className="flex gap-2">
-                          <select aria-label="Mileage (km)"
+                          <select id={`${uid}-f12`} aria-label="Mileage (km)"
                             value={maintenanceFilters.mileageOp}
                             onChange={(e) =>
                               setMaintenanceFilters((f) => ({
@@ -2102,8 +2103,8 @@ const VehiclesExpensesPage: React.FC = () => {
                   <div className="px-4 pb-4 pt-1 border-t border-border-hover">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                       <div>
-                        <label className="block text-xs text-text-tertiary mb-1">Start date</label>
-                        <input aria-label="Start date"
+                        <label htmlFor={`${uid}-f13`} className="block text-xs text-text-tertiary mb-1">Start date</label>
+                        <input id={`${uid}-f13`} aria-label="Start date"
                           type="date"
                           value={totalsFilters.startDate}
                           onChange={(e) => setTotalsFilters((f) => ({ ...f, startDate: e.target.value }))}
@@ -2111,8 +2112,8 @@ const VehiclesExpensesPage: React.FC = () => {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-text-tertiary mb-1">End date</label>
-                        <input aria-label="End date"
+                        <label htmlFor={`${uid}-f14`} className="block text-xs text-text-tertiary mb-1">End date</label>
+                        <input id={`${uid}-f14`} aria-label="End date"
                           type="date"
                           value={totalsFilters.endDate}
                           onChange={(e) => setTotalsFilters((f) => ({ ...f, endDate: e.target.value }))}

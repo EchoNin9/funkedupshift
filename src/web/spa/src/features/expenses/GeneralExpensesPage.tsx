@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useId, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Dialog } from "@headlessui/react";
 import { useAuth, canAccessExpenses } from "../../shell/AuthContext";
 import { fetchWithAuth } from "../../utils/api";
@@ -66,6 +66,7 @@ function attachmentOpensInModal(a: GenAttachment): boolean {
 }
 
 const GeneralExpensesPage: React.FC = () => {
+  const uid = useId();
   const { user } = useAuth();
   const canAccess = canAccessExpenses(user);
   const { isNative } = usePlatform();
@@ -612,8 +613,8 @@ const GeneralExpensesPage: React.FC = () => {
                   {limitOpen && (
                     <div className="px-4 pb-4 pt-1 border-t border-border-hover grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                       <div>
-                        <label className="block text-xs text-text-tertiary mb-1">Start date</label>
-                        <input aria-label="Start date"
+                        <label htmlFor={`${uid}-f1`} className="block text-xs text-text-tertiary mb-1">Start date</label>
+                        <input id={`${uid}-f1`} aria-label="Start date"
                           type="date"
                           value={filters.startDate}
                           onChange={(e) => setFilters((f) => ({ ...f, startDate: e.target.value }))}
@@ -621,8 +622,8 @@ const GeneralExpensesPage: React.FC = () => {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-text-tertiary mb-1">End date</label>
-                        <input aria-label="End date"
+                        <label htmlFor={`${uid}-f2`} className="block text-xs text-text-tertiary mb-1">End date</label>
+                        <input id={`${uid}-f2`} aria-label="End date"
                           type="date"
                           value={filters.endDate}
                           onChange={(e) => setFilters((f) => ({ ...f, endDate: e.target.value }))}
@@ -630,8 +631,8 @@ const GeneralExpensesPage: React.FC = () => {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-text-tertiary mb-1">Search (vendor / description)</label>
-                        <input aria-label="Search (vendor / description)"
+                        <label htmlFor={`${uid}-f3`} className="block text-xs text-text-tertiary mb-1">Search (vendor / description)</label>
+                        <input id={`${uid}-f3`} aria-label="Search (vendor / description)"
                           type="text"
                           value={filters.search}
                           onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value }))}
@@ -640,8 +641,8 @@ const GeneralExpensesPage: React.FC = () => {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-text-tertiary mb-1">Reimbursed</label>
-                        <select aria-label="Reimbursed"
+                        <label htmlFor={`${uid}-f4`} className="block text-xs text-text-tertiary mb-1">Reimbursed</label>
+                        <select id={`${uid}-f4`} aria-label="Reimbursed"
                           value={filters.reimbursed}
                           onChange={(e) =>
                             setFilters((f) => ({
@@ -657,8 +658,8 @@ const GeneralExpensesPage: React.FC = () => {
                         </select>
                       </div>
                       <div>
-                        <label className="block text-xs text-text-tertiary mb-1">Sort</label>
-                        <select aria-label="Sort"
+                        <label htmlFor={`${uid}-f5`} className="block text-xs text-text-tertiary mb-1">Sort</label>
+                        <select id={`${uid}-f5`} aria-label="Sort"
                           value={filters.sortNewestFirst ? "newest" : "oldest"}
                           onChange={(e) =>
                             setFilters((f) => ({ ...f, sortNewestFirst: e.target.value === "newest" }))
@@ -731,8 +732,8 @@ const GeneralExpensesPage: React.FC = () => {
                     <h3 className="text-sm font-semibold text-text-primary">{editingId ? "Edit expense" : "New expense"}</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-xs text-text-tertiary mb-1">Date</label>
-                        <input aria-label="Date"
+                        <label htmlFor={`${uid}-f6`} className="block text-xs text-text-tertiary mb-1">Date</label>
+                        <input id={`${uid}-f6`} aria-label="Date"
                           type="date"
                           value={form.date}
                           onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
@@ -740,8 +741,8 @@ const GeneralExpensesPage: React.FC = () => {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-text-tertiary mb-1">Price</label>
-                        <input aria-label="Price"
+                        <label htmlFor={`${uid}-f7`} className="block text-xs text-text-tertiary mb-1">Price</label>
+                        <input id={`${uid}-f7`} aria-label="Price"
                           type="text"
                           inputMode="decimal"
                           value={form.price}
@@ -751,8 +752,8 @@ const GeneralExpensesPage: React.FC = () => {
                         />
                       </div>
                       <div className="sm:col-span-2">
-                        <label className="block text-xs text-text-tertiary mb-1">Vendor</label>
-                        <input aria-label="Vendor"
+                        <label htmlFor={`${uid}-f8`} className="block text-xs text-text-tertiary mb-1">Vendor</label>
+                        <input id={`${uid}-f8`} aria-label="Vendor"
                           type="text"
                           value={form.vendor}
                           onChange={(e) => setForm((f) => ({ ...f, vendor: e.target.value }))}
@@ -760,8 +761,8 @@ const GeneralExpensesPage: React.FC = () => {
                         />
                       </div>
                       <div className="sm:col-span-2">
-                        <label className="block text-xs text-text-tertiary mb-1">Description</label>
-                        <textarea aria-label="Description"
+                        <label htmlFor={`${uid}-f9`} className="block text-xs text-text-tertiary mb-1">Description</label>
+                        <textarea id={`${uid}-f9`} aria-label="Description"
                           value={form.description}
                           onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
                           rows={2}
@@ -782,8 +783,9 @@ const GeneralExpensesPage: React.FC = () => {
                       </div>
                     </div>
                     <div>
-                      <label className="block text-xs text-text-tertiary mb-1">Attachments</label>
+                      <label htmlFor={`${uid}-attachments`} className="block text-xs text-text-tertiary mb-1">Attachments</label>
                       <input
+                        id={`${uid}-attachments`}
                         ref={fileInputRef}
                         type="file"
                         multiple
