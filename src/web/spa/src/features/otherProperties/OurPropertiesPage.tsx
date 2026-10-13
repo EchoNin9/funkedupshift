@@ -197,7 +197,7 @@ const OurPropertiesPage: React.FC = () => {
                 {selectedSite.logoUrl ? (
                   <img
                     src={selectedSite.logoUrl}
-                    alt=""
+                    alt={selectedSite.title || selectedSite.domain}
                     className="max-h-48 max-w-full object-contain"
                     onError={(e) => {
                       (e.currentTarget as HTMLImageElement).style.visibility = "hidden";

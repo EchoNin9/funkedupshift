@@ -218,7 +218,7 @@ const HighestRatedPage: React.FC = () => {
                 {selectedItem.logoUrl ? (
                   <img
                     src={selectedItem.logoUrl}
-                    alt=""
+                    alt={selectedItem.title || selectedItem.domain}
                     className="max-h-48 max-w-full object-contain"
                     onError={(e) => {
                       (e.currentTarget as HTMLImageElement).style.visibility = "hidden";
