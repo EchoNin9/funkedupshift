@@ -440,7 +440,7 @@ const ListTab: React.FC<ListTabProps> = ({ config }) => {
                 <Bars3Icon className="h-4 w-4 flex-shrink-0 text-text-tertiary" aria-hidden />
               )}
               {editingIndex === index ? (
-                <input
+                <input aria-label="Edit value"
                   type="text"
                   value={editingValue}
                   onChange={(e) => setEditingValue(e.target.value)}

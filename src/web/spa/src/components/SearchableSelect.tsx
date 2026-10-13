@@ -60,6 +60,7 @@ export function SearchableSelect({
         onChange={(e) => setSearch(e.target.value)}
         onFocus={() => setOpen(true)}
         placeholder={placeholder}
+        aria-label={placeholder}
         className="input-field w-full"
         autoComplete="off"
       />

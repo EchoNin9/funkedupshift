@@ -98,7 +98,7 @@ const DnsPage: React.FC = () => {
       {formError && <Alert variant="error">{formError}</Alert>}
 
       <form onSubmit={handleSubmit} className="rounded-xl border border-border-default bg-surface-2/80 p-4 flex flex-wrap gap-2">
-        <input
+        <input aria-label="example.com (or an IP for PTR)"
           type="text"
           placeholder="example.com (or an IP for PTR)"
           value={name}
@@ -106,7 +106,7 @@ const DnsPage: React.FC = () => {
           required
           className="flex-1 min-w-[220px] rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary"
         />
-        <select
+        <select aria-label="Record type"
           value={type}
           onChange={(e) => setType(e.target.value as TypeChoice)}
           className="rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary"

@@ -695,7 +695,7 @@ const MembershipPage: React.FC = () => {
         <>
           <form className="space-y-3 max-w-md" onSubmit={handleCreateGroup}>
             <h2 className="text-sm font-medium text-text-secondary">Create group</h2>
-            <input
+            <input aria-label="Name (alphanumeric, underscore, hyphen)"
               type="text"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
@@ -703,14 +703,14 @@ const MembershipPage: React.FC = () => {
               required
               className="w-full rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
             />
-            <input
+            <input aria-label="Description (optional)"
               type="text"
               value={newDescription}
               onChange={(e) => setNewDescription(e.target.value)}
               placeholder="Description (optional)"
               className="w-full rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
             />
-            <input
+            <input aria-label="Permissions (comma-separated, e.g. media:edit, sites:add)"
               type="text"
               value={newPermissions}
               onChange={(e) => setNewPermissions(e.target.value)}
@@ -745,14 +745,14 @@ const MembershipPage: React.FC = () => {
                     {editingName === g.name ? (
                       <form onSubmit={handleUpdateGroup} className="space-y-2">
                         <span className="font-medium text-text-primary">{g.name}</span>
-                        <input
+                        <input aria-label="Description (optional)"
                           type="text"
                           value={editDescription}
                           onChange={(e) => setEditDescription(e.target.value)}
                           placeholder="Description (optional)"
                           className="w-full rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
                         />
-                        <input
+                        <input aria-label="Permissions (comma-separated)"
                           type="text"
                           value={editPermissions}
                           onChange={(e) => setEditPermissions(e.target.value)}
@@ -826,7 +826,7 @@ const MembershipPage: React.FC = () => {
           <form className="space-y-3 max-w-md" onSubmit={handleCreateRole}>
             <h2 className="text-sm font-medium text-text-secondary">Create role</h2>
             <p className="text-xs text-text-tertiary">Define a named role by selecting Cognito groups and custom groups. Use for impersonation.</p>
-            <input
+            <input aria-label="Role name (e.g. Squash Manager)"
               type="text"
               value={newRoleName}
               onChange={(e) => setNewRoleName(e.target.value)}
@@ -1019,7 +1019,11 @@ const UserRow: React.FC<UserRowProps> = ({ user, tzOffset, formatLastLogin, rend
 
   return (
     <tr className="cursor-pointer hover:bg-surface-3 transition-colors" onClick={onClick}>
-      <td className="px-4 py-3 text-sm text-text-primary">{user.email || user.username || "—"}</td>
+      <td className="px-4 py-3 text-sm text-text-primary">
+        <button type="button" onClick={(e) => { e.stopPropagation(); onClick(); }} className="text-left hover:underline">
+          {user.email || user.username || "—"}
+        </button>
+      </td>
       <td className="px-4 py-3 text-sm text-text-secondary">{user.status || "—"}</td>
       <td className="px-4 py-3 text-sm text-text-secondary">{formatLastLogin(user.lastLoginAt ?? "", tzOffset, user.lastLoginIp)}</td>
       <td className="px-4 py-3 text-sm">{groups ? renderGroupBadges(groups.cognitoGroups, []) : <span className="text-text-tertiary">…</span>}</td>

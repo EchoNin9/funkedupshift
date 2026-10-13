@@ -333,7 +333,7 @@ const MemeBrowsePage: React.FC = () => {
             setSearch(search.trim());
           }}
         >
-          <input
+          <input aria-label="Search memes (title, description)…"
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -406,7 +406,7 @@ const MemeBrowsePage: React.FC = () => {
                     </button>
                   </span>
                 ))}
-                <select
+                <select aria-label="Tag match mode"
                   value={tagMode}
                   onChange={(e) => setTagMode(e.target.value as "and" | "or")}
                   className="rounded border border-border-hover bg-surface-1 px-2 py-0.5 text-[11px] text-text-secondary"
@@ -419,7 +419,7 @@ const MemeBrowsePage: React.FC = () => {
           </div>
           <div className="flex items-end gap-2">
             <label className="text-xs font-medium text-text-secondary">Sort</label>
-            <select
+            <select aria-label="Sort"
               value={sort}
               onChange={(e) => setSort(e.target.value as SortKey)}
               className="rounded-md border border-border-hover bg-surface-1 px-2 py-1 text-xs text-text-primary focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"

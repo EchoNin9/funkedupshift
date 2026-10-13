@@ -602,7 +602,7 @@ const ProfilePage: React.FC = () => {
         <>
       <div className="space-y-2">
         <label className="block text-xs font-medium text-text-secondary">Last login timezone</label>
-        <select
+        <select aria-label="Last login timezone"
           value={timezoneOffset}
           onChange={(e) => {
             const v = parseInt(e.target.value, 10);
@@ -709,7 +709,7 @@ const ProfilePage: React.FC = () => {
                         Take Photo
                       </button>
                     )}
-                    <input
+                    <input aria-label="Avatar image file"
                       type="file"
                       accept="image/png,image/jpeg,image/gif,image/webp"
                       onChange={handleAvatarChange}
@@ -717,7 +717,7 @@ const ProfilePage: React.FC = () => {
                     />
                     <p className="text-xs text-text-tertiary">Or paste image URL (min 48×48, max 5 MB):</p>
                     <div className="flex gap-2">
-                      <input
+                      <input aria-label="Avatar image URL"
                         type="url"
                         value={avatarImageUrl}
                         onChange={(e) => setAvatarImageUrl(e.target.value)}

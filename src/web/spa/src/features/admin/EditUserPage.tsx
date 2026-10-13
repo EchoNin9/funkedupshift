@@ -408,7 +408,7 @@ const EditUserPage: React.FC = () => {
           ) : (
             <>
               <div className="relative max-w-xs">
-                <input
+                <input aria-label="Custom groups"
                   type="text"
                   value={customGroupSearch}
                   onChange={(e) => {

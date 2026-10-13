@@ -309,7 +309,7 @@ const WebsitesPage: React.FC = () => {
           >
             <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
           </svg>
-          <input
+          <input aria-label="Search the stash (title, URL, description)..."
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -318,7 +318,7 @@ const WebsitesPage: React.FC = () => {
           />
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
-          <select
+          <select aria-label="Sort order"
             value={sort}
             onChange={(e) => setSort(e.target.value as SortKey)}
             className="input-field w-auto text-xs"
@@ -388,7 +388,7 @@ const WebsitesPage: React.FC = () => {
               </div>
               {/* Category search dropdown (hidden behind a toggle for clean UI) */}
               <div ref={categoryDropdownRef} className="relative">
-                <input
+                <input aria-label="Find category..."
                   type="text"
                   value={categorySearch}
                   onChange={(e) => setCategorySearch(e.target.value)}

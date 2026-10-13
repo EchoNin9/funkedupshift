@@ -444,14 +444,14 @@ const WebsitesAdminPage: React.FC = () => {
           </FormField>
           <div>
             <label className="block text-sm font-medium text-text-primary mb-1">Logo (optional, min 100×100, max 5 MB)</label>
-            <input
+            <input aria-label="Logo file"
               type="file"
               accept="image/png,image/jpeg,image/gif,image/webp"
               onChange={onLogoChange}
               className="block w-full text-xs text-text-secondary file:mr-3 file:rounded-md file:border-0 file:bg-surface-3 file:px-3 file:py-1.5 file:text-text-primary"
             />
             <p className="mt-2 text-xs text-text-tertiary">Or paste image URL (image will be copied to S3 on save):</p>
-            <input
+            <input aria-label="Logo image URL"
               type="url"
               value={logoImageUrl}
               onChange={(e) => {
@@ -539,7 +539,7 @@ const WebsitesAdminPage: React.FC = () => {
                   <li key={c.id} className="rounded-lg border border-border-default bg-surface-1 px-3 py-2 text-sm">
                     {editingId === c.id ? (
                       <form onSubmit={handleUpdateCategory} className="space-y-2">
-                        <input
+                        <input aria-label="Name"
                           type="text"
                           value={editName}
                           onChange={(e) => setEditName(e.target.value)}
@@ -548,7 +548,7 @@ const WebsitesAdminPage: React.FC = () => {
                           className="input-field w-full"
                           autoFocus
                         />
-                        <input
+                        <input aria-label="Description (optional)"
                           type="text"
                           value={editDescription}
                           onChange={(e) => setEditDescription(e.target.value)}
