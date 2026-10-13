@@ -8,10 +8,10 @@ interface BadgeProps {
 
 export function Badge({ label, onRemove, className = "" }: BadgeProps) {
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full bg-slate-800 px-2 py-0.5 text-xs text-slate-200 ${className}`}>
+    <span className={`inline-flex items-center gap-1 rounded-full bg-surface-3 px-2 py-0.5 text-xs text-text-primary ${className}`}>
       {label}
       {onRemove && (
-        <button type="button" onClick={onRemove} className="hover:text-red-400">
+        <button type="button" onClick={onRemove} className="hover:text-danger">
           ×
         </button>
       )}

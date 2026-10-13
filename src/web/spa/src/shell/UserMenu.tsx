@@ -48,7 +48,7 @@ export function UserMenu({ email, onSignOut }: UserMenuProps) {
               <button
                 onClick={onSignOut}
                 className={`block w-full text-left px-3 py-2 text-sm transition-colors duration-150 ${
-                  active ? "bg-surface-3 text-red-400" : "text-red-400/80"
+                  active ? "bg-surface-3 text-danger" : "text-danger/80"
                 }`}
               >
                 Sign out

@@ -320,7 +320,7 @@ const ImagePage: React.FC = () => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
       >
-        <PhotoIcon className="h-6 w-6 text-accent" />
+        <PhotoIcon className="h-6 w-6 text-accent-text" />
         Image Resizer
       </motion.h1>
       <p className="text-sm text-text-secondary">Processed locally — images never leave your browser.</p>

@@ -12,7 +12,7 @@ export function FormField({ label, required, htmlFor, children, className = "" }
   return (
     <div className={className}>
       <label htmlFor={htmlFor} className="block font-display font-extrabold uppercase tracking-tight text-xs text-text-primary mb-1.5">
-        {label}{required && <span className="text-accent ml-0.5">*</span>}
+        {label}{required && <span className="text-accent-text ml-0.5">*</span>}
       </label>
       {children}
     </div>

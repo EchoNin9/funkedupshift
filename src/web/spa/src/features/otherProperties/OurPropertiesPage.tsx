@@ -81,7 +81,7 @@ const OurPropertiesPage: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold tracking-tight text-n3">
+      <h1 className="text-2xl font-semibold tracking-tight text-n3-text">
         Highlights and faves
       </h1>
       <div className="rounded-xl border border-n3/40 bg-gradient-to-br from-n3/10 to-surface-1/90 p-4 shadow-lg">

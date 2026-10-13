@@ -31,6 +31,15 @@ module.exports = {
         n3: "rgb(var(--color-n3) / <alpha-value>)",
         n4: "rgb(var(--color-n4) / <alpha-value>)",
         nav: "rgb(var(--color-nav) / <alpha-value>)",
+        "n1-text": "rgb(var(--color-n1-text) / <alpha-value>)",
+        "n2-text": "rgb(var(--color-n2-text) / <alpha-value>)",
+        "n3-text": "rgb(var(--color-n3-text) / <alpha-value>)",
+        "n4-text": "rgb(var(--color-n4-text) / <alpha-value>)",
+        "nav-text": "rgb(var(--color-nav-text) / <alpha-value>)",
+        "accent-text": "rgb(var(--color-accent-text) / <alpha-value>)",
+        "danger": "rgb(var(--color-danger) / <alpha-value>)",
+        "warning": "rgb(var(--color-warning) / <alpha-value>)",
+        "success": "rgb(var(--color-success) / <alpha-value>)",
         ink: "rgb(var(--color-ink) / <alpha-value>)"
       },
       fontFamily: {

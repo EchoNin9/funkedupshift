@@ -165,7 +165,7 @@ export function PostDetail({ postId, onClose, onChanged }: PostDetailProps) {
                                 href={t.permalink}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 text-xs text-nav hover:underline"
+                                className="inline-flex items-center gap-1 text-xs text-nav-text hover:underline"
                               >
                                 View <ArrowTopRightOnSquareIcon className="h-3 w-3" />
                               </a>
@@ -187,7 +187,7 @@ export function PostDetail({ postId, onClose, onChanged }: PostDetailProps) {
                           <p className="text-xs text-text-tertiary">Attempts: {t.attemptCount}</p>
                         )}
                         {t.lastError && (
-                          <p className="text-xs text-red-400 break-words">{t.lastError}</p>
+                          <p className="text-xs text-danger break-words">{t.lastError}</p>
                         )}
                       </li>
                     );
@@ -212,7 +212,7 @@ export function PostDetail({ postId, onClose, onChanged }: PostDetailProps) {
                     type="button"
                     onClick={handleCancel}
                     disabled={busyKey !== null}
-                    className="inline-flex items-center gap-1.5 rounded-md border border-red-500/60 bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="inline-flex items-center gap-1.5 rounded-md border border-danger/60 bg-danger/10 px-3 py-1.5 text-xs font-medium text-danger hover:bg-danger/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <TrashIcon className="h-3.5 w-3.5" />
                     Cancel post

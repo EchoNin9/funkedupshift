@@ -397,7 +397,7 @@ const EditSitePage: React.FC = () => {
               <img src={logoPreview} alt="New logo" className="h-16 w-16 rounded-lg border border-border-hover object-cover" />
             </div>
           )}
-          {logoError && <p className="mt-1 text-xs text-red-400">{logoError}</p>}
+          {logoError && <p className="mt-1 text-xs text-danger">{logoError}</p>}
         </FormField>
         <FormField label="Categories">
           <SearchableSelect options={categoryOptions} selected={selectedCategoryIds} onChange={setSelectedCategoryIds} />
@@ -410,7 +410,7 @@ const EditSitePage: React.FC = () => {
                 className="inline-flex items-center gap-1 rounded-full bg-surface-3 px-2 py-0.5 text-xs text-text-primary"
               >
                 {t}
-                <button type="button" onClick={() => removeTag(t)} className="hover:text-red-400" aria-label="Remove">
+                <button type="button" onClick={() => removeTag(t)} className="hover:text-danger" aria-label="Remove">
                   ×
                 </button>
               </span>
@@ -459,7 +459,7 @@ const EditSitePage: React.FC = () => {
             type="button"
             onClick={handleDelete}
             disabled={isDeleting || isSubmitting}
-            className="btn-secondary border-red-500/60 text-red-400 hover:bg-red-500/20 disabled:opacity-50 ml-auto"
+            className="btn-secondary border-danger/60 text-danger hover:bg-danger/20 disabled:opacity-50 ml-auto"
           >
             {isDeleting ? "Deleting…" : "Delete entry"}
           </button>

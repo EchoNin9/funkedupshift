@@ -46,7 +46,7 @@ const CategoriesSection: React.FC<{ categories: string[]; onChanged: () => void 
             {c}
             <button type="button" aria-label={`Remove category ${c}`}
               onClick={() => { setList(list.filter((x) => x !== c)); setDirty(true); }}
-              className="text-text-tertiary hover:text-red-400">
+              className="text-text-tertiary hover:text-danger">
               ×
             </button>
           </span>

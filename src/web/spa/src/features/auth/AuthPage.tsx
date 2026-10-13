@@ -248,7 +248,7 @@ const AuthPage: React.FC = () => {
             )}
 
             {error && (
-              <div className="rounded-lg border-2 border-red-500/70 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+              <div className="rounded-lg border-2 border-danger/70 bg-danger/10 px-3 py-2 text-xs text-danger">
                 {error}
               </div>
             )}
@@ -279,7 +279,7 @@ const AuthPage: React.FC = () => {
             {mode === "signin" && (
               <>
                 New here?{" "}
-                <button type="button" onClick={() => switchMode("signup")} className="font-display font-extrabold uppercase tracking-tight text-accent hover:underline">
+                <button type="button" onClick={() => switchMode("signup")} className="font-display font-extrabold uppercase tracking-tight text-accent-text hover:underline">
                   Sign up
                 </button>
               </>
@@ -287,13 +287,13 @@ const AuthPage: React.FC = () => {
             {mode === "signup" && (
               <>
                 Already funky?{" "}
-                <button type="button" onClick={() => switchMode("signin")} className="font-display font-extrabold uppercase tracking-tight text-accent hover:underline">
+                <button type="button" onClick={() => switchMode("signin")} className="font-display font-extrabold uppercase tracking-tight text-accent-text hover:underline">
                   Sign in
                 </button>
               </>
             )}
             {isForgotFlow && (
-              <button type="button" onClick={() => switchMode("signin")} className="font-display font-extrabold uppercase tracking-tight text-accent hover:underline">
+              <button type="button" onClick={() => switchMode("signin")} className="font-display font-extrabold uppercase tracking-tight text-accent-text hover:underline">
                 ← Back to sign in
               </button>
             )}

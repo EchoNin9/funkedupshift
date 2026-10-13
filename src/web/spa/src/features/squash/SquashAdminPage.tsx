@@ -470,8 +470,8 @@ const SquashAdminPage: React.FC = () => {
     return (
       <div className="space-y-4">
         <h1 className="text-xl font-semibold text-text-primary">Squash Admin</h1>
-        <div className="rounded-md bg-red-900/30 border border-red-800/50 px-4 py-3 text-sm text-red-200">
-          Sign in required. <Link to="/auth" className="underline hover:text-red-100">Sign in</Link>
+        <div className="rounded-md bg-danger/20 border border-danger/20 px-4 py-3 text-sm text-danger">
+          Sign in required. <Link to="/auth" className="underline hover:text-danger">Sign in</Link>
         </div>
       </div>
     );
@@ -481,7 +481,7 @@ const SquashAdminPage: React.FC = () => {
     return (
       <div className="space-y-4">
         <h1 className="text-xl font-semibold text-text-primary">Squash Admin</h1>
-        <div className="rounded-md bg-amber-900/30 border border-amber-800/50 px-4 py-3 text-sm text-amber-200">
+        <div className="rounded-md bg-warning/30 border border-warning/50 px-4 py-3 text-sm text-warning">
           Squash Admin requires manager (in Squash group) or SuperAdmin access.
         </div>
       </div>
@@ -500,7 +500,7 @@ const SquashAdminPage: React.FC = () => {
 
       {(message || error) && (
         <div
-          className={`rounded-md px-4 py-3 text-sm ${error ? "bg-red-900/30 border border-red-800/50 text-red-200" : "bg-emerald-900/30 border border-emerald-800/50 text-emerald-200"}`}
+          className={`rounded-md px-4 py-3 text-sm ${error ? "bg-danger/20 border border-danger/20 text-danger" : "bg-success/30 border border-success/50 text-success"}`}
         >
           {error || message}
         </div>
@@ -860,7 +860,7 @@ const SquashAdminPage: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => deleteMatch(id)}
-                          className="rounded-md border border-red-800/50 px-2 py-1 text-xs text-red-300 hover:bg-red-900/30"
+                          className="rounded-md border border-danger/20 px-2 py-1 text-xs text-danger hover:bg-danger/20"
                         >
                           Delete
                         </button>
@@ -1003,7 +1003,7 @@ const SquashAdminPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => deletePlayer(p.id)}
-                      className="rounded-md border border-red-800/50 px-2 py-1 text-xs text-red-300 hover:bg-red-900/30"
+                      className="rounded-md border border-danger/20 px-2 py-1 text-xs text-danger hover:bg-danger/20"
                     >
                       Delete
                     </button>

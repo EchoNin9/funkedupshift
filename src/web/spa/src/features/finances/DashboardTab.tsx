@@ -38,14 +38,14 @@ const DashboardTab: React.FC<{ ctx: FinancesContext }> = ({ ctx }) => {
         <p className="text-3xl font-semibold text-text-primary">{fmtMoney(data.netWorth)}</p>
         <div className="mt-2 flex flex-wrap gap-6 text-sm">
           <span className="text-text-secondary">
-            30-day income: <span className="text-emerald-400 font-medium">{fmtMoney(data.cashFlow30d.income)}</span>
+            30-day income: <span className="text-success font-medium">{fmtMoney(data.cashFlow30d.income)}</span>
           </span>
           <span className="text-text-secondary">
-            30-day spend: <span className="text-red-400 font-medium">{fmtMoney(data.cashFlow30d.spend)}</span>
+            30-day spend: <span className="text-danger font-medium">{fmtMoney(data.cashFlow30d.spend)}</span>
           </span>
           <span className="text-text-secondary">
             Net:{" "}
-            <span className={`font-medium ${data.cashFlow30d.net >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+            <span className={`font-medium ${data.cashFlow30d.net >= 0 ? "text-success" : "text-danger"}`}>
               {fmtMoney(data.cashFlow30d.net)}
             </span>
           </span>
@@ -67,11 +67,11 @@ const DashboardTab: React.FC<{ ctx: FinancesContext }> = ({ ctx }) => {
                     {a.source === "era" && <EraBadge />}
                   </div>
                   <p className="text-xs text-text-tertiary capitalize">{a.kind}</p>
-                  <p className={`mt-1 text-lg font-semibold ${a.balance < 0 ? "text-red-400" : "text-text-primary"}`}>
+                  <p className={`mt-1 text-lg font-semibold ${a.balance < 0 ? "text-danger" : "text-text-primary"}`}>
                     {fmtMoney(a.balance, a.currency)}
                   </p>
                   {drift && (
-                    <p className="mt-1 text-xs text-amber-400">
+                    <p className="mt-1 text-xs text-warning">
                       Bank statement says {fmtMoney(a.reconciledBalance!, a.currency)}
                       {a.reconciledAt ? ` (as of ${a.reconciledAt})` : ""} — doesn&apos;t match the register.
                     </p>

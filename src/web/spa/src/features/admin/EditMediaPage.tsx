@@ -364,7 +364,7 @@ const EditMediaPage: React.FC = () => {
                     type="button"
                     onClick={handleDeleteThumbnail}
                     disabled={isDeletingThumb}
-                    className="rounded-md border border-red-500/60 px-3 py-1.5 text-sm font-medium text-red-400 hover:bg-red-500/20 disabled:opacity-50"
+                    className="rounded-md border border-danger/60 px-3 py-1.5 text-sm font-medium text-danger hover:bg-danger/20 disabled:opacity-50"
                   >
                     {isDeletingThumb ? "Removing…" : "Delete logo"}
                   </button>
@@ -415,7 +415,7 @@ const EditMediaPage: React.FC = () => {
             type="button"
             onClick={handleDelete}
             disabled={isDeleting || isSubmitting}
-            className="btn-secondary border-red-500/60 text-red-400 hover:bg-red-500/20 disabled:opacity-50 ml-auto"
+            className="btn-secondary border-danger/60 text-danger hover:bg-danger/20 disabled:opacity-50 ml-auto"
           >
             {isDeleting ? "Deleting…" : "Delete entry"}
           </button>

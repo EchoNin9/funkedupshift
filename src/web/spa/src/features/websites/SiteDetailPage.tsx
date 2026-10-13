@@ -181,7 +181,7 @@ const SiteDetailPage: React.FC = () => {
           <div className="min-w-0 flex-1 space-y-1">
             <h1 className="text-xl font-semibold tracking-tight text-text-primary">{title}</h1>
             {typeof site.averageRating === "number" && (
-              <span className="inline-flex items-center rounded-full bg-surface-3 px-2 py-0.5 text-sm text-amber-300">
+              <span className="inline-flex items-center rounded-full bg-surface-3 px-2 py-0.5 text-sm text-warning">
                 {site.averageRating.toFixed(1)}★ average
               </span>
             )}

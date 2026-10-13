@@ -1253,7 +1253,7 @@ const VehiclesExpensesPage: React.FC = () => {
               <button
                 onClick={() => handleDeleteVehicle(selectedVehicleId)}
                 disabled={saving || !!exporting}
-                className="text-sm text-red-400 hover:text-red-300"
+                className="text-sm text-danger hover:text-danger"
               >
                 Delete vehicle
               </button>
@@ -1756,7 +1756,7 @@ const VehiclesExpensesPage: React.FC = () => {
                                 <button
                                   onClick={() => handleDeleteFuel(entry.id)}
                                   disabled={saving}
-                                  className="text-red-400 hover:text-red-300 text-sm"
+                                  className="text-danger hover:text-danger text-sm"
                                 >
                                   Delete
                                 </button>
@@ -1807,7 +1807,7 @@ const VehiclesExpensesPage: React.FC = () => {
                                 <button
                                   onClick={() => handleDeleteFuel(entry.id)}
                                   disabled={saving}
-                                  className="text-red-400 hover:text-red-300 text-sm"
+                                  className="text-danger hover:text-danger text-sm"
                                 >
                                   Delete
                                 </button>
@@ -2051,7 +2051,7 @@ const VehiclesExpensesPage: React.FC = () => {
                                 >
                                   Edit
                                 </button>
-                                <button onClick={() => handleDeleteMaintenance(entry.id)} disabled={saving} className="text-red-400 hover:text-red-300 text-sm">
+                                <button onClick={() => handleDeleteMaintenance(entry.id)} disabled={saving} className="text-danger hover:text-danger text-sm">
                                   Delete
                                 </button>
                               </div>

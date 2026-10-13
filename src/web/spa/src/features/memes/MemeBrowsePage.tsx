@@ -496,7 +496,7 @@ const MemeBrowsePage: React.FC = () => {
                         </span>
                       )}
                       {typeof m.averageRating === "number" && (
-                        <span className="inline-flex rounded-full bg-surface-2 px-2 py-0.5 text-[11px] text-amber-300">
+                        <span className="inline-flex rounded-full bg-surface-2 px-2 py-0.5 text-[11px] text-warning">
                           {m.averageRating.toFixed(1)}★
                         </span>
                       )}

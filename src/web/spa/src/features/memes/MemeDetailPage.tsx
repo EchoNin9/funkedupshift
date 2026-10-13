@@ -184,7 +184,7 @@ const MemeDetailPage: React.FC = () => {
             <button
               type="button"
               onClick={() => setConfirmDelete(true)}
-              className="inline-flex items-center gap-1 text-sm text-text-secondary transition-colors hover:text-red-400"
+              className="inline-flex items-center gap-1 text-sm text-text-secondary transition-colors hover:text-danger"
             >
               <TrashIcon className="h-4 w-4" />
               Delete
@@ -192,7 +192,7 @@ const MemeDetailPage: React.FC = () => {
           )}
           {canDelete && confirmDelete && (
             <span className="inline-flex items-center gap-2 text-sm">
-              <span className="text-red-400">Delete this meme?</span>
+              <span className="text-danger">Delete this meme?</span>
               <button
                 type="button"
                 onClick={handleDelete}
@@ -281,7 +281,7 @@ const MemeDetailPage: React.FC = () => {
                 <option value="1">1</option>
               </select>
               {typeof item.averageRating === "number" && (
-                <span className="text-amber-300">{item.averageRating.toFixed(1)}★</span>
+                <span className="text-warning">{item.averageRating.toFixed(1)}★</span>
               )}
             </label>
           </div>

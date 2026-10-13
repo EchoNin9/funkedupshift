@@ -26,7 +26,7 @@ export function BudgetSummary({ budget, loading, error }: BudgetSummaryProps) {
     // Degrade gracefully -- a failed budget fetch shouldn't block the rest
     // of the page (create form, job history) from rendering.
     return (
-      <p className="flex items-center gap-1.5 text-sm text-amber-400">
+      <p className="flex items-center gap-1.5 text-sm text-warning">
         <ExclamationTriangleIcon className="h-4 w-4 shrink-0" />
         Could not load your budget. {error}
       </p>
@@ -35,7 +35,7 @@ export function BudgetSummary({ budget, loading, error }: BudgetSummaryProps) {
 
   if (!budget || budget.budgetCents <= 0) {
     return (
-      <p className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-300">
+      <p className="rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-warning">
         No budget allocated — ask an admin to grant you one before generating clips.
       </p>
     );
