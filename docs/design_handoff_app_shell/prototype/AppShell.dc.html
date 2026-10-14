@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<!-- @template name="App shell — launcher" description="Funkedupshift shell: lean top bar, slide-out app launcher, avatar menu with Admin, guest landing, signed-in dashboard and the URL Shortener tool page." -->
+<helmet><script src="./ds-base.js"></script><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@1&family=JetBrains+Mono:wght@700&family=Syne:wght@800&display=swap"><script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script><style>body{margin:0}.ph{line-height:1}</style></helmet>
+<div data-theme="{{ theme }}" data-palette="{{ palette }}" style="min-height:100vh;display:flex;flex-direction:column;background:var(--color-bg);color:var(--color-text);font-family:var(--font-body);font-size:15px;line-height:1.55;">
+<header style="position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:12px;height:60px;padding:0 20px;background:color-mix(in srgb,var(--color-bg) 84%,transparent);backdrop-filter:blur(14px);border-bottom:1px solid var(--color-divider);">
+<button type="button" onClick="{{ openDrawer }}" aria-label="All apps" title="All apps (⌘K)" class="btn btn-secondary btn-icon only-wide"><i class="ph ph-squares-four" style="font-size:19px;"></i></button>
+<a href="#" onClick="{{ goHome }}" style="display:flex;align-items:center;gap:9px;color:var(--color-text);text-decoration:none;flex:none;"><span class="brand-mark {{ markClass }}">f</span><span style="font-family:var(--font-heading);font-weight:600;font-size:17px;letter-spacing:-0.02em;">funked<span style="color:var(--color-accent-text);">up</span>shift</span></a>
+<button type="button" onClick="{{ openDrawer }}" class="only-wide" style="flex:0 1 380px;min-width:0;margin-left:20px;display:flex;align-items:center;gap:10px;height:38px;padding:0 10px 0 12px;background:var(--color-surface);border:1px solid var(--color-divider);border-radius:var(--radius-md);color:var(--color-text-muted);font:inherit;font-size:14px;cursor:pointer;" style-hover="border-color:var(--color-border-strong);"><i class="ph ph-magnifying-glass" style="font-size:16px;"></i><span style="flex:1;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Search apps and tools</span><kbd style="font-family:var(--font-body);font-size:11px;font-weight:600;padding:2px 6px;border-radius:5px;background:var(--color-surface-2);color:var(--color-text-muted);">⌘K</kbd></button>
+<div style="flex:1;"></div>
+<button type="button" onClick="{{ toggleTheme }}" aria-label="Toggle theme" title="Toggle theme" class="btn btn-ghost btn-icon" style="color:var(--color-text-muted);"><i class="ph {{ themeIcon }}" style="font-size:19px;"></i></button>
+<sc-if value="{{ signedIn }}" hint-placeholder-val="{{ true }}"><button type="button" onClick="{{ toggleMenu }}" aria-label="Account" class="only-wide" style="width:36px;height:36px;border-radius:50%;border:0;background:linear-gradient(135deg,var(--color-hue-violet),var(--color-hue-coral));color:var(--color-on-accent);font-family:var(--font-heading);font-weight:600;font-size:14px;cursor:pointer;">{{ initials }}</button></sc-if>
+<sc-if value="{{ isGuest }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ goSignin }}" class="btn btn-primary only-wide">Sign in</button></sc-if>
+</header>
+<sc-if value="{{ showBanner }}" hint-placeholder-val="{{ false }}">
+<div role="region" aria-label="Site updates" style="display:flex;align-items:center;gap:12px;height:40px;padding:0 8px 0 20px;background:color-mix(in srgb,var(--color-accent) 14%,var(--color-bg));border-bottom:1px solid var(--color-divider);font-size:13px;">
+<span class="tag tag-accent" style="flex:none;"><i class="ph-fill ph-megaphone-simple"></i>Updates</span>
+<div class="marquee" style="flex:1;min-width:0;"><div class="marquee-track"><sc-for list="{{ bannerLoop }}" as="b" hint-placeholder-count="6"><span style="display:flex;align-items:center;gap:22px;padding-right:22px;white-space:nowrap;font-weight:600;">{{ b }}<span style="color:var(--color-accent-text);">✦</span></span></sc-for></div></div>
+<sc-if value="{{ canDismissBanner }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ dismissBanner }}" aria-label="Dismiss updates" title="Hide until your next visit" class="btn btn-ghost btn-icon" style="width:32px;height:32px;flex:none;color:var(--color-text-muted);"><i class="ph ph-x" style="font-size:16px;"></i></button></sc-if>
+</div>
+</sc-if>
+<main class="app-main" style="flex:1;width:100%;max-width:1180px;margin:0 auto;padding:0 24px 64px;">
+<sc-if value="{{ showLanding }}" hint-placeholder-val="{{ false }}">
+<section style="padding:80px 0 40px;max-width:880px;">
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:28px;"><span class="tag tag-outline"><span style="width:7px;height:7px;border-radius:50%;background:var(--color-hue-teal);"></span>Discover</span><span class="tag tag-outline"><span style="width:7px;height:7px;border-radius:50%;background:var(--color-hue-violet);"></span>Tools</span><span class="tag tag-outline"><span style="width:7px;height:7px;border-radius:50%;background:var(--color-hue-coral);"></span>Modules</span></div>
+<h1 style="font-size:clamp(52px,9vw,112px);line-height:0.9;letter-spacing:-0.05em;margin:0 0 28px;">Funked <span style="color:var(--color-accent-text);">up</span><br>shift<span style="color:var(--color-accent);">.</span></h1>
+<p style="font-size:19px;line-height:1.5;color:var(--color-text-muted);max-width:560px;margin:0 0 32px;text-wrap:pretty;">A curated index of the web, a media library and a kit of everyday tools. Open to browse — sign in to rate, save and use the modules.</p>
+<div style="display:flex;gap:10px;flex-wrap:wrap;"><button type="button" onClick="{{ openDrawer }}" class="btn btn-primary btn-lg"><i class="ph ph-squares-four"></i>Explore all apps</button><button type="button" onClick="{{ goWebsites }}" class="btn btn-secondary btn-lg">Browse websites</button></div>
+</section>
+<sc-for list="{{ landingGroups }}" as="g" hint-placeholder-count="3">
+<section style="padding:32px 0 8px;">
+<div style="display:flex;align-items:baseline;gap:12px;margin-bottom:16px;flex-wrap:wrap;"><span class="hue-dot {{ g.hueClass }}" style="width:9px;height:9px;border-radius:50%;align-self:center;"></span><h2 style="font-size:24px;margin:0;">{{ g.label }}</h2><span style="font-size:14px;color:var(--color-text-muted);">{{ g.blurb }}</span></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;">
+<sc-for list="{{ g.apps }}" as="app" hint-placeholder-count="4">
+<button type="button" onClick="{{ app.onClick }}" title="{{ app.title }}" class="{{ app.stateClass }}" style="position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:14px;text-align:left;padding:18px;border-radius:var(--radius-lg);background:var(--color-surface);border:1px solid var(--color-divider);color:var(--color-text);font:inherit;cursor:pointer;transition:border-color .15s,transform .15s;" style-hover="border-color:var(--color-border-strong);transform:translateY(-2px);">
+<span class="app-icon {{ app.hueClass }}" style="width:42px;height:42px;border-radius:11px;display:grid;place-items:center;font-size:22px;"><i class="ph {{ app.icon }}"></i></span>
+<span style="display:flex;flex-direction:column;gap:3px;"><span style="font-weight:700;font-size:15px;">{{ app.name }}</span><span style="font-size:13px;line-height:1.45;color:var(--color-text-muted);text-wrap:pretty;">{{ app.desc }}</span></span>
+<sc-if value="{{ app.locked }}" hint-placeholder-val="{{ false }}"><span style="position:absolute;top:16px;right:16px;display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--color-text-muted);"><i class="ph ph-lock-simple"></i>{{ app.lockText }}</span></sc-if>
+</button>
+</sc-for>
+</div>
+</section>
+</sc-for>
+</sc-if>
+<sc-if value="{{ showDashboard }}" hint-placeholder-val="{{ true }}">
+<section style="padding:52px 0 32px;display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;">
+<div><div style="font-size:13px;font-weight:600;color:var(--color-text-muted);margin-bottom:8px;">{{ today }}</div><h1 style="font-size:clamp(36px,5vw,54px);letter-spacing:-0.04em;margin:0;">{{ greeting }}</h1></div>
+<button type="button" onClick="{{ openDrawer }}" class="btn btn-secondary"><i class="ph ph-squares-four"></i>All apps</button>
+</section>
+<h2 style="font-size:13px;font-family:var(--font-body);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--color-text-muted);margin:0 0 12px;">Pinned</h2>
+<p style="margin:-6px 0 14px;font-size:13px;color:var(--color-text-muted);">Pin any app with the pin button in its page header, or right from the launcher.</p>
+<sc-if value="{{ noPins }}" hint-placeholder-val="{{ false }}"><div style="padding:20px;margin-bottom:36px;border:1px dashed var(--color-border-strong);border-radius:var(--radius-md);font-size:14px;color:var(--color-text-muted);">No pinned apps yet.</div></sc-if>
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-bottom:36px;">
+<sc-for list="{{ pinned }}" as="app" hint-placeholder-count="6">
+<button type="button" onClick="{{ app.onClick }}" title="{{ app.title }}" class="{{ app.stateClass }}" style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:var(--radius-md);background:var(--color-surface);border:1px solid var(--color-divider);color:var(--color-text);font:inherit;text-align:left;cursor:pointer;" style-hover="border-color:var(--color-border-strong);">
+<span class="app-icon {{ app.hueClass }}" style="width:38px;height:38px;flex:none;border-radius:10px;display:grid;place-items:center;font-size:20px;"><i class="ph {{ app.icon }}"></i></span>
+<span style="display:flex;flex-direction:column;min-width:0;"><span style="font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ app.name }}</span><span style="font-size:12px;color:var(--color-text-muted);">{{ app.groupLabel }}</span></span>
+</button>
+</sc-for>
+</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr));gap:16px;align-items:start;">
+<section style="background:var(--color-surface);border:1px solid var(--color-divider);border-radius:var(--radius-lg);padding:20px;">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;"><h3 style="font-size:18px;margin:0;">Recent short links</h3><button type="button" onClick="{{ goShortener }}" class="btn btn-ghost">Open shortener<i class="ph ph-arrow-right"></i></button></div>
+<sc-for list="{{ recentLinks }}" as="l" hint-placeholder-count="3">
+<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--color-divider);">
+<div style="flex:1;min-width:0;"><div style="font-weight:700;font-size:14px;color:var(--color-accent-text);">{{ l.shortUrl }}</div><div style="font-size:13px;color:var(--color-text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ l.url }}</div></div>
+<button type="button" onClick="{{ l.onCopy }}" class="btn btn-secondary" style="padding:6px 10px;font-size:13px;"><i class="ph {{ l.copyIcon }}"></i>{{ l.copyLabel }}</button>
+</div>
+</sc-for>
+</section>
+<section style="background:var(--color-surface);border:1px solid var(--color-divider);border-radius:var(--radius-lg);padding:20px;">
+<h3 style="font-size:18px;margin:0 0 8px;">Recently used</h3>
+<sc-for list="{{ recent }}" as="app" hint-placeholder-count="4">
+<button type="button" onClick="{{ app.onClick }}" style="display:flex;align-items:center;gap:12px;width:100%;padding:10px 0;border:0;border-top:1px solid var(--color-divider);background:transparent;color:var(--color-text);font:inherit;text-align:left;cursor:pointer;" style-hover="color:var(--color-accent-text);">
+<span class="app-icon {{ app.hueClass }}" style="width:32px;height:32px;flex:none;border-radius:9px;display:grid;place-items:center;font-size:17px;"><i class="ph {{ app.icon }}"></i></span>
+<span style="flex:1;font-weight:600;font-size:14px;">{{ app.name }}</span><span style="font-size:12px;color:var(--color-text-muted);">{{ app.when }}</span>
+</button>
+</sc-for>
+</section>
+</div>
+</sc-if>
+<sc-if value="{{ showAppPage }}" hint-placeholder-val="{{ false }}">
+<nav style="display:flex;align-items:center;gap:6px;padding-top:28px;font-size:13px;color:var(--color-text-muted);"><a href="#" onClick="{{ goHome }}" style="color:var(--color-text-muted);text-decoration:none;" style-hover="color:var(--color-text);">Home</a><i class="ph ph-caret-right" style="font-size:11px;"></i><a href="#" onClick="{{ cur.onGroup }}" style="color:var(--color-text-muted);text-decoration:none;" style-hover="color:var(--color-text);">{{ cur.groupLabel }}</a><i class="ph ph-caret-right" style="font-size:11px;"></i><a href="#" onClick="{{ cur.onSelf }}" aria-current="page" style="color:var(--color-text);font-weight:600;text-decoration:none;">{{ cur.name }}</a></nav>
+<header style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:18px 0 28px;">
+<span class="app-icon {{ cur.hueClass }}" style="width:54px;height:54px;flex:none;border-radius:14px;display:grid;place-items:center;font-size:28px;"><i class="ph {{ cur.icon }}"></i></span>
+<div style="min-width:0;flex:1;"><h1 style="font-size:clamp(28px,3.5vw,36px);letter-spacing:-0.035em;margin:0 0 2px;">{{ cur.name }}</h1><p style="margin:0;color:var(--color-text-muted);">{{ cur.desc }}</p></div>
+<sc-if value="{{ cur.canPin }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ cur.onPin }}" title="{{ cur.pinTitle }}" class="btn btn-secondary"><i class="{{ cur.pinIconClass }}" style="font-size:16px;color:var(--color-accent-text);"></i>{{ cur.pinLabel }}</button></sc-if>
+</header>
+</sc-if>
+<sc-if value="{{ showShortener }}" hint-placeholder-val="{{ false }}">
+<sc-if value="{{ signedIn }}" hint-placeholder-val="{{ true }}">
+<form onSubmit="{{ mint }}" style="display:flex;gap:10px;flex-wrap:wrap;padding:14px;background:var(--color-surface);border:1px solid var(--color-divider);border-radius:var(--radius-lg);">
+<div style="flex:1 1 320px;position:relative;"><i class="ph ph-link-simple" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:18px;color:var(--color-text-muted);"></i><input class="input" type="text" aria-label="URL to shorten" value="{{ url }}" onChange="{{ onUrl }}" placeholder="https://example.com/some/very/long/path" style="min-height:48px;padding-left:42px;font-size:15px;"></div>
+<button type="submit" class="btn btn-primary btn-lg" style="min-height:48px;">Shorten</button>
+</form>
+<sc-if value="{{ hasError }}" hint-placeholder-val="{{ false }}"><p style="display:flex;align-items:center;gap:6px;margin:10px 2px 0;font-size:13px;font-weight:600;color:var(--color-danger);"><i class="ph ph-warning-circle"></i>{{ error }}</p></sc-if>
+<sc-if value="{{ hasMinted }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:12px;padding:14px 16px;border-radius:var(--radius-lg);background:color-mix(in srgb,var(--color-hue-teal) 12%,var(--color-surface));border:1px solid color-mix(in srgb,var(--color-hue-teal) 35%,transparent);">
+<i class="ph ph-check-circle" style="font-size:22px;color:var(--color-hue-teal);"></i>
+<div style="flex:1;min-width:0;"><div style="font-size:12px;font-weight:600;color:var(--color-text-muted);">Short link ready</div><div style="font-family:var(--font-heading);font-weight:600;font-size:20px;letter-spacing:-0.02em;">{{ minted.shortUrl }}</div></div>
+<button type="button" onClick="{{ minted.onCopy }}" class="btn btn-secondary"><i class="ph {{ minted.copyIcon }}"></i>{{ minted.copyLabel }}</button>
+</div>
+</sc-if>
+<section style="margin-top:36px;">
+<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:12px;"><h2 style="font-size:20px;margin:0;">Your links</h2><span class="tag tag-neutral">{{ linkCount }}</span><span style="font-size:13px;color:var(--color-text-muted);margin-left:auto;">Links expire after 90 days unless you change the date.</span></div>
+<div class="row-list" style="background:var(--color-surface);border:1px solid var(--color-divider);border-radius:var(--radius-lg);overflow:hidden;">
+<sc-for list="{{ linkRows }}" as="l" hint-placeholder-count="4">
+<div style="padding:14px 16px;">
+<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+<div style="flex:1 1 320px;min-width:0;"><a href="#" onClick="{{ l.onOpen }}" style="font-weight:700;font-size:15px;text-decoration:none;">{{ l.shortUrl }}</a><div style="font-size:13px;color:var(--color-text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ l.url }}</div></div>
+<div style="font-size:12px;color:var(--color-text-muted);line-height:1.4;min-width:150px;"><div>Created {{ l.created }}</div><div>Expires <span style="color:var(--color-text);font-weight:600;">{{ l.expires }}</span></div></div>
+<div style="display:flex;gap:6px;"><button type="button" onClick="{{ l.onCopy }}" class="btn btn-secondary" style="padding:7px 11px;font-size:13px;min-width:86px;"><i class="ph {{ l.copyIcon }}"></i>{{ l.copyLabel }}</button><button type="button" onClick="{{ l.onEdit }}" aria-label="Edit expiry" title="Edit expiry" class="btn btn-secondary btn-icon"><i class="ph ph-calendar-dots" style="font-size:16px;"></i></button><button type="button" onClick="{{ l.onDelete }}" aria-label="Delete link" title="Delete link" class="btn btn-secondary btn-icon" style="color:var(--color-danger);"><i class="ph ph-trash" style="font-size:16px;"></i></button></div>
+</div>
+<sc-if value="{{ l.isEditing }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px dashed var(--color-divider);">
+<span style="font-size:13px;font-weight:600;">New expiry</span><input type="datetime-local" class="input" value="{{ draft }}" onChange="{{ onDraft }}" style="width:auto;min-height:36px;"><button type="button" onClick="{{ saveExpiry }}" class="btn btn-primary" style="padding:8px 14px;">Save</button><button type="button" onClick="{{ cancelEdit }}" class="btn btn-ghost" style="color:var(--color-text-muted);">Cancel</button>
+<sc-if value="{{ hasEditError }}" hint-placeholder-val="{{ false }}"><span style="font-size:13px;color:var(--color-danger);width:100%;">{{ editError }}</span></sc-if>
+</div>
+</sc-if>
+</div>
+</sc-for>
+<sc-if value="{{ noLinks }}" hint-placeholder-val="{{ false }}"><div style="padding:36px 16px;text-align:center;color:var(--color-text-muted);font-size:14px;">No short links yet — mint one above.</div></sc-if>
+</div>
+</section>
+</sc-if>
+<sc-if value="{{ isGuest }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:24px;border-radius:var(--radius-lg);background:var(--color-surface);border:1px solid var(--color-divider);"><i class="ph ph-lock-simple" style="font-size:26px;color:var(--color-accent-text);"></i><div style="flex:1;min-width:220px;"><div style="font-weight:700;">Sign in to create short links</div><div style="font-size:14px;color:var(--color-text-muted);">Your links stay private to your account.</div></div><button type="button" onClick="{{ goSignin }}" class="btn btn-primary">Sign in</button></div>
+</sc-if>
+</sc-if>
+<sc-if value="{{ showThemesAdmin }}" hint-placeholder-val="{{ false }}">
+<section style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-end;padding:20px;margin-bottom:28px;background:var(--color-surface);border:1px solid var(--color-divider);border-radius:var(--radius-lg);">
+<div style="flex:1 1 260px;"><h3 style="font-size:18px;margin:0 0 4px;">Site defaults</h3><p style="margin:0;font-size:14px;color:var(--color-text-muted);text-wrap:pretty;">Used for guests and anyone who hasn't picked their own. If a user's theme is deleted, they fall back to the default theme.</p></div>
+<div class="field"><label>Default theme</label><div style="display:flex;gap:6px;flex-wrap:wrap;"><sc-for list="{{ themeOptions }}" as="o" hint-placeholder-count="4"><button type="button" onClick="{{ o.onPick }}" data-palette="{{ o.id }}" data-theme="{{ theme }}" class="theme-chip {{ o.selClass }}" style="display:flex;align-items:center;gap:7px;padding:7px 11px;border-radius:9px;border:1px solid var(--color-divider);background:var(--color-bg);color:var(--color-text);font:inherit;font-size:13px;font-weight:600;cursor:pointer;"><span style="width:12px;height:12px;border-radius:50%;background:var(--color-accent);"></span>{{ o.name }}</button></sc-for></div></div>
+<div class="field"><label>Default mode</label><div class="seg"><label class="seg-opt"><input type="radio" name="defmode" checked="{{ defDark }}" onChange="{{ setDefDark }}"><i class="ph ph-moon"></i>Dark</label><label class="seg-opt"><input type="radio" name="defmode" checked="{{ defLight }}" onChange="{{ setDefLight }}"><i class="ph ph-sun"></i>Light</label></div></div>
+</section>
+<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;"><h2 style="font-size:20px;margin:0;">Themes</h2><span class="tag tag-neutral">{{ themeCount }}</span><span style="flex:1;"></span><button type="button" onClick="{{ newTheme }}" class="btn btn-primary"><i class="ph ph-plus"></i>New theme</button></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr));gap:14px;">
+<sc-for list="{{ themeRows }}" as="th" hint-placeholder-count="4">
+<div style="display:flex;flex-direction:column;background:var(--color-surface);border:1px solid var(--color-divider);border-radius:var(--radius-lg);overflow:hidden;">
+<div style="display:grid;grid-template-columns:1fr 1fr;"><div data-palette="{{ th.id }}" data-theme="dark" style="padding:14px;background:var(--color-bg);color:var(--color-text);display:flex;flex-direction:column;gap:10px;min-width:0;"><div style="display:flex;align-items:center;gap:7px;"><span style="width:20px;height:20px;border-radius:6px;display:grid;place-items:center;background:var(--color-accent);color:var(--color-on-accent);font-family:Syne,sans-serif;font-weight:800;font-size:12px;">f</span><span style="font-size:11px;font-weight:700;color:var(--color-text-muted);">Dark</span></div><div style="display:flex;gap:5px;padding:8px;border-radius:8px;background:var(--color-surface);border:1px solid var(--color-divider);"><span class="app-icon hue-teal" style="width:24px;height:24px;border-radius:7px;font-size:13px;"><i class="ph ph-globe-hemisphere-west"></i></span><span class="app-icon hue-violet" style="width:24px;height:24px;border-radius:7px;font-size:13px;"><i class="ph ph-link"></i></span><span class="app-icon hue-coral" style="width:24px;height:24px;border-radius:7px;font-size:13px;"><i class="ph ph-wallet"></i></span><span class="app-icon hue-amber" style="width:24px;height:24px;border-radius:7px;font-size:13px;"><i class="ph ph-gauge"></i></span></div><div style="display:flex;align-items:center;gap:8px;"><span style="padding:4px 10px;border-radius:7px;background:var(--color-accent);color:var(--color-on-accent);font-size:11px;font-weight:700;">Button</span><span style="font-size:11px;font-weight:700;color:var(--color-accent-text);">Link</span></div></div><div data-palette="{{ th.id }}" data-theme="light" style="padding:14px;background:var(--color-bg);color:var(--color-text);display:flex;flex-direction:column;gap:10px;min-width:0;"><div style="display:flex;align-items:center;gap:7px;"><span style="width:20px;height:20px;border-radius:6px;display:grid;place-items:center;background:var(--color-accent);color:var(--color-on-accent);font-family:Syne,sans-serif;font-weight:800;font-size:12px;">f</span><span style="font-size:11px;font-weight:700;color:var(--color-text-muted);">Light</span></div><div style="display:flex;gap:5px;padding:8px;border-radius:8px;background:var(--color-surface);border:1px solid var(--color-divider);"><span class="app-icon hue-teal" style="width:24px;height:24px;border-radius:7px;font-size:13px;"><i class="ph ph-globe-hemisphere-west"></i></span><span class="app-icon hue-violet" style="width:24px;height:24px;border-radius:7px;font-size:13px;"><i class="ph ph-link"></i></span><span class="app-icon hue-coral" style="width:24px;height:24px;border-radius:7px;font-size:13px;"><i class="ph ph-wallet"></i></span><span class="app-icon hue-amber" style="width:24px;height:24px;border-radius:7px;font-size:13px;"><i class="ph ph-gauge"></i></span></div><div style="display:flex;align-items:center;gap:8px;"><span style="padding:4px 10px;border-radius:7px;background:var(--color-accent);color:var(--color-on-accent);font-size:11px;font-weight:700;">Button</span><span style="font-size:11px;font-weight:700;color:var(--color-accent-text);">Link</span></div></div></div>
+<div style="padding:14px 16px;display:flex;flex-direction:column;gap:12px;border-top:1px solid var(--color-divider);">
+<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><span style="font-weight:700;font-size:15px;">{{ th.name }}</span><sc-if value="{{ th.isDefault }}" hint-placeholder-val="{{ false }}"><span class="tag tag-accent">Site default</span></sc-if><sc-if value="{{ th.isMine }}" hint-placeholder-val="{{ false }}"><span class="tag tag-neutral">Your theme</span></sc-if></div>
+<div style="display:flex;gap:6px;flex-wrap:wrap;"><sc-if value="{{ th.notDefault }}" hint-placeholder-val="{{ true }}"><button type="button" onClick="{{ th.onMakeDefault }}" class="btn btn-secondary" style="padding:6px 10px;font-size:13px;">Make default</button></sc-if><button type="button" onClick="{{ th.onEdit }}" class="btn btn-secondary" style="padding:6px 10px;font-size:13px;"><i class="ph ph-pencil-simple"></i>Edit</button><sc-if value="{{ th.notDefault }}" hint-placeholder-val="{{ true }}"><button type="button" onClick="{{ th.onDelete }}" class="btn btn-secondary" style="padding:6px 10px;font-size:13px;color:var(--color-danger);"><i class="ph ph-trash"></i>Delete</button></sc-if></div>
+</div>
+</div>
+</sc-for>
+</div>
+</sc-if>
+<sc-if value="{{ showGeneric }}" hint-placeholder-val="{{ false }}">
+<div style="padding:48px 24px;border-radius:var(--radius-lg);border:1px dashed var(--color-border-strong);color:var(--color-text-muted);font-size:14px;max-width:640px;">This app's current screen drops in here, full width under the shell — the launcher is always one click (or ⌘K) away, so it no longer needs its own sidebar.</div>
+</sc-if>
+<sc-if value="{{ hasMore }}" hint-placeholder-val="{{ false }}">
+<section style="margin-top:44px;">
+<h2 style="font-size:13px;font-family:var(--font-body);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--color-text-muted);margin:0 0 12px;">{{ moreTitle }}</h2>
+<div style="display:flex;gap:8px;flex-wrap:wrap;">
+<sc-for list="{{ moreApps }}" as="app" hint-placeholder-count="6"><button type="button" onClick="{{ app.onClick }}" class="btn btn-secondary {{ app.stateClass }}" style="padding:8px 12px 8px 8px;"><span class="app-icon {{ app.hueClass }}" style="width:26px;height:26px;border-radius:7px;display:grid;place-items:center;font-size:15px;"><i class="ph {{ app.icon }}"></i></span>{{ app.name }}</button></sc-for>
+</div>
+</section>
+</sc-if>
+<sc-if value="{{ showGroupPage }}" hint-placeholder-val="{{ false }}">
+<nav style="display:flex;align-items:center;gap:6px;padding-top:28px;font-size:13px;color:var(--color-text-muted);"><a href="#" onClick="{{ goHome }}" style="color:var(--color-text-muted);text-decoration:none;" style-hover="color:var(--color-text);">Home</a><i class="ph ph-caret-right" style="font-size:11px;"></i><a href="#" onClick="{{ groupPage.onSelf }}" aria-current="page" style="color:var(--color-text);font-weight:600;text-decoration:none;">{{ groupPage.label }}</a></nav>
+<header style="display:flex;align-items:center;gap:14px;padding:18px 0 28px;"><span class="hue-dot {{ groupPage.hueClass }}" style="width:12px;height:12px;border-radius:50%;"></span><div><h1 style="font-size:clamp(28px,3.5vw,36px);letter-spacing:-0.035em;margin:0 0 2px;">{{ groupPage.label }}</h1><p style="margin:0;color:var(--color-text-muted);">{{ groupPage.blurb }}</p></div></header>
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;">
+<sc-for list="{{ groupPage.apps }}" as="app" hint-placeholder-count="4">
+<button type="button" onClick="{{ app.onClick }}" title="{{ app.title }}" class="{{ app.stateClass }}" style="position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:14px;text-align:left;padding:18px;border-radius:var(--radius-lg);background:var(--color-surface);border:1px solid var(--color-divider);color:var(--color-text);font:inherit;cursor:pointer;transition:border-color .15s,transform .15s;" style-hover="border-color:var(--color-border-strong);transform:translateY(-2px);">
+<span class="app-icon {{ app.hueClass }}" style="width:42px;height:42px;border-radius:11px;display:grid;place-items:center;font-size:22px;"><i class="ph {{ app.icon }}"></i></span>
+<span style="display:flex;flex-direction:column;gap:3px;"><span style="font-weight:700;font-size:15px;">{{ app.name }}</span><span style="font-size:13px;line-height:1.45;color:var(--color-text-muted);text-wrap:pretty;">{{ app.desc }}</span></span>
+<sc-if value="{{ app.locked }}" hint-placeholder-val="{{ false }}"><span style="position:absolute;top:16px;right:16px;display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--color-text-muted);"><i class="ph ph-lock-simple"></i>{{ app.lockText }}</span></sc-if>
+</button>
+</sc-for>
+</div>
+</sc-if>
+<sc-if value="{{ showSignin }}" hint-placeholder-val="{{ false }}">
+<div style="max-width:400px;margin:72px auto 0;padding:28px;border-radius:var(--radius-lg);background:var(--color-surface);border:1px solid var(--color-divider);box-shadow:var(--shadow-md);display:flex;flex-direction:column;gap:16px;">
+<div><h1 style="font-size:30px;margin:0 0 4px;">Sign in</h1><p style="margin:0;font-size:14px;color:var(--color-text-muted);">Unlock tools, finances and the modules.</p></div>
+<div class="field"><label>Email</label><input class="input" type="email" placeholder="you@example.com"></div>
+<div class="field"><label>Password</label><input class="input" type="password" placeholder="••••••••"></div>
+<button type="button" onClick="{{ signIn }}" class="btn btn-primary btn-lg">Sign in</button>
+<p style="margin:0;font-size:13px;color:var(--color-text-muted);text-align:center;">New here? <a href="#" onClick="{{ signIn }}">Create an account</a></p>
+</div>
+</sc-if>
+</main>
+<footer class="app-footer" style="border-top:1px solid var(--color-divider);"><div style="max-width:1180px;margin:0 auto;padding:20px 24px;display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--color-text-muted);"><span>© 2026 funkedupshift</span><span style="flex:1;"></span><a href="#" style="color:var(--color-text-muted);text-decoration:none;">Privacy</a></div></footer>
+<sc-if value="{{ isEditingTheme }}" hint-placeholder-val="{{ false }}">
+<div class="dialog-backdrop" onClick="{{ cancelThemeEdit }}" style="z-index:70;">
+<div class="dialog" onClick="{{ stop }}" style="width:min(760px,100%);max-height:calc(100vh - 32px);overflow:auto;">
+<div class="dialog-title">{{ draftTitle }}</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:22px;">
+<div style="display:flex;flex-direction:column;gap:14px;">
+<div class="field"><label>Name</label><input class="input" type="text" value="{{ draft.name }}" onChange="{{ onDraftName }}"></div>
+<div class="field"><label>Ground tint <span style="font-weight:500;color:var(--color-text-muted);">{{ draft.tint }}°</span></label><input type="range" min="0" max="360" value="{{ draft.tint }}" onChange="{{ onDraftTint }}" style="width:100%;accent-color:var(--color-accent);"></div>
+<div style="display:flex;flex-direction:column;gap:6px;"><span style="font-size:13px;font-weight:600;">Colours</span>
+<sc-for list="{{ draftColors }}" as="c" hint-placeholder-count="5"><label style="display:flex;align-items:center;gap:10px;padding:6px 8px;border-radius:8px;border:1px solid var(--color-divider);cursor:pointer;"><input type="color" value="{{ c.value }}" onChange="{{ c.onChange }}" style="width:34px;height:26px;border:0;padding:0;background:none;cursor:pointer;"><span style="flex:1;font-size:14px;font-weight:600;">{{ c.label }}</span><span style="font-size:12px;color:var(--color-text-muted);font-family:ui-monospace,Menlo,monospace;">{{ c.value }}</span></label></sc-for>
+</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:10px;"><span style="font-size:13px;font-weight:600;">Preview</span><div style="border-radius:var(--radius-md);overflow:hidden;border:1px solid var(--color-divider);"><div data-palette="__draft" data-theme="dark" style="padding:14px;background:var(--color-bg);color:var(--color-text);display:flex;flex-direction:column;gap:10px;min-width:0;"><div style="display:flex;align-items:center;gap:7px;"><span style="width:20px;height:20px;border-radius:6px;display:grid;place-items:center;background:var(--color-accent);color:var(--color-on-accent);font-family:Syne,sans-serif;font-weight:800;font-size:12px;">f</span><span style="font-size:11px;font-weight:700;color:var(--color-text-muted);">Dark mode</span></div><div style="display:flex;gap:5px;padding:8px;border-radius:8px;background:var(--color-surface);border:1px solid var(--color-divider);"><span class="app-icon hue-teal" style="width:24px;height:24px;border-radius:7px;font-size:13px;"><i class="ph ph-globe-hemisphere-west"></i></span><span class="app-icon hue-violet" style="width:24px;height:24px;border-radius:7px;font-size:13px;"><i class="ph ph-link"></i></span><span class="app-icon hue-coral" style="width:24px;height:24px;border-radius:7px;font-size:13px;"><i class="ph ph-wallet"></i></span><span class="app-icon hue-amber" style="width:24px;height:24px;border-radius:7px;font-size:13px;"><i class="ph ph-gauge"></i></span></div><div style="display:flex;align-items:center;gap:8px;"><span style="padding:4px 10px;border-radius:7px;background:var(--color-accent);color:var(--color-on-accent);font-size:11px;font-weight:700;">Button</span><span style="font-size:11px;font-weight:700;color:var(--color-accent-text);">Link</span></div></div></div><div style="border-radius:var(--radius-md);overflow:hidden;border:1px solid var(--color-divider);"><div data-palette="__draft" data-theme="light" style="padding:14px;background:var(--color-bg);color:var(--color-text);display:flex;flex-direction:column;gap:10px;min-width:0;"><div style="display:flex;align-items:center;gap:7px;"><span style="width:20px;height:20px;border-radius:6px;display:grid;place-items:center;background:var(--color-accent);color:var(--color-on-accent);font-family:Syne,sans-serif;font-weight:800;font-size:12px;">f</span><span style="font-size:11px;font-weight:700;color:var(--color-text-muted);">Light mode</span></div><div style="display:flex;gap:5px;padding:8px;border-radius:8px;background:var(--color-surface);border:1px solid var(--color-divider);"><span class="app-icon hue-teal" style="width:24px;height:24px;border-radius:7px;font-size:13px;"><i class="ph ph-globe-hemisphere-west"></i></span><span class="app-icon hue-violet" style="width:24px;height:24px;border-radius:7px;font-size:13px;"><i class="ph ph-link"></i></span><span class="app-icon hue-coral" style="width:24px;height:24px;border-radius:7px;font-size:13px;"><i class="ph ph-wallet"></i></span><span class="app-icon hue-amber" style="width:24px;height:24px;border-radius:7px;font-size:13px;"><i class="ph ph-gauge"></i></span></div><div style="display:flex;align-items:center;gap:8px;"><span style="padding:4px 10px;border-radius:7px;background:var(--color-accent);color:var(--color-on-accent);font-size:11px;font-weight:700;">Button</span><span style="font-size:11px;font-weight:700;color:var(--color-accent-text);">Link</span></div></div></div><p style="margin:0;font-size:12px;color:var(--color-text-muted);text-wrap:pretty;">Light mode is derived automatically — colours are deepened so they hold contrast on light grounds.</p></div>
+</div>
+<div class="dialog-actions"><button type="button" onClick="{{ cancelThemeEdit }}" class="btn btn-ghost" style="color:var(--color-text-muted);">Cancel</button><button type="button" onClick="{{ saveTheme }}" class="btn btn-primary">Save theme</button></div>
+</div>
+</div>
+</sc-if>
+<nav class="tabbar only-narrow" aria-label="Primary">
+<button type="button" onClick="{{ goHome }}" class="tab {{ tabHome }}"><i class="ph ph-house"></i><span>Home</span></button>
+<button type="button" onClick="{{ openApps }}" class="tab {{ tabApps }}"><i class="ph ph-squares-four"></i><span>Apps</span></button>
+<button type="button" onClick="{{ openDrawer }}" class="tab"><i class="ph ph-magnifying-glass"></i><span>Search</span></button>
+<sc-if value="{{ signedIn }}" hint-placeholder-val="{{ true }}"><button type="button" onClick="{{ toggleMenu }}" class="tab {{ tabAccount }}"><span style="width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,var(--color-hue-violet),var(--color-hue-coral));color:var(--color-on-accent);font-family:var(--font-heading);font-size:10px;font-weight:600;">{{ initials }}</span><span>Account</span></button></sc-if>
+<sc-if value="{{ isGuest }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ goSignin }}" class="tab"><i class="ph ph-sign-in"></i><span>Sign in</span></button></sc-if>
+</nav>
+<div onClick="{{ closeDrawer }}" class="launcher-scrim {{ drawerClass }}" style="position:fixed;inset:0;z-index:40;background:color-mix(in srgb,#08080c 55%,transparent);"></div>
+<aside aria-label="All apps" class="launcher {{ drawerClass }}" style="display:flex;flex-direction:column;background:var(--color-surface);box-shadow:var(--shadow-lg);">
+<div class="only-narrow" style="justify-content:center;padding-top:8px;"><span style="width:36px;height:4px;border-radius:2px;background:var(--color-border-strong);"></span></div>
+<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 16px 12px 20px;"><h2 style="font-size:20px;margin:0;">Apps</h2><button type="button" onClick="{{ closeDrawer }}" aria-label="Close" class="btn btn-ghost btn-icon" style="color:var(--color-text-muted);"><i class="ph ph-x" style="font-size:18px;"></i></button></div>
+<div style="padding:0 20px 12px;position:relative;"><i class="ph ph-magnifying-glass" style="position:absolute;left:33px;top:12px;font-size:16px;color:var(--color-text-muted);"></i><input ref="{{ searchRef }}" class="input" type="text" value="{{ query }}" onChange="{{ onQuery }}" placeholder="{{ searchPlaceholder }}" style="padding-left:38px;"></div>
+<div style="flex:1;overflow:auto;padding:4px 20px 24px;">
+<button type="button" onClick="{{ goHome }}" style="display:flex;align-items:center;gap:12px;width:100%;padding:10px;margin-bottom:6px;border-radius:var(--radius-md);border:0;background:transparent;color:var(--color-text);font:inherit;font-weight:600;font-size:14px;text-align:left;cursor:pointer;" style-hover="background:var(--color-surface-2);"><span style="width:34px;height:34px;border-radius:9px;display:grid;place-items:center;background:var(--color-surface-2);font-size:18px;"><i class="ph ph-house"></i></span>{{ homeLabel }}</button>
+<sc-for list="{{ drawerGroups }}" as="g" hint-placeholder-count="3">
+<div style="display:flex;align-items:center;gap:8px;margin:16px 0 8px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--color-text-muted);"><span class="hue-dot {{ g.hueClass }}" style="width:7px;height:7px;border-radius:50%;"></span>{{ g.label }}<span style="font-weight:600;letter-spacing:0;text-transform:none;opacity:.7;">{{ g.count }}</span></div>
+<sc-if value="{{ gridLayout }}" hint-placeholder-val="{{ true }}">
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;">
+<sc-for list="{{ g.apps }}" as="app" hint-placeholder-count="6">
+<button type="button" onClick="{{ app.onClick }}" title="{{ app.title }}" class="{{ app.stateClass }}" style="position:relative;display:flex;flex-direction:column;align-items:center;gap:8px;padding:12px 6px 10px;border-radius:var(--radius-md);border:0;background:transparent;color:var(--color-text);font:inherit;cursor:pointer;" style-hover="background:var(--color-surface-2);">
+<span class="app-icon {{ app.hueClass }}" style="position:relative;width:46px;height:46px;border-radius:13px;display:grid;place-items:center;font-size:23px;"><i class="ph {{ app.icon }}"></i><sc-if value="{{ app.locked }}" hint-placeholder-val="{{ false }}"><span style="position:absolute;right:-4px;bottom:-4px;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;background:var(--color-surface);color:var(--color-text-muted);font-size:11px;box-shadow:0 0 0 1px var(--color-divider);"><i class="ph-bold ph-lock-simple"></i></span></sc-if></span>
+<span style="font-size:12px;font-weight:600;line-height:1.25;text-align:center;">{{ app.name }}</span>
+<sc-if value="{{ app.canPin }}" hint-placeholder-val="{{ false }}"><span role="button" class="pin-toggle {{ app.pinClass }}" onClick="{{ app.onPinClick }}" title="{{ app.pinTitle }}" style="position:absolute;top:4px;right:4px;width:24px;height:24px;border-radius:6px;display:grid;place-items:center;font-size:13px;color:var(--color-text-muted);" style-hover="background:var(--color-bg);color:var(--color-accent-text);"><i class="{{ app.pinIconClass }}"></i></span></sc-if>
+</button>
+</sc-for>
+</div>
+</sc-if>
+<sc-if value="{{ listLayout }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;flex-direction:column;gap:2px;">
+<sc-for list="{{ g.apps }}" as="app" hint-placeholder-count="6">
+<button type="button" onClick="{{ app.onClick }}" title="{{ app.title }}" class="{{ app.stateClass }}" style="display:flex;align-items:center;gap:12px;padding:8px 10px;border-radius:var(--radius-md);border:0;background:transparent;color:var(--color-text);font:inherit;text-align:left;cursor:pointer;" style-hover="background:var(--color-surface-2);">
+<span class="app-icon {{ app.hueClass }}" style="width:34px;height:34px;flex:none;border-radius:9px;display:grid;place-items:center;font-size:18px;"><i class="ph {{ app.icon }}"></i></span>
+<span style="flex:1;min-width:0;display:flex;flex-direction:column;"><span style="font-size:14px;font-weight:600;">{{ app.name }}</span><span style="font-size:12px;color:var(--color-text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ app.desc }}</span></span>
+<sc-if value="{{ app.locked }}" hint-placeholder-val="{{ false }}"><i class="ph ph-lock-simple" style="color:var(--color-text-muted);"></i></sc-if><sc-if value="{{ app.canPin }}" hint-placeholder-val="{{ false }}"><span role="button" class="pin-toggle {{ app.pinClass }}" onClick="{{ app.onPinClick }}" title="{{ app.pinTitle }}" style="width:28px;height:28px;border-radius:6px;display:grid;place-items:center;font-size:15px;color:var(--color-text-muted);" style-hover="background:var(--color-bg);color:var(--color-accent-text);"><i class="{{ app.pinIconClass }}"></i></span></sc-if>
+</button>
+</sc-for>
+</div>
+</sc-if>
+</sc-for>
+<sc-if value="{{ noResults }}" hint-placeholder-val="{{ false }}"><p style="padding:24px 4px;color:var(--color-text-muted);font-size:14px;">No apps match “{{ query }}”.</p></sc-if>
+</div>
+<div class="only-wide" style="padding:12px 20px;border-top:1px solid var(--color-divider);font-size:12px;color:var(--color-text-muted);display:flex;gap:14px;"><span>⌘K open</span><span>Esc close</span><span style="flex:1;"></span><span>{{ lockHint }}</span></div>
+</aside>
+<sc-if value="{{ menuOpen }}" hint-placeholder-val="{{ false }}">
+<div onClick="{{ closeMenu }}" style="position:fixed;inset:0;z-index:40;"></div>
+<div role="menu" class="account-menu" style="overflow:auto;background:var(--color-surface);border:1px solid var(--color-divider);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);padding:8px;">
+<div style="display:flex;align-items:center;gap:12px;padding:10px 10px 14px;"><span style="width:40px;height:40px;flex:none;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,var(--color-hue-violet),var(--color-hue-coral));color:var(--color-on-accent);font-family:var(--font-heading);font-weight:600;">{{ initials }}</span><div style="min-width:0;flex:1;"><div style="font-weight:700;font-size:14px;">{{ displayName }}</div><div style="font-size:12px;color:var(--color-text-muted);overflow:hidden;text-overflow:ellipsis;">you@funkedupshift.com</div></div><span class="tag tag-accent">{{ roleLabel }}</span></div>
+<button type="button" onClick="{{ goProfile }}" style="display:flex;align-items:center;gap:10px;width:100%;padding:9px 10px;border-radius:8px;border:0;background:transparent;color:var(--color-text);font:inherit;font-size:14px;text-align:left;cursor:pointer;" style-hover="background:var(--color-surface-2);"><i class="ph ph-user-circle" style="font-size:18px;color:var(--color-text-muted);"></i>Profile</button>
+<div style="padding:10px 10px 6px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--color-text-muted);">Appearance</div>
+<div style="padding:0 10px 8px;"><div class="seg" style="display:flex;"><label class="seg-opt" style="flex:1;justify-content:center;"><input type="radio" name="usermode" checked="{{ isDark }}" onChange="{{ setDark }}"><i class="ph ph-moon"></i>Dark</label><label class="seg-opt" style="flex:1;justify-content:center;"><input type="radio" name="usermode" checked="{{ isLight }}" onChange="{{ setLight }}"><i class="ph ph-sun"></i>Light</label></div></div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:0 10px 10px;">
+<sc-for list="{{ themeChoices }}" as="th" hint-placeholder-count="4"><button type="button" onClick="{{ th.onPick }}" data-palette="{{ th.id }}" data-theme="{{ theme }}" class="theme-chip {{ th.selClass }}" style="display:flex;align-items:center;gap:9px;padding:9px;border-radius:9px;border:1px solid var(--color-divider);background:var(--color-bg);color:var(--color-text);font:inherit;font-size:13px;font-weight:600;cursor:pointer;text-align:left;min-width:0;"><span style="display:flex;flex:none;"><span style="width:14px;height:14px;border-radius:50%;background:var(--color-accent);box-shadow:0 0 0 2px var(--color-bg);"></span><span class="hue-dot hue-teal" style="width:14px;height:14px;border-radius:50%;margin-left:-4px;box-shadow:0 0 0 2px var(--color-bg);"></span><span class="hue-dot hue-coral" style="width:14px;height:14px;border-radius:50%;margin-left:-4px;box-shadow:0 0 0 2px var(--color-bg);"></span></span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ th.name }}</span></button></sc-for>
+</div>
+<sc-if value="{{ isAdmin }}" hint-placeholder-val="{{ true }}">
+<div style="height:1px;background:var(--color-divider);margin:6px 4px;"></div>
+<div style="padding:8px 10px 4px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--color-text-muted);">Admin</div>
+<sc-for list="{{ adminItems }}" as="a" hint-placeholder-count="9"><button type="button" onClick="{{ a.onClick }}" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 10px;border-radius:8px;border:0;background:transparent;color:var(--color-text);font:inherit;font-size:14px;text-align:left;cursor:pointer;" style-hover="background:var(--color-surface-2);"><i class="ph {{ a.icon }}" style="font-size:18px;color:var(--color-text-muted);"></i>{{ a.name }}</button></sc-for>
+</sc-if>
+<div style="height:1px;background:var(--color-divider);margin:6px 4px;"></div>
+<button type="button" onClick="{{ signOut }}" style="display:flex;align-items:center;gap:10px;width:100%;padding:9px 10px;border-radius:8px;border:0;background:transparent;color:var(--color-danger);font:inherit;font-size:14px;text-align:left;cursor:pointer;" style-hover="background:var(--color-surface-2);"><i class="ph ph-sign-out" style="font-size:18px;"></i>Sign out</button>
+</div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;role&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;guest&quot;,&quot;user&quot;,&quot;admin&quot;],&quot;default&quot;:&quot;guest&quot;,&quot;tsType&quot;:&quot;'guest'|'user'|'admin'&quot;,&quot;section&quot;:&quot;Viewer&quot;},&quot;previewTheme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;default&quot;,&quot;funk&quot;,&quot;ember&quot;,&quot;lagoon&quot;,&quot;neon&quot;],&quot;default&quot;:&quot;default&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Viewer&quot;},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;dark&quot;,&quot;light&quot;],&quot;default&quot;:&quot;dark&quot;,&quot;tsType&quot;:&quot;'dark'|'light'&quot;,&quot;section&quot;:&quot;Viewer&quot;},&quot;markFont&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;syne&quot;,&quot;serif&quot;,&quot;mono&quot;,&quot;grotesk&quot;],&quot;default&quot;:&quot;syne&quot;,&quot;tsType&quot;:&quot;'syne'|'serif'|'mono'|'grotesk'&quot;,&quot;section&quot;:&quot;Brand&quot;},&quot;launcherLayout&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;grid&quot;,&quot;list&quot;],&quot;default&quot;:&quot;grid&quot;,&quot;tsType&quot;:&quot;'grid'|'list'&quot;,&quot;section&quot;:&quot;Launcher&quot;}}">
+const HUES={discover:'var(--color-hue-teal)',tools:'var(--color-hue-violet)',modules:'var(--color-hue-coral)',admin:'var(--color-hue-amber)'};
+const HC={discover:'hue-teal',tools:'hue-violet',modules:'hue-coral',admin:'hue-amber'};
+const GROUPS=[{id:'discover',label:'Discover',blurb:'Open to everyone.'},{id:'tools',label:'Tools',blurb:'Everyday utilities — free with an account.'},{id:'modules',label:'Modules',blurb:'Personal apps for invited groups.'}];
+const APPS=[
+{id:'websites',name:'Websites',icon:'ph-globe-hemisphere-west',group:'discover',access:'guest',desc:'The curated index — browse, rate and rank sites.'},
+{id:'media',name:'Media',icon:'ph-images',group:'discover',access:'guest',desc:'A gallery of clips, tracks and oddities.'},
+{id:'memes',name:'Memes',icon:'ph-smiley',group:'discover',access:'guest',desc:'Browse and rate the freshest memes.'},
+{id:'netdash',name:'Internet Dashboard',icon:'ph-pulse',group:'discover',access:'guest',desc:'Live pulse of the domains we track.'},
+{id:'highlights',name:'Highlights',icon:'ph-sparkle',group:'discover',access:'guest',desc:'Hand-picked properties worth a look.'},
+{id:'rated',name:'Highest Rated',icon:'ph-star',group:'discover',access:'guest',desc:'The top of the index, by rating.'},
+{id:'myinfo',name:'My Info',icon:'ph-fingerprint',group:'tools',access:'guest',desc:'What your browser, device and network reveal.'},
+{id:'shortener',name:'URL Shortener',icon:'ph-link',group:'tools',access:'user',desc:'Paste a long URL to mint a short link on fus.fyi.'},
+{id:'password',name:'Password Generator',icon:'ph-key',group:'tools',access:'user',desc:'Strong, random passwords made in your browser.'},
+{id:'images',name:'Image Resizer',icon:'ph-resize',group:'tools',access:'user',desc:'Resize and compress images.'},
+{id:'crop',name:'Crop Image',icon:'ph-crop',group:'tools',access:'user',desc:'Crop images to the size you need.'},
+{id:'removebg',name:'Remove Background',icon:'ph-selection-background',group:'tools',access:'user',desc:'Lift the subject out of a photo.'},
+{id:'dns',name:'DNS Lookup',icon:'ph-hard-drives',group:'tools',access:'user',desc:'Look up DNS records for any domain.'},
+{id:'textshare',name:'Text Share',icon:'ph-note',group:'tools',access:'user',desc:'Share text snippets with an expiring link.'},
+{id:'converters',name:'Converters',icon:'ph-arrows-left-right',group:'tools',access:'user',desc:'Units, temperatures and more.'},
+{id:'lipsync',name:'Lipsync Studio',icon:'ph-video-camera',group:'tools',access:'user',desc:'AI talking-head clips from a photo plus audio.'},
+{id:'finances',name:'Finances',icon:'ph-wallet',group:'modules',access:'user',desc:'Accounts, budgets, transactions and insights.'},
+{id:'investing',name:'Investing',icon:'ph-chart-line-up',group:'modules',access:'group',desc:'Watchlists and market data.'},
+{id:'vehicles',name:'Vehicle Expenses',icon:'ph-car',group:'modules',access:'group',desc:'Log and track what your rides cost.'},
+{id:'expenses',name:'General Expenses',icon:'ph-receipt',group:'modules',access:'group',desc:'Everything else that hits the books.'},
+{id:'squash',name:'Squash',icon:'ph-trophy',group:'modules',access:'group',desc:'Ladder, players and match results.'},
+{id:'memegen',name:'Meme Generator',icon:'ph-magic-wand',group:'modules',access:'group',desc:'Make memes from templates.'}];
+const ADMIN=[['Admin home','ph-gauge','Overview of every admin surface.'],['Themes','ph-palette','Colour themes and site-wide appearance defaults.'],['Websites','ph-globe-hemisphere-west','Curated sites, categories and logos.'],['Media','ph-images','Upload and organise media.'],['Membership','ph-users-three','Custom groups and member access.'],['Recommended','ph-sparkle','Curate highlights and highest-rated.'],['Internet Dashboard','ph-pulse','Domains on the internet dashboard.'],['Branding','ph-paint-brush','Logo, hero and banner text.'],['Stats','ph-chart-bar','App statistics and click paths.'],['Social Scheduler','ph-megaphone','Schedule posts to social accounts.'],['Lipsync Budgets','ph-coins','fal balance and per-user budgets.']];
+const PINNED=['shortener','websites','finances','vehicles','squash','media'];
+const RECENT=[['shortener','Today'],['dns','Today'],['finances','Yesterday'],['media','Oct 9']];
+const SEED=[
+{code:'q7Lm',url:'https://docs.google.com/spreadsheets/d/1Qx8vR2kPz/edit#gid=1840221',created:'Oct 12, 2026',expires:'Jan 10, 2027'},
+{code:'ladder',url:'https://funkedupshift.com/squash?season=fall-2026&ladder=a',created:'Oct 3, 2026',expires:'Dec 31, 2026'},
+{code:'b3Rt',url:'https://www.notion.so/workspace/Merch-store-launch-plan-8f2c1a9e4b7d',created:'Sep 21, 2026',expires:'Dec 20, 2026'},
+{code:'zine4',url:'https://drive.google.com/file/d/1mZ0aK9xQe/view?usp=sharing',created:'Sep 2, 2026',expires:'Dec 1, 2026'}];
+const fmt=d=>d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+const USERS={admin:{firstName:'Sam',username:'sam.shift',email:'sam@funkedupshift.com'},user:{firstName:'',username:'jules',email:'jules@example.com'}};
+const displayNameOf=u=>(u&&(u.firstName||u.username||u.email))||'';
+const BANNER=['New look: every app now lives in the launcher — press ⌘K','Pin your favourite apps to the dashboard','Lipsync Studio is open to all signed-in users','Fall squash ladder starts October 20'];
+const BKEY='fus_banner_dismissed';
+const MARKS={serif:{cls:'brand-mark-serif',font:'italic 400 54px "Instrument Serif"',dy:36},syne:{cls:'brand-mark-syne',font:'800 44px Syne',dy:35},mono:{cls:'brand-mark-mono',font:'700 42px "JetBrains Mono"',dy:34},grotesk:{cls:'brand-mark-grotesk',font:'700 42px "Space Grotesk"',dy:34}};
+const BUILTIN_THEMES=[
+{id:'funk',name:'Funk',tint:285,accent:'#7c5cff',discover:'#33c9aa',tools:'#9a82ff',modules:'#ff7f5c',admin:'#f2b73f'},
+{id:'ember',name:'Ember',tint:45,accent:'#ff6a3d',discover:'#f2b73f',tools:'#ff8fab',modules:'#b18cff',admin:'#5fd0a0'},
+{id:'lagoon',name:'Lagoon',tint:230,accent:'#3d7bff',discover:'#2ec4b6',tools:'#8fa8ff',modules:'#ffb454',admin:'#ff7a93'},
+{id:'neon',name:'Neon',tint:150,accent:'#a3e635',discover:'#22d3ee',tools:'#f472b6',modules:'#facc15',admin:'#fb923c'}];
+const COLOR_SLOTS=[['accent','Accent'],['discover','Discover'],['tools','Tools'],['modules','Modules'],['admin','Admin']];
+const lum=hex=>{const n=parseInt(String(hex).slice(1),16);const c=[n>>16&255,n>>8&255,n&255].map(v=>{v/=255;return v<=.04045?v/12.92:Math.pow((v+.055)/1.055,2.4);});return .2126*c[0]+.7152*c[1]+.0722*c[2];};
+const mixW=(c,p)=>'color-mix(in oklch, '+c+' '+p+'%, white)';
+const mixB=(c,p)=>'color-mix(in oklch, '+c+' '+p+'%, black)';
+function themeCSS(th,id){const a=th.accent,h=th.tint,sel='[data-palette="'+(id||th.id)+'"]';
+const hues=(f,p)=>'--color-hue-teal:'+f(th.discover,p)+';--color-hue-violet:'+f(th.tools,p)+';--color-hue-coral:'+f(th.modules,p)+';--color-hue-amber:'+f(th.admin,p)+';';
+const id_=(c)=>c;
+return sel+':not([data-theme="light"]){--color-bg:oklch(0.17 0.012 '+h+');--color-surface:oklch(0.205 0.014 '+h+');--color-surface-2:oklch(0.245 0.016 '+h+');--color-text:oklch(0.95 0.006 '+h+');--color-text-muted:oklch(0.74 0.018 '+h+');--color-divider:color-mix(in srgb,oklch(0.95 0.006 '+h+') 11%,transparent);--color-border-strong:color-mix(in srgb,oklch(0.95 0.006 '+h+') 24%,transparent);--color-accent:'+a+';--color-accent-hover:'+mixW(a,84)+';--color-accent-text:'+mixW(a,68)+';--color-on-accent:'+(lum(a)>0.3?'#14121a':'#fbfaff')+';'+hues(id_)+'}\n'+
+sel+'[data-theme="light"]{--color-bg:oklch(0.975 0.005 '+h+');--color-surface:oklch(0.995 0.002 '+h+');--color-surface-2:oklch(0.945 0.009 '+h+');--color-text:oklch(0.2 0.015 '+h+');--color-text-muted:oklch(0.47 0.02 '+h+');--color-divider:color-mix(in srgb,oklch(0.2 0.015 '+h+') 10%,transparent);--color-border-strong:color-mix(in srgb,oklch(0.2 0.015 '+h+') 22%,transparent);--color-accent:'+mixB(a,86)+';--color-accent-hover:'+mixB(a,76)+';--color-accent-text:'+mixB(a,70)+';--color-on-accent:'+(lum(a)*0.55>0.3?'#14121a':'#fbfaff')+';'+hues(mixB,74)+'}';}
+const TKEY='fus_themes',DKEY='fus_theme_defaults',PRKEY='fus_prefs';
+const PKEY='fus_appshell_page';const PINK='fus_appshell_pins';
+
+class Component extends DCLogic {
+  state={themes:BUILTIN_THEMES,defaultTheme:'funk',defaultMode:'dark',prefs:{},guestPalette:null,editingTheme:null,bannerHidden:false,pins:PINNED,page:null,drawer:false,menu:false,query:'',theme:null,role:null,links:SEED,url:'',minted:null,copied:null,editing:null,draft:'',editError:null,error:null};
+  searchRef=React.createRef();
+  componentDidMount(){
+    this.drawFavicon();try{const th=JSON.parse(localStorage.getItem(TKEY)||'null');const d=JSON.parse(localStorage.getItem(DKEY)||'null');const pr=JSON.parse(localStorage.getItem(PRKEY)||'null');const up={};if(Array.isArray(th)&&th.length)up.themes=th;if(d){up.defaultTheme=d.theme||'funk';up.defaultMode=d.mode||'dark';}if(pr)up.prefs=pr;this.setState(up,()=>this.applyPreview());}catch(e){}this.writeThemeCSS();try{if(sessionStorage.getItem(BKEY)==='1')this.setState({bannerHidden:true});}catch(e){}try{const p=localStorage.getItem(PKEY);if(p)this.setState({page:p});const pp=JSON.parse(localStorage.getItem(PINK)||'null');if(Array.isArray(pp))this.setState({pins:pp});}catch(e){}
+    this.onKey=e=>{if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();this.openDrawer();}if(e.key==='Escape')this.setState({drawer:false,menu:false});};
+    window.addEventListener('keydown',this.onKey);
+  }
+  componentWillUnmount(){window.removeEventListener('keydown',this.onKey);clearTimeout(this.ct);}
+  mark(){return MARKS[this.props.markFont??'syne']||MARKS.syne;}
+  drawFavicon(){const m=this.mark();const draw=()=>{const c=document.createElement('canvas');c.width=c.height=64;const x=c.getContext('2d');x.fillStyle='#7c5cff';x.beginPath();if(x.roundRect)x.roundRect(0,0,64,64,15);else x.rect(0,0,64,64);x.fill();x.fillStyle='#fbfaff';x.font=m.font;x.textAlign='center';x.textBaseline='middle';x.fillText('f',32,m.dy);let l=document.querySelector('link[rel="icon"]');if(!l){l=document.createElement('link');l.rel='icon';document.head.appendChild(l);}l.type='image/png';l.href=c.toDataURL('image/png');};(document.fonts?document.fonts.load(m.font):Promise.resolve()).then(draw,draw);}
+  componentDidUpdate(prev,prevState){
+    if(prevState&&(prevState.themes!==this.state.themes||prevState.editingTheme!==this.state.editingTheme))this.writeThemeCSS();
+    if(prev.markFont!==this.props.markFont)this.drawFavicon();
+    if(prev.theme!==this.props.theme){this.setState({theme:null});if(this.getRole()!=='guest'&&this.props.theme)this.setPref({mode:this.props.theme});}
+    if(prev.previewTheme!==this.props.previewTheme)this.applyPreview();
+    if(prev.role!==this.props.role&&this.state.role!==null)this.setState({role:null});
+  }
+  togglePin=id=>this.setState(s=>{const pins=s.pins.includes(id)?s.pins.filter(x=>x!==id):[...s.pins,id];try{localStorage.setItem(PINK,JSON.stringify(pins));}catch(e){}return {pins};});
+  getRole(){return this.state.role??this.props.role??'guest';}
+  getTheme(){const r=this.getRole();const p=this.state.prefs[r];if(r!=='guest'&&p&&p.mode)return p.mode;return this.state.theme??this.props.theme??this.state.defaultMode;}
+  setPref=patch=>{const r=this.getRole();this.setState(s=>{const prefs={...s.prefs,[r]:{...(s.prefs[r]||{}),...patch}};try{localStorage.setItem(PRKEY,JSON.stringify(prefs));}catch(e){}return {prefs};});};
+  setMode=m=>{if(this.getRole()!=='guest')this.setPref({mode:m});else this.setState({theme:m});};
+  applyPreview(){const p=this.props.previewTheme;if(!p)return;const v=p==='default'?null:p;if(this.getRole()==='guest')this.setState({guestPalette:v});else this.setPref({theme:v});}
+  saveThemes(themes,def){try{localStorage.setItem(TKEY,JSON.stringify(themes));if(def)localStorage.setItem(DKEY,JSON.stringify(def));}catch(e){}}
+  writeThemeCSS(){let el=document.getElementById('fus-theme-css');if(!el){el=document.createElement('style');el.id='fus-theme-css';document.head.appendChild(el);}const s=this.state;let css=s.themes.map(th=>themeCSS(th)).join('\n');if(s.editingTheme)css+='\n'+themeCSS(s.editingTheme,'__draft');if(el.textContent!==css)el.textContent=css;}
+  saveTheme=()=>{const d=this.state.editingTheme;if(!d)return;const name=(d.name||'').trim()||'Untitled theme';this.setState(s=>{let themes;if(d.id){themes=s.themes.map(x=>x.id===d.id?{...d,name}:x);}else{const id=name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')+'-'+Math.random().toString(36).slice(2,5);themes=[...s.themes,{...d,id,name}];}this.saveThemes(themes);return {themes,editingTheme:null};});};
+  deleteTheme=th=>{if(th.id===this.state.defaultTheme)return;if(!window.confirm('Delete the "'+th.name+'" theme? Anyone using it will switch to the site default.'))return;this.setState(s=>{const themes=s.themes.filter(x=>x.id!==th.id);const prefs={};Object.keys(s.prefs).forEach(k=>{const p={...s.prefs[k]};if(p.theme===th.id)delete p.theme;prefs[k]=p;});this.saveThemes(themes);try{localStorage.setItem(PRKEY,JSON.stringify(prefs));}catch(e){}return {themes,prefs,guestPalette:s.guestPalette===th.id?null:s.guestPalette};});};
+  setDefaults=patch=>this.setState(s=>{const d={theme:patch.theme??s.defaultTheme,mode:patch.mode??s.defaultMode};this.saveThemes(s.themes,d);return {defaultTheme:d.theme,defaultMode:d.mode};});
+  can(a,r){return a.access==='guest'||(a.access==='user'&&r!=='guest')||r==='admin';}
+  openDrawer=()=>{this.setState({drawer:true,menu:false,query:''});setTimeout(()=>this.searchRef.current&&this.searchRef.current.focus(),260);};
+  go=p=>{this.setState({page:p,drawer:false,menu:false,minted:null,error:null,editing:null});try{localStorage.setItem(PKEY,p);}catch(e){}window.scrollTo(0,0);};
+  link=p=>e=>{e&&e.preventDefault&&e.preventDefault();this.go(p);};
+  copy=l=>()=>{try{navigator.clipboard&&navigator.clipboard.writeText('https://fus.fyi/'+l.code);}catch(e){}this.setState({copied:l.code});clearTimeout(this.ct);this.ct=setTimeout(()=>this.setState({copied:null}),1800);};
+  mint=e=>{e.preventDefault();const u=this.state.url.trim();
+    if(!/^https?:\/\/[^\s.]+\.\S+/.test(u)){this.setState({error:'Enter a full URL starting with http:// or https://',minted:null});return;}
+    const code=Math.random().toString(36).slice(2,6);const now=new Date();const l={code,url:u,created:fmt(now),expires:fmt(new Date(now.getTime()+90*864e5))};
+    this.setState(s=>({links:[l,...s.links],url:'',minted:l,error:null}));};
+  saveExpiry=()=>{const ms=new Date(this.state.draft).getTime();
+    if(!this.state.draft||isNaN(ms)||ms<=Date.now()){this.setState({editError:'Pick a date and time in the future.'});return;}
+    const code=this.state.editing;this.setState(s=>({links:s.links.map(l=>l.code===code?{...l,expires:fmt(new Date(ms))}:l),editing:null,editError:null}));};
+  deco(a,r,cur){const ok=this.can(a,r);const hue=HUES[a.group];
+    return {...a,hue,tint:`color-mix(in srgb, ${hue} 17%, transparent)`,groupLabel:(GROUPS.find(g=>g.id===a.group)||{}).label,locked:!ok,
+      opacity:ok?1:0.5,filter:ok?'none':'grayscale(1)',cursor:ok||r==='guest'?'pointer':'not-allowed',
+      lockText:r==='guest'?'Sign in':'No access',title:ok?a.name:(r==='guest'?a.name+' — sign in to unlock':a.name+' — ask an admin for access'),
+      hueClass:HC[a.group],stateClass:[ok?'':'is-locked',!ok&&r!=='guest'?'is-inert':'',cur===a.id?'is-current':''].join(' ').trim(),
+      onClick:()=>{if(ok)this.go(a.id);else if(r==='guest')this.go('signin');},
+      ...(()=>{const p=this.state.pins.includes(a.id);return {canPin:ok&&r!=='guest',pinIconClass:p?'ph-fill ph-push-pin':'ph ph-push-pin',pinClass:p?'is-pinned':'',pinTitle:p?'Unpin '+a.name:'Pin '+a.name,onPinClick:e=>{e.stopPropagation();this.togglePin(a.id);}};})()};}
+  renderVals(){
+    const r=this.getRole(),theme=this.getTheme(),s=this.state,signedIn=r!=='guest';
+    let page=s.page||'home';
+    const adminPage=page.startsWith('admin:')?ADMIN.find(x=>'admin:'+x[0]===page):null;
+    if(adminPage&&r!=='admin')page='home';
+    let app=APPS.find(a=>a.id===page);
+    if(app&&!this.can(app,r)&&!(app.id==='shortener'))page='home',app=null;
+    if(page==='signin'&&signedIn)page='home';
+    let cur=null;
+    if(app)cur=this.deco(app,r,page);
+    else if(adminPage)cur={name:adminPage[0],icon:adminPage[1],desc:adminPage[2],groupLabel:'Admin',hueClass:HC.admin,hue:HUES.admin,tint:`color-mix(in srgb, ${HUES.admin} 17%, transparent)`};
+    else if(page==='profile'&&signedIn)cur={name:'Profile',icon:'ph-user-circle',desc:'Your account, avatar and preferences.',groupLabel:'Account',hueClass:HC.tools,hue:HUES.tools,tint:`color-mix(in srgb, ${HUES.tools} 17%, transparent)`};
+    const groupDef=page.startsWith('group:')?GROUPS.find(g=>'group:'+g.id===page):null;
+    if(!cur&&!groupDef&&page!=='signin')page='home';
+    if(cur){const pn=app&&s.pins.includes(app.id);Object.assign(cur,{onGroup:this.link(app?'group:'+app.group:adminPage?'admin:Admin home':'profile'),onSelf:this.link(page),canPin:!!app&&signedIn&&this.can(app,r),pinLabel:pn?'Pinned':'Pin',pinTitle:pn?'Unpin from your dashboard':'Pin to your dashboard and launcher',pinIconClass:pn?'ph-fill ph-push-pin':'ph ph-push-pin',onPin:()=>this.togglePin(app.id)});}
+    const q=s.query.trim().toLowerCase();
+    const groupsFor=filter=>GROUPS.map(g=>{const apps=APPS.filter(a=>a.group===g.id&&(!filter||a.name.toLowerCase().includes(filter)||a.desc.toLowerCase().includes(filter))).map(a=>this.deco(a,r,page));return {...g,hueClass:HC[g.id],apps,count:apps.length};}).filter(g=>g.apps.length);
+    let drawerGroups=groupsFor(q);
+    if(signedIn&&!q&&s.pins.length)drawerGroups=[{id:'pinned',label:'Pinned',hueClass:'hue-amber',count:s.pins.length,apps:s.pins.map(id=>APPS.find(a=>a.id===id)).filter(Boolean).map(a=>this.deco(a,r,page))},...drawerGroups];
+    const linkRow=(l,i)=>({...l,shortUrl:'fus.fyi/'+l.code,border:i?'1px solid var(--color-divider)':'0',copyLabel:s.copied===l.code?'Copied':'Copy',copyIcon:s.copied===l.code?'ph-check':'ph-copy',
+      onCopy:this.copy(l),onOpen:e=>e.preventDefault(),isEditing:s.editing===l.code,
+      onEdit:()=>this.setState({editing:s.editing===l.code?null:l.code,draft:'',editError:null}),
+      onDelete:()=>{if(window.confirm('Delete fus.fyi/'+l.code+'? This cannot be undone.'))this.setState(st=>({links:st.links.filter(x=>x.code!==l.code),minted:st.minted&&st.minted.code===l.code?null:st.minted}));}});
+    const h=new Date().getHours();
+    const locked=APPS.filter(a=>!this.can(a,r)).length;
+    return {
+      theme,themeIcon:theme==='dark'?'ph-sun':'ph-moon',themeLabel:theme==='dark'?'Dark':'Light',
+      toggleTheme:()=>this.setMode(theme==='dark'?'light':'dark'),
+      signedIn,isGuest:!signedIn,isAdmin:r==='admin',initials:r==='admin'?'SA':'ME',displayName:r==='admin'?'Site admin':'Member',roleLabel:r==='admin'?'Admin':'User',
+      openDrawer:this.openDrawer,closeDrawer:()=>this.setState({drawer:false}),
+      drawerClass:s.drawer?'is-open':'',
+      ...(()=>{const themes=s.themes,has=id=>themes.some(x=>x.id===id);const def=has(s.defaultTheme)?s.defaultTheme:themes[0].id;const pref=s.prefs[r]||{};
+        const palette=signedIn?(pref.theme&&has(pref.theme)?pref.theme:def):(s.guestPalette&&has(s.guestPalette)?s.guestPalette:def);
+        const d=s.editingTheme;
+        return {palette,isDark:theme==='dark',isLight:theme==='light',setDark:()=>this.setMode('dark'),setLight:()=>this.setMode('light'),
+          themeChoices:themes.map(th=>({id:th.id,name:th.name,selClass:th.id===palette?'is-selected':'',onPick:()=>this.setPref({theme:th.id})})),
+          showThemesAdmin:page==='admin:Themes'&&r==='admin',themeCount:String(themes.length),defaultThemeId:def,
+          themeOptions:themes.map(th=>({id:th.id,name:th.name,selClass:th.id===def?'is-selected':'',onPick:()=>this.setDefaults({theme:th.id})})),
+          defDark:s.defaultMode==='dark',defLight:s.defaultMode==='light',setDefDark:()=>this.setDefaults({mode:'dark'}),setDefLight:()=>this.setDefaults({mode:'light'}),
+          themeRows:themes.map(th=>({id:th.id,name:th.name,isDefault:th.id===def,notDefault:th.id!==def,isMine:signedIn&&th.id===palette,onMakeDefault:()=>this.setDefaults({theme:th.id}),onEdit:()=>this.setState({editingTheme:{...th}}),onDelete:()=>this.deleteTheme(th)})),
+          newTheme:()=>{const base=themes.find(x=>x.id===def)||BUILTIN_THEMES[0];this.setState({editingTheme:{...base,id:null,name:'New theme'}});},
+          isEditingTheme:!!d,draft:d||{},draftTitle:d&&d.id?'Edit theme':'New theme',
+          onDraftName:e=>{const v=e.target.value;this.setState(st=>({editingTheme:{...st.editingTheme,name:v}}));},
+          onDraftTint:e=>{const v=Number(e.target.value);this.setState(st=>({editingTheme:{...st.editingTheme,tint:v}}));},
+          draftColors:d?COLOR_SLOTS.map(([k,label])=>({label,value:d[k],onChange:e=>{const v=e.target.value;this.setState(st=>({editingTheme:{...st.editingTheme,[k]:v}}));}})):[],
+          saveTheme:this.saveTheme,cancelThemeEdit:()=>this.setState({editingTheme:null}),stop:e=>e.stopPropagation()};})(),markClass:this.mark().cls,showBanner:page==='home'&&!(signedIn&&s.bannerHidden),canDismissBanner:signedIn,bannerLoop:[...BANNER,...BANNER,...BANNER,...BANNER],dismissBanner:()=>{try{sessionStorage.setItem(BKEY,'1');}catch(e){}this.setState({bannerHidden:true});},openApps:()=>this.setState({drawer:true,menu:false,query:''}),tabHome:page==='home'&&!s.drawer&&!s.menu?'is-active':'',tabApps:s.drawer?'is-active':'',tabAccount:s.menu?'is-active':'',
+      searchRef:this.searchRef,query:s.query,onQuery:e=>this.setState({query:e.target.value}),searchPlaceholder:`Search ${APPS.length} apps`,
+      drawerGroups,noResults:drawerGroups.length===0,gridLayout:(this.props.launcherLayout??'grid')==='grid',listLayout:(this.props.launcherLayout??'grid')==='list',
+      homeLabel:signedIn?'Home — your dashboard':'Home',lockHint:locked?`${locked} locked`:'',
+      menuOpen:s.menu,toggleMenu:()=>this.setState({menu:!s.menu,drawer:false}),closeMenu:()=>this.setState({menu:false}),
+      adminItems:ADMIN.map(a=>({name:a[0],icon:a[1],onClick:()=>this.go('admin:'+a[0])})),
+      goHome:this.link('home'),goSignin:this.link('signin'),goWebsites:this.link('websites'),goShortener:this.link('shortener'),goProfile:this.link('profile'),
+      signIn:e=>{e&&e.preventDefault&&e.preventDefault();this.setState({role:'admin'});this.go('home');},
+      signOut:()=>{this.setState({role:'guest'});this.go('home');},
+      showGroupPage:!!groupDef,groupPage:groupDef?{...groupDef,hueClass:HC[groupDef.id],onSelf:this.link(page),apps:APPS.filter(a=>a.group===groupDef.id).map(a=>this.deco(a,r,page))}:{apps:[]},
+      showLanding:page==='home'&&!signedIn,showDashboard:page==='home'&&signedIn,showSignin:page==='signin',
+      showAppPage:!!cur,cur:cur||{},showShortener:page==='shortener',showGeneric:!!cur&&page!=='shortener'&&page!=='admin:Themes',
+      landingGroups:groupsFor(''),
+      today:new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'}),
+      greeting:(h<12?'Good morning':h<18?'Good afternoon':'Good evening')+(displayNameOf(USERS[r])?', '+displayNameOf(USERS[r]):'')+'.',
+      noPins:s.pins.length===0,pinned:s.pins.map(id=>this.deco(APPS.find(a=>a.id===id),r,page)),
+      recent:RECENT.map(([id,when])=>({...this.deco(APPS.find(a=>a.id===id),r,page),when})),
+      recentLinks:s.links.slice(0,3).map(linkRow),
+      url:s.url,onUrl:e=>this.setState({url:e.target.value}),mint:this.mint,
+      hasError:!!s.error,error:s.error,hasMinted:!!s.minted,minted:s.minted?linkRow(s.minted,0):{},
+      linkRows:s.links.map(linkRow),linkCount:String(s.links.length),noLinks:s.links.length===0,
+      draft:s.draft,onDraft:e=>this.setState({draft:e.target.value}),saveExpiry:this.saveExpiry,cancelEdit:()=>this.setState({editing:null,editError:null}),
+      hasEditError:!!s.editError,editError:s.editError,
+      ...(()=>{let list=[],title='';if(app){const g=GROUPS.find(x=>x.id===app.group);title='More in '+g.label;list=APPS.filter(a=>a.group===app.group&&a.id!==app.id).map(a=>this.deco(a,r,page));}else if(adminPage){title='More in Admin';list=ADMIN.filter(a=>a!==adminPage).map(a=>({name:a[0],icon:a[1],hueClass:HC.admin,stateClass:'',onClick:()=>this.go('admin:'+a[0])}));}return {moreApps:list,moreTitle:title,hasMore:list.length>0&&page!=='home'};})()
+    };
+  }
+}
+</script>
+</body>
+</html>
