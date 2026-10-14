@@ -5,7 +5,7 @@ this file on `development` after each launch, merge, or wave transition so any
 later session can resume from here.
 
 **Lead session:** `session_01F95VctFJZth9U2iYETcc8c`
-**Current wave:** 1 done (merged + deployed to staging); wave 2 awaiting user go-ahead
+**Current wave:** 2 — four agents launched 2026-10-14 03:24 UTC
 **Last updated:** 2026-10-14
 
 ## Decisions
@@ -28,32 +28,35 @@ later session can resume from here.
 ## Decided
 
 - Shortener module id stays `tools` (not `shortener`); default pins use `tools`.
+- **Memes (user, 2026-10-14):** guests can see memes; only Memes-group members
+  create/edit. Launcher: Memes open to all, Meme Generator gated by
+  `canCreateMemes`. Fix for signed-in non-members being blocked from viewing:
+  [#137](https://github.com/EchoNin9/funkedupshift/pull/137). Search stays members-only (backend).
+- **Wave 2 ownership tweaks vs the plan:** `app-frame` owns only the `<Routes>`
+  block of `AppLayout.tsx` (the route table lives there); `shell-desktop` owns
+  the rest. Desktop `TopBar` replaces `DesktopHeaderBar`/`UserMenu`/`LeftSidebar`;
+  mobile header path untouched until wave 3. No wave 2 agent edits `styles.css`.
+  Body type scale (15px/1.55) deferred to wave 4.
 - `--color-n1..n4` remain as aliases remapped onto the new palette until wave 4.
 
 ## Open questions
 
-- **Memes for guests:** old sidebar gated Memes behind `canAccessMemes`; README + new
-  config make it a guest-open Discover tile. Not live until the launcher ships
-  (wave 2 `shell-desktop`). Needs user decision before that brief.
 - **Staging not reachable from cloud sessions:** `stage.funkedupshift.com` is denied by
   the environment network policy, so staging spot-checks need it added under
   Allowed domains (or done by the user).
 
 - Test credentials for user / group member / admin are needed for signed-in
   screenshots and staging spot-checks.
-- Existing `shell/UserMenu.tsx`, `DesktopHeaderBar.tsx`, `Header.tsx` aren't
-  named in the plan; the wave 2 `shell-desktop` brief must say whether
-  `TopBar`/`AccountMenu` replace them.
 
 ## Wave tracker
 
 | Wave | Agent / branch | Session | PR | Status |
 |---|---|---|---|---|
 | 1 | `redesign/foundation` | `session_012RDDaaoPdSCUEfZ2uyANfF` (archived) | [#136](https://github.com/EchoNin9/funkedupshift/pull/136) | merged `779e156`; Deploy Staging run 426 success |
-| 2 | `redesign/themes-api` | — | — | not started |
-| 2 | `redesign/shell-desktop` | — | — | not started |
-| 2 | `redesign/app-frame` | — | — | not started |
-| 2 | `redesign/shortener` | — | — | not started |
+| 2 | `redesign/themes-api` | `session_013KbockRqzwxNAd5mu9ttvp` | — | launched |
+| 2 | `redesign/shell-desktop` | `session_01CfgfuWvZwByKygyP7yHMbT` | — | launched |
+| 2 | `redesign/app-frame` | `session_01Ati2nHZyx6KD4KZuNH9Ezu` | — | launched |
+| 2 | `redesign/shortener` | `session_01AEXAGgAw83aKKGNJLtj3dk` | — | launched |
 | 3 | `redesign/themes-ui` | — | — | not started |
 | 3 | `redesign/homes` | — | — | not started |
 | 3 | `redesign/tools-restyle` | — | — | not started |
@@ -65,9 +68,10 @@ later session can resume from here.
 - `shell-desktop`: decide body font size/line-height (15px/1.55) + heading scale;
   port `.btn/.input/.table/.dialog` set where names don't collide.
 - Remaining heroicons in `ADMIN_MODULES`/`MODULE_GROUPS` stay until wave 4.
-- Clarify whether `TopBar`/`AccountMenu` replace `UserMenu`/`DesktopHeaderBar`/`Header`.
 
 ## Log
+
+- 2026-10-14 — Wave 2 launched (themes-api, shell-desktop, app-frame, shortener). Memes fix PR #137 opened (lead, solo).
 
 - 2026-10-14 — #136 merged (`779e156`); staging deploy success. Staging visual
   spot-check NOT done (host blocked from cloud session).
