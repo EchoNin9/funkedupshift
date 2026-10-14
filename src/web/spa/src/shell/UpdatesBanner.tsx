@@ -3,7 +3,7 @@ import { useLocation } from "react-router-dom";
 import { MegaphoneSimple, X } from "@phosphor-icons/react";
 import { useAuth } from "./AuthContext";
 import { useBranding } from "./BrandingContext";
-import { DEFAULT_BANNER } from "./PopMarquee";
+import { Marquee } from "./Marquee";
 
 const DISMISS_KEY = "funkedupshift_banner_dismissed";
 
@@ -24,13 +24,6 @@ export function UpdatesBanner() {
 
   const signedIn = !!user && user.role !== "guest";
   if (pathname !== "/" || (signedIn && dismissed)) return null;
-
-  const items = (bannerText || DEFAULT_BANNER)
-    .split("✦")
-    .map((s) => s.trim())
-    .filter(Boolean);
-  if (items.length === 0) return null;
-  const seq = [...items, ...items];
 
   const dismiss = () => {
     try {
@@ -55,15 +48,7 @@ export function UpdatesBanner() {
         <MegaphoneSimple size={14} weight="fill" aria-hidden="true" />
         Updates
       </span>
-      <div className="marquee min-w-0 flex-1 text-sm text-text-primary">
-        <div className="marquee-track">
-          {seq.map((it, i) => (
-            <span key={i} className="whitespace-nowrap pr-6" aria-hidden={i >= items.length ? "true" : undefined}>
-              {it} <span className="pl-6 text-accent-text">✦</span>
-            </span>
-          ))}
-        </div>
-      </div>
+      <Marquee text={bannerText} className="flex-1" />
       {signedIn && (
         <button
           type="button"

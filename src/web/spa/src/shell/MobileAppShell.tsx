@@ -8,7 +8,7 @@ import { MobileModulesProvider } from "./MobileModulesContext";
 import { AdminLayout } from "./AdminLayout";
 import { pageTransition } from "../components/motion";
 import { UserCircleIcon } from "@heroicons/react/24/outline";
-import { PopMarquee } from "./PopMarquee";
+import { Marquee } from "./Marquee";
 import { ThemeToggle } from "./ThemeToggle";
 
 /* Eager-loaded */
@@ -100,7 +100,7 @@ export function MobileAppShell() {
           </div>
         </header>
 
-        <PopMarquee text={bannerText} />
+        <Marquee text={bannerText} className="border-b border-border-default bg-surface-1 py-2" />
 
         {/* Content area — bottom padding for tab bar */}
         <main className="flex-1 min-w-0 pb-20">

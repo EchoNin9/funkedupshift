@@ -3,7 +3,7 @@ import { useAuth, hasRole } from "../../shell/AuthContext";
 import { AdminPageHeader } from "./AdminPageHeader";
 import { fetchWithAuth } from "../../utils/api";
 import { Alert } from "../../components";
-import { PopMarquee, DEFAULT_BANNER } from "../../shell/PopMarquee";
+import { Marquee, DEFAULT_BANNER } from "../../shell/Marquee";
 import {
   useBranding,
   DEFAULT_HERO_TAGLINE,
@@ -571,7 +571,7 @@ const BrandingPage: React.FC = () => {
             <span className="text-xs font-display font-extrabold uppercase tracking-tight text-text-tertiary">
               Live preview
             </span>
-            <PopMarquee text={bannerDraft.trim() || DEFAULT_BANNER} />
+            <Marquee text={bannerDraft.trim() || DEFAULT_BANNER} className="rounded-lg border border-border-default bg-surface-0 py-2" />
           </div>
 
           <button type="submit" disabled={bannerSaving} className="btn-primary disabled:opacity-50">
