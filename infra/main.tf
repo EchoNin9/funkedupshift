@@ -1312,6 +1312,57 @@ resource "aws_apigatewayv2_route" "meGroupsLeave" {
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
+# Themes + site settings (reads public; writes admin-only, enforced in handler)
+resource "aws_apigatewayv2_route" "themesGet" {
+  api_id    = aws_apigatewayv2_api.main.id
+  route_key = "GET /themes"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+}
+
+resource "aws_apigatewayv2_route" "themesPost" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /themes"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "themeGet" {
+  api_id    = aws_apigatewayv2_api.main.id
+  route_key = "GET /themes/{id}"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+}
+
+resource "aws_apigatewayv2_route" "themePut" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "PUT /themes/{id}"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "themeDelete" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "DELETE /themes/{id}"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "siteSettingsGet" {
+  api_id    = aws_apigatewayv2_api.main.id
+  route_key = "GET /site-settings"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+}
+
+resource "aws_apigatewayv2_route" "siteSettingsPut" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "PUT /site-settings"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
 # User profile (any logged-in user)
 resource "aws_apigatewayv2_route" "profileGet" {
   api_id             = aws_apigatewayv2_api.main.id
