@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { AdminPageHeader } from "./AdminPageHeader";
 import { Alert } from "../../components";
+import { hasRole, useAuth } from "../../shell/AuthContext";
 import { fetchWithAuth } from "../../utils/api";
 import { refreshCatalog, useThemeState, type ThemeMode, type ThemeRecord } from "../../shell/theme";
 import { Segmented, ThemeChip, ThemePreview } from "../../shell/ThemeChips";
@@ -127,6 +128,7 @@ function ThemeDialog({ initial, onClose, onSaved }: { initial: Draft; onClose: (
 
 /** Admin › Themes: site defaults, theme cards (dark + light previews), create / edit / delete. */
 const ThemesAdminPage: React.FC = () => {
+  const { user } = useAuth();
   const { themes, defaultThemeId, defaultMode, theme: activeTheme, mode } = useThemeState();
   const [editing, setEditing] = useState<Draft | null>(null);
   const [busy, setBusy] = useState(false);
@@ -160,6 +162,15 @@ const ThemesAdminPage: React.FC = () => {
 
   const putSettings = (body: { defaultThemeId?: string; defaultMode?: ThemeMode }, done: string) =>
     call("/site-settings", { method: "PUT", body: JSON.stringify(body) }, done);
+
+  // AdminLayout admits managers, but the backend only lets admins write themes.
+  if (!hasRole(user ?? null, "superadmin")) {
+    return (
+      <div className="space-y-6">
+        <AdminPageHeader title="Themes" description="Only superadmin users can manage themes and site defaults." />
+      </div>
+    );
+  }
 
   const remove = (t: ThemeRecord) => {
     if (!window.confirm(`Delete the "${t.name}" theme? Anyone using it will switch to the site default.`)) return;
