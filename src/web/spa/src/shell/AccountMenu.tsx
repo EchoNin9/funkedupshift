@@ -153,7 +153,7 @@ export function AccountMenu({ onClose, returnFocusTo }: AccountMenuProps) {
         </div>
 
         <Link to="/profile" role="menuitem" onClick={onClose} className={rowClass}>
-          <Row icon={UserCircle}>Profile</Row>
+          <Row icon={UserCircle}>Edit Profile</Row>
         </Link>
 
         <div className="mt-1 border-t pt-1" style={{ borderColor: "var(--color-divider)" }}>
