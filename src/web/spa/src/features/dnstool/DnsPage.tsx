@@ -1,7 +1,10 @@
 import React, { useState } from "react";
-import { motion } from "framer-motion";
-import { ServerIcon } from "@heroicons/react/24/outline";
+import { Link } from "react-router-dom";
+import { Globe, LockSimple } from "@phosphor-icons/react";
 import { Alert } from "../../components";
+import { buttonClasses, focusRing } from "../../components/buttonClasses";
+import { FormCard } from "../../components/FormCard";
+import { IconTextField } from "../../components/IconTextField";
 import { useAuth } from "../../shell/AuthContext";
 import { DNS_RECORD_TYPES, DnsRecordType, DnsResult, dnsLookup } from "./api";
 
@@ -20,8 +23,8 @@ interface SectionState {
   error: string | null;
 }
 
-const th = "text-left px-3 py-2 text-xs font-semibold uppercase tracking-wide text-text-tertiary";
-const td = "px-3 py-2 text-sm text-text-primary border-t border-border-default";
+const th = "text-left px-3 py-2 text-xs font-semibold uppercase tracking-wide text-text-secondary";
+const td = "px-3 py-2.5 text-sm text-text-primary border-t border-[color:var(--color-divider)]";
 
 const DnsPage: React.FC = () => {
   const { user } = useAuth();
@@ -71,44 +74,54 @@ const DnsPage: React.FC = () => {
     }
   };
 
+  const srTitle = <h1 className="sr-only">DNS Lookup</h1>;
+
   if (!user) {
     return (
       <div className="space-y-4">
-        <p className="text-sm text-text-secondary">Sign in to look up DNS records.</p>
+        {srTitle}
+        <div className="flex flex-wrap items-center gap-4 rounded-ds-lg border border-[color:var(--color-divider)] bg-surface-2 p-6">
+          <LockSimple size={26} weight="regular" aria-hidden="true" className="text-accent-text" />
+          <div className="min-w-[220px] flex-1">
+            <div className="font-bold text-text-primary">Sign in to look up DNS records</div>
+            <div className="text-sm text-text-secondary">A, MX, TXT and more for any domain.</div>
+          </div>
+          <Link to="/auth" className={buttonClasses("primary", "md")}>
+            Sign in
+          </Link>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      <motion.h1
-        className="text-2xl font-semibold tracking-tight text-text-primary flex items-center gap-2"
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-      >
-        <ServerIcon className="h-6 w-6 text-accent-text" />
-        DNS Lookup
-      </motion.h1>
-      <p className="text-sm text-text-secondary">
+    <div>
+      {srTitle}
+      <p className="mb-4 text-sm text-text-secondary">
         Look up A, MX, TXT and other DNS records for any domain — mxtoolbox-style.
       </p>
 
-      {formError && <Alert variant="error">{formError}</Alert>}
+      {formError && <Alert variant="error" className="mb-3">{formError}</Alert>}
 
-      <form onSubmit={handleSubmit} className="rounded-xl border border-border-default bg-surface-2/80 p-4 flex flex-wrap gap-2">
-        <input aria-label="example.com (or an IP for PTR)"
+      <FormCard onSubmit={handleSubmit} className="flex flex-wrap gap-2.5">
+        <IconTextField
           type="text"
+          autoComplete="off"
+          autoCapitalize="none"
+          spellCheck={false}
+          aria-label="Domain name (or an IP for PTR)"
           placeholder="example.com (or an IP for PTR)"
           value={name}
           onChange={(e) => setName(e.target.value)}
           required
-          className="flex-1 min-w-[220px] rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary"
+          icon={<Globe size={18} weight="regular" />}
+          wrapperClassName="flex-1 basis-[240px] min-w-0"
         />
-        <select aria-label="Record type"
+        <select
+          aria-label="Record type"
           value={type}
           onChange={(e) => setType(e.target.value as TypeChoice)}
-          className="rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary"
+          className={`min-h-12 w-full rounded-ds-md border border-border-default bg-surface-0 px-3 text-[15px] text-text-primary hover:border-border-hover sm:w-auto ${focusRing}`}
         >
           {DNS_RECORD_TYPES.map((t) => (
             <option key={t} value={t}>
@@ -117,23 +130,28 @@ const DnsPage: React.FC = () => {
           ))}
           <option value="ALL">All types</option>
         </select>
-        <button
-          type="submit"
-          disabled={running}
-          className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-accent-500 px-4 py-2 text-sm font-medium text-white hover:bg-accent-600 transition-colors shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
+        <button type="submit" disabled={running} className={`${buttonClasses("primary", "lg")} w-full sm:w-auto`}>
           {running ? "Looking up…" : "Lookup"}
         </button>
-      </form>
+      </FormCard>
 
-      <div className="space-y-4">
+      <div className="mt-6 space-y-4" aria-live="polite" aria-busy={running}>
         {sections.map((section) => (
-          <div key={section.type} className="rounded-xl border border-border-default bg-surface-2/80 p-4">
-            <h2 className="text-sm font-semibold text-accent-text mb-2">{section.type}</h2>
-            {section.loading && <p className="text-sm text-text-tertiary">Looking up…</p>}
+          <section
+            key={section.type}
+            className="rounded-ds-lg border border-[color:var(--color-divider)] bg-surface-2 p-4"
+          >
+            <h2 className="mb-2 font-heading text-base font-semibold text-accent-text">{section.type}</h2>
+            {section.loading && (
+              <div className="motion-safe:animate-pulse space-y-2" role="status">
+                <span className="sr-only">Looking up…</span>
+                <div className="h-3 w-2/3 rounded bg-surface-3" />
+                <div className="h-3 w-1/2 rounded bg-surface-3" />
+              </div>
+            )}
             {!section.loading && section.error && <Alert variant="error">{section.error}</Alert>}
             {!section.loading && section.result && section.result.status !== "ok" && (
-              <p className="text-sm text-text-tertiary">
+              <p className="text-sm text-text-secondary">
                 {STATUS_LABEL[section.result.status] ?? section.result.status}
               </p>
             )}
@@ -141,7 +159,7 @@ const DnsPage: React.FC = () => {
               section.result &&
               section.result.status === "ok" &&
               (section.result.records.length === 0 ? (
-                <p className="text-sm text-text-tertiary">No records found.</p>
+                <p className="text-sm text-text-secondary">No records found.</p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full border-collapse">
@@ -164,7 +182,7 @@ const DnsPage: React.FC = () => {
                   </table>
                 </div>
               ))}
-          </div>
+          </section>
         ))}
       </div>
     </div>

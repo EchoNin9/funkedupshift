@@ -1,7 +1,9 @@
 import React, { useMemo, useState } from "react";
-import { motion } from "framer-motion";
-import { ArrowsRightLeftIcon } from "@heroicons/react/24/outline";
+import { Link } from "react-router-dom";
+import { LockSimple } from "@phosphor-icons/react";
 import { useAuth } from "../../shell/AuthContext";
+import { buttonClasses, focusRing } from "../../components/buttonClasses";
+import { SegmentedControl } from "../../components/SegmentedControl";
 
 // ---- pure client-side conversions ----
 // Duplicated in the tools-site app's src/ConvertersTool.tsx — the two
@@ -136,9 +138,11 @@ const TABS: { id: Tab; label: string }[] = [
 
 const pad2 = (n: number) => String(n).padStart(2, "0");
 
-const fieldClass =
-  "rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary";
-const cardClass = "rounded-xl border border-border-default bg-surface-2/80 p-4 space-y-3";
+const fieldClass = `min-h-11 rounded-ds-md border border-border-default bg-surface-0 px-3 text-[15px] text-text-primary hover:border-border-hover motion-safe:transition-colors motion-safe:duration-150 ${focusRing}`;
+const cardClass = "space-y-3.5 rounded-ds-lg border border-divider bg-surface-2 p-3.5 sm:p-4";
+const labelClass = "block text-[13px] font-semibold text-text-secondary";
+const cardTitleClass = "font-heading text-base font-semibold text-text-primary";
+const resultClass = "rounded-ds-md border border-divider bg-surface-0 px-3.5 py-3 text-[15px] text-text-primary";
 
 const ZonePicker: React.FC<{ label: string; value: string; onChange: (z: string) => void }> = ({
   label,
@@ -154,17 +158,18 @@ const ZonePicker: React.FC<{ label: string; value: string; onChange: (z: string)
 
   return (
     <div className="space-y-2">
-      <label className="text-sm text-text-secondary">{label}</label>
+      <span className={labelClass}>{label}</span>
       <div className="flex flex-wrap gap-1.5">
         {FAVORITE_ZONES.map((z) => (
           <button
             key={z}
             type="button"
             onClick={() => onChange(z)}
-            className={`rounded-full border px-2.5 py-1 text-xs ${
+            aria-pressed={value === z}
+            className={`min-h-9 rounded-full border px-3 text-xs font-semibold motion-safe:transition-colors ${focusRing} ${
               value === z
-                ? "border-accent-500 text-accent-text"
-                : "border-border-hover text-text-tertiary hover:text-text-primary"
+                ? "border-accent bg-accent/15 text-accent-text"
+                : "border-border-default text-text-secondary hover:border-border-hover hover:text-text-primary"
             }`}
           >
             {z}
@@ -301,47 +306,33 @@ const ConvertersPage: React.FC = () => {
   if (!user) {
     return (
       <div className="space-y-4">
-        <h1 className="text-xl font-semibold text-text-primary">Converters</h1>
-        <p className="text-sm text-text-secondary">Sign in to use the converters.</p>
+        <h1 className="sr-only">Converters</h1>
+        <div className="flex flex-wrap items-center gap-4 rounded-ds-lg border border-divider bg-surface-2 p-6">
+          <LockSimple size={26} weight="regular" aria-hidden="true" className="text-accent-text" />
+          <div className="min-w-[220px] flex-1">
+            <div className="font-bold text-text-primary">Sign in to use the converters</div>
+            <div className="text-sm text-text-secondary">Everything runs locally in your browser.</div>
+          </div>
+          <Link to="/auth" className={buttonClasses("primary", "md")}>
+            Sign in
+          </Link>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
-      <motion.h1
-        className="text-2xl font-semibold tracking-tight text-text-primary flex items-center gap-2"
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-      >
-        <ArrowsRightLeftIcon className="h-6 w-6 text-accent-text" />
-        Converters
-      </motion.h1>
+      <h1 className="sr-only">Converters</h1>
       <p className="text-sm text-text-secondary">Runs locally — nothing leaves your browser.</p>
 
-      <div className="flex flex-wrap gap-1 rounded-lg border border-border-hover bg-surface-2 p-1">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => setTab(t.id)}
-            className={`min-h-[44px] flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              tab === t.id
-                ? "bg-accent-500/20 text-accent-text"
-                : "text-text-secondary hover:text-text-primary hover:bg-surface-3"
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <SegmentedControl options={TABS} value={tab} onChange={setTab} ariaLabel="Converter type" />
 
       {tab === "temperature" && (
         <div className={cardClass}>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="space-y-1">
-              <label htmlFor="conv-c" className="text-sm text-text-secondary">
+            <div className="space-y-1.5">
+              <label htmlFor="conv-c" className={labelClass}>
                 Celsius
               </label>
               <input
@@ -352,8 +343,8 @@ const ConvertersPage: React.FC = () => {
                 className={`w-full ${fieldClass}`}
               />
             </div>
-            <div className="space-y-1">
-              <label htmlFor="conv-f" className="text-sm text-text-secondary">
+            <div className="space-y-1.5">
+              <label htmlFor="conv-f" className={labelClass}>
                 Fahrenheit
               </label>
               <input
@@ -364,8 +355,8 @@ const ConvertersPage: React.FC = () => {
                 className={`w-full ${fieldClass}`}
               />
             </div>
-            <div className="space-y-1">
-              <label htmlFor="conv-k" className="text-sm text-text-secondary">
+            <div className="space-y-1.5">
+              <label htmlFor="conv-k" className={labelClass}>
                 Kelvin
               </label>
               <input
@@ -388,10 +379,11 @@ const ConvertersPage: React.FC = () => {
                 key={key}
                 type="button"
                 onClick={() => selectDimension(key)}
-                className={`rounded-full border px-3 py-1 text-xs ${
+                aria-pressed={dimKey === key}
+                className={`min-h-9 rounded-full border px-3.5 text-xs font-semibold motion-safe:transition-colors ${focusRing} ${
                   dimKey === key
-                    ? "border-accent-500 text-accent-text"
-                    : "border-border-hover text-text-tertiary hover:text-text-primary"
+                    ? "border-accent bg-accent/15 text-accent-text"
+                    : "border-border-default text-text-secondary hover:border-border-hover hover:text-text-primary"
                 }`}
               >
                 {DIMENSIONS[key].label}
@@ -412,8 +404,8 @@ const ConvertersPage: React.FC = () => {
                 </option>
               ))}
             </select>
-            <span className="text-text-tertiary">&rarr;</span>
-            <input aria-label="Converted value" type="text" readOnly value={unitResult} className={`w-28 ${fieldClass}`} />
+            <span className="text-text-tertiary" aria-hidden="true">&rarr;</span>
+            <input aria-label="Converted value" type="text" readOnly value={unitResult} className={`w-32 font-semibold ${fieldClass}`} />
             <select aria-label="To unit" value={toUnit} onChange={(e) => setToUnit(e.target.value)} className={fieldClass}>
               {unitNames.map((u) => (
                 <option key={u} value={u}>
@@ -428,7 +420,7 @@ const ConvertersPage: React.FC = () => {
       {tab === "date" && (
         <div className="space-y-4">
           <div className={cardClass}>
-            <h2 className="text-sm font-semibold text-accent-text">Days from a date</h2>
+            <h2 className={cardTitleClass}>Days from a date</h2>
             <div className="flex flex-wrap gap-2">
               <input aria-label="From date"
                 type="date"
@@ -445,23 +437,23 @@ const ConvertersPage: React.FC = () => {
               />
             </div>
             {offsetResult && (
-              <p className="text-sm text-text-primary">
+              <p className={resultClass}>
                 {offsetResult.date} — {offsetResult.weekday}
               </p>
             )}
           </div>
 
           <div className={cardClass}>
-            <h2 className="text-sm font-semibold text-accent-text">Days between two dates</h2>
+            <h2 className={cardTitleClass}>Days between two dates</h2>
             <div className="flex flex-wrap gap-2">
               <input aria-label="First date" type="date" value={dateA} onChange={(e) => setDateA(e.target.value)} className={fieldClass} />
               <input aria-label="Second date" type="date" value={dateB} onChange={(e) => setDateB(e.target.value)} className={fieldClass} />
             </div>
-            {betweenResult !== null && <p className="text-sm text-text-primary">{betweenResult} days</p>}
+            {betweenResult !== null && <p className={resultClass}>{betweenResult} days</p>}
           </div>
 
           <div className={cardClass}>
-            <h2 className="text-sm font-semibold text-accent-text">Unix timestamp &rarr; date</h2>
+            <h2 className={cardTitleClass}>Unix timestamp &rarr; date</h2>
             <input aria-label="Unix timestamp"
               type="number"
               value={unixTs}
@@ -469,7 +461,7 @@ const ConvertersPage: React.FC = () => {
               className={`w-full sm:w-64 ${fieldClass}`}
             />
             {unixResult && (
-              <p className="text-sm text-text-primary">
+              <p className={resultClass}>
                 {unixResult.local}
                 <br />
                 <span className="text-text-tertiary">{unixResult.utc}</span>
@@ -478,25 +470,25 @@ const ConvertersPage: React.FC = () => {
           </div>
 
           <div className={cardClass}>
-            <h2 className="text-sm font-semibold text-accent-text">Date &rarr; Unix timestamp</h2>
+            <h2 className={cardTitleClass}>Date &rarr; Unix timestamp</h2>
             <input aria-label="Date and time"
               type="datetime-local"
               value={localDt}
               onChange={(e) => setLocalDt(e.target.value)}
               className={fieldClass}
             />
-            {localToUnix !== null && <p className="text-sm text-text-primary">{localToUnix}</p>}
+            {localToUnix !== null && <p className={resultClass}>{localToUnix}</p>}
           </div>
 
           <div className={cardClass}>
-            <h2 className="text-sm font-semibold text-accent-text">Age from birthdate</h2>
+            <h2 className={cardTitleClass}>Age from birthdate</h2>
             <input aria-label="Birthdate"
               type="date"
               value={birthdate}
               onChange={(e) => setBirthdate(e.target.value)}
               className={fieldClass}
             />
-            {ageResult !== null && <p className="text-sm text-text-primary">{ageResult} years old</p>}
+            {ageResult !== null && <p className={resultClass}>{ageResult} years old</p>}
           </div>
         </div>
       )}
@@ -512,12 +504,12 @@ const ConvertersPage: React.FC = () => {
             <ZonePicker label="To" value={toZone} onChange={setToZone} />
           </div>
           {tzResult && (
-            <div className="space-y-2">
-              <p className="text-sm text-text-primary">
+            <div className="space-y-2.5">
+              <p className={resultClass}>
                 {tzResult.time} on {tzResult.date} ({tzResult.weekday}) in {toZone}
               </p>
               {tzResult.dayOffset !== 0 && (
-                <div className="rounded-md border border-accent-500/40 bg-accent-500/10 px-3 py-2 text-sm text-accent-text">
+                <div role="status" className="rounded-ds-md border border-accent/40 bg-accent/10 px-3.5 py-2.5 text-sm font-semibold text-accent-text">
                   {tzResult.dayOffset > 0 ? "Next day" : "Previous day"} relative to the source date.
                 </div>
               )}

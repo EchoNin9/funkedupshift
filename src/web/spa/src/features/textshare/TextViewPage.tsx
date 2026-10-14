@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Alert } from "../../components";
+import { CopyButton } from "../../components/CopyButton";
 import { TextPastePublic, getPublicTextPaste } from "./api";
 
 /** Public, unauthenticated viewer for a shared text paste (SPA's own
@@ -13,7 +14,6 @@ const TextViewPage: React.FC = () => {
   const [paste, setPaste] = useState<TextPastePublic | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (!id) {
@@ -41,43 +41,37 @@ const TextViewPage: React.FC = () => {
     };
   }, [id]);
 
-  const handleCopy = async () => {
-    if (!paste) return;
-    try {
-      await navigator.clipboard.writeText(paste.content);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 2000);
-    } catch {
-      setCopied(false);
-    }
-  };
-
   return (
-    <div className="space-y-4">
-      <h1 className="text-xl font-semibold text-text-primary">Shared text</h1>
+    <div className="mx-auto max-w-3xl space-y-4">
+      <h1 className="font-heading text-[24px] font-semibold tracking-[-0.02em] text-text-primary">Shared text</h1>
 
-      {loading && <p className="text-sm text-text-tertiary">Loading…</p>}
+      {loading && (
+        <div role="status" className="motion-safe:animate-pulse space-y-2 rounded-ds-lg border border-[color:var(--color-divider)] bg-surface-2 p-4">
+          <span className="sr-only">Loading…</span>
+          <div className="h-3 w-2/3 rounded bg-surface-3" />
+          <div className="h-3 w-full rounded bg-surface-3" />
+          <div className="h-3 w-5/6 rounded bg-surface-3" />
+        </div>
+      )}
 
       {!loading && error && (
         <Alert variant="error">This paste is unavailable — it may have expired or the link may be incorrect.</Alert>
       )}
 
       {!loading && paste && (
-        <div className="rounded-xl border border-border-default bg-surface-2/80 p-4 space-y-3">
-          <pre className="whitespace-pre-wrap break-words font-mono text-xs text-text-primary max-h-[60vh] overflow-y-auto">
+        <div className="space-y-3 rounded-ds-lg border border-[color:var(--color-divider)] bg-surface-2 p-4">
+          <pre
+            tabIndex={0}
+            aria-label="Shared text content"
+            className="max-h-[60vh] overflow-y-auto whitespace-pre-wrap break-words rounded-ds-md border border-border-default bg-surface-0 p-3.5 font-mono text-[13px] text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          >
             {paste.content}
           </pre>
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-text-tertiary">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-xs text-text-secondary">
               Expires {new Date(paste.expiresAt * 1000).toLocaleString()}
             </span>
-            <button
-              type="button"
-              onClick={handleCopy}
-              className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-border-hover bg-surface-2 px-3 py-1.5 text-xs font-medium text-text-primary hover:bg-surface-3 transition-colors"
-            >
-              {copied ? "Copied" : "Copy text"}
-            </button>
+            <CopyButton text={paste.content} label="Copy text" className="sm:ml-auto" />
           </div>
         </div>
       )}

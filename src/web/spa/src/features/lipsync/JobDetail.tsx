@@ -1,16 +1,11 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import {
-  ArrowDownTrayIcon,
-  ArrowPathIcon,
-  ExclamationTriangleIcon,
-  SparklesIcon,
-  TrashIcon,
-  XMarkIcon,
-} from "@heroicons/react/24/outline";
+import { ArrowsClockwise, DownloadSimple, Trash, Warning, X } from "@phosphor-icons/react";
 import { Dialog } from "@headlessui/react";
 import { Alert } from "../../components";
 import { cancelJob, getJob, getJobOutputUrl, isTerminalStatus, type LipsyncJob } from "./api";
-import { MODE_META, modelLabel, statusMeta } from "./statusStyles";
+import { buttonClasses, focusRing } from "../../components/buttonClasses";
+import { modelLabel } from "./statusStyles";
+import { LipsyncAiTag, LipsyncModeTag, LipsyncStatusTag } from "./LipsyncTags";
 import { formatDateTime, formatExpiry, isExpiringSoon } from "./dateUtils";
 
 // Background poll cadence — matches the runner's fastest backoff step (15s,
@@ -126,155 +121,149 @@ export function JobDetail({ jobId, onClose, onChanged }: JobDetailProps) {
     <Dialog open onClose={onClose} className="relative z-50">
       <div className="fixed inset-0 bg-black/60" aria-hidden="true" />
       <div className="fixed inset-0 flex items-center justify-center p-4">
-      <Dialog.Panel
-        className="w-full max-w-lg rounded-xl border border-border-hover bg-surface-2 shadow-xl max-h-[85vh] overflow-y-auto scrollbar-thin"
-      >
-        <div className="flex items-start justify-between gap-3 border-b border-border-default p-4">
-          <Dialog.Title as="h2"
-            
-            className="text-lg font-display font-extrabold uppercase tracking-tight text-text-primary"
-          >
-            Clip detail
-          </Dialog.Title>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="rounded-md p-1 text-text-tertiary hover:bg-surface-3 hover:text-text-primary transition-colors"
-          >
-            <XMarkIcon className="h-5 w-5" />
-          </button>
-        </div>
+        <Dialog.Panel className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-ds-lg border border-[color:var(--color-divider)] bg-surface-2 shadow-ds-lg scrollbar-thin">
+          <div className="flex items-start justify-between gap-3 border-b border-[color:var(--color-divider)] p-4">
+            <Dialog.Title as="h2" className="font-heading text-[20px] font-semibold text-text-primary">
+              Clip detail
+            </Dialog.Title>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close"
+              className={`inline-flex h-9 w-9 items-center justify-center rounded-ds-md text-text-secondary hover:bg-surface-3 hover:text-text-primary motion-safe:transition-colors motion-safe:duration-150 ${focusRing}`}
+            >
+              <X size={18} weight="regular" aria-hidden="true" />
+            </button>
+          </div>
 
-        <div className="space-y-4 p-4">
-          {error && <Alert variant="error">{error}</Alert>}
+          <div className="space-y-4 p-4">
+            {error && <Alert variant="error">{error}</Alert>}
 
-          {loading && !job && (
-            <div className="space-y-2">
-              <div className="h-4 w-3/4 animate-pulse rounded bg-surface-3" />
-              <div className="h-4 w-1/2 animate-pulse rounded bg-surface-3" />
-              <div className="h-40 w-full animate-pulse rounded bg-surface-3" />
-            </div>
-          )}
-
-          {job && (
-            <>
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className="inline-flex items-center rounded-full border border-border-hover px-2 py-0.5 text-xs font-medium text-text-secondary">
-                  {MODE_META[job.mode]?.label ?? job.mode}
-                </span>
-                <span
-                  className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${statusMeta(job.status).badge}`}
-                >
-                  {statusMeta(job.status).label}
-                </span>
-                <span className="inline-flex items-center gap-1 rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent-text">
-                  <SparklesIcon className="h-3 w-3" />
-                  AI-generated
-                </span>
+            {loading && !job && (
+              <div className="space-y-2 motion-safe:animate-pulse" aria-busy="true">
+                <div className="h-4 w-3/4 rounded bg-surface-3" />
+                <div className="h-4 w-1/2 rounded bg-surface-3" />
+                <div className="h-40 w-full rounded bg-surface-3" />
               </div>
+            )}
 
-              <dl className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
-                <dt className="text-text-tertiary">Model</dt>
-                <dd className="text-text-primary">{modelLabel(job.model)}</dd>
-                <dt className="text-text-tertiary">Created</dt>
-                <dd className="text-text-primary">{formatDateTime(job.createdAt)}</dd>
-                <dt className="text-text-tertiary">Updated</dt>
-                <dd className="text-text-primary">{formatDateTime(job.updatedAt)}</dd>
-                <dt className="text-text-tertiary">Expires</dt>
-                <dd className={expiring ? "text-warning" : "text-text-primary"}>{formatExpiry(job.expiresAt)}</dd>
-                {typeof job.durationSec === "number" && (
-                  <>
-                    <dt className="text-text-tertiary">Duration</dt>
-                    <dd className="text-text-primary">{job.durationSec.toFixed(1)}s</dd>
-                  </>
-                )}
-                {job.prompt && (
-                  <>
-                    <dt className="text-text-tertiary">Prompt</dt>
-                    <dd className="text-text-primary break-words">{job.prompt}</dd>
-                  </>
-                )}
-              </dl>
-
-              {!isTerminal && (
-                <div className="flex items-center gap-2 rounded-lg border border-border-default bg-surface-1 p-3 text-sm text-text-secondary">
-                  <ArrowPathIcon className="h-4 w-4 shrink-0 animate-spin text-accent-text" />
-                  Generating your clip — this can take a few minutes. This panel updates automatically.
+            {job && (
+              <>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <LipsyncModeTag mode={job.mode} />
+                  <LipsyncStatusTag status={job.status} />
+                  <LipsyncAiTag />
                 </div>
-              )}
 
-              {job.status === "failed" && (
-                <Alert variant="error">
-                  <span className="flex items-start gap-1.5">
-                    <ExclamationTriangleIcon className="h-4 w-4 shrink-0" />
-                    {job.error || "This clip failed to generate."}
-                  </span>
-                </Alert>
-              )}
-
-              {job.status === "cancelled" && <p className="text-sm text-text-tertiary">This clip was cancelled.</p>}
-
-              {job.status === "completed" && (
-                <div className="space-y-2">
-                  {outputError ? (
-                    <Alert variant="error">
-                      <div className="space-y-2">
-                        <p>{outputError}</p>
-                        <button
-                          type="button"
-                          onClick={loadOutputUrl}
-                          disabled={outputLoading}
-                          className="inline-flex items-center gap-1.5 rounded-md border border-border-hover bg-surface-2 px-2.5 py-1 text-xs font-medium text-text-primary hover:bg-surface-3 transition-colors disabled:opacity-50"
-                        >
-                          <ArrowPathIcon className={`h-3.5 w-3.5 ${outputLoading ? "animate-spin" : ""}`} />
-                          Reload video
-                        </button>
-                      </div>
-                    </Alert>
-                  ) : outputUrl ? (
+                <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-[13px]">
+                  <dt className="text-text-secondary">Model</dt>
+                  <dd className="text-text-primary">{modelLabel(job.model)}</dd>
+                  <dt className="text-text-secondary">Created</dt>
+                  <dd className="text-text-primary">{formatDateTime(job.createdAt)}</dd>
+                  <dt className="text-text-secondary">Updated</dt>
+                  <dd className="text-text-primary">{formatDateTime(job.updatedAt)}</dd>
+                  <dt className="text-text-secondary">Expires</dt>
+                  <dd className={expiring ? "text-warning" : "text-text-primary"}>{formatExpiry(job.expiresAt)}</dd>
+                  {typeof job.durationSec === "number" && (
                     <>
-                      <video
-                        src={outputUrl}
-                        controls
-                        playsInline
-                        className="w-full rounded-lg border border-border-hover bg-black"
-                        onError={() => setOutputError("The video link expired or failed to load.")}
-                      />
-                      <a
-                        href={outputUrl}
-                        download
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 rounded-md border border-border-hover bg-surface-2 px-3 py-1.5 text-xs font-medium text-text-primary hover:bg-surface-3 transition-colors"
-                      >
-                        <ArrowDownTrayIcon className="h-3.5 w-3.5" />
-                        Download
-                      </a>
+                      <dt className="text-text-secondary">Duration</dt>
+                      <dd className="text-text-primary">{job.durationSec.toFixed(1)}s</dd>
                     </>
-                  ) : (
-                    <p className="text-sm text-text-tertiary">Loading video…</p>
                   )}
-                </div>
-              )}
+                  {job.prompt && (
+                    <>
+                      <dt className="text-text-secondary">Prompt</dt>
+                      <dd className="break-words text-text-primary">{job.prompt}</dd>
+                    </>
+                  )}
+                </dl>
 
-              {!isTerminal && (
-                <div className="flex items-center gap-2 border-t border-border-default pt-3">
-                  <button
-                    type="button"
-                    onClick={handleCancel}
-                    disabled={cancelling}
-                    className="inline-flex items-center gap-1.5 rounded-md border border-danger/60 bg-danger/10 px-3 py-1.5 text-xs font-medium text-danger hover:bg-danger/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                {!isTerminal && (
+                  <div
+                    role="status"
+                    className="flex items-center gap-2 rounded-ds-md border border-[color:var(--color-divider)] bg-surface-0 p-3 text-sm text-text-secondary"
                   >
-                    <TrashIcon className="h-3.5 w-3.5" />
-                    {cancelling ? "Cancelling…" : "Cancel clip"}
-                  </button>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      </Dialog.Panel>
+                    <ArrowsClockwise size={16} weight="regular" aria-hidden="true" className="shrink-0 text-accent-text motion-safe:animate-spin" />
+                    Generating your clip — this can take a few minutes. This panel updates automatically.
+                  </div>
+                )}
+
+                {job.status === "failed" && (
+                  <Alert variant="error">
+                    <span className="flex items-start gap-1.5">
+                      <Warning size={16} weight="regular" aria-hidden="true" className="mt-0.5 shrink-0" />
+                      {job.error || "This clip failed to generate."}
+                    </span>
+                  </Alert>
+                )}
+
+                {job.status === "cancelled" && <p className="text-sm text-text-secondary">This clip was cancelled.</p>}
+
+                {job.status === "completed" && (
+                  <div className="space-y-2">
+                    {outputError ? (
+                      <Alert variant="error">
+                        <div className="space-y-2">
+                          <p>{outputError}</p>
+                          <button
+                            type="button"
+                            onClick={loadOutputUrl}
+                            disabled={outputLoading}
+                            className={buttonClasses("secondary", "sm")}
+                          >
+                            <ArrowsClockwise
+                              size={16}
+                              weight="regular"
+                              aria-hidden="true"
+                              className={outputLoading ? "motion-safe:animate-spin" : ""}
+                            />
+                            Reload video
+                          </button>
+                        </div>
+                      </Alert>
+                    ) : outputUrl ? (
+                      <>
+                        <video
+                          src={outputUrl}
+                          controls
+                          playsInline
+                          className="w-full rounded-ds-md border border-[color:var(--color-divider)] bg-black"
+                          onError={() => setOutputError("The video link expired or failed to load.")}
+                        />
+                        <a
+                          href={outputUrl}
+                          download
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={buttonClasses("secondary", "sm")}
+                        >
+                          <DownloadSimple size={16} weight="regular" aria-hidden="true" />
+                          Download
+                        </a>
+                      </>
+                    ) : (
+                      <p className="text-sm text-text-secondary">Loading video…</p>
+                    )}
+                  </div>
+                )}
+
+                {!isTerminal && (
+                  <div className="flex items-center gap-2 border-t border-[color:var(--color-divider)] pt-3">
+                    <button
+                      type="button"
+                      onClick={handleCancel}
+                      disabled={cancelling}
+                      className={`${buttonClasses("secondary", "sm")} !border-danger/60 !text-danger hover:!bg-danger/10`}
+                    >
+                      <Trash size={16} weight="regular" aria-hidden="true" />
+                      {cancelling ? "Cancelling…" : "Cancel clip"}
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </Dialog.Panel>
       </div>
     </Dialog>
   );

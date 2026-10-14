@@ -1,19 +1,9 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
-import { LinkIcon as DefaultToolIcon } from "@heroicons/react/24/outline";
+import { Wrench } from "@phosphor-icons/react";
 import { PUBLIC_MODULES } from "../../config/modules";
-
-const stagger = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.06 } } };
-const fadeUp = { hidden: { opacity: 0, y: 15 }, show: { opacity: 1, y: 0, transition: { duration: 0.35 } } };
-
-/* Cycle distinct neon accent shadows + icon colours so each card pops differently. */
-const PANEL_ACCENTS = [
-  { card: "", icon: "text-n1-text" },
-  { card: "card-accent-n3", icon: "text-n3-text" },
-  { card: "card-accent-n2", icon: "text-n2-text" },
-  { card: "card-accent-n4", icon: "text-n4-text" },
-];
+import { Breadcrumb, GROUP_HUES } from "../../components/AppPage";
+import { focusRing } from "../../components/buttonClasses";
 
 // The tools directory: every "tools" section module, plus My Info (which
 // otherwise lives in the "discover" section — it stays there too, this just
@@ -24,42 +14,42 @@ const TOOL_CARDS = [
   ...(MY_INFO_MODULE ? [MY_INFO_MODULE] : []),
 ];
 
+const hue = GROUP_HUES.tools;
+
+// Same card pattern as AppsSectionPage (/apps/tools).
+const cardClass =
+  "flex items-start gap-3.5 rounded-ds-lg border border-divider bg-surface-2 p-4 text-left hover:bg-surface-3 motion-safe:transition-colors motion-reduce:transition-none " +
+  focusRing;
+
 export default function ToolsIndexPage() {
   return (
-    <main className="container-max section-padding">
-      <motion.h1
-        className="text-4xl sm:text-5xl font-display font-extrabold uppercase tracking-tight text-text-primary mb-10"
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-      >
-        Tools
-      </motion.h1>
-
-      <motion.div
-        variants={stagger}
-        initial="hidden"
-        animate="show"
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
-      >
-        {TOOL_CARDS.map((mod, i) => {
-          const accent = PANEL_ACCENTS[i % PANEL_ACCENTS.length];
-          const Icon = mod.icon ?? DefaultToolIcon;
+    <div className="mx-auto w-full max-w-[1180px]">
+      <Breadcrumb trail={[]} current="Tools" />
+      <header className="flex items-center gap-3.5 pb-7 pt-[18px]">
+        <span className={`hue-${hue} hue-dot h-3.5 w-3.5 rounded-full`} aria-hidden="true" />
+        <div className="min-w-0">
+          <h1 className="font-display text-[clamp(28px,3.5vw,36px)] font-semibold leading-tight tracking-[-0.035em] text-text-primary">
+            Tools
+          </h1>
+          <p className="mt-0.5 text-sm text-text-secondary">Small utilities for links, images, DNS and more.</p>
+        </div>
+      </header>
+      <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr))]">
+        {TOOL_CARDS.map((mod) => {
+          const Icon = mod.icon ?? Wrench;
           return (
-            <motion.div key={mod.id} variants={fadeUp}>
-              <Link to={mod.path} className="block h-full">
-                <div className={`card ${accent.card} p-6 group h-full`}>
-                  <Icon className={`w-8 h-8 ${accent.icon} mb-4 group-hover:scale-110 transition-transform`} />
-                  <h2 className="text-lg font-display font-extrabold uppercase tracking-tight text-text-primary mb-1">
-                    {mod.label}
-                  </h2>
-                  <p className="text-sm text-text-secondary">{mod.description}</p>
-                </div>
-              </Link>
-            </motion.div>
+            <Link key={mod.id} to={mod.path} className={cardClass}>
+              <span className={`app-icon hue-${hue}`} style={{ width: 46, height: 46, borderRadius: 13 }}>
+                <Icon className="h-[23px] w-[23px]" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[15px] font-semibold text-text-primary">{mod.label}</span>
+                <span className="mt-0.5 block text-[13px] text-text-secondary">{mod.description}</span>
+              </span>
+            </Link>
           );
         })}
-      </motion.div>
-    </main>
+      </div>
+    </div>
   );
 }
