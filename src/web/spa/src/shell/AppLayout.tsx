@@ -17,7 +17,7 @@ import { LauncherProvider } from "./LauncherContext";
 import { UpdatesBanner } from "./UpdatesBanner";
 import { pageTransition } from "../components/motion";
 import { AppPageLayout } from "../components/AppPage";
-import AppsSectionPage from "../components/AppsSectionPage";
+import AppsSectionPage, { AllAppsPage } from "../components/AppsSectionPage";
 
 /* Eager-loaded (above-the-fold) */
 import HomePage from "../features/home/HomePage";
@@ -114,6 +114,7 @@ const AppLayoutContent: React.FC = () => {
             <Suspense fallback={<PageLoader />}>
             <Routes location={location}>
               <Route path="/" element={<HomePage />} />
+              <Route path="/apps" element={<AllAppsPage />} />
               <Route path="/apps/:group" element={<AppsSectionPage />} />
               {/* AppPageLayout frames each routed app from its path (breadcrumb, header, pin, "More in…");
                   paths with no module entry render unframed. Guarded routes below nest it inside their gate. */}

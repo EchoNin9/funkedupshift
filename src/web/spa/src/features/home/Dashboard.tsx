@@ -140,7 +140,7 @@ const Dashboard: React.FC = () => {
             {name ? `, ${name}` : ""}.
           </h1>
         </div>
-        <Link to="/apps/discover" className={buttonClasses("secondary", "md")}>
+        <Link to="/apps" className={buttonClasses("secondary", "md")}>
           <SquaresFour className="h-[18px] w-[18px]" aria-hidden="true" />
           All apps
         </Link>
