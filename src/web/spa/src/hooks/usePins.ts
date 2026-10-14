@@ -28,22 +28,30 @@ function writePins(pins: string[]): void {
   }
 }
 
-/** Pinned app ids, persisted in localStorage and kept in sync across tabs. Hook only — no UI. */
+/** Every mounted usePins() instance, so a pin toggled in one place (e.g. the app page header)
+ *  updates the others (e.g. the launcher) in the same tab. The `storage` event only fires in other tabs. */
+const subscribers = new Set<(pins: string[]) => void>();
+
+/** Pinned app ids, persisted in localStorage and kept in sync across instances and tabs. Hook only — no UI. */
 export function usePins() {
   const [pins, setPinsState] = useState<string[]>(readPins);
 
   useEffect(() => {
+    subscribers.add(setPinsState);
     const onStorage = (e: StorageEvent) => {
       if (e.key === PINS_KEY || e.key === null) setPinsState(readPins());
     };
     window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    return () => {
+      subscribers.delete(setPinsState);
+      window.removeEventListener("storage", onStorage);
+    };
   }, []);
 
   const setPins = useCallback((next: string[]) => {
     const clean = Array.from(new Set(next));
-    setPinsState(clean);
     writePins(clean);
+    subscribers.forEach((notify) => notify(clean));
   }, []);
 
   const isPinned = useCallback((id: string) => pins.includes(id), [pins]);
