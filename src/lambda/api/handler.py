@@ -317,6 +317,23 @@ def handler(event, context):
             group_name = path_params.get("groupName") or path.split("/me/groups/")[-1].strip("/")
             if group_name:
                 return leaveGroupSelf(event, group_name)
+        if method == "GET" and path == "/themes":
+            return listThemes(event)
+        if method == "POST" and path == "/themes":
+            return createTheme(event)
+        if path.startswith("/themes/") and method in ("GET", "PUT", "DELETE"):
+            path_params = event.get("pathParameters") or {}
+            theme_id = path_params.get("id") or path.split("/themes/", 1)[-1].strip("/")
+            if theme_id:
+                if method == "GET":
+                    return getTheme(event, theme_id)
+                if method == "PUT":
+                    return updateTheme(event, theme_id)
+                return deleteTheme(event, theme_id)
+        if method == "GET" and path == "/site-settings":
+            return getSiteSettings(event)
+        if method == "PUT" and path == "/site-settings":
+            return putSiteSettings(event)
         if method == "GET" and path == "/profile":
             return getProfile(event)
         if method == "PUT" and path == "/profile":
@@ -2846,6 +2863,68 @@ def getMe(event):
     return jsonResponse(user)
 
 
+def listThemes(event):
+    """GET /themes - public."""
+    from api.themes import list_themes
+    return _themesGuard(lambda: list_themes(jsonResponse))
+
+
+def getTheme(event, theme_id):
+    """GET /themes/{id} - public."""
+    from api.themes import get_theme
+    return _themesGuard(lambda: get_theme(jsonResponse, theme_id))
+
+
+def createTheme(event):
+    """POST /themes - admin."""
+    user, err = _requireAdmin(event)
+    if err:
+        return err
+    from api.themes import create_theme
+    return _themesGuard(lambda: create_theme(event, jsonResponse))
+
+
+def updateTheme(event, theme_id):
+    """PUT /themes/{id} - admin."""
+    user, err = _requireAdmin(event)
+    if err:
+        return err
+    from api.themes import update_theme
+    return _themesGuard(lambda: update_theme(event, jsonResponse, theme_id))
+
+
+def deleteTheme(event, theme_id):
+    """DELETE /themes/{id} - admin."""
+    user, err = _requireAdmin(event)
+    if err:
+        return err
+    from api.themes import delete_theme
+    return _themesGuard(lambda: delete_theme(jsonResponse, theme_id))
+
+
+def getSiteSettings(event):
+    """GET /site-settings - public."""
+    from api.themes import get_site_settings
+    return _themesGuard(lambda: get_site_settings(jsonResponse))
+
+
+def putSiteSettings(event):
+    """PUT /site-settings - admin."""
+    user, err = _requireAdmin(event)
+    if err:
+        return err
+    from api.themes import update_site_settings
+    return _themesGuard(lambda: update_site_settings(event, jsonResponse))
+
+
+def _themesGuard(fn):
+    try:
+        return fn()
+    except Exception as e:
+        logger.exception("themes error")
+        return jsonResponse({"error": str(e)}, 500)
+
+
 def getProfile(event):
     """GET /profile - Return current user's full profile (auth required)."""
     user = getEffectiveUserInfo(event)
@@ -2866,6 +2945,7 @@ def getProfile(event):
     except Exception:
         pass
     profile = {}
+    stored_pins, stored_theme, stored_mode = [], "", ""
     try:
         if TABLE_NAME and user_id:
             import boto3
@@ -2889,9 +2969,15 @@ def getProfile(event):
                         ExpiresIn=3600,
                     )
                 profile["avatarKey"] = avatar_key
+                stored_pins = [p.get("S", "") for p in item.get("pins", {}).get("L", []) if "S" in p]
+                stored_theme = item.get("themeId", {}).get("S", "")
+                stored_mode = item.get("mode", {}).get("S", "")
     except Exception as e:
         logger.exception("getProfile error")
         return jsonResponse({"error": str(e)}, 500)
+    from api.themes import resolve_profile_prefs
+    profile["pins"] = stored_pins
+    profile["themeId"], profile["mode"] = resolve_profile_prefs(stored_theme, stored_mode)
     custom_groups = _getUserCustomGroups(user_id)
     out = {
         "userId": user.get("userId"),
@@ -2930,10 +3016,29 @@ def updateProfile(event):
         else:
             desc_str = None
 
+        from api.themes import validate_profile_prefs
+        prefs, prefs_err = validate_profile_prefs(body)
+        if prefs_err:
+            return jsonResponse({"error": prefs_err}, 400)
+
         dynamodb = boto3.client("dynamodb")
         updates = ["updatedAt = :now"]
+        removes = []
         values = {":now": {"S": now}}
         names = {}
+        if "pins" in prefs:
+            updates.append("pins = :pins")
+            values[":pins"] = {"L": [{"S": p} for p in prefs["pins"]]}
+        if "mode" in prefs:
+            updates.append("#mode = :mode")
+            names["#mode"] = "mode"
+            values[":mode"] = {"S": prefs["mode"]}
+        if "themeId" in prefs:
+            if prefs["themeId"] is None:
+                removes.append("themeId")
+            else:
+                updates.append("themeId = :tid")
+                values[":tid"] = {"S": prefs["themeId"]}
         if desc_str is not None:
             updates.append("#desc = :desc")
             names["#desc"] = "description"
@@ -2946,7 +3051,7 @@ def updateProfile(event):
         params = {
             "TableName": TABLE_NAME,
             "Key": {"PK": {"S": pk}, "SK": {"S": "PROFILE"}},
-            "UpdateExpression": "SET " + ", ".join(updates),
+            "UpdateExpression": "SET " + ", ".join(updates) + (" REMOVE " + ", ".join(removes) if removes else ""),
             "ExpressionAttributeValues": values,
         }
         if names:

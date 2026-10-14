@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { PencilSquareIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
+import { MagnifyingGlass, PencilSimple } from "@phosphor-icons/react";
 import { motion } from "framer-motion";
 import { useAuth, hasRole } from "../../shell/AuthContext";
 import { fetchWithAuthOptional } from "../../utils/api";
@@ -34,9 +34,9 @@ function getApiBaseUrl(): string | null {
 const Stars: React.FC<{ avg?: number }> = ({ avg }) => {
   const filled = Math.round(avg ?? 0);
   return (
-    <span className="pop-stars text-sm" aria-label={avg ? `${avg.toFixed(1)} out of 5` : "unrated"}>
+    <span className="text-hue-amber tracking-[2px] text-sm" aria-label={avg ? `${avg.toFixed(1)} out of 5` : "unrated"}>
       {"★★★★★".slice(0, filled)}
-      <span className="empty">{"★★★★★".slice(filled)}</span>
+      <span className="text-text-tertiary">{"★★★★★".slice(filled)}</span>
     </span>
   );
 };
@@ -291,7 +291,7 @@ const MediaPage: React.FC = () => {
         transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
       >
         <div className="space-y-1">
-          <h1 className="text-3xl sm:text-4xl font-display font-extrabold uppercase tracking-tight text-text-primary">
+          <h1 className="text-3xl sm:text-4xl font-display font-semibold tracking-[-0.025em] text-text-primary">
             The Library
           </h1>
           <p className="text-sm text-text-secondary">
@@ -305,10 +305,10 @@ const MediaPage: React.FC = () => {
               key={t.key}
               type="button"
               onClick={() => setTypeFilter(t.key)}
-              className={`rounded-full border-2 px-3.5 py-1 text-xs font-display font-extrabold uppercase tracking-tight transition-colors ${
+              className={`rounded-full border-2 px-3.5 py-1 text-xs font-sans font-semibold transition-colors ${
                 typeFilter === t.key
-                  ? "border-ink bg-accent text-ink"
-                  : "border-border-default text-text-secondary hover:border-n3 hover:text-text-primary"
+                  ? "border-accent bg-accent text-on-accent"
+                  : "border-border-default text-text-secondary hover:border-hue-teal hover:text-text-primary"
               }`}
             >
               {t.label}
@@ -325,7 +325,7 @@ const MediaPage: React.FC = () => {
           setSearch(search.trim());
         }}
       >
-        <MagnifyingGlassIcon className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-text-tertiary" />
+        <MagnifyingGlass className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-text-tertiary" />
         <input aria-label="Search the library by title or description..."
           type="text"
           value={search}
@@ -390,10 +390,10 @@ const MediaPage: React.FC = () => {
             <button
               type="button"
               onClick={() => setSelectedCategoryIds([])}
-              className={`flex-shrink-0 rounded-full border-2 px-3.5 py-1 text-xs font-display font-extrabold uppercase tracking-tight transition-colors ${
+              className={`flex-shrink-0 rounded-full border-2 px-3.5 py-1 text-xs font-sans font-semibold transition-colors ${
                 selectedCategoryIds.length === 0
-                  ? "border-ink bg-accent text-ink"
-                  : "border-border-default text-text-secondary hover:border-n3 hover:text-text-primary"
+                  ? "border-accent bg-accent text-on-accent"
+                  : "border-border-default text-text-secondary hover:border-hue-teal hover:text-text-primary"
               }`}
             >
               All
@@ -405,10 +405,10 @@ const MediaPage: React.FC = () => {
                   key={c.id}
                   type="button"
                   onClick={() => toggleCategory(c.id)}
-                  className={`flex-shrink-0 rounded-full border-2 px-3.5 py-1 text-xs font-display font-extrabold uppercase tracking-tight transition-colors ${
+                  className={`flex-shrink-0 rounded-full border-2 px-3.5 py-1 text-xs font-sans font-semibold transition-colors ${
                     isActive
-                      ? "border-ink bg-accent text-ink"
-                      : "border-border-default text-text-secondary hover:border-n3 hover:text-text-primary"
+                      ? "border-accent bg-accent text-on-accent"
+                      : "border-border-default text-text-secondary hover:border-hue-teal hover:text-text-primary"
                   }`}
                 >
                   {c.name}
@@ -520,14 +520,14 @@ const MediaPage: React.FC = () => {
                       </div>
                     )}
                     {/* Type badge */}
-                    <span className="pop-badge absolute left-2 top-2 !px-2 !py-0.5 text-[10px]">
+                    <span className="tag tag-accent absolute left-2 top-2 !px-2 !py-0.5 !text-[10px]">
                       {mediaTypeLabel}
                     </span>
                   </div>
 
                   {/* ── Card body ── */}
                   <div className="p-2.5 space-y-1.5 border-t-[3px] border-text-primary">
-                    <h2 className="text-sm font-display font-extrabold uppercase tracking-tight text-text-primary line-clamp-2">
+                    <h2 className="text-sm font-display font-semibold tracking-[-0.025em] text-text-primary line-clamp-2">
                       {title}
                     </h2>
 
@@ -558,7 +558,7 @@ const MediaPage: React.FC = () => {
                         to={`/admin/media/edit/${encodeURIComponent(m.PK)}`}
                         className="inline-flex items-center gap-1 text-[11px] text-text-secondary hover:text-accent-text transition-colors"
                       >
-                        <PencilSquareIcon className="h-3.5 w-3.5" />
+                        <PencilSimple className="h-3.5 w-3.5" />
                         Edit
                       </Link>
                     )}

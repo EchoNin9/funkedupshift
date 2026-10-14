@@ -7,11 +7,12 @@ import { PlatformProvider } from "./shell/PlatformContext";
 import { ImpersonationProvider } from "./shell/ImpersonationContext";
 import { AuthProvider } from "./shell/AuthContext";
 import { BrandingProvider } from "./shell/BrandingContext";
-import { applyTheme, getTheme } from "./shell/theme";
+import { ThemeProvider } from "./shell/ThemeProvider";
+import { initTheme } from "./shell/theme";
 import "./styles.css";
 
-// Apply persisted Neon Pop theme before first paint (default dark).
-applyTheme(getTheme());
+// Apply the cached theme + mode before first paint (no flash of the wrong theme).
+initTheme();
 
 const rootEl = document.getElementById("root") as HTMLElement | null;
 
@@ -24,9 +25,11 @@ if (rootEl) {
         <PlatformProvider>
           <ImpersonationProvider>
             <AuthProvider>
-              <BrandingProvider>
-                <AppLayout />
-              </BrandingProvider>
+              <ThemeProvider>
+                <BrandingProvider>
+                  <AppLayout />
+                </BrandingProvider>
+              </ThemeProvider>
             </AuthProvider>
           </ImpersonationProvider>
         </PlatformProvider>

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { LinkIcon, ClipboardDocumentIcon } from "@heroicons/react/24/outline";
+import { Clipboard, LinkSimple } from "@phosphor-icons/react";
 
 interface ShareMemeBoxProps {
   memeId: string;
@@ -70,7 +70,7 @@ const ShareMemeBox: React.FC<ShareMemeBoxProps> = ({ memeId, title = "", classNa
   return (
     <div className={`rounded-xl border border-border-default bg-surface-1 p-4 ${className}`}>
       <div className="flex items-center gap-2 mb-2">
-        <LinkIcon className="h-4 w-4 text-text-secondary" />
+        <LinkSimple className="h-4 w-4 text-text-secondary" />
         <span className="text-xs font-medium text-text-secondary uppercase">Share</span>
       </div>
       <div className="flex flex-wrap gap-2">
@@ -85,7 +85,7 @@ const ShareMemeBox: React.FC<ShareMemeBoxProps> = ({ memeId, title = "", classNa
               {item.icon ? (
                 <span className="text-success">{item.icon}</span>
               ) : (
-                <ClipboardDocumentIcon className="h-4 w-4 text-text-secondary" />
+                <Clipboard className="h-4 w-4 text-text-secondary" />
               )}
               {item.label}
             </button>

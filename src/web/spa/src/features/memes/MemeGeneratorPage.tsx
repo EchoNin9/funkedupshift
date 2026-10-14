@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeftIcon } from "@heroicons/react/24/outline";
+import { ArrowLeft } from "@phosphor-icons/react";
 import { useAuth, canCreateMemes } from "../../shell/AuthContext";
 import { Alert } from "../../components";
 import AddTagInput from "./AddTagInput";
@@ -318,7 +318,6 @@ const MemeGeneratorPage: React.FC = () => {
   if (!user) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-semibold text-text-primary">Meme Generator</h1>
         <div className="rounded-md border border-border-hover bg-surface-2 px-4 py-3 text-text-primary">
           Sign in to create memes.
         </div>
@@ -328,7 +327,6 @@ const MemeGeneratorPage: React.FC = () => {
   if (!canCreate) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-semibold text-text-primary">Meme Generator</h1>
         <div className="rounded-md border border-border-hover bg-surface-2 px-4 py-3 text-text-primary">
           Meme creator access required (user + Memes group). Join the Memes custom group or contact an admin.
         </div>
@@ -340,10 +338,9 @@ const MemeGeneratorPage: React.FC = () => {
     <div className="space-y-6">
       <header className="flex items-center gap-4">
         <Link to="/memes" className="inline-flex items-center gap-1 text-sm text-text-secondary transition-colors hover:text-text-primary">
-          <ArrowLeftIcon className="h-4 w-4" />
+          <ArrowLeft className="h-4 w-4" />
           Back to Memes
         </Link>
-        <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Meme Generator</h1>
       </header>
 
       <div className="grid gap-6 lg:grid-cols-[1fr,320px]">
@@ -555,7 +552,7 @@ const MemeGeneratorPage: React.FC = () => {
             type="button"
             onClick={handleSubmit}
             disabled={!imageSrc || isSubmitting}
-            className="w-full rounded-md bg-accent-500 px-4 py-3 text-sm font-semibold text-ink hover:bg-accent-400 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full rounded-md bg-accent-500 px-4 py-3 text-sm font-semibold text-on-accent hover:bg-accent-400 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSubmitting ? "Saving…" : "Save meme"}
           </button>

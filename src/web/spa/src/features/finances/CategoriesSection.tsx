@@ -67,7 +67,7 @@ const CategoriesSection: React.FC<{ categories: string[]; onChanged: () => void 
           Add
         </button>
         <button type="button" onClick={save} disabled={busy || !dirty || list.length === 0}
-          className="rounded-md bg-accent-500 px-3 py-2 text-sm font-medium text-ink hover:bg-accent-400 disabled:opacity-50">
+          className="rounded-md bg-accent-500 px-3 py-2 text-sm font-medium text-on-accent hover:bg-accent-400 disabled:opacity-50">
           {busy ? "Saving…" : "Save categories"}
         </button>
         <span className="text-xs text-text-tertiary">

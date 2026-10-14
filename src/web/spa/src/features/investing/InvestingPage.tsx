@@ -179,7 +179,6 @@ const InvestingPage: React.FC = () => {
   if (!allowed) {
     return (
       <div className="space-y-4">
-        <h1 className="text-xl font-semibold text-text-primary">Investing</h1>
         <p className="text-sm text-text-secondary">
           You need to be a member of the Financial group to access Investing. Contact an admin.
         </p>
@@ -221,7 +220,7 @@ const InvestingPage: React.FC = () => {
           type="button"
           onClick={() => runSearch(false)}
           disabled={!query.trim() || busy === "search"}
-          className="rounded-md bg-accent-500 px-3 py-2 text-sm font-medium text-ink hover:bg-accent-400 disabled:opacity-50"
+          className="rounded-md bg-accent-500 px-3 py-2 text-sm font-medium text-on-accent hover:bg-accent-400 disabled:opacity-50"
         >
           {busy === "search" ? "Searching…" : "Search"}
         </button>
@@ -386,7 +385,7 @@ const InvestingPage: React.FC = () => {
                   type="button"
                   onClick={() => !tracker.includes(selected) && saveTracker([...tracker, selected])}
                   disabled={tracker.includes(selected)}
-                  className="rounded-md bg-accent-500 px-3 py-1 text-xs font-medium text-ink hover:bg-accent-400 disabled:opacity-50"
+                  className="rounded-md bg-accent-500 px-3 py-1 text-xs font-medium text-on-accent hover:bg-accent-400 disabled:opacity-50"
                 >
                   {tracker.includes(selected) ? "Tracked" : "Track"}
                 </button>

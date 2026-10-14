@@ -1,7 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { motion } from "framer-motion";
-import { ClipboardDocumentIcon, KeyIcon, ArrowPathIcon } from "@heroicons/react/24/outline";
+import { Link } from "react-router-dom";
+import { ArrowsClockwise, LockSimple } from "@phosphor-icons/react";
 import { Alert } from "../../components";
+import { buttonClasses, focusRing } from "../../components/buttonClasses";
+import { CopyButton } from "../../components/CopyButton";
 import { useAuth } from "../../shell/AuthContext";
 
 // ---- crypto-secure password generator ----
@@ -120,11 +122,12 @@ const DEFAULT_OPTIONS: PasswordOptions = {
   excludeAmbiguous: false,
 };
 
+const checkboxClass = `h-4 w-4 shrink-0 rounded-sm accent-[rgb(var(--color-accent))] ${focusRing}`;
+
 const PasswordPage: React.FC = () => {
   const { user } = useAuth();
   const [options, setOptions] = useState<PasswordOptions>(DEFAULT_OPTIONS);
   const [password, setPassword] = useState("");
-  const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const pools = useMemo(() => activePools(options), [options]);
@@ -139,7 +142,6 @@ const PasswordPage: React.FC = () => {
     try {
       const result = generatePassword(options);
       setPassword(result.password);
-      setCopied(false);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not generate a password.");
@@ -154,78 +156,73 @@ const PasswordPage: React.FC = () => {
 
   const toggleClass = (cls: CharClass) => setOptions((prev) => ({ ...prev, [cls]: !prev[cls] }));
 
-  const handleCopy = useCallback(async () => {
-    if (!password) return;
-    try {
-      await navigator.clipboard.writeText(password);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 2000);
-    } catch {
-      setCopied(false);
-    }
-  }, [password]);
+  const srTitle = <h1 className="sr-only">Password Generator</h1>;
 
   if (!user) {
     return (
       <div className="space-y-4">
-        <h1 className="text-xl font-semibold text-text-primary">Password Generator</h1>
-        <p className="text-sm text-text-secondary">Sign in to generate passwords.</p>
+        {srTitle}
+        <div className="flex flex-wrap items-center gap-4 rounded-ds-lg border border-[color:var(--color-divider)] bg-surface-2 p-6">
+          <LockSimple size={26} weight="regular" aria-hidden="true" className="text-accent-text" />
+          <div className="min-w-[220px] flex-1">
+            <div className="font-bold text-text-primary">Sign in to generate passwords</div>
+            <div className="text-sm text-text-secondary">Generated locally — nothing ever leaves your browser.</div>
+          </div>
+          <Link to="/auth" className={buttonClasses("primary", "md")}>
+            Sign in
+          </Link>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
-      <motion.h1
-        className="text-2xl font-semibold tracking-tight text-text-primary flex items-center gap-2"
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-      >
-        <KeyIcon className="h-6 w-6 text-accent-text" />
-        Password Generator
-      </motion.h1>
+      {srTitle}
       <p className="text-sm text-text-secondary">Generated locally — nothing ever leaves your browser.</p>
 
       {error && <Alert variant="error">{error}</Alert>}
 
-      <div className="rounded-xl border border-border-default bg-surface-2/80 p-4 space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <code className="flex-1 min-w-0 break-all rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-nav-text">
-            {password || "Click generate to create a password"}
+      <div className="space-y-3 rounded-ds-lg border border-[color:var(--color-divider)] bg-surface-2 p-3.5">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <code
+            aria-label="Generated password"
+            className="min-h-12 min-w-0 flex-1 basis-[240px] break-all rounded-ds-md border border-border-default bg-surface-0 px-3.5 py-3 font-mono text-[15px] text-text-primary"
+          >
+            {password || <span className="text-text-tertiary">Click generate to create a password</span>}
           </code>
-          <button
-            type="button"
-            onClick={handleCopy}
-            disabled={!password}
-            className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-border-hover bg-surface-2 px-3 py-2 text-xs font-medium text-text-primary hover:bg-surface-3 transition-colors shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <ClipboardDocumentIcon className="h-3.5 w-3.5" />
-            {copied ? "Copied" : "Copy"}
-          </button>
-          <button
-            type="button"
-            onClick={handleGenerate}
-            disabled={!canGenerate}
-            className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-accent-500 px-3 py-2 text-xs font-medium text-white hover:bg-accent-600 transition-colors shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <ArrowPathIcon className="h-3.5 w-3.5" />
-            Generate
-          </button>
+          <div className="flex w-full gap-2 sm:w-auto">
+            {password ? (
+              <CopyButton text={password} size="lg" className="flex-1 sm:flex-none" />
+            ) : (
+              <button type="button" disabled className={`${buttonClasses("secondary", "lg")} flex-1 sm:flex-none`}>
+                Copy
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={handleGenerate}
+              disabled={!canGenerate}
+              className={`${buttonClasses("primary", "lg")} flex-1 sm:flex-none`}
+            >
+              <ArrowsClockwise size={18} weight="regular" aria-hidden="true" />
+              Generate
+            </button>
+          </div>
         </div>
 
         {password && (
-          <p className="text-xs text-text-tertiary">
-            ~{Math.round(bits)} bits of entropy — <span className={strength.className}>{strength.label}</span>
+          <p className="text-[13px] text-text-secondary">
+            ~{Math.round(bits)} bits of entropy — <span className={`font-semibold ${strength.className}`}>{strength.label}</span>
           </p>
         )}
       </div>
 
-      <div className="rounded-xl border border-border-default bg-surface-2/80 p-4 space-y-3">
+      <div className="space-y-4 rounded-ds-lg border border-[color:var(--color-divider)] bg-surface-2 p-3.5">
         <div>
-          <label htmlFor="pwgen-length" className="flex justify-between text-sm text-text-secondary">
+          <label htmlFor="pwgen-length" className="mb-2 flex justify-between text-sm font-semibold text-text-primary">
             <span>Length</span>
-            <span className="font-medium text-text-primary">{options.length}</span>
+            <span className="font-mono text-accent-text">{options.length}</span>
           </label>
           <input
             id="pwgen-length"
@@ -234,30 +231,25 @@ const PasswordPage: React.FC = () => {
             max={64}
             value={options.length}
             onChange={(e) => setOptions((prev) => ({ ...prev, length: Number(e.target.value) }))}
-            className="w-full accent-accent-500"
+            className={`h-6 w-full accent-[rgb(var(--color-accent))] ${focusRing}`}
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 gap-x-4 gap-y-1 min-[420px]:grid-cols-2">
           {CLASS_TOGGLES.map(({ cls, label }) => (
-            <label key={cls} className="flex items-center gap-2 text-sm text-text-secondary">
-              <input
-                type="checkbox"
-                checked={options[cls]}
-                onChange={() => toggleClass(cls)}
-                className="accent-accent-500"
-              />
+            <label key={cls} className="flex min-h-10 items-center gap-2.5 text-sm text-text-primary">
+              <input type="checkbox" checked={options[cls]} onChange={() => toggleClass(cls)} className={checkboxClass} />
               {label}
             </label>
           ))}
         </div>
 
-        <label className="flex items-center gap-2 text-sm text-text-secondary">
+        <label className="flex min-h-10 items-center gap-2.5 text-sm text-text-primary">
           <input
             type="checkbox"
             checked={options.excludeAmbiguous}
             onChange={() => setOptions((prev) => ({ ...prev, excludeAmbiguous: !prev.excludeAmbiguous }))}
-            className="accent-accent-500"
+            className={checkboxClass}
           />
           Exclude ambiguous characters (I l 1 O 0 o | ` &apos; &quot;)
         </label>

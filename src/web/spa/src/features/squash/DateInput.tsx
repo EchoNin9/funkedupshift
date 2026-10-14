@@ -1,5 +1,5 @@
 import React, { useRef } from "react";
-import { CalendarDaysIcon } from "@heroicons/react/24/outline";
+import { CalendarBlank } from "@phosphor-icons/react";
 
 const YYYY_MM_DD = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -60,7 +60,7 @@ const DateInput: React.FC<DateInputProps> = ({
   };
 
   const baseInputClass =
-    "rounded-md border border-border-hover bg-surface-2 px-3 py-2 text-sm text-text-primary focus:border-accent-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-n3";
+    "rounded-md border border-border-hover bg-surface-2 px-3 py-2 text-sm text-text-primary focus:border-accent-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent";
   const validValue = value && isValidDate(value);
 
   return (
@@ -100,9 +100,9 @@ const DateInput: React.FC<DateInputProps> = ({
           onClick={openCalendar}
           title="Open calendar"
           aria-label="Open calendar"
-          className="rounded-md border border-border-hover bg-surface-2 px-3 py-2 text-text-secondary hover:bg-surface-3 hover:text-text-primary transition-colors focus:border-accent-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-n3 shrink-0"
+          className="rounded-md border border-border-hover bg-surface-2 px-3 py-2 text-text-secondary hover:bg-surface-3 hover:text-text-primary transition-colors focus:border-accent-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent shrink-0"
         >
-          <CalendarDaysIcon className="h-5 w-5" />
+          <CalendarBlank className="h-5 w-5" />
         </button>
       </div>
     </div>

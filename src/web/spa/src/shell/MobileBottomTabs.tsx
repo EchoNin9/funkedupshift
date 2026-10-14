@@ -1,31 +1,31 @@
 import React from "react";
 import { NavLink } from "react-router-dom";
 import {
-  HomeIcon,
-  TruckIcon,
-  GlobeAltIcon,
-  PhotoIcon,
-  TrophyIcon,
-  CurrencyDollarIcon,
-  SparklesIcon,
-  Squares2X2Icon,
-} from "@heroicons/react/24/outline";
-import {
-  HomeIcon as HomeIconSolid,
-  Squares2X2Icon as Squares2X2IconSolid,
-} from "@heroicons/react/24/solid";
+  House,
+  Truck,
+  Globe,
+  ImageSquare,
+  Trophy,
+  CurrencyDollar,
+  Sparkle,
+  SquaresFour,
+} from "@phosphor-icons/react";
 import { useMobileModulesCtx } from "./MobileModulesContext";
 
+type TabIcon = React.ComponentType<{ className?: string }>;
+const HouseFill: TabIcon = ({ className }) => <House className={className} weight="fill" />;
+const SquaresFourFill: TabIcon = ({ className }) => <SquaresFour className={className} weight="fill" />;
+
 const MODULE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
-  websites: GlobeAltIcon,
-  media: PhotoIcon,
-  squash: TrophyIcon,
-  financial: CurrencyDollarIcon,
-  "vehicles-expenses": TruckIcon,
-  "general-expenses": TruckIcon,
-  memes: PhotoIcon,
-  highlights: SparklesIcon,
-  "highest-rated": SparklesIcon,
+  websites: Globe,
+  media: ImageSquare,
+  squash: Trophy,
+  financial: CurrencyDollar,
+  "vehicles-expenses": Truck,
+  "general-expenses": Truck,
+  memes: ImageSquare,
+  highlights: Sparkle,
+  "highest-rated": Sparkle,
 };
 
 interface TabDef {
@@ -39,7 +39,7 @@ export function MobileBottomTabs() {
   const { enabledModules } = useMobileModulesCtx();
 
   const tabs: TabDef[] = [
-    { path: "/", label: "Home", icon: HomeIcon, activeIcon: HomeIconSolid },
+    { path: "/", label: "Home", icon: House, activeIcon: HouseFill },
   ];
 
   // Add enabled modules as tabs (max 3 to keep total at 5 with Home + More)
@@ -48,7 +48,7 @@ export function MobileBottomTabs() {
     .slice(0, 3);
 
   for (const mod of moduleTabs) {
-    const icon = MODULE_ICONS[mod.id] || GlobeAltIcon;
+    const icon = MODULE_ICONS[mod.id] || Globe;
     tabs.push({
       path: mod.path,
       label: mod.label.length > 10 ? mod.label.slice(0, 9) + "\u2026" : mod.label,
@@ -60,8 +60,8 @@ export function MobileBottomTabs() {
   tabs.push({
     path: "/more",
     label: "More",
-    icon: Squares2X2Icon,
-    activeIcon: Squares2X2IconSolid,
+    icon: SquaresFour,
+    activeIcon: SquaresFourFill,
   });
 
   return (

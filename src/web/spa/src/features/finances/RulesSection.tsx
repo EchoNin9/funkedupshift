@@ -169,7 +169,7 @@ const RulesSection: React.FC<{ categories: string[] }> = ({ categories }) => {
           type="button"
           onClick={saveRules}
           disabled={busy}
-          className="rounded-md bg-accent-500 px-3 py-2 text-sm font-medium text-ink hover:bg-accent-400 disabled:opacity-50"
+          className="rounded-md bg-accent-500 px-3 py-2 text-sm font-medium text-on-accent hover:bg-accent-400 disabled:opacity-50"
         >
           {busy ? "Saving…" : "Save rules"}
         </button>

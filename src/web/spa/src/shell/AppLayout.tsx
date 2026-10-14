@@ -7,13 +7,17 @@ import { usePlatform } from "./PlatformContext";
 import { AdminLayout } from "./AdminLayout";
 import { SocialGate } from "../features/social/SocialGate";
 import { LipsyncGate } from "../features/lipsync/LipsyncGate";
-import { Header } from "./Header";
-import { DesktopHeaderBar } from "./DesktopHeaderBar";
-import { LeftSidebar, SidebarCollapseProvider, useSidebarCollapse } from "./LeftSidebar";
+import ImpersonationBanner from "./ImpersonationBanner";
 import { MobileAppShell } from "./MobileAppShell";
-import { PopBackground } from "./PopBackground";
-import { PopMarquee } from "./PopMarquee";
+import { TopBar } from "./TopBar";
+import { MobileTopBar } from "./MobileTopBar";
+import { TabBar } from "./TabBar";
+import { LauncherDrawer } from "./LauncherDrawer";
+import { LauncherProvider } from "./LauncherContext";
+import { UpdatesBanner } from "./UpdatesBanner";
 import { pageTransition } from "../components/motion";
+import { AppPageLayout } from "../components/AppPage";
+import AppsSectionPage from "../components/AppsSectionPage";
 
 /* Eager-loaded (above-the-fold) */
 import HomePage from "../features/home/HomePage";
@@ -33,6 +37,7 @@ const AdminDashboard = lazy(() =>
   import("../features/admin/AdminDashboard").then((m) => ({ default: m.AdminDashboard }))
 );
 const BrandingPage = lazy(() => import("../features/admin/BrandingPage"));
+const ThemesAdminPage = lazy(() => import("../features/admin/ThemesAdminPage"));
 const InternetDashboardAdminPage = lazy(() => import("../features/admin/InternetDashboardAdminPage"));
 const RecommendedAdminPage = lazy(() => import("../features/admin/RecommendedAdminPage"));
 const MembershipPage = lazy(() => import("../features/admin/MembershipPage"));
@@ -78,9 +83,8 @@ function PageLoader() {
 
 const AppLayoutContent: React.FC = () => {
   const { user } = useAuth();
-  const { siteName, bannerText } = useBranding();
+  const { siteName } = useBranding();
   const location = useLocation();
-  const { collapsed } = useSidebarCollapse();
 
   React.useEffect(() => {
     if (siteName) document.title = siteName;
@@ -88,16 +92,15 @@ const AppLayoutContent: React.FC = () => {
 
   return (
     <div className="relative min-h-screen bg-surface-0 text-text-primary flex flex-col">
-      <PopBackground />
       <div className="relative z-10 flex-1 flex flex-col min-h-screen">
-      <Header />
-      <LeftSidebar />
+      {/* Impersonation banner shows at every width; then desktop (>640px) TopBar or mobile (<=640px) MobileTopBar. */}
+      <ImpersonationBanner />
+      <TopBar />
+      <MobileTopBar />
+      <LauncherDrawer />
 
-      {/* Content area - offset by sidebar width on desktop; sidebar is always
-          visible (incl. guests), so the offset just tracks collapsed state. */}
-      <div className={`flex-1 min-w-0 flex flex-col ${collapsed ? "md:pl-16" : "md:pl-60"}`}>
-        <DesktopHeaderBar />
-        <PopMarquee text={bannerText} />
+      <div className="flex-1 min-w-0 flex flex-col">
+        <UpdatesBanner />
         <main className="flex-1 min-w-0">
           <div className="container-max py-6">
             <AnimatePresence mode="wait">
@@ -111,6 +114,10 @@ const AppLayoutContent: React.FC = () => {
             <Suspense fallback={<PageLoader />}>
             <Routes location={location}>
               <Route path="/" element={<HomePage />} />
+              <Route path="/apps/:group" element={<AppsSectionPage />} />
+              {/* AppPageLayout frames each routed app from its path (breadcrumb, header, pin, "More in…");
+                  paths with no module entry render unframed. Guarded routes below nest it inside their gate. */}
+              <Route element={<AppPageLayout />}>
               <Route path="/websites" element={<WebsitesPage />} />
               <Route path="/websites/:id" element={<SiteDetailPage />} />
               <Route path="/media" element={<MediaPage />} />
@@ -141,12 +148,15 @@ const AppLayoutContent: React.FC = () => {
               <Route path="/dns" element={<DnsPage />} />
               <Route path="/textshare" element={<TextSharePage />} />
               <Route path="/converters" element={<ConvertersPage />} />
+              </Route>
               {/* Public — no auth gate. Recipients of a shared paste link
                   must be able to open it signed-out (see TextViewPage). */}
               <Route path="/t/:id" element={<TextViewPage />} />
               <Route path="/admin" element={<AdminLayout />}>
+                <Route element={<AppPageLayout />}>
                 <Route index element={<AdminDashboard />} />
                 <Route path="branding" element={<BrandingPage />} />
+                <Route path="themes" element={<ThemesAdminPage />} />
                 <Route path="internet-dashboard" element={<InternetDashboardAdminPage />} />
                 <Route path="recommended" element={<RecommendedAdminPage />} />
                 <Route path="membership" element={<MembershipPage />} />
@@ -157,14 +167,17 @@ const AppLayoutContent: React.FC = () => {
                 <Route path="media/edit/:id" element={<EditMediaPage />} />
                 <Route path="stats" element={<StatsAdminPage />} />
                 <Route path="lipsync-budgets" element={<LipsyncBudgetsPage />} />
+                </Route>
                 <Route path="*" element={<Navigate to="/admin" replace />} />
               </Route>
               {/* Admin-only social scheduler — gated by SocialGate (hasRole superadmin),
                   same check the rest of the admin surface uses; kept off /admin/* since
                   it's a top-level feature area. */}
               <Route path="/social" element={<SocialGate />}>
-                <Route index element={<SocialCalendarPage />} />
-                <Route path="compose" element={<SocialComposerPage />} />
+                <Route element={<AppPageLayout />}>
+                  <Route index element={<SocialCalendarPage />} />
+                  <Route path="compose" element={<SocialComposerPage />} />
+                </Route>
               </Route>
               {/* Lip-sync studio -- open to any signed-in user (see LipsyncGate,
                   which only redirects guests to /auth, no role check). Kept off
@@ -173,9 +186,13 @@ const AppLayoutContent: React.FC = () => {
                   above (LipsyncBudgetsPage self-gates on hasRole superadmin, same as
                   BrandingPage/InternetDashboardAdminPage). */}
               <Route path="/lipsync" element={<LipsyncGate />}>
-                <Route index element={<LipsyncPage />} />
+                <Route element={<AppPageLayout />}>
+                  <Route index element={<LipsyncPage />} />
+                </Route>
               </Route>
-              <Route path="/profile" element={<ProfilePage />} />
+              <Route element={<AppPageLayout />}>
+                <Route path="/profile" element={<ProfilePage />} />
+              </Route>
               <Route path="/auth" element={<AuthPage />} />
               {/* /privacy is the canonical URL given to Meta app review.
                   /privacy-policy is kept because external listings already
@@ -192,11 +209,11 @@ const AppLayoutContent: React.FC = () => {
         </main>
 
       {/* Footer */}
-      <footer className="border-t-2 border-text-primary bg-surface-0">
+      <footer className="border-t border-border-default bg-surface-0">
         <div className="container-max py-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div>
-              <Link to="/" className="font-display font-extrabold uppercase tracking-tight text-text-primary">
+              <Link to="/" className="font-sans font-semibold text-text-primary">
                 {siteName}
               </Link>
               <p className="mt-1 text-sm text-text-tertiary">
@@ -230,8 +247,11 @@ const AppLayoutContent: React.FC = () => {
           </div>
         </div>
       </footer>
+      {/* Mobile: keeps the footer clear of the fixed tab bar (62px + safe-area inset). */}
+      <div className="only-narrow shrink-0" style={{ height: "calc(68px + env(safe-area-inset-bottom))" }} aria-hidden="true" />
       </div>
       </div>
+      <TabBar />
     </div>
   );
 };
@@ -244,9 +264,9 @@ const AppLayout: React.FC = () => {
   }
 
   return (
-    <SidebarCollapseProvider>
+    <LauncherProvider>
       <AppLayoutContent />
-    </SidebarCollapseProvider>
+    </LauncherProvider>
   );
 };
 

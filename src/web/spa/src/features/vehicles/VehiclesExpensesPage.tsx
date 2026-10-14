@@ -5,7 +5,7 @@ import { fetchWithAuth } from "../../utils/api";
 import { Alert } from "../../components";
 import { AdminTabs } from "../admin/AdminTabs";
 import AddTagInput from "../memes/AddTagInput";
-import { CameraIcon } from "@heroicons/react/24/outline";
+import { Camera } from "@phosphor-icons/react";
 
 const ReceiptScanner = lazy(() => import("./ReceiptScanner"));
 
@@ -1314,7 +1314,7 @@ const VehiclesExpensesPage: React.FC = () => {
                   onClick={() => setShowReceiptScanner(true)}
                   className="inline-flex items-center gap-1.5 rounded-md border border-border-hover bg-surface-3 px-2.5 py-1 text-xs font-medium text-text-primary hover:bg-surface-2"
                 >
-                  <CameraIcon className="w-4 h-4" />
+                  <Camera className="w-4 h-4" />
                   Scan Receipt
                 </button>
               )}

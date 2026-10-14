@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
-import { motion } from "framer-motion";
-import { CubeTransparentIcon, ArrowDownTrayIcon } from "@heroicons/react/24/outline";
+import { Link } from "react-router-dom";
+import { DownloadSimple, LockSimple } from "@phosphor-icons/react";
 import { Alert } from "../../components";
+import { buttonClasses, focusRing } from "../../components/buttonClasses";
 import { useAuth } from "../../shell/AuthContext";
 
 // ---- client-side background removal ----
@@ -215,7 +216,6 @@ const RemoveBgPage: React.FC = () => {
   if (!user) {
     return (
       <div className="space-y-4">
-        <h1 className="text-xl font-semibold text-text-primary">Remove Background</h1>
         <p className="text-sm text-text-secondary">Sign in to use the background removal tool.</p>
       </div>
     );
@@ -223,15 +223,7 @@ const RemoveBgPage: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <motion.h1
-        className="text-2xl font-semibold tracking-tight text-text-primary flex items-center gap-2"
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-      >
-        <CubeTransparentIcon className="h-6 w-6 text-accent-text" />
-        Remove Background
-      </motion.h1>
+      <h1 className="sr-only">Remove Background</h1>
       <p className="text-sm text-text-secondary">
         Processed locally — images never leave your browser. The segmentation model (~54 MB)
         downloads once from this site and is cached by your browser after that.
@@ -239,8 +231,8 @@ const RemoveBgPage: React.FC = () => {
 
       {error && <Alert variant="error">{error}</Alert>}
 
-      <div className="rounded-xl border border-border-default bg-surface-2/80 p-4 space-y-3">
-        <label htmlFor="removebg-file" className="block text-sm text-text-secondary">
+      <div className="rounded-ds-lg border border-[color:var(--color-divider)] bg-surface-2 p-3.5 space-y-3">
+        <label htmlFor="removebg-file" className="block text-[13px] font-semibold text-text-primary">
           Choose an image
         </label>
         <input
@@ -249,7 +241,7 @@ const RemoveBgPage: React.FC = () => {
           accept="image/*"
           onChange={handleFileChange}
           disabled={busy}
-          className="block w-full text-sm text-text-secondary file:mr-3 file:rounded-lg file:border-0 file:bg-accent-500 file:px-3 file:py-2 file:text-xs file:font-medium file:text-white hover:file:bg-accent-600 file:cursor-pointer disabled:opacity-50"
+          className={`block w-full text-sm text-text-secondary file:mr-3 file:cursor-pointer file:rounded-ds-md file:border-0 file:bg-accent file:px-4 file:py-2.5 file:text-sm file:font-semibold file:text-on-accent hover:file:bg-accent-600 motion-safe:file:transition-colors rounded-ds-md ${focusRing} disabled:opacity-50`}
         />
       </div>
 
@@ -257,7 +249,7 @@ const RemoveBgPage: React.FC = () => {
           so unmounting it while empty would leave canvasRef.current null on
           the first file pick. */}
       <div
-        className="relative inline-block max-w-full overflow-hidden rounded-xl border border-border-default bg-surface-1 leading-none"
+        className="relative inline-block max-w-full overflow-hidden rounded-ds-lg border border-border-default bg-surface-1 leading-none"
         style={{ display: meta ? undefined : "none" }}
       >
         <canvas ref={canvasRef} className="block max-w-full h-auto" />
@@ -275,27 +267,27 @@ const RemoveBgPage: React.FC = () => {
             Original: {meta.width} × {meta.height} — {formatKB(meta.fileSize)}
           </p>
 
-          <div className="rounded-xl border border-border-default bg-surface-2/80 p-4">
+          <div className="rounded-ds-lg border border-[color:var(--color-divider)] bg-surface-2 p-3.5">
             <button
               type="button"
               onClick={handleRemove}
               disabled={busy}
-              className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-accent-500 px-3 py-2 text-xs font-medium text-white hover:bg-accent-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className={buttonClasses("primary", "md")}
             >
               {busy ? "Working…" : "Remove Background"}
             </button>
           </div>
 
           {phase === "downloading" && (
-            <div className="rounded-xl border border-border-default bg-surface-2/80 p-4 space-y-2">
+            <div className="rounded-ds-lg border border-[color:var(--color-divider)] bg-surface-2 p-3.5 space-y-2">
               <p className="text-sm text-text-secondary">
                 {totalBytes > 0
                   ? `Downloading segmentation model (one-time) — ${formatMB(downloadedBytes)} of ${formatMB(totalBytes)}`
                   : "Downloading segmentation model (one-time)…"}
               </p>
-              <div className="h-2 rounded-full bg-surface-1 overflow-hidden">
+              <div className="h-2 overflow-hidden rounded-full bg-surface-3">
                 <div
-                  className="h-full rounded-full bg-accent-500 transition-all duration-200"
+                  className="h-full rounded-full bg-accent motion-safe:transition-all motion-safe:duration-200"
                   style={{ width: `${downloadPct}%` }}
                 />
               </div>
@@ -303,15 +295,15 @@ const RemoveBgPage: React.FC = () => {
           )}
 
           {phase === "processing" && (
-            <div className="rounded-xl border border-border-default bg-surface-2/80 p-4">
+            <div className="rounded-ds-lg border border-[color:var(--color-divider)] bg-surface-2 p-3.5">
               <p className="text-sm text-text-secondary">{stepLabel || "Processing…"}</p>
             </div>
           )}
 
           {result && (
-            <div className="rounded-xl border border-border-default bg-surface-2/80 p-4 space-y-3">
+            <div className="rounded-ds-lg border border-[color:var(--color-divider)] bg-surface-2 p-3.5 space-y-3">
               <div
-                className="inline-block max-w-full overflow-hidden rounded-xl border border-border-default leading-none"
+                className="inline-block max-w-full overflow-hidden rounded-ds-lg border border-border-default leading-none"
                 style={{
                   backgroundImage:
                     "linear-gradient(45deg, #444 25%, transparent 25%), linear-gradient(-45deg, #444 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #444 75%), linear-gradient(-45deg, transparent 75%, #444 75%)",
@@ -328,9 +320,9 @@ const RemoveBgPage: React.FC = () => {
               <button
                 type="button"
                 onClick={handleDownload}
-                className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-accent-500 px-3 py-2 text-xs font-medium text-white hover:bg-accent-600 transition-colors"
+                className={buttonClasses("primary", "md")}
               >
-                <ArrowDownTrayIcon className="h-3.5 w-3.5" />
+                <DownloadSimple size={16} weight="regular" aria-hidden="true" />
                 Download
               </button>
             </div>

@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Dialog } from "@headlessui/react";
-import { XMarkIcon } from "@heroicons/react/24/outline";
-import { StarIcon } from "@heroicons/react/24/solid";
+import { Star, X } from "@phosphor-icons/react";
+
 import { useAuth, hasRole } from "../../shell/AuthContext";
 import { fetchWithAuthOptional } from "../../utils/api";
 import { Alert } from "../../components";
@@ -186,7 +186,7 @@ const HighestRatedPage: React.FC = () => {
                 </span>
                 {item.averageRating != null && (
                   <div className="mt-1 flex items-center gap-0.5 text-warning">
-                    <StarIcon className="h-3.5 w-3.5" />
+                    <Star weight="fill" className="h-3.5 w-3.5" />
                     <span className="font-medium">{item.averageRating}</span>
                   </div>
                 )}
@@ -213,7 +213,7 @@ const HighestRatedPage: React.FC = () => {
                   className="absolute right-0 top-0 rounded p-1 text-warning hover:bg-warning/40 hover:text-warning"
                   aria-label="Close modal"
                 >
-                  <XMarkIcon className="h-6 w-6" />
+                  <X className="h-6 w-6" />
                 </button>
                 {selectedItem.logoUrl ? (
                   <img

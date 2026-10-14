@@ -7,9 +7,8 @@ import { MobileBottomTabs } from "./MobileBottomTabs";
 import { MobileModulesProvider } from "./MobileModulesContext";
 import { AdminLayout } from "./AdminLayout";
 import { pageTransition } from "../components/motion";
-import { UserCircleIcon } from "@heroicons/react/24/outline";
-import { PopBackground } from "./PopBackground";
-import { PopMarquee } from "./PopMarquee";
+import { UserCircle } from "@phosphor-icons/react";
+import { Marquee } from "./Marquee";
 import { ThemeToggle } from "./ThemeToggle";
 
 /* Eager-loaded */
@@ -59,6 +58,9 @@ function PageLoader() {
   );
 }
 
+/** Native (Capacitor) shell. Still on MobileBottomTabs/MobileMorePage: adopting the web TabBar + sheet launcher
+ *  needs the route table shared with AppLayout first (module list lives in MobileModulesContext here).
+ *  Follow-up — see docs/design_handoff_app_shell/REDESIGN_STATE.md. */
 export function MobileAppShell() {
   const { user } = useAuth();
   const { logo, siteName, bannerText } = useBranding();
@@ -70,10 +72,9 @@ export function MobileAppShell() {
         className="relative min-h-screen bg-surface-0 text-text-primary flex flex-col"
         style={{ paddingTop: "env(safe-area-inset-top)" }}
       >
-        <PopBackground />
         <div className="relative z-10 flex-1 flex flex-col">
         {/* Compact top bar */}
-        <header className="flex items-center justify-between px-4 py-2.5 bg-surface-1/80 backdrop-blur border-b-2 border-text-primary">
+        <header className="flex items-center justify-between px-4 py-2.5 bg-surface-1/80 backdrop-blur border-b border-border-default">
           <Link to="/" className="flex items-center gap-2">
             {logo?.url ? (
               <img
@@ -92,7 +93,7 @@ export function MobileAppShell() {
             <ThemeToggle />
             {user ? (
               <Link to="/profile" className="text-text-secondary">
-                <UserCircleIcon className="w-7 h-7" />
+                <UserCircle className="w-7 h-7" />
               </Link>
             ) : (
               <Link to="/auth" className="btn-primary text-xs !px-3 !py-1.5">
@@ -102,7 +103,7 @@ export function MobileAppShell() {
           </div>
         </header>
 
-        <PopMarquee text={bannerText} />
+        <Marquee text={bannerText} className="border-b border-border-default bg-surface-1 py-2" />
 
         {/* Content area — bottom padding for tab bar */}
         <main className="flex-1 min-w-0 pb-20">

@@ -152,7 +152,7 @@ const AuthPage: React.FC = () => {
       : mode === "forgot" ? "Send code →"
       : "Reset password →";
 
-  const labelClass = "block font-display font-extrabold uppercase tracking-tight text-xs text-text-primary mb-1.5";
+  const labelClass = "block font-sans font-semibold text-xs text-text-primary mb-1.5";
 
   return (
     <div className="flex justify-center py-8">
@@ -163,20 +163,20 @@ const AuthPage: React.FC = () => {
         transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
       >
         {/* Floating sticker badge */}
-        <span aria-hidden className="pop-badge pop-pulse absolute -top-4 -right-3 z-10 rotate-6">
+        <span aria-hidden className="tag tag-accent animate-pulse absolute -top-3 -right-2 z-10">
           Howdy!
         </span>
 
         <section className="card p-6 sm:p-8">
           <header className="mb-6 space-y-1">
-            <h1 className="text-3xl font-display font-extrabold uppercase tracking-tight text-text-primary">
+            <h1 className="text-3xl font-display font-semibold tracking-[-0.025em] text-text-primary">
               {heading}
             </h1>
             <p className="text-sm text-text-secondary">{subText}</p>
           </header>
 
           {user && (
-            <div className="mb-5 rounded-lg border-2 border-nav bg-surface-3 px-4 py-3 text-sm text-text-primary">
+            <div className="mb-5 rounded-lg border-2 border-hue-teal bg-surface-3 px-4 py-3 text-sm text-text-primary">
               Signed in as <span className="font-semibold">{user.email}</span> (
               {user.role === "superadmin" ? "SuperAdmin" : user.role}). Close this page or keep browsing.
             </div>
@@ -254,7 +254,7 @@ const AuthPage: React.FC = () => {
             )}
 
             {message && !error && (
-              <div className="rounded-lg border-2 border-nav bg-surface-3 px-3 py-2 text-xs text-text-primary">
+              <div className="rounded-lg border-2 border-hue-teal bg-surface-3 px-3 py-2 text-xs text-text-primary">
                 {message}
               </div>
             )}
@@ -279,7 +279,7 @@ const AuthPage: React.FC = () => {
             {mode === "signin" && (
               <>
                 New here?{" "}
-                <button type="button" onClick={() => switchMode("signup")} className="font-display font-extrabold uppercase tracking-tight text-accent-text hover:underline">
+                <button type="button" onClick={() => switchMode("signup")} className="font-sans font-semibold text-accent-text hover:underline">
                   Sign up
                 </button>
               </>
@@ -287,13 +287,13 @@ const AuthPage: React.FC = () => {
             {mode === "signup" && (
               <>
                 Already funky?{" "}
-                <button type="button" onClick={() => switchMode("signin")} className="font-display font-extrabold uppercase tracking-tight text-accent-text hover:underline">
+                <button type="button" onClick={() => switchMode("signin")} className="font-sans font-semibold text-accent-text hover:underline">
                   Sign in
                 </button>
               </>
             )}
             {isForgotFlow && (
-              <button type="button" onClick={() => switchMode("signin")} className="font-display font-extrabold uppercase tracking-tight text-accent-text hover:underline">
+              <button type="button" onClick={() => switchMode("signin")} className="font-sans font-semibold text-accent-text hover:underline">
                 ← Back to sign in
               </button>
             )}

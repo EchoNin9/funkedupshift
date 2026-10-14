@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { PencilSquareIcon, LinkIcon } from "@heroicons/react/24/outline";
+import { LinkSimple, PencilSimple } from "@phosphor-icons/react";
 import { useAuth, canAccessMemes, canRateMemes, canCreateMemes, canEditAnyMeme } from "../../shell/AuthContext";
 import { Alert, useClickOutside, SkeletonGrid, fadeUpStaggered, stagger } from "../../components";
 import ShareMemePopover from "./ShareMemePopover";
@@ -254,16 +254,6 @@ const MemeBrowsePage: React.FC = () => {
     }
   };
 
-  if (user && !canAccessMemes(user)) {
-    return (
-      <div className="space-y-6">
-        <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Memes</h1>
-        <div className="rounded-md border border-border-hover bg-surface-2 px-4 py-3 text-text-primary">
-          You do not have access to Memes. Join the Memes custom group or contact an admin.
-        </div>
-      </div>
-    );
-  }
 
   const setTab = (t: "all" | "mine") => {
     const next = new URLSearchParams(searchParams);
@@ -291,7 +281,6 @@ const MemeBrowsePage: React.FC = () => {
         transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
       >
         <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Memes</h1>
           {showMyMemes && (
             <div className="flex rounded-lg border border-border-hover bg-surface-2 p-0.5">
               <button
@@ -324,7 +313,7 @@ const MemeBrowsePage: React.FC = () => {
         </p>
       </motion.header>
 
-      {user && (
+      {canAccessMemes(user) && (
       <section className="rounded-xl border border-border-default bg-surface-1 p-4 space-y-4" aria-label="Search and filter">
         <form
           className="flex flex-col gap-3 sm:flex-row sm:items-center"
@@ -342,7 +331,7 @@ const MemeBrowsePage: React.FC = () => {
           />
           <button
             type="submit"
-            className="inline-flex items-center justify-center rounded-md bg-accent-500 px-4 py-2 text-sm font-semibold text-ink hover:bg-accent-400"
+            className="inline-flex items-center justify-center rounded-md bg-accent-500 px-4 py-2 text-sm font-semibold text-on-accent hover:bg-accent-400"
           >
             Search
           </button>
@@ -522,7 +511,7 @@ const MemeBrowsePage: React.FC = () => {
                         title={title}
                         trigger={
                           <>
-                            <LinkIcon className="h-3.5 w-3.5" />
+                            <LinkSimple className="h-3.5 w-3.5" />
                             Share
                           </>
                         }
@@ -532,7 +521,7 @@ const MemeBrowsePage: React.FC = () => {
                           to={`/memes/${encodeURIComponent(m.PK)}/edit`}
                           className="inline-flex items-center gap-1 text-[11px] text-text-secondary transition-colors hover:text-text-primary"
                         >
-                          <PencilSquareIcon className="h-3.5 w-3.5" />
+                          <PencilSimple className="h-3.5 w-3.5" />
                           Edit
                         </Link>
                       )}

@@ -15,21 +15,21 @@ export const STATUS_META: Record<
 > = {
   pending: {
     label: "Pending",
-    dot: "bg-n3",
-    chip: "border-n3/60 bg-n3/10 text-text-primary",
-    badge: "border-n3 text-n3-text",
+    dot: "bg-hue-teal",
+    chip: "border-hue-teal/60 bg-hue-teal/10 text-text-primary",
+    badge: "border-hue-teal text-hue-teal",
   },
   publishing: {
     label: "Publishing",
-    dot: "bg-n2 animate-pulse",
-    chip: "border-n2/60 bg-n2/10 text-text-primary",
-    badge: "border-n2 text-n2-text",
+    dot: "bg-hue-amber animate-pulse",
+    chip: "border-hue-amber/60 bg-hue-amber/10 text-text-primary",
+    badge: "border-hue-amber text-hue-amber",
   },
   processing: {
     label: "Processing",
-    dot: "bg-n4 animate-pulse",
-    chip: "border-n4/60 bg-n4/10 text-text-primary",
-    badge: "border-n4 text-n4-text",
+    dot: "bg-hue-coral animate-pulse",
+    chip: "border-hue-coral/60 bg-hue-coral/10 text-text-primary",
+    badge: "border-hue-coral text-hue-coral",
   },
   published: {
     label: "Published",
@@ -54,9 +54,9 @@ export const STATUS_META: Record<
   },
   partial: {
     label: "Partial",
-    dot: "bg-n1",
-    chip: "border-n1/60 bg-n1/10 text-text-primary",
-    badge: "border-n1 text-n1-text",
+    dot: "bg-accent",
+    chip: "border-accent/60 bg-accent/10 text-text-primary",
+    badge: "border-accent text-accent-text",
   },
 };
 

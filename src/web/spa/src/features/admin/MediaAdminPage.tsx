@@ -356,7 +356,6 @@ const MediaAdminPage: React.FC = () => {
   if (!canAccess) {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Media</h1>
         <p className="text-sm text-text-secondary">Manager or SuperAdmin access is required.</p>
       </div>
     );

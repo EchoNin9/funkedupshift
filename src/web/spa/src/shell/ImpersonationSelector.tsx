@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Dialog } from "@headlessui/react";
-import { UserCircleIcon } from "@heroicons/react/24/outline";
+import { UserCircle } from "@phosphor-icons/react";
 import { useImpersonation } from "./ImpersonationContext";
 import { useAuth } from "./AuthContext";
 import { Alert } from "../components";
@@ -98,7 +98,7 @@ const ImpersonationSelector: React.FC = () => {
         className="flex items-center justify-center gap-1.5 min-h-[44px] min-w-[44px] sm:min-w-0 sm:px-2 sm:py-1.5 rounded-md px-2 py-1.5 text-xs font-medium text-warning hover:bg-warning/10 transition-colors duration-150"
         title="Impersonate user or role"
       >
-        <UserCircleIcon className="h-4 w-4" />
+        <UserCircle className="h-4 w-4" />
         {impersonation ? "Change" : "Impersonate"}
       </button>
       <Dialog open={open} onClose={() => setOpen(false)} className="relative z-50">

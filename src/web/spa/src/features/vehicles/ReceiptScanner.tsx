@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Dialog } from "@headlessui/react";
-import { CameraIcon, XMarkIcon, CheckIcon } from "@heroicons/react/24/outline";
+import { Camera, Check, X } from "@phosphor-icons/react";
 import { CameraSource } from "@capacitor/camera";
 import { takePhoto, base64ToBlob } from "../../hooks/useCamera";
 import { fetchWithAuth } from "../../utils/api";
@@ -123,7 +123,7 @@ export default function ReceiptScanner({ apiBase, onFieldsExtracted, onClose }: 
         <div className="flex items-center justify-between">
           <Dialog.Title as="h2" className="text-lg font-semibold text-text-primary">Scan Fuel Receipt</Dialog.Title>
           <button type="button" onClick={onClose} aria-label="Close" className="flex h-11 w-11 -m-1.5 items-center justify-center text-text-tertiary">
-            <XMarkIcon className="w-6 h-6" />
+            <X className="w-6 h-6" />
           </button>
         </div>
 
@@ -136,7 +136,7 @@ export default function ReceiptScanner({ apiBase, onFieldsExtracted, onClose }: 
               onClick={handleCapture}
               className="inline-flex items-center gap-2 rounded-lg bg-accent-500 px-5 py-2.5 text-sm font-semibold text-white"
             >
-              <CameraIcon className="w-5 h-5" />
+              <Camera className="w-5 h-5" />
               Take Photo
             </button>
           </div>
@@ -178,7 +178,7 @@ export default function ReceiptScanner({ apiBase, onFieldsExtracted, onClose }: 
                 onClick={handleUseValues}
                 className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg bg-accent-500 px-4 py-2.5 text-sm font-semibold text-white"
               >
-                <CheckIcon className="w-4 h-4" />
+                <Check className="w-4 h-4" />
                 Use Values
               </button>
               <button

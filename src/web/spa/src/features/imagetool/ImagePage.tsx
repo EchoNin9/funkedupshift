@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
-import { motion } from "framer-motion";
-import { PhotoIcon, ScissorsIcon, ArrowDownTrayIcon } from "@heroicons/react/24/outline";
+import { Link } from "react-router-dom";
+import { DownloadSimple, LockSimple, Scissors } from "@phosphor-icons/react";
 import { Alert } from "../../components";
+import { buttonClasses, focusRing } from "../../components/buttonClasses";
 import { useAuth } from "../../shell/AuthContext";
 
 // ---- client-side image crop + downsize ----
@@ -306,7 +307,6 @@ const ImagePage: React.FC = () => {
   if (!user) {
     return (
       <div className="space-y-4">
-        <h1 className="text-xl font-semibold text-text-primary">Image Resizer</h1>
         <p className="text-sm text-text-secondary">Sign in to use the image tool.</p>
       </div>
     );
@@ -314,21 +314,13 @@ const ImagePage: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <motion.h1
-        className="text-2xl font-semibold tracking-tight text-text-primary flex items-center gap-2"
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-      >
-        <PhotoIcon className="h-6 w-6 text-accent-text" />
-        Image Resizer
-      </motion.h1>
+      <h1 className="sr-only">Image Resizer</h1>
       <p className="text-sm text-text-secondary">Processed locally — images never leave your browser.</p>
 
       {error && <Alert variant="error">{error}</Alert>}
 
-      <div className="rounded-xl border border-border-default bg-surface-2/80 p-4 space-y-3">
-        <label htmlFor="imgtool-file" className="block text-sm text-text-secondary">
+      <div className="rounded-ds-lg border border-[color:var(--color-divider)] bg-surface-2 p-3.5 space-y-3">
+        <label htmlFor="imgtool-file" className="block text-[13px] font-semibold text-text-primary">
           Choose an image
         </label>
         <input
@@ -336,7 +328,7 @@ const ImagePage: React.FC = () => {
           type="file"
           accept="image/*"
           onChange={handleFileChange}
-          className="block w-full text-sm text-text-secondary file:mr-3 file:rounded-lg file:border-0 file:bg-accent-500 file:px-3 file:py-2 file:text-xs file:font-medium file:text-white hover:file:bg-accent-600 file:cursor-pointer"
+          className={`block w-full text-sm text-text-secondary file:mr-3 file:cursor-pointer file:rounded-ds-md file:border-0 file:bg-accent file:px-4 file:py-2.5 file:text-sm file:font-semibold file:text-on-accent hover:file:bg-accent-600 motion-safe:file:transition-colors rounded-ds-md ${focusRing}`}
         />
       </div>
 
@@ -344,7 +336,7 @@ const ImagePage: React.FC = () => {
           so unmounting it while empty would leave canvasRef.current null on
           the first file pick. */}
       <div
-        className="relative inline-block max-w-full overflow-hidden rounded-xl border border-border-default bg-surface-1 leading-none"
+        className="relative inline-block max-w-full overflow-hidden rounded-ds-lg border border-border-default bg-surface-1 leading-none"
         style={{ display: meta ? undefined : "none" }}
       >
         <canvas
@@ -358,7 +350,7 @@ const ImagePage: React.FC = () => {
         />
         {selection && (
           <div
-            className="pointer-events-none absolute border-2 border-dashed border-accent bg-accent-500/15"
+            className="pointer-events-none absolute border-2 border-dashed border-accent bg-accent/15"
             style={selStyle()}
           />
         )}
@@ -368,7 +360,7 @@ const ImagePage: React.FC = () => {
         <>
           <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-text-secondary">
             <span className="flex items-center gap-1.5">
-              <ScissorsIcon className="h-4 w-4" />
+              <Scissors size={16} weight="regular" aria-hidden="true" />
               {selection && selection.w >= 2 && selection.h >= 2
                 ? `Selection: ${Math.round(selection.w)} × ${Math.round(selection.h)}`
                 : "Drag on the image to select a crop region (optional)."}
@@ -377,7 +369,7 @@ const ImagePage: React.FC = () => {
               type="button"
               onClick={handleReset}
               disabled={!selection}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-border-hover bg-surface-2 px-3 py-1.5 text-xs font-medium text-text-primary hover:bg-surface-3 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className={buttonClasses("secondary", "sm")}
             >
               Reset
             </button>
@@ -393,16 +385,16 @@ const ImagePage: React.FC = () => {
             Original: {meta.width} × {meta.height} — {formatKB(meta.fileSize)}
           </p>
 
-          <div className="rounded-xl border border-border-default bg-surface-2/80 p-4 space-y-3">
+          <div className="rounded-ds-lg border border-[color:var(--color-divider)] bg-surface-2 p-3.5 space-y-3">
             <div>
-              <label htmlFor="imgtool-format" className="block text-sm text-text-secondary mb-1">
+              <label htmlFor="imgtool-format" className="mb-1.5 block text-[13px] font-semibold text-text-primary">
                 Output format
               </label>
               <select
                 id="imgtool-format"
                 value={format}
                 onChange={(e) => setFormat(e.target.value as Format)}
-                className="w-full rounded-lg border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary"
+                className={`min-h-12 w-full rounded-ds-md border border-border-default bg-surface-0 px-3 text-[15px] text-text-primary hover:border-border-hover motion-safe:transition-colors ${focusRing}`}
               >
                 <option value="image/webp">WebP</option>
                 <option value="image/jpeg">JPEG</option>
@@ -410,21 +402,21 @@ const ImagePage: React.FC = () => {
             </div>
 
             <div className="flex gap-4">
-              <label className="flex items-center gap-2 text-sm text-text-secondary">
+              <label className="flex items-center gap-2 text-sm text-text-primary">
                 <input
                   type="radio"
                   checked={mode === "quality"}
                   onChange={() => setMode("quality")}
-                  className="accent-accent-500"
+                  className={`accent-accent ${focusRing}`}
                 />
                 Quality slider
               </label>
-              <label className="flex items-center gap-2 text-sm text-text-secondary">
+              <label className="flex items-center gap-2 text-sm text-text-primary">
                 <input
                   type="radio"
                   checked={mode === "target"}
                   onChange={() => setMode("target")}
-                  className="accent-accent-500"
+                  className={`accent-accent ${focusRing}`}
                 />
                 Target file size
               </label>
@@ -443,12 +435,12 @@ const ImagePage: React.FC = () => {
                   max={95}
                   value={Math.round(quality * 100)}
                   onChange={(e) => setQuality(Number(e.target.value) / 100)}
-                  className="w-full accent-accent-500"
+                  className={`w-full accent-accent ${focusRing}`}
                 />
               </div>
             ) : (
               <div>
-                <label htmlFor="imgtool-target" className="block text-sm text-text-secondary mb-1">
+                <label htmlFor="imgtool-target" className="mb-1.5 block text-[13px] font-semibold text-text-primary">
                   Target size (KB)
                 </label>
                 <input
@@ -457,7 +449,7 @@ const ImagePage: React.FC = () => {
                   min={1}
                   value={targetKB}
                   onChange={(e) => setTargetKB(Number(e.target.value))}
-                  className="w-full rounded-lg border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary"
+                  className={`min-h-12 w-full rounded-ds-md border border-border-default bg-surface-0 px-3 text-[15px] text-text-primary hover:border-border-hover motion-safe:transition-colors ${focusRing}`}
                 />
               </div>
             )}
@@ -466,14 +458,14 @@ const ImagePage: React.FC = () => {
               type="button"
               onClick={handleProcess}
               disabled={processing}
-              className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-accent-500 px-3 py-2 text-xs font-medium text-white hover:bg-accent-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className={buttonClasses("primary", "md")}
             >
               {processing ? "Processing…" : "Process"}
             </button>
           </div>
 
           {result && (
-            <div className="rounded-xl border border-border-default bg-surface-2/80 p-4 space-y-3">
+            <div className="rounded-ds-lg border border-[color:var(--color-divider)] bg-surface-2 p-3.5 space-y-3">
               <p className="text-sm text-text-secondary">
                 Result: {result.width} × {result.height} — {formatKB(result.blob.size)} — quality{" "}
                 {Math.round(result.quality * 100)}%
@@ -487,9 +479,9 @@ const ImagePage: React.FC = () => {
               <button
                 type="button"
                 onClick={handleDownload}
-                className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-accent-500 px-3 py-2 text-xs font-medium text-white hover:bg-accent-600 transition-colors"
+                className={buttonClasses("primary", "md")}
               >
-                <ArrowDownTrayIcon className="h-3.5 w-3.5" />
+                <DownloadSimple size={16} weight="regular" aria-hidden="true" />
                 Download
               </button>
             </div>

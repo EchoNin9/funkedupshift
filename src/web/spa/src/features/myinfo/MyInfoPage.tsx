@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { motion } from "framer-motion";
-import { ClipboardDocumentIcon } from "@heroicons/react/24/outline";
-import { Alert, fadeUpStaggered, stagger } from "../../components";
+import { Alert } from "../../components";
+import { CopyButton } from "../../components/CopyButton";
 import { fetchWithAuthOptional } from "../../utils/api";
 
 function getApiBaseUrl(): string | null {
@@ -99,33 +98,20 @@ function formatKv(rows: { label: string; value: string | number | boolean | null
 const SectionCard: React.FC<{
   title: string;
   subtitle?: string;
-  accent: "teal" | "slate" | "cyan" | "orange";
   className?: string;
   children: React.ReactNode;
-}> = ({ title, subtitle, accent, className, children }) => {
-  const border =
-    accent === "teal"
-      ? "border-teal-800/60 from-teal-900/40 to-teal-950/60"
-      : accent === "cyan"
-      ? "border-n3/40 from-n3/10 to-surface-1/90"
-      : accent === "orange"
-      ? "border-accent/40 from-accent/10 to-surface-1/90"
-      : "border-border-default from-surface-2/80 to-surface-1/90";
-  return (
-    <div
-      className={`rounded-xl border bg-gradient-to-br p-4 shadow-lg ${border} ${className ?? ""}`}
-    >
-      <h2 className="text-sm font-semibold text-text-primary">{title}</h2>
-      {subtitle && <p className="mt-0.5 text-xs text-text-tertiary">{subtitle}</p>}
-      <dl className="mt-3 space-y-2 text-sm">{children}</dl>
-    </div>
-  );
-};
+}> = ({ title, subtitle, className, children }) => (
+  <section className={`rounded-ds-lg border border-[color:var(--color-divider)] bg-surface-2 p-4 ${className ?? ""}`}>
+    <h2 className="font-heading text-base font-semibold text-text-primary">{title}</h2>
+    {subtitle && <p className="mt-0.5 text-xs text-text-secondary">{subtitle}</p>}
+    <dl className="mt-3 text-sm">{children}</dl>
+  </section>
+);
 
 const Row: React.FC<{ label: string; value: string | number | boolean }> = ({ label, value }) => (
-  <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,11rem)_1fr] gap-1 sm:gap-3 border-b border-border-subtle/60 pb-2 last:border-0 last:pb-0">
-    <dt className="text-text-tertiary text-xs sm:text-sm font-medium">{label}</dt>
-    <dd className="text-text-primary break-words font-mono text-xs sm:text-sm">{String(value)}</dd>
+  <div className="grid grid-cols-1 gap-1 border-t border-[color:var(--color-divider)] py-2 first:border-0 first:pt-0 last:pb-0 sm:grid-cols-[minmax(0,11rem)_1fr] sm:gap-3">
+    <dt className="text-xs font-medium text-text-secondary sm:text-sm">{label}</dt>
+    <dd className="break-words font-mono text-xs text-text-primary sm:text-sm">{String(value)}</dd>
   </div>
 );
 
@@ -134,7 +120,6 @@ const MyInfoPage: React.FC = () => {
   const [ipError, setIpError] = useState<string | null>(null);
   const [ipLoading, setIpLoading] = useState(true);
   const [hints, setHints] = useState<HighEntropyHints | null>(null);
-  const [copyDone, setCopyDone] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -283,16 +268,6 @@ const MyInfoPage: React.FC = () => {
     );
   }, [ipData, browserBlock, screenBlock, timeBlock]);
 
-  const handleCopy = useCallback(async () => {
-    try {
-      await navigator.clipboard.writeText(copyPayload);
-      setCopyDone(true);
-      window.setTimeout(() => setCopyDone(false), 2000);
-    } catch {
-      setCopyDone(false);
-    }
-  }, [copyPayload]);
-
   const networkRows = ipData
     ? formatKv([
         { label: "IP address", value: ipData.ip },
@@ -318,62 +293,44 @@ const MyInfoPage: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <motion.h1
-          className="text-2xl font-semibold tracking-tight text-text-primary"
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-        >
-          My info
-        </motion.h1>
-        <button
-          type="button"
-          onClick={handleCopy}
-          className="inline-flex items-center justify-center gap-2 rounded-lg border border-border-hover bg-surface-2 px-3 py-2 text-xs font-medium text-text-primary hover:bg-surface-3 transition-colors"
-        >
-          <ClipboardDocumentIcon className="h-4 w-4" />
-          {copyDone ? "Copied" : "Copy all as JSON"}
-        </button>
+      <h1 className="sr-only">My info</h1>
+      <div className="flex flex-wrap items-center gap-3">
+        <p className="min-w-[220px] flex-1 text-sm text-text-secondary">
+          What this browser and connection reveal to the sites you visit.
+        </p>
+        <CopyButton text={copyPayload} label="Copy all as JSON" size="md" />
       </div>
 
       {ipError && <Alert variant="error">{ipError}</Alert>}
 
-      <motion.div
-        className="grid gap-3 md:grid-cols-2"
-        initial="hidden"
-        animate="visible"
-        variants={stagger(0.05)}
-      >
-        <motion.div variants={fadeUpStaggered} custom={0} className="h-full">
+      <div className="grid gap-3 md:grid-cols-2">
+        <div className="h-full">
           <SectionCard
             title="Network & location"
             subtitle="Public IP and geo (server-side lookup)"
-            accent="teal"
             className="h-full"
           >
             {ipLoading && (
-              <div className="space-y-2 py-1">
-                <div className="h-3 w-2/3 animate-pulse rounded bg-teal-900/50" />
-                <div className="h-3 w-full animate-pulse rounded bg-teal-900/40" />
-                <div className="h-3 w-5/6 animate-pulse rounded bg-teal-900/40" />
+              <div className="space-y-2 py-1" role="status"><span className="sr-only">Loading…</span>
+                <div className="h-3 w-2/3 motion-safe:animate-pulse rounded bg-surface-3" />
+                <div className="h-3 w-full motion-safe:animate-pulse rounded bg-surface-3" />
+                <div className="h-3 w-5/6 motion-safe:animate-pulse rounded bg-surface-3" />
               </div>
             )}
             {!ipLoading && networkRows.length === 0 && (
-              <p className="text-xs text-text-tertiary">No network data.</p>
+              <p className="text-xs text-text-secondary">No network data.</p>
             )}
             {!ipLoading &&
               networkRows.map((r) => (
                 <Row key={r.label} label={r.label} value={r.value as string | number | boolean} />
               ))}
           </SectionCard>
-        </motion.div>
+        </div>
 
-        <motion.div variants={fadeUpStaggered} custom={1} className="h-full">
+        <div className="h-full">
           <SectionCard
             title="Browser & engine"
             subtitle="Navigator, client hints, connectivity"
-            accent="teal"
             className="h-full"
           >
             {formatKv([
@@ -402,10 +359,10 @@ const MyInfoPage: React.FC = () => {
               <Row key={r.label} label={r.label} value={r.value as string | number | boolean} />
             ))}
           </SectionCard>
-        </motion.div>
+        </div>
 
-        <motion.div variants={fadeUpStaggered} custom={2} className="h-full">
-          <SectionCard title="Screen & display" accent="cyan" className="h-full">
+        <div className="h-full">
+          <SectionCard title="Screen & display" className="h-full">
             {formatKv([
               { label: "Screen (CSS px)", value: screenBlock.screen },
               { label: "Available viewport", value: screenBlock.available },
@@ -417,10 +374,10 @@ const MyInfoPage: React.FC = () => {
               <Row key={r.label} label={r.label} value={r.value as string | number | boolean} />
             ))}
           </SectionCard>
-        </motion.div>
+        </div>
 
-        <motion.div variants={fadeUpStaggered} custom={3} className="h-full">
-          <SectionCard title="Device & input" accent="cyan" className="h-full">
+        <div className="h-full">
+          <SectionCard title="Device & input" className="h-full">
             {formatKv([
               { label: "Logical CPU cores", value: browserBlock.hardwareConcurrency },
               { label: "Device memory (GB est.)", value: browserBlock.deviceMemory },
@@ -429,10 +386,10 @@ const MyInfoPage: React.FC = () => {
               <Row key={r.label} label={r.label} value={r.value as string | number | boolean} />
             ))}
           </SectionCard>
-        </motion.div>
+        </div>
 
-        <motion.div variants={fadeUpStaggered} custom={4} className="md:col-span-2">
-          <SectionCard title="Date & time" subtitle="From this device clock" accent="orange">
+        <div className="md:col-span-2">
+          <SectionCard title="Date & time" subtitle="From this device clock">
             {formatKv([
               { label: "IANA time zone", value: timeBlock.timeZone },
               { label: "UTC offset (minutes)", value: timeBlock.offsetMinutes },
@@ -443,8 +400,8 @@ const MyInfoPage: React.FC = () => {
               <Row key={r.label} label={r.label} value={r.value as string | number | boolean} />
             ))}
           </SectionCard>
-        </motion.div>
-      </motion.div>
+        </div>
+      </div>
     </div>
   );
 };

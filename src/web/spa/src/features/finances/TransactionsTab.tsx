@@ -212,7 +212,7 @@ const TransactionsTab: React.FC<{ ctx: FinancesContext }> = ({ ctx }) => {
             <button
               type="button"
               onClick={() => { setShowForm(!showForm); setEditingId(null); setForm(EMPTY_FORM); }}
-              className="rounded-md bg-accent-500 px-3 py-2 text-sm font-medium text-ink hover:bg-accent-400"
+              className="rounded-md bg-accent-500 px-3 py-2 text-sm font-medium text-on-accent hover:bg-accent-400"
             >
               {showForm ? "Close" : "Add transaction"}
             </button>
@@ -247,7 +247,7 @@ const TransactionsTab: React.FC<{ ctx: FinancesContext }> = ({ ctx }) => {
               type="button"
               onClick={submitTransfer}
               disabled={busy || !xfer.date || !xfer.amount || !xfer.fromAccountId || !xfer.toAccountId}
-              className="rounded-md bg-accent-500 px-3 py-2 text-sm font-medium text-ink hover:bg-accent-400 disabled:opacity-50"
+              className="rounded-md bg-accent-500 px-3 py-2 text-sm font-medium text-on-accent hover:bg-accent-400 disabled:opacity-50"
             >
               {busy ? "Saving…" : "Record transfer"}
             </button>
@@ -286,7 +286,7 @@ const TransactionsTab: React.FC<{ ctx: FinancesContext }> = ({ ctx }) => {
               type="button"
               onClick={submit}
               disabled={busy || !form.date || !form.amount}
-              className="rounded-md bg-accent-500 px-3 py-2 text-sm font-medium text-ink hover:bg-accent-400 disabled:opacity-50"
+              className="rounded-md bg-accent-500 px-3 py-2 text-sm font-medium text-on-accent hover:bg-accent-400 disabled:opacity-50"
             >
               {busy ? "Saving…" : "Save"}
             </button>
@@ -352,7 +352,7 @@ const TransactionsTab: React.FC<{ ctx: FinancesContext }> = ({ ctx }) => {
             {ctx.categories.filter((c) => c !== "Transfer").map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
           <button type="button" onClick={bulkCategorize} disabled={busy || !bulkCategory}
-            className="rounded-md bg-accent-500 px-3 py-1.5 text-sm font-medium text-ink hover:bg-accent-400 disabled:opacity-50">
+            className="rounded-md bg-accent-500 px-3 py-1.5 text-sm font-medium text-on-accent hover:bg-accent-400 disabled:opacity-50">
             {busy ? "Applying…" : "Apply"}
           </button>
           <button type="button" onClick={() => setSelectedIds([])}

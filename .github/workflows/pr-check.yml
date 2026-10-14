@@ -1,0 +1,56 @@
+# Pre-merge gate for PRs: same pytest + full SPA build as the deploy workflows,
+# without AWS credentials or deploy steps. Cloud agent sessions can't run the
+# full `npm run build` (its prebuild fetches imgly assets from staticimgly.com),
+# so this is the build gate before merging.
+name: PR Check
+
+on:
+  pull_request:
+    branches: [development, main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-check-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install test dependencies
+        run: |
+          if [ -f src/lambda/requirements-test.txt ]; then
+            pip install -r src/lambda/requirements-test.txt
+          else
+            pip install pytest
+          fi
+
+      - name: Run pytest
+        run: pytest src/lambda/tests -v
+
+  spa-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Build React SPA frontend
+        working-directory: src/web/spa
+        run: |
+          npm ci
+          npm run build

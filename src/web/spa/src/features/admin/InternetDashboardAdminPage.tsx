@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Bars3Icon } from "@heroicons/react/24/outline";
+import { List } from "@phosphor-icons/react";
 import { useAuth, hasRole } from "../../shell/AuthContext";
 import { AdminPageHeader } from "./AdminPageHeader";
 import { fetchWithAuth } from "../../utils/api";
@@ -148,7 +148,6 @@ const InternetDashboardAdminPage: React.FC = () => {
   if (!isSuperAdmin) {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Internet Dashboard</h1>
         <p className="text-sm text-text-secondary">
           Only SuperAdmin users can edit the dashboard sites list.
         </p>
@@ -159,7 +158,6 @@ const InternetDashboardAdminPage: React.FC = () => {
   if (isLoading) {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Internet Dashboard</h1>
         <p className="text-sm text-text-secondary">Loading sites…</p>
       </div>
     );
@@ -253,7 +251,7 @@ const InternetDashboardAdminPage: React.FC = () => {
               } ${displayOrder === "custom" ? "cursor-grab active:cursor-grabbing" : ""}`}
             >
               {displayOrder === "custom" && (
-                <Bars3Icon className="h-4 w-4 flex-shrink-0 text-text-tertiary" aria-hidden />
+                <List className="h-4 w-4 flex-shrink-0 text-text-tertiary" aria-hidden />
               )}
               <span className="font-medium text-text-primary break-all flex-1">{domain}</span>
               <button

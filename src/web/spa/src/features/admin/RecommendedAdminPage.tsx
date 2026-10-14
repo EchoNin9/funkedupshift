@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { Bars3Icon } from "@heroicons/react/24/outline";
+import { List, Star } from "@phosphor-icons/react";
 import { AdminPageHeader } from "./AdminPageHeader";
 import { AdminTabs } from "./AdminTabs";
-import { StarIcon } from "@heroicons/react/24/solid";
+
 import { useAuth, hasRole } from "../../shell/AuthContext";
 import { fetchWithAuth } from "../../utils/api";
 import { Alert } from "../../components";
@@ -69,7 +69,7 @@ const TABS: TabConfig[] = [
     emptyMessage: "No highlights yet. Generate from the highlight category or add a URL above.",
     generateSuccessMessage: "Cache generated from sites in the highlight category.",
     saveSuccessMessage: "Highlights list saved.",
-    buttonClass: "bg-n3 hover:bg-n3/80 !text-ink",
+    buttonClass: "bg-hue-teal hover:bg-hue-teal/80 !text-surface-0",
     viewPath: "/recommended/highlights",
   },
   {
@@ -412,7 +412,7 @@ const ListTab: React.FC<ListTabProps> = ({ config }) => {
         <button
           type="submit"
           disabled={isSaving || !newUrl.trim()}
-          className="rounded-md bg-accent-500 px-4 py-2 text-sm font-medium text-ink hover:bg-accent-400 disabled:opacity-50"
+          className="rounded-md bg-accent-500 px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent-400 disabled:opacity-50"
         >
           Add
         </button>
@@ -437,7 +437,7 @@ const ListTab: React.FC<ListTabProps> = ({ config }) => {
           >
             <div className="flex items-center gap-2">
               {displayOrder === "custom" && (
-                <Bars3Icon className="h-4 w-4 flex-shrink-0 text-text-tertiary" aria-hidden />
+                <List className="h-4 w-4 flex-shrink-0 text-text-tertiary" aria-hidden />
               )}
               {editingIndex === index ? (
                 <input aria-label="Edit value"
@@ -469,7 +469,7 @@ const ListTab: React.FC<ListTabProps> = ({ config }) => {
               )}
               {config.id === "highestRated" && entry.averageRating != null && (
                 <span className="flex items-center gap-0.5 text-warning text-xs">
-                  <StarIcon className="h-3.5 w-3.5" />
+                  <Star weight="fill" className="h-3.5 w-3.5" />
                   {entry.averageRating}
                 </span>
               )}
