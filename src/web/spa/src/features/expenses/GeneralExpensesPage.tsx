@@ -2,6 +2,7 @@ import React, { useId, lazy, Suspense, useCallback, useEffect, useMemo, useRef, 
 import { Dialog } from "@headlessui/react";
 import { useAuth, canAccessExpenses } from "../../shell/AuthContext";
 import { fetchWithAuth } from "../../utils/api";
+import { openRemoteFile } from "../../utils/saveFile";
 import { Alert } from "../../components";
 import { AdminTabs } from "../admin/AdminTabs";
 import { usePlatform } from "../../shell/PlatformContext";
@@ -449,12 +450,13 @@ const GeneralExpensesPage: React.FC = () => {
   const openAttachment = (a: GenAttachment) => {
     const url = a.url;
     if (!url) return;
-    if (attachmentOpensInModal(a)) {
-      const isPdf =
-        (a.contentType || "").toLowerCase() === "application/pdf" || /\.pdf$/i.test(a.filename || a.key || "");
+    const isPdf =
+      (a.contentType || "").toLowerCase() === "application/pdf" || /\.pdf$/i.test(a.filename || a.key || "");
+    // Android WebView can't render PDFs inline, so native hands PDFs to the system browser.
+    if (attachmentOpensInModal(a) && !(isNative && isPdf)) {
       setPreview({ url, filename: a.filename || "file", isPdf });
     } else {
-      window.open(url, "_blank", "noopener,noreferrer");
+      void openRemoteFile(url);
     }
   };
 

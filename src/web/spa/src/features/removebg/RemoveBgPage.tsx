@@ -4,6 +4,7 @@ import { DownloadSimple, LockSimple } from "@phosphor-icons/react";
 import { Alert } from "../../components";
 import { buttonClasses, focusRing } from "../../components/buttonClasses";
 import { useAuth } from "../../shell/AuthContext";
+import { saveBlob } from "../../utils/saveFile";
 
 // ---- client-side background removal ----
 // Uses @imgly/background-removal (onnxruntime-wasm under the hood).
@@ -202,10 +203,7 @@ const RemoveBgPage: React.FC = () => {
 
   const handleDownload = () => {
     if (!result) return;
-    const a = document.createElement("a");
-    a.href = result.url;
-    a.download = "background-removed.png";
-    a.click();
+    void saveBlob(result.blob, "background-removed.png").catch((e) => setError(e instanceof Error ? e.message : "Could not save the file."));
   };
 
   const progressEntries = Object.values(downloadProgress);

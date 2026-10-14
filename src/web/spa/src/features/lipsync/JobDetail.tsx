@@ -1,9 +1,11 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowsClockwise, DownloadSimple, Trash, Warning, X } from "@phosphor-icons/react";
 import { Dialog } from "@headlessui/react";
+import { Capacitor } from "@capacitor/core";
 import { Alert } from "../../components";
 import { cancelJob, getJob, getJobOutputUrl, isTerminalStatus, type LipsyncJob } from "./api";
 import { buttonClasses, focusRing } from "../../components/buttonClasses";
+import { openRemoteFile } from "../../utils/saveFile";
 import { modelLabel } from "./statusStyles";
 import { LipsyncAiTag, LipsyncModeTag, LipsyncStatusTag } from "./LipsyncTags";
 import { formatDateTime, formatExpiry, isExpiringSoon } from "./dateUtils";
@@ -235,6 +237,11 @@ export function JobDetail({ jobId, onClose, onChanged }: JobDetailProps) {
                           download
                           target="_blank"
                           rel="noopener noreferrer"
+                          onClick={(e) => {
+                            if (!Capacitor.isNativePlatform()) return;
+                            e.preventDefault();
+                            void openRemoteFile(outputUrl);
+                          }}
                           className={buttonClasses("secondary", "sm")}
                         >
                           <DownloadSimple size={16} weight="regular" aria-hidden="true" />

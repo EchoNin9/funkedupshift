@@ -1,4 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { Capacitor } from "@capacitor/core";
+import { App as CapApp } from "@capacitor/app";
 
 export interface OpenLauncherOptions {
   /** Focus the search input once the drawer is open (top-bar search trigger, ⌘K, tab bar). */
@@ -66,6 +68,20 @@ export const LauncherProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [toggleLauncher]);
+
+  // Android hardware back: close the launcher / account sheet, else history back, else exit. No-op on web.
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    const h = CapApp.addListener("backButton", ({ canGoBack }) => {
+      if (openRef.current) closeLauncher();
+      else if (document.querySelector('[role="menu"]')) document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+      else if (canGoBack) window.history.back();
+      else void CapApp.exitApp();
+    });
+    return () => {
+      void h.then((l) => l.remove());
+    };
+  }, [closeLauncher]);
 
   const value = useMemo(
     () => ({ open, focusSearch, openLauncher, closeLauncher, toggleLauncher }),

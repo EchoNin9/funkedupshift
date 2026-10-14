@@ -45,6 +45,12 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>Take photos of receipts and set your profile picture.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Choose photos for receipts and your profile picture.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Save images you export from the app to your photo library.</string>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
 </dict>

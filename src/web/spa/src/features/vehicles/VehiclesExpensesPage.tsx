@@ -2,6 +2,8 @@ import React, { useId, useCallback, useEffect, useState, useRef, lazy, Suspense 
 import { useAuth, canAccessExpenses } from "../../shell/AuthContext";
 import { usePlatform } from "../../shell/PlatformContext";
 import { fetchWithAuth } from "../../utils/api";
+import { openRemoteFile } from "../../utils/saveFile";
+import { Capacitor } from "@capacitor/core";
 import { Alert } from "../../components";
 import { AdminTabs } from "../admin/AdminTabs";
 import AddTagInput from "../memes/AddTagInput";
@@ -1022,7 +1024,7 @@ const VehiclesExpensesPage: React.FC = () => {
     if (!payload.downloadUrl) {
       throw new Error(payload.error || "Export URL was not returned");
     }
-    window.open(payload.downloadUrl, "_blank", "noopener,noreferrer");
+    void openRemoteFile(payload.downloadUrl);
   };
 
   const exportFuel = async (format: "csv" | "pdf") => {
@@ -2067,7 +2069,17 @@ const VehiclesExpensesPage: React.FC = () => {
                                 {(entry.attachments || []).map((a) => (
                                   <li key={a.key}>
                                     {a.url ? (
-                                      <a href={a.url} target="_blank" rel="noreferrer" className="text-accent-text hover:text-accent-text">
+                                      <a
+                                        href={a.url}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        onClick={(e) => {
+                                          if (!Capacitor.isNativePlatform()) return;
+                                          e.preventDefault();
+                                          void openRemoteFile(a.url!);
+                                        }}
+                                        className="text-accent-text hover:text-accent-text"
+                                      >
                                         {a.filename || a.key}
                                       </a>
                                     ) : (
