@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { ArrowLeftIcon, PencilSquareIcon, TrashIcon } from "@heroicons/react/24/outline";
-import { useAuth, canAccessMemes, canRateMemes, canCreateMemes, canEditAnyMeme, hasRole } from "../../shell/AuthContext";
+import { useAuth, canRateMemes, canCreateMemes, canEditAnyMeme, hasRole } from "../../shell/AuthContext";
 import ShareMemeBox from "./ShareMemeBox";
 import { fetchWithAuthOptional } from "../../utils/api";
 
@@ -119,20 +119,6 @@ const MemeDetailPage: React.FC = () => {
     }
   };
 
-  const access = !user || canAccessMemes(user);
-  if (user && !canAccessMemes(user)) {
-    return (
-      <div className="space-y-6">
-        <Link to="/memes" className="inline-flex items-center gap-1 text-sm text-text-secondary transition-colors hover:text-text-primary">
-          <ArrowLeftIcon className="h-4 w-4" />
-          Back to Memes
-        </Link>
-        <div className="rounded-md border border-border-hover bg-surface-2 px-4 py-3 text-text-primary">
-          Sign in and join Memes group to view.
-        </div>
-      </div>
-    );
-  }
 
   if (isLoading) {
     return (
