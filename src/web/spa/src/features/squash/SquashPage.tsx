@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useAuth, canAccessSquash } from "../../shell/AuthContext";
 import DateInput from "./DateInput";
@@ -164,10 +164,13 @@ const SquashPage: React.FC = () => {
     searchParams.get("dateTo") ||
     searchParams.get("lastDays") ||
     searchParams.get("playerIds");
+  // Run the URL's search once access resolves (auth loads after mount, so a mount-only effect never fired).
+  const urlSearchDone = useRef(false);
   useEffect(() => {
-    if (!access || !hasUrlSearchParams) return;
+    if (!access || !hasUrlSearchParams || urlSearchDone.current) return;
+    urlSearchDone.current = true;
     searchMatches();
-  }, []);
+  }, [access]);
 
   const sortedMatches = useMemo(() => {
     const copy = [...allMatches];
