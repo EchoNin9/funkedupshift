@@ -407,7 +407,11 @@ const ShareDialog: React.FC<Props> = ({ share, filters: createFilters = {}, onCl
                     </div>
                   </div>
                 )}
-                <div>
+              </div>
+            )}
+            </div>
+            {editing && (
+              <div className="border-t border-border-default pt-3">
                   <div className="text-xs font-semibold text-text-secondary mb-1">Preview</div>
                   {previewError ? (
                     <p className="text-sm text-danger">{previewError}</p>
@@ -434,9 +438,7 @@ const ShareDialog: React.FC<Props> = ({ share, filters: createFilters = {}, onCl
                     </div>
                   )}
                 </div>
-              </div>
             )}
-            </div>
             <div className="flex gap-2">
               <button type="submit" disabled={busy || atLimit} className={primaryBtn}>
                 {editing ? "Save" : "Create share"}
