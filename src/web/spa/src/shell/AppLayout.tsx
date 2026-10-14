@@ -15,6 +15,8 @@ import { LauncherDrawer } from "./LauncherDrawer";
 import { LauncherProvider } from "./LauncherContext";
 import { UpdatesBanner } from "./UpdatesBanner";
 import { pageTransition } from "../components/motion";
+import { AppPageLayout } from "../components/AppPage";
+import AppsSectionPage from "../components/AppsSectionPage";
 
 /* Eager-loaded (above-the-fold) */
 import HomePage from "../features/home/HomePage";
@@ -114,6 +116,10 @@ const AppLayoutContent: React.FC = () => {
             <Suspense fallback={<PageLoader />}>
             <Routes location={location}>
               <Route path="/" element={<HomePage />} />
+              <Route path="/apps/:group" element={<AppsSectionPage />} />
+              {/* AppPageLayout frames each routed app from its path (breadcrumb, header, pin, "More in…");
+                  paths with no module entry render unframed. Guarded routes below nest it inside their gate. */}
+              <Route element={<AppPageLayout />}>
               <Route path="/websites" element={<WebsitesPage />} />
               <Route path="/websites/:id" element={<SiteDetailPage />} />
               <Route path="/media" element={<MediaPage />} />
@@ -144,10 +150,12 @@ const AppLayoutContent: React.FC = () => {
               <Route path="/dns" element={<DnsPage />} />
               <Route path="/textshare" element={<TextSharePage />} />
               <Route path="/converters" element={<ConvertersPage />} />
+              </Route>
               {/* Public — no auth gate. Recipients of a shared paste link
                   must be able to open it signed-out (see TextViewPage). */}
               <Route path="/t/:id" element={<TextViewPage />} />
               <Route path="/admin" element={<AdminLayout />}>
+                <Route element={<AppPageLayout />}>
                 <Route index element={<AdminDashboard />} />
                 <Route path="branding" element={<BrandingPage />} />
                 <Route path="internet-dashboard" element={<InternetDashboardAdminPage />} />
@@ -160,14 +168,17 @@ const AppLayoutContent: React.FC = () => {
                 <Route path="media/edit/:id" element={<EditMediaPage />} />
                 <Route path="stats" element={<StatsAdminPage />} />
                 <Route path="lipsync-budgets" element={<LipsyncBudgetsPage />} />
+                </Route>
                 <Route path="*" element={<Navigate to="/admin" replace />} />
               </Route>
               {/* Admin-only social scheduler — gated by SocialGate (hasRole superadmin),
                   same check the rest of the admin surface uses; kept off /admin/* since
                   it's a top-level feature area. */}
               <Route path="/social" element={<SocialGate />}>
-                <Route index element={<SocialCalendarPage />} />
-                <Route path="compose" element={<SocialComposerPage />} />
+                <Route element={<AppPageLayout />}>
+                  <Route index element={<SocialCalendarPage />} />
+                  <Route path="compose" element={<SocialComposerPage />} />
+                </Route>
               </Route>
               {/* Lip-sync studio -- open to any signed-in user (see LipsyncGate,
                   which only redirects guests to /auth, no role check). Kept off
@@ -176,9 +187,13 @@ const AppLayoutContent: React.FC = () => {
                   above (LipsyncBudgetsPage self-gates on hasRole superadmin, same as
                   BrandingPage/InternetDashboardAdminPage). */}
               <Route path="/lipsync" element={<LipsyncGate />}>
-                <Route index element={<LipsyncPage />} />
+                <Route element={<AppPageLayout />}>
+                  <Route index element={<LipsyncPage />} />
+                </Route>
               </Route>
-              <Route path="/profile" element={<ProfilePage />} />
+              <Route element={<AppPageLayout />}>
+                <Route path="/profile" element={<ProfilePage />} />
+              </Route>
               <Route path="/auth" element={<AuthPage />} />
               {/* /privacy is the canonical URL given to Meta app review.
                   /privacy-policy is kept because external listings already

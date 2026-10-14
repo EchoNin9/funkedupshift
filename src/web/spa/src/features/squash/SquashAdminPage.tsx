@@ -469,7 +469,6 @@ const SquashAdminPage: React.FC = () => {
   if (!user) {
     return (
       <div className="space-y-4">
-        <h1 className="text-xl font-semibold text-text-primary">Squash Admin</h1>
         <div className="rounded-md bg-danger/20 border border-danger/20 px-4 py-3 text-sm text-danger">
           Sign in required. <Link to="/auth" className="underline hover:text-danger">Sign in</Link>
         </div>
@@ -480,7 +479,6 @@ const SquashAdminPage: React.FC = () => {
   if (!canModify) {
     return (
       <div className="space-y-4">
-        <h1 className="text-xl font-semibold text-text-primary">Squash Admin</h1>
         <div className="rounded-md bg-warning/30 border border-warning/50 px-4 py-3 text-sm text-warning">
           Squash Admin requires manager (in Squash group) or SuperAdmin access.
         </div>
@@ -490,7 +488,6 @@ const SquashAdminPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold text-text-primary">Squash Admin</h1>
 
       <p className="text-sm text-text-secondary">
         <Link to="/squash" className="text-accent-text hover:text-accent-text">

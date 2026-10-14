@@ -281,7 +281,6 @@ const MemeBrowsePage: React.FC = () => {
         transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
       >
         <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Memes</h1>
           {showMyMemes && (
             <div className="flex rounded-lg border border-border-hover bg-surface-2 p-0.5">
               <button

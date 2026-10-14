@@ -426,7 +426,6 @@ const ProfilePage: React.FC = () => {
   if (!user) {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-semibold tracking-tight text-text-primary">My Profile</h1>
         <p className="text-sm text-text-secondary">
           <Link to="/auth" className="text-accent-text hover:underline">
             Sign in
@@ -440,7 +439,6 @@ const ProfilePage: React.FC = () => {
   if (!apiBase) {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-semibold tracking-tight text-text-primary">My Profile</h1>
         <p className="text-sm text-danger">API URL not set.</p>
       </div>
     );
@@ -449,7 +447,6 @@ const ProfilePage: React.FC = () => {
   if (isLoading) {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-semibold tracking-tight text-text-primary">My Profile</h1>
         <p className="text-sm text-text-secondary">Loading profile…</p>
       </div>
     );
@@ -464,10 +461,6 @@ const ProfilePage: React.FC = () => {
       <Link to="/" className="inline-flex items-center gap-1 text-sm text-text-secondary hover:text-text-primary">
         ← Back to Home
       </Link>
-
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight text-text-primary">My Profile</h1>
-      </header>
 
       <div className="flex gap-2 border-b border-border-default pb-2">
         <button

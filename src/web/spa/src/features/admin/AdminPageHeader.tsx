@@ -1,37 +1,22 @@
 import React from "react";
-import { Link } from "react-router-dom";
-import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 
 interface AdminPageHeaderProps {
-  title: string;
+  /** Kept for call-site readability; the title now comes from the AppPage frame (config/modules.ts). */
+  title?: string;
   description?: string;
   actions?: React.ReactNode;
 }
 
 /**
- * Consistent header for admin pages: Back to Admin link, title, optional description and actions.
+ * Page-specific description and actions for admin pages. The breadcrumb, icon, title and
+ * "back to Admin" navigation are provided by the AppPage frame.
  */
-export function AdminPageHeader({ title, description, actions }: AdminPageHeaderProps) {
+export function AdminPageHeader({ description, actions }: AdminPageHeaderProps) {
+  if (!description && !actions) return null;
   return (
-    <header className="space-y-4">
-      <Link
-        to="/admin"
-        className="inline-flex items-center gap-1.5 text-sm text-text-secondary hover:text-accent-text transition-colors"
-      >
-        <ArrowLeftIcon className="h-4 w-4" />
-        Back to Admin
-      </Link>
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-display font-extrabold uppercase text-text-primary tracking-tight">
-            {title}
-          </h1>
-          {description && (
-            <p className="mt-1 text-sm text-text-secondary">{description}</p>
-          )}
-        </div>
-        {actions && <div className="flex items-center gap-2 shrink-0">{actions}</div>}
-      </div>
+    <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      {description ? <p className="text-sm text-text-secondary">{description}</p> : <span />}
+      {actions && <div className="flex items-center gap-2 shrink-0">{actions}</div>}
     </header>
   );
 }

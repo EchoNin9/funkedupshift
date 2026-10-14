@@ -48,15 +48,6 @@ export function AdminDashboard() {
 
   return (
     <main className="container-max section-padding">
-      <motion.h1
-        className="text-4xl sm:text-5xl font-display font-extrabold uppercase tracking-tight text-text-primary mb-10"
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-      >
-        Admin
-      </motion.h1>
-
       <motion.div
         variants={stagger}
         initial="hidden"

@@ -215,7 +215,6 @@ const RemoveBgPage: React.FC = () => {
   if (!user) {
     return (
       <div className="space-y-4">
-        <h1 className="text-xl font-semibold text-text-primary">Remove Background</h1>
         <p className="text-sm text-text-secondary">Sign in to use the background removal tool.</p>
       </div>
     );
