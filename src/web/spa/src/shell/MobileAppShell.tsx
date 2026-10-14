@@ -39,8 +39,8 @@ const MediaAdminPage = lazy(() => import("../features/admin/MediaAdminPage"));
 const EditSitePage = lazy(() => import("../features/admin/EditSitePage"));
 const EditMediaPage = lazy(() => import("../features/admin/EditMediaPage"));
 const EditUserPage = lazy(() => import("../features/admin/EditUserPage"));
+const SquashSharePage = lazy(() => import("../features/squash/SquashSharePage"));
 const SquashPage = lazy(() => import("../features/squash/SquashPage"));
-const SquashAdminPage = lazy(() => import("../features/squash/SquashAdminPage"));
 const FinancesPage = lazy(() => import("../features/finances/FinancesPage"));
 const VehiclesExpensesPage = lazy(() => import("../features/vehicles/VehiclesExpensesPage"));
 const GeneralExpensesPage = lazy(() => import("../features/expenses/GeneralExpensesPage"));
@@ -128,7 +128,7 @@ export function MobileAppShell() {
                     <Route path="/recommended/highlights" element={<OurPropertiesPage />} />
                     <Route path="/recommended/highest-rated" element={<HighestRatedPage />} />
                     <Route path="/squash" element={<SquashPage />} />
-                    <Route path="/squash-admin" element={<SquashAdminPage />} />
+                    <Route path="/squash/s/:id" element={<SquashSharePage />} />
                     <Route path="/memes" element={<MemeBrowsePage />} />
                     <Route path="/memes/create" element={<MemeGeneratorPage />} />
                     <Route path="/memes/:id/edit" element={<EditMemePage />} />

@@ -1,37 +1,16 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { useAuth, canAccessSquash, canModifySquash } from "../../shell/AuthContext";
+import { useAuth, canAccessSquash } from "../../shell/AuthContext";
 import DateInput from "./DateInput";
 import { fetchWithAuth } from "../../utils/api";
 import { Badge } from "../../components";
 import TagFilterBar from "./TagFilterBar";
 import { matchesTagFilter } from "./tagFilter";
-
-function getApiBaseUrl(): string | null {
-  if (typeof window === "undefined") return null;
-  const raw = (window as any).API_BASE_URL as string | undefined;
-  return raw ? raw.replace(/\/$/, "") : null;
-}
-
-interface Player {
-  id: string;
-  PK?: string;
-  name?: string;
-  email?: string;
-}
-
-interface Match {
-  id?: string;
-  date?: string;
-  teamAPlayer1Id?: string;
-  teamAPlayer2Id?: string;
-  teamBPlayer1Id?: string;
-  teamBPlayer2Id?: string;
-  winningTeam?: string;
-  teamAGames?: number;
-  teamBGames?: number;
-  tags?: string[];
-}
+import MatchForm from "./MatchForm";
+import PlayersTab from "./PlayersTab";
+import SharesTab from "./SharesTab";
+import ShareDialog from "./ShareDialog";
+import { Match, Player, SearchFilters, apiError, dangerBtn, getApiBaseUrl, smallBtn } from "./squashShared";
 
 const PAGE_SIZE = 10;
 
@@ -62,18 +41,40 @@ const SquashPage: React.FC = () => {
     const m = searchParams.get("playerMode");
     return m === "or" ? "or" : "and";
   });
+  const [activeTab, setActiveTab] = useState<"matches" | "players" | "shares">("matches");
+  const [editingMatch, setEditingMatch] = useState<Match | null>(null);
+  const [shareOpen, setShareOpen] = useState(false);
   const [tagFilters, setTagFilters] = useState<string[]>([]);
   const [tagFilterMode, setTagFilterMode] = useState<"and" | "or">("or");
   const playerDropdownRef = useRef<HTMLDivElement>(null);
 
   const access = canAccessSquash(user);
-  const canModify = canModifySquash(user);
 
   const playerName = (id: string) => {
     const p = allPlayers.find((x) => x.id === id || x.PK === id);
     return p ? p.name || p.id || id : id;
   };
 
+
+  const currentFilters: SearchFilters = {
+    ...(searchDate ? { date: searchDate } : {}),
+    ...(searchDateFrom ? { dateFrom: searchDateFrom } : {}),
+    ...(searchDateTo ? { dateTo: searchDateTo } : {}),
+    ...(selectedPlayerIds.length ? { playerIds: selectedPlayerIds, playerMode } : {})
+  };
+
+  const deleteMatch = async (id: string) => {
+    if (!confirm("Delete this match?")) return;
+    const apiBase = getApiBaseUrl();
+    if (!apiBase) return;
+    try {
+      const resp = await fetchWithAuth(`${apiBase}/squash/matches?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+      if (!resp.ok) throw new Error(await apiError(resp));
+      searchMatches();
+    } catch (e: any) {
+      setError(e?.message ?? "Delete failed");
+    }
+  };
 
   const loadPlayers = async () => {
     const apiBase = getApiBaseUrl();
@@ -254,6 +255,12 @@ const SquashPage: React.FC = () => {
             ))}
           </span>
         )}
+        <button type="button" onClick={() => setEditingMatch(m)} className={smallBtn}>
+          Edit
+        </button>
+        <button type="button" onClick={() => deleteMatch(m.id || "")} className={dangerBtn}>
+          Delete
+        </button>
       </li>
     );
   };
@@ -298,14 +305,6 @@ const SquashPage: React.FC = () => {
     <div className="space-y-6">
       <h1 className="text-xl font-semibold text-text-primary">Squash Doubles</h1>
 
-      {canModify && (
-        <p className="text-sm text-text-secondary">
-          <Link to="/squash-admin" className="text-accent-text hover:text-accent-text">
-            Squash Admin
-          </Link>
-        </p>
-      )}
-
       {(message || error) && (
         <div
           className={`rounded-md px-4 py-3 text-sm ${error ? "bg-danger/20 border border-danger/20 text-danger" : "bg-success/30 border border-success/50 text-success"}`}
@@ -313,6 +312,36 @@ const SquashPage: React.FC = () => {
           {error || message}
         </div>
       )}
+
+      <div className="flex gap-2 border-b border-border-default pb-2">
+        {(["matches", "players", "shares"] as const).map((t) => (
+          <button
+            key={t}
+            type="button"
+            onClick={() => setActiveTab(t)}
+            className={`px-4 py-2 rounded-md text-sm font-medium capitalize ${activeTab === t ? "bg-surface-3 text-text-primary" : "text-text-secondary hover:text-text-primary transition-colors"}`}
+          >
+            {t}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === "players" && <PlayersTab players={allPlayers} onChanged={loadPlayers} onError={setError} />}
+      {activeTab === "shares" && <SharesTab filters={currentFilters} onError={setError} />}
+
+      {activeTab === "matches" && (
+        <>
+          <MatchForm
+            players={allPlayers}
+            allTags={availableTags}
+            editing={editingMatch}
+            onDone={() => {
+              setEditingMatch(null);
+              searchMatches();
+            }}
+            onCancel={() => setEditingMatch(null)}
+            onError={setError}
+          />
 
       <section>
         <h2 className="text-base font-semibold text-text-primary mb-3">Search matches</h2>
@@ -434,6 +463,14 @@ const SquashPage: React.FC = () => {
       <section>
         <div className="flex flex-wrap items-center gap-3 mb-3">
           <h2 className="text-base font-semibold text-text-primary">Results</h2>
+          <button
+            type="button"
+            onClick={() => setShareOpen(true)}
+            disabled={!hasSearched}
+            className="rounded-md border border-border-default px-3 py-1 text-xs font-medium text-text-secondary hover:bg-surface-3 transition-colors disabled:opacity-50"
+          >
+            Share results
+          </button>
           {hasSearched && sortedMatches.length > 0 && (
             <div className="inline-flex rounded-md border border-border-hover bg-surface-1 p-0.5">
               <button
@@ -532,6 +569,16 @@ const SquashPage: React.FC = () => {
           </>
         )}
       </section>
+        </>
+      )}
+
+      {shareOpen && (
+        <ShareDialog
+          filters={currentFilters}
+          onClose={() => setShareOpen(false)}
+          onSaved={() => undefined}
+        />
+      )}
     </div>
   );
 };

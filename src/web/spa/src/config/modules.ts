@@ -2,7 +2,6 @@ import type { AuthUser } from "../shell/AuthContext";
 import {
   hasRole,
   canAccessSquash,
-  canModifySquash,
   canAccessInvesting,
   canCreateMemes,
   canAccessExpenses,
@@ -41,7 +40,6 @@ import {
   Trophy,
   MagicWand,
   UserCircle,
-  Medal,
 } from "@phosphor-icons/react";
 
 /** Public nav modules (sidebar/header links). */
@@ -85,7 +83,6 @@ export const PUBLIC_MODULES: PublicModule[] = [
   { id: "my-info", label: "My Info", path: "/my-info", section: "discover", minRole: "guest", group: "tools", icon: Fingerprint, description: "See what your browser, device, and network reveal about you." },
   { id: "profile", label: "Profile", path: "/profile", section: "discover", minRole: "user", authOnly: true, group: "discover", launcher: false, icon: UserCircle, description: "Your account details." },
   { id: "squash", label: "Squash", path: "/squash", section: "squash", minRole: "user", visibility: canAccessSquash, group: "modules", icon: Trophy, description: "Ladder, players and match results." },
-  { id: "squash-admin", label: "Squash Admin", path: "/squash-admin", section: "squash", minRole: "manager", visibility: canModifySquash, group: "modules", launcher: false, icon: Medal, description: "Manage squash players and matches." },
   { id: "memes", label: "Memes", path: "/memes", section: "memes", minRole: "guest", group: "discover", icon: Smiley, description: "Browse and rate the freshest memes." },
   { id: "meme-generator", label: "Meme Generator", path: "/memes/create", section: "memes", minRole: "user", visibility: canCreateMemes, group: "modules", icon: MagicWand, description: "Make memes from templates." },
   { id: "finances", label: "Finances", path: "/finances", section: "financial", minRole: "user", authOnly: true, group: "modules", icon: Wallet, description: "Accounts, budgets, transactions and insights." },
@@ -113,7 +110,6 @@ export const ADMIN_MODULES: AdminModule[] = [
   { id: "membership", label: "Membership", path: "/admin/membership", description: "Manage custom groups and member access.", icon: UsersThree, minRole: "manager" },
   { id: "branding", label: "Branding", path: "/admin/branding", description: "Set global logo and branding assets.", icon: Gear, minRole: "superadmin" },
   { id: "themes", label: "Themes", path: "/admin/themes", description: "Colour themes and the site-wide default theme and mode.", icon: Palette, minRole: "superadmin" },
-  { id: "squash", label: "Squash", path: "/squash-admin", description: "Manage squash players and matches.", icon: Trophy, minRole: "manager" },
   { id: "stats", label: "Stats", path: "/admin/stats", description: "View app statistics and per-user click paths.", icon: ChartBar, minRole: "superadmin" },
   { id: "social", label: "Social Scheduler", path: "/social", description: "Schedule and publish posts to connected social accounts.", icon: Megaphone, minRole: "superadmin" },
   { id: "lipsync-budgets", label: "Lipsync Budgets", path: "/admin/lipsync-budgets", description: "Review the fal balance and manage each user's lipsync spend budget.", icon: Money, minRole: "superadmin" },
@@ -236,11 +232,10 @@ const MODULE_GROUPS: ModuleGroup[] = [
     id: "squash",
     label: "Squash",
     icon: Trophy,
-    isVisible: (u) => canAccessSquash(u) || canModifySquash(u),
+    isVisible: (u) => canAccessSquash(u),
     getLinks: (u) => {
       const links: ModuleLink[] = [];
       if (canAccessSquash(u)) links.push({ path: "/squash", label: "Squash" });
-      if (canModifySquash(u)) links.push({ path: "/squash-admin", label: "Squash Admin" });
       return links;
     },
   },
