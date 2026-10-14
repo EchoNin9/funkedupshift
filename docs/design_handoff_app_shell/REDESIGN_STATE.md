@@ -5,7 +5,7 @@ this file on `development` after each launch, merge, or wave transition so any
 later session can resume from here.
 
 **Lead session:** `session_01F95VctFJZth9U2iYETcc8c`
-**Current wave:** 3 — four agents launched 2026-10-14 03:50 UTC (wave 2 fully merged)
+**Current wave:** 4 — cleanup-qa launched 2026-10-14 04:16 UTC (waves 1–3 fully merged)
 **Last updated:** 2026-10-14
 
 ## Decisions
@@ -58,10 +58,10 @@ later session can resume from here.
 | 2 | `redesign/app-frame` | `session_01Ati2nHZyx6KD4KZuNH9Ezu` (archived) | [#138](https://github.com/EchoNin9/funkedupshift/pull/138) | merged `6d00080`; deploy run 430 success |
 | 2 | `redesign/shortener` | `session_01AEXAGgAw83aKKGNJLtj3dk` (archived) | [#140](https://github.com/EchoNin9/funkedupshift/pull/140) | merged `c62a9e7`; deploy run 431 success |
 | 3 | `redesign/themes-ui` | `session_014NWXMLfXzFu1RdmmAfEJxG` (archived) | [#145](https://github.com/EchoNin9/funkedupshift/pull/145) | merged `3212caf` (added superadmin self-gate on review); deploy run 433 success |
-| 3 | `redesign/homes` | `session_013cQk2vfzAHwv7DqgUWaMFV` (archived) | [#143](https://github.com/EchoNin9/funkedupshift/pull/143) | merged `a8dbdfd`; deploy pending |
-| 3 | `redesign/tools-restyle` | `session_018EbfRP2kn4e2m5KJikjXsU` | [#144](https://github.com/EchoNin9/funkedupshift/pull/144) | reviewed OK (no logic changes; canvas refs stay mounted); green; merges after homes deploy |
-| 3 | `redesign/mobile` | `session_018Cja9GAUnWfsjmkTDU7uKV` | — | launched |
-| 4 | `redesign/cleanup-qa` | — | — | not started |
+| 3 | `redesign/homes` | `session_013cQk2vfzAHwv7DqgUWaMFV` (archived) | [#143](https://github.com/EchoNin9/funkedupshift/pull/143) | merged `a8dbdfd`; deploy run 434 success |
+| 3 | `redesign/tools-restyle` | `session_018EbfRP2kn4e2m5KJikjXsU` (archived) | [#144](https://github.com/EchoNin9/funkedupshift/pull/144) | merged `da437f1`; deploy run 435 success |
+| 3 | `redesign/mobile` | `session_018Cja9GAUnWfsjmkTDU7uKV` (archived) | [#146](https://github.com/EchoNin9/funkedupshift/pull/146) (opened by lead — agent rules forbid PRs on agent request) | merged `68ee6ec`; deploy pending |
+| 4 | `redesign/cleanup-qa` | `session_01WbULnK1mH8wrAPbVVxEHe8` | — | launched |
 
 ## Wave 2 brief carry-overs (from #136 follow-ups)
 
@@ -78,7 +78,14 @@ later session can resume from here.
 - **mobile** owns `TabBar`, mobile sheet wrappers of `LauncherDrawer`/`AccountMenu`, `MobileAppShell`, `AppLayout` mobile chrome outside `<Routes>`; must carry the impersonation banner on mobile.
 - Merge order: themes-ui → homes → tools-restyle → mobile.
 
+## Wave 4 scope (as briefed)
+
+Measured at launch: 37 files on heroicons, ~85 `n1–n4` token uses in 10 files, 5 files with `pop-` classes, 22 `font-display` uses.
+1 delete legacy shell files · 2 PopMarquee → renamed marquee (still used by UpdatesBanner/Branding) · 3 pop-* CSS + n1–n4 aliases + Syne audit · 4 heroicons → Phosphor, uninstall · 5 .btn/.input/.field classes, body type scale, components/index.ts exports · 6 viewport-fit=cover, account-sheet scrim vs tab bar, hydratePins per-user cache · 7 native MobileAppShell keeps old tabs (follow-up: shared route table) · 8 QA.md (signed-in cells = manual staging check).
+
 ## Log
+
+- 2026-10-14 — Wave 3 complete: #144 tools-restyle (`da437f1`), #146 mobile (`68ee6ec`). Wave 4 cleanup-qa launched (user go-ahead).
 
 - 2026-10-14 — #145 themes-ui merged (`3212caf`), deployed; #143 homes merged (`a8dbdfd`). Known follow-up (wave 4): `hydratePins` can seed a new user's server pins from a previous user's cache if that session expired without sign-out on a shared browser.
 
