@@ -5,7 +5,7 @@ this file on `development` after each launch, merge, or wave transition so any
 later session can resume from here.
 
 **Lead session:** `session_01F95VctFJZth9U2iYETcc8c`
-**Current wave:** ALL WAVES DONE — merged to `development` and deployed to staging (run 437). Next: user go-ahead for the `development` → `main` release PR.
+**Current wave:** ALL WAVES DONE — merged to `development` and deployed to staging (run 437). Next: user is checking staging signed-in; lead opens the `development` → `main` release PR only after the user confirms (open only, never merge).
 **Last updated:** 2026-10-14
 
 ## Decisions
@@ -93,6 +93,8 @@ Measured at launch: 37 files on heroicons, ~85 `n1–n4` token uses in 10 files,
 1 delete legacy shell files · 2 PopMarquee → renamed marquee (still used by UpdatesBanner/Branding) · 3 pop-* CSS + n1–n4 aliases + Syne audit · 4 heroicons → Phosphor, uninstall · 5 .btn/.input/.field classes, body type scale, components/index.ts exports · 6 viewport-fit=cover, account-sheet scrim vs tab bar, hydratePins per-user cache · 7 native MobileAppShell keeps old tabs (follow-up: shared route table) · 8 QA.md (signed-in cells = manual staging check).
 
 ## Log
+
+- 2026-10-14 — User decision: release PR to `main` waits until the user has checked staging (signed-in user / group member / admin).
 
 - 2026-10-14 — Wave 4 merged (`d2eeec6`), staging deploy run 437 success. All waves complete. Release PR to `main` awaiting user go-ahead.
 
