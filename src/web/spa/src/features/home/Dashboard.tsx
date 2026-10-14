@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { PushPin, SquaresFour } from "@phosphor-icons/react";
-import { useAuth, type AuthUser } from "../../shell/AuthContext";
+import { useAuth } from "../../shell/AuthContext";
+import { userDisplayName } from "../../shell/AccountMenu";
 import { LAUNCHER_GROUP_LABELS, PUBLIC_MODULES, canOpenModule, getVisibleAdminModules } from "../../config/modules";
 import { GROUP_HUES, resolveAppFrame } from "../../components/AppPage";
 import { buttonClasses } from "../../components/buttonClasses";
@@ -21,9 +22,6 @@ function greeting(now: Date): string {
 }
 
 /** No first name or username in the auth user yet, so fall back to the email's local part. */
-function displayName(user: AuthUser): string {
-  return user.email.split("@")[0] || user.email;
-}
 
 function timeAgo(at: number, now: number): string {
   const s = Math.max(0, Math.round((now - at) / 1000));
@@ -129,7 +127,7 @@ const Dashboard: React.FC = () => {
 
   if (!user) return null;
   const nowMs = now.getTime();
-  const name = displayName(user);
+  const name = userDisplayName(user);
   const date = now.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
 
   return (
@@ -142,7 +140,7 @@ const Dashboard: React.FC = () => {
             {name ? `, ${name}` : ""}.
           </h1>
         </div>
-        <Link to="/apps/discover" className={buttonClasses("secondary", "md")}>
+        <Link to="/apps" className={buttonClasses("secondary", "md")}>
           <SquaresFour className="h-[18px] w-[18px]" aria-hidden="true" />
           All apps
         </Link>

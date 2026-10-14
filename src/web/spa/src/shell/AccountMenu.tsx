@@ -1,9 +1,9 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, useReducedMotion } from "framer-motion";
 import { MoonStars, SignOut, Sun, UserCircle, type Icon } from "@phosphor-icons/react";
 import { getVisibleAdminModules } from "../config/modules";
-import { useAuth } from "./AuthContext";
+import { useAuth, type AuthUser } from "./AuthContext";
 import ImpersonationSelector from "./ImpersonationSelector";
 import { useImpersonation } from "./ImpersonationContext";
 import { setMode, setThemeId, useThemeState } from "./theme";
@@ -15,6 +15,28 @@ export function userInitials(email: string): string {
   const parts = local.split(/[._\-+\s]+/).filter(Boolean);
   const letters = parts.length > 1 ? parts[0][0] + parts[1][0] : local.slice(0, 2);
   return (letters || "?").toUpperCase();
+}
+
+/** Name shown in the greeting and account menu: profile display name, else the email's local part. */
+export function userDisplayName(user: AuthUser): string {
+  return user.displayName || user.email.split("@")[0] || user.email;
+}
+
+/** Round avatar: the profile icon, or initials when there is none (or its presigned URL has expired). */
+export function UserAvatar({ user, className }: { user: AuthUser; className: string }) {
+  const [broken, setBroken] = useState(false);
+  useEffect(() => setBroken(false), [user.avatarUrl]);
+  if (user.avatarUrl && !broken) {
+    return <img src={user.avatarUrl} alt="" onError={() => setBroken(true)} className={`${className} object-cover`} />;
+  }
+  return (
+    <span
+      className={`${className} grid place-items-center font-sans text-sm font-semibold text-white`}
+      style={{ background: "linear-gradient(135deg, rgb(var(--color-hue-violet)), rgb(var(--color-hue-coral)))" }}
+    >
+      {userInitials(user.email)}
+    </span>
+  );
 }
 
 const rowClass =
@@ -97,7 +119,7 @@ export function AccountMenu({ onClose, returnFocusTo }: AccountMenuProps) {
   const adminModules = getVisibleAdminModules(user);
   const isAdmin = user.role === "superadmin";
   const roleLabel = isAdmin ? "Admin" : user.role === "manager" ? "Manager" : "User";
-  const name = user.email.split("@")[0];
+  const name = userDisplayName(user);
 
   return (
     <>
@@ -120,12 +142,8 @@ export function AccountMenu({ onClose, returnFocusTo }: AccountMenuProps) {
         transition={{ duration: reduceMotion ? 0 : 0.26, ease: [0.2, 0.8, 0.2, 1] }}
       >
         <div className="flex items-center gap-3 px-2.5 pb-3 pt-2">
-          <span
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-full font-sans text-sm font-semibold text-white"
-            style={{ background: "linear-gradient(135deg, rgb(var(--color-hue-violet)), rgb(var(--color-hue-coral)))" }}
-            aria-hidden="true"
-          >
-            {userInitials(user.email)}
+          <span aria-hidden="true" className="shrink-0">
+            <UserAvatar user={user} className="h-10 w-10 rounded-full" />
           </span>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-bold text-text-primary">{name}</p>
@@ -135,7 +153,7 @@ export function AccountMenu({ onClose, returnFocusTo }: AccountMenuProps) {
         </div>
 
         <Link to="/profile" role="menuitem" onClick={onClose} className={rowClass}>
-          <Row icon={UserCircle}>Profile</Row>
+          <Row icon={UserCircle}>Edit Profile</Row>
         </Link>
 
         <div className="mt-1 border-t pt-1" style={{ borderColor: "var(--color-divider)" }}>

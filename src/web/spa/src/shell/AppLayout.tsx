@@ -17,7 +17,7 @@ import { LauncherProvider } from "./LauncherContext";
 import { UpdatesBanner } from "./UpdatesBanner";
 import { pageTransition } from "../components/motion";
 import { AppPageLayout } from "../components/AppPage";
-import AppsSectionPage from "../components/AppsSectionPage";
+import AppsSectionPage, { AllAppsPage } from "../components/AppsSectionPage";
 
 /* Eager-loaded (above-the-fold) */
 import HomePage from "../features/home/HomePage";
@@ -48,7 +48,6 @@ const EditMediaPage = lazy(() => import("../features/admin/EditMediaPage"));
 const EditUserPage = lazy(() => import("../features/admin/EditUserPage"));
 const StatsAdminPage = lazy(() => import("../features/admin/StatsAdminPage"));
 const SquashPage = lazy(() => import("../features/squash/SquashPage"));
-const SquashAdminPage = lazy(() => import("../features/squash/SquashAdminPage"));
 const FinancesPage = lazy(() => import("../features/finances/FinancesPage"));
 const InvestingPage = lazy(() => import("../features/investing/InvestingPage"));
 const VehiclesExpensesPage = lazy(() => import("../features/vehicles/VehiclesExpensesPage"));
@@ -66,6 +65,7 @@ const CropPage = lazy(() => import("../features/croptool/CropPage"));
 const RemoveBgPage = lazy(() => import("../features/removebg/RemoveBgPage"));
 const DnsPage = lazy(() => import("../features/dnstool/DnsPage"));
 const TextSharePage = lazy(() => import("../features/textshare/TextSharePage"));
+const SquashSharePage = lazy(() => import("../features/squash/SquashSharePage"));
 const TextViewPage = lazy(() => import("../features/textshare/TextViewPage"));
 const ConvertersPage = lazy(() => import("../features/converters/ConvertersPage"));
 const SocialCalendarPage = lazy(() => import("../features/social/CalendarPage"));
@@ -114,6 +114,7 @@ const AppLayoutContent: React.FC = () => {
             <Suspense fallback={<PageLoader />}>
             <Routes location={location}>
               <Route path="/" element={<HomePage />} />
+              <Route path="/apps" element={<AllAppsPage />} />
               <Route path="/apps/:group" element={<AppsSectionPage />} />
               {/* AppPageLayout frames each routed app from its path (breadcrumb, header, pin, "More in…");
                   paths with no module entry render unframed. Guarded routes below nest it inside their gate. */}
@@ -127,7 +128,6 @@ const AppLayoutContent: React.FC = () => {
               <Route path="/recommended/highlights" element={<OurPropertiesPage />} />
               <Route path="/recommended/highest-rated" element={<HighestRatedPage />} />
               <Route path="/squash" element={<SquashPage />} />
-              <Route path="/squash-admin" element={<SquashAdminPage />} />
               <Route path="/memes" element={<MemeBrowsePage />} />
               <Route path="/memes/create" element={<MemeGeneratorPage />} />
               <Route path="/memes/:id/edit" element={<EditMemePage />} />
@@ -152,6 +152,7 @@ const AppLayoutContent: React.FC = () => {
               {/* Public — no auth gate. Recipients of a shared paste link
                   must be able to open it signed-out (see TextViewPage). */}
               <Route path="/t/:id" element={<TextViewPage />} />
+              <Route path="/squash/s/:id" element={<SquashSharePage />} />
               <Route path="/admin" element={<AdminLayout />}>
                 <Route element={<AppPageLayout />}>
                 <Route index element={<AdminDashboard />} />

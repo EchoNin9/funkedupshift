@@ -5,7 +5,7 @@ this file on `development` after each launch, merge, or wave transition so any
 later session can resume from here.
 
 **Lead session:** `session_01F95VctFJZth9U2iYETcc8c`
-**Current wave:** ALL WAVES DONE — merged to `development` and deployed to staging (run 437). Next: user is checking staging signed-in; lead opens the `development` → `main` release PR only after the user confirms (open only, never merge).
+**Current wave:** SHIPPED — released to production 2026-10-14 via [#149](https://github.com/EchoNin9/funkedupshift/pull/149) (`b23cd1e`), prod deploy run 38521879880 success. User gave the go-ahead in the CLI lead session.
 **Last updated:** 2026-10-14
 
 ## Decisions
@@ -93,6 +93,8 @@ Measured at launch: 37 files on heroicons, ~85 `n1–n4` token uses in 10 files,
 1 delete legacy shell files · 2 PopMarquee → renamed marquee (still used by UpdatesBanner/Branding) · 3 pop-* CSS + n1–n4 aliases + Syne audit · 4 heroicons → Phosphor, uninstall · 5 .btn/.input/.field classes, body type scale, components/index.ts exports · 6 viewport-fit=cover, account-sheet scrim vs tab bar, hydratePins per-user cache · 7 native MobileAppShell keeps old tabs (follow-up: shared route table) · 8 QA.md (signed-in cells = manual staging check).
 
 ## Log
+
+- 2026-10-14 — **Shipped.** User go-ahead (CLI session). Release PR #149 `development` → `main` merged (`b23cd1e`) after pytest 1036 passed + full SPA build locally and PR Check green; production deploy run 38521879880 success.
 
 - 2026-10-14 — User staging check found hero title rendering one-word siteName `Funkedupshift` without accent/break. Fixed in [#148](https://github.com/EchoNin9/funkedupshift/pull/148) (`ff22fdf`), deploy run 438 success. Release PR still waits on user go-ahead.
 

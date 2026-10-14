@@ -13,7 +13,6 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   "internet-dashboard": ChartBar,
   "my-info": IdentificationCard,
   squash: Trophy,
-  "squash-admin": ShieldCheck,
   memes: ImageSquare,
   "meme-generator": ImageSquare,
   financial: CurrencyDollar,

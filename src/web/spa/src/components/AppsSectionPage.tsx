@@ -1,5 +1,5 @@
 import { Link, Navigate, useParams } from "react-router-dom";
-import { Lock } from "@phosphor-icons/react";
+import { CaretDown, Lock } from "@phosphor-icons/react";
 import { useAuth } from "../shell/AuthContext";
 import { LAUNCHER_GROUP_LABELS, getLauncherGroups, type LauncherApp, type LauncherGroupId } from "../config/modules";
 import { Breadcrumb, GROUP_HUES } from "./AppPage";
@@ -63,6 +63,50 @@ export default function AppsSectionPage() {
         {found.apps.map((a) => (
           <AppCard key={a.id} app={a} hue={hue} />
         ))}
+      </div>
+    </div>
+  );
+}
+
+/** /apps — every section on one page, each a native <details> (collapsed by default). */
+export function AllAppsPage() {
+  const { user } = useAuth();
+  const groups = getLauncherGroups(user);
+
+  return (
+    <div className="mx-auto w-full max-w-[1180px]">
+      <Breadcrumb trail={[]} current="All apps" />
+      <header className="pb-7 pt-[18px]">
+        <h1 className="font-display text-[clamp(28px,3.5vw,36px)] font-semibold leading-tight tracking-[-0.035em] text-text-primary">
+          All apps
+        </h1>
+        <p className="mt-0.5 text-sm text-text-secondary">Every section — open one to see its apps.</p>
+      </header>
+      <div className="space-y-3">
+        {groups.map((g) => {
+          const hue = GROUP_HUES[g.id];
+          return (
+            <details key={g.id} className="group rounded-ds-lg border border-divider bg-surface-1">
+              <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3.5 [&::-webkit-details-marker]:hidden">
+                <span className={`hue-${hue} hue-dot h-3 w-3 shrink-0 rounded-full`} aria-hidden="true" />
+                <span className="min-w-0 flex-1">
+                  <span className="text-[15px] font-semibold text-text-primary">{g.label}</span>
+                  <span className="ml-2 text-sm text-text-tertiary">{g.apps.length}</span>
+                  <span className="block text-[13px] text-text-secondary">{GROUP_BLURBS[g.id]}</span>
+                </span>
+                <CaretDown
+                  className="h-4 w-4 shrink-0 text-text-secondary transition-transform group-open:rotate-180 motion-reduce:transition-none"
+                  aria-hidden="true"
+                />
+              </summary>
+              <div className="grid gap-4 px-4 pb-4 [grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr))]">
+                {g.apps.map((a) => (
+                  <AppCard key={a.id} app={a} hue={hue} />
+                ))}
+              </div>
+            </details>
+          );
+        })}
       </div>
     </div>
   );

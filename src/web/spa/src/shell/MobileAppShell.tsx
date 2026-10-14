@@ -1,13 +1,13 @@
 import React, { lazy, Suspense } from "react";
 import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
+import { UserAvatar } from "./AccountMenu";
 import { useAuth } from "./AuthContext";
 import { useBranding } from "./BrandingContext";
 import { MobileBottomTabs } from "./MobileBottomTabs";
 import { MobileModulesProvider } from "./MobileModulesContext";
 import { AdminLayout } from "./AdminLayout";
 import { pageTransition } from "../components/motion";
-import { UserCircle } from "@phosphor-icons/react";
 import { Marquee } from "./Marquee";
 import { ThemeToggle } from "./ThemeToggle";
 
@@ -39,8 +39,8 @@ const MediaAdminPage = lazy(() => import("../features/admin/MediaAdminPage"));
 const EditSitePage = lazy(() => import("../features/admin/EditSitePage"));
 const EditMediaPage = lazy(() => import("../features/admin/EditMediaPage"));
 const EditUserPage = lazy(() => import("../features/admin/EditUserPage"));
+const SquashSharePage = lazy(() => import("../features/squash/SquashSharePage"));
 const SquashPage = lazy(() => import("../features/squash/SquashPage"));
-const SquashAdminPage = lazy(() => import("../features/squash/SquashAdminPage"));
 const FinancesPage = lazy(() => import("../features/finances/FinancesPage"));
 const VehiclesExpensesPage = lazy(() => import("../features/vehicles/VehiclesExpensesPage"));
 const GeneralExpensesPage = lazy(() => import("../features/expenses/GeneralExpensesPage"));
@@ -92,8 +92,8 @@ export function MobileAppShell() {
           <div className="flex items-center gap-2">
             <ThemeToggle />
             {user ? (
-              <Link to="/profile" className="text-text-secondary">
-                <UserCircle className="w-7 h-7" />
+              <Link to="/profile" aria-label="Profile">
+                <UserAvatar user={user} className="h-7 w-7 rounded-full" />
               </Link>
             ) : (
               <Link to="/auth" className="btn-primary text-xs !px-3 !py-1.5">
@@ -128,7 +128,7 @@ export function MobileAppShell() {
                     <Route path="/recommended/highlights" element={<OurPropertiesPage />} />
                     <Route path="/recommended/highest-rated" element={<HighestRatedPage />} />
                     <Route path="/squash" element={<SquashPage />} />
-                    <Route path="/squash-admin" element={<SquashAdminPage />} />
+                    <Route path="/squash/s/:id" element={<SquashSharePage />} />
                     <Route path="/memes" element={<MemeBrowsePage />} />
                     <Route path="/memes/create" element={<MemeGeneratorPage />} />
                     <Route path="/memes/:id/edit" element={<EditMemePage />} />

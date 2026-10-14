@@ -137,6 +137,10 @@ def theme_exists(theme_id):
     return bool(resp.get("Item"))
 
 
+MAX_COLLAPSED_GROUPS = 20
+MAX_COLLAPSED_GROUP_LEN = 32
+
+
 def resolve_profile_prefs(stored_theme_id, stored_mode):
     """Return (themeId, mode) resolved against the themes table; never raises."""
     theme_id, mode = FALLBACK_THEME_ID, FALLBACK_MODE
@@ -155,7 +159,7 @@ def resolve_profile_prefs(stored_theme_id, stored_mode):
 
 
 def validate_profile_prefs(body):
-    """Validate optional pins/themeId/mode. Returns (prefs, error).
+    """Validate optional pins/collapsedGroups/themeId/mode. Returns (prefs, error).
 
     prefs only has keys present in body; themeId None means REMOVE.
     """
@@ -176,6 +180,22 @@ def validate_profile_prefs(body):
             if p not in out:
                 out.append(p)
         prefs["pins"] = out
+    if "collapsedGroups" in body:
+        groups = body["collapsedGroups"]
+        if not isinstance(groups, list):
+            return None, "collapsedGroups must be a list"
+        if len(groups) > MAX_COLLAPSED_GROUPS:
+            return None, f"collapsedGroups must have at most {MAX_COLLAPSED_GROUPS} entries"
+        out = []
+        for g in groups:
+            if not isinstance(g, str):
+                return None, "collapsedGroups must be strings"
+            g = g.strip()
+            if not 1 <= len(g) <= MAX_COLLAPSED_GROUP_LEN:
+                return None, f"each collapsed group must be 1-{MAX_COLLAPSED_GROUP_LEN} characters"
+            if g not in out:
+                out.append(g)
+        prefs["collapsedGroups"] = out
     if "mode" in body:
         if body["mode"] not in MODES:
             return None, "mode must be 'dark' or 'light'"

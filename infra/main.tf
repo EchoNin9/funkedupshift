@@ -636,6 +636,12 @@ resource "aws_dynamodb_table" "main" {
     type = "S"
   }
 
+  # Expiring squash share pages (expiresAt = epoch seconds; reads also check it)
+  ttl {
+    attribute_name = "expiresAt"
+    enabled        = true
+  }
+
   # List all sites: query GSI byEntity where entityType = SITE
   global_secondary_index {
     name            = "byEntity"
@@ -1710,6 +1716,45 @@ resource "aws_apigatewayv2_route" "squashMatchesDelete" {
   target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
   authorization_type = "JWT"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "squashSharesGet" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /squash/shares"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "squashSharesPost" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /squash/shares"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "squashSharesPut" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "PUT /squash/shares"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "squashSharesDelete" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "DELETE /squash/shares"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+# PUBLIC: read an expiring squash share page. No authorization_type/authorizer_id.
+resource "aws_apigatewayv2_route" "squashPublicGet" {
+  api_id    = aws_apigatewayv2_api.main.id
+  route_key = "GET /squash/public/{id}"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
 }
 
 # Investing section (Financial custom group required, JWT)
