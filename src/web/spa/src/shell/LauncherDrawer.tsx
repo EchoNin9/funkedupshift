@@ -11,6 +11,7 @@ import {
 import { usePins } from "../hooks/usePins";
 import { useAuth } from "./AuthContext";
 import { useLauncher } from "./LauncherContext";
+import { useKeyboardInset, useNarrow } from "./useNarrow";
 
 const GROUP_HUE: Record<LauncherGroupId | "pinned", string> = {
   discover: "hue-teal",
@@ -89,7 +90,7 @@ function AppTile({ app, hue, current, canPin, pinned, onTogglePin, onNavigate }:
           aria-pressed={pinned}
           aria-label={pinned ? `Unpin ${app.label}` : `Pin ${app.label}`}
           title={pinned ? "Unpin" : "Pin"}
-          className={`pin-toggle ${pinned ? "is-pinned" : ""} absolute right-0.5 top-0.5 grid h-6 w-6 place-items-center rounded-md text-text-secondary hover:text-text-primary ${pinned ? "!text-accent-text" : ""}`}
+          className={`pin-toggle ${pinned ? "is-pinned" : ""} absolute right-0.5 top-0.5 grid h-6 w-6 max-[640px]:right-0 max-[640px]:top-0 max-[640px]:h-11 max-[640px]:w-11 place-items-center rounded-md text-text-secondary hover:text-text-primary ${pinned ? "!text-accent-text" : ""}`}
         >
           <PushPin size={14} weight={pinned ? "fill" : "regular"} />
         </button>
@@ -116,6 +117,8 @@ export function LauncherDrawer() {
   const location = useLocation();
   const navigate = useNavigate();
   const reduceMotion = useReducedMotion();
+  const narrow = useNarrow();
+  const kbd = useKeyboardInset(open && narrow);
   const [query, setQuery] = useState("");
   const panelRef = useRef<HTMLElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -236,25 +239,30 @@ export function LauncherDrawer() {
             aria-label="Apps"
             onKeyDown={onKeyDown}
             className="launcher is-open z-[51] flex flex-col bg-surface-1 shadow-ds-lg !transition-none"
-            initial={{ x: "-104%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "-104%" }}
+            // ≤640px: bottom sheet sliding on Y; above that: left drawer sliding on X. Lift above the soft keyboard when it is up.
+            style={narrow && kbd ? { bottom: kbd.bottom, height: Math.min(kbd.height * 0.96, 720) } : undefined}
+            initial={narrow ? { y: "104%" } : { x: "-104%" }}
+            animate={narrow ? { y: 0 } : { x: 0 }}
+            exit={narrow ? { y: "104%" } : { x: "-104%" }}
             transition={{ duration: dur(0.26), ease: [0.2, 0.8, 0.2, 1] }}
           >
+            <div className="only-narrow justify-center pt-2" aria-hidden="true">
+              <span className="h-1 w-9 rounded-full bg-surface-3" />
+            </div>
             <div className="flex items-center justify-between px-5 pb-2 pt-4">
               <h2 className="font-display text-xl font-semibold text-text-primary">Apps</h2>
               <button
                 type="button"
                 onClick={closeLauncher}
                 aria-label="Close apps"
-                className="grid h-9 w-9 place-items-center rounded-lg text-text-secondary hover:bg-surface-2 hover:text-text-primary"
+                className="grid h-11 w-11 place-items-center rounded-lg text-text-secondary hover:bg-surface-2 hover:text-text-primary min-[641px]:h-9 min-[641px]:w-9"
               >
                 <X size={18} />
               </button>
             </div>
 
             <div className="px-5 pb-2">
-              <label className="flex h-10 items-center gap-2 rounded-[10px] border bg-surface-0 px-3 focus-within:ring-2 focus-within:ring-accent-500" style={{ borderColor: "var(--color-divider)" }}>
+              <label className="flex h-10 items-center gap-2 rounded-[10px] border bg-surface-0 px-3 max-[640px]:h-11 focus-within:ring-2 focus-within:ring-accent-500" style={{ borderColor: "var(--color-divider)" }}>
                 <MagnifyingGlass size={16} className="shrink-0 text-text-tertiary" />
                 <input
                   ref={searchRef}
@@ -264,12 +272,12 @@ export function LauncherDrawer() {
                   onKeyDown={onSearchKey}
                   placeholder={`Search ${allApps.length} apps`}
                   aria-label={`Search ${allApps.length} apps`}
-                  className="min-w-0 flex-1 bg-transparent text-sm text-text-primary outline-none placeholder:text-text-tertiary"
+                  className="min-w-0 flex-1 bg-transparent text-sm max-[640px]:text-base text-text-primary outline-none placeholder:text-text-tertiary"
                 />
               </label>
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-3 scrollbar-thin">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-3 scrollbar-thin" style={{ paddingBottom: "max(12px, env(safe-area-inset-bottom))" }}>
               {showHome && (
                 <Link
                   to="/"

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
+import { motion, useReducedMotion } from "framer-motion";
 import { MoonStars, SignOut, Sun, UserCircle, type Icon } from "@phosphor-icons/react";
 import { getVisibleAdminModules } from "../config/modules";
 import { useAuth } from "./AuthContext";
@@ -7,6 +8,7 @@ import ImpersonationSelector from "./ImpersonationSelector";
 import { useImpersonation } from "./ImpersonationContext";
 import { setMode, setThemeId, useThemeState } from "./theme";
 import { Segmented, ThemeChip } from "./ThemeChips";
+import { useNarrow } from "./useNarrow";
 
 export function userInitials(email: string): string {
   const local = (email || "").split("@")[0] || "";
@@ -40,6 +42,8 @@ export function AccountMenu({ onClose, returnFocusTo }: AccountMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const { themes, theme, mode } = useThemeState();
   const { impersonation } = useImpersonation();
+  const narrow = useNarrow();
+  const reduceMotion = useReducedMotion();
 
   // Esc closes — unless the key landed inside a nested dialog (impersonation picker).
   useEffect(() => {
@@ -52,6 +56,36 @@ export function AccountMenu({ onClose, returnFocusTo }: AccountMenuProps) {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [onClose]);
+
+  // Mobile sheet is modal: trap Tab inside it and lock page scroll while it is open.
+  useEffect(() => {
+    if (!narrow) return;
+    const onTab = (e: KeyboardEvent) => {
+      if (e.key !== "Tab" || !menuRef.current) return;
+      const items = Array.from(menuRef.current.querySelectorAll<HTMLElement>("a[href],button:not([disabled])")).filter((el) => el.offsetParent !== null);
+      if (items.length === 0) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      const t = document.activeElement;
+      if (!menuRef.current.contains(t)) {
+        e.preventDefault();
+        first.focus();
+      } else if (e.shiftKey && t === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && t === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onTab);
+    return () => {
+      window.removeEventListener("keydown", onTab);
+      document.body.style.overflow = prev;
+    };
+  }, [narrow]);
 
   useEffect(() => {
     menuRef.current?.querySelector<HTMLElement>("a,button")?.focus();
@@ -67,13 +101,22 @@ export function AccountMenu({ onClose, returnFocusTo }: AccountMenuProps) {
 
   return (
     <>
-      <div className="fixed inset-0 z-[49]" onClick={onClose} aria-hidden="true" />
       <div
+        className="fixed inset-0 z-[49]"
+        style={narrow ? { background: "color-mix(in srgb, #08080c 55%, transparent)" } : undefined}
+        onClick={onClose}
+        aria-hidden="true"
+      />
+      <motion.div
         ref={menuRef}
         role="menu"
         aria-label="Account"
-        className="account-menu overflow-y-auto rounded-2xl border bg-surface-1 p-2 shadow-ds-lg scrollbar-thin"
+        className="account-menu overflow-y-auto overscroll-contain rounded-2xl border bg-surface-1 p-2 shadow-ds-lg scrollbar-thin"
         style={{ borderColor: "var(--color-divider)" }}
+        initial={narrow ? { y: "24px", opacity: 0 } : false}
+        animate={{ y: 0, opacity: 1 }}
+        exit={narrow ? { y: "24px", opacity: 0 } : undefined}
+        transition={{ duration: reduceMotion ? 0 : 0.26, ease: [0.2, 0.8, 0.2, 1] }}
       >
         <div className="flex items-center gap-3 px-2.5 pb-3 pt-2">
           <span
@@ -147,7 +190,7 @@ export function AccountMenu({ onClose, returnFocusTo }: AccountMenuProps) {
             <span className="flex-1">Sign out</span>
           </button>
         </div>
-      </div>
+      </motion.div>
     </>
   );
 }
