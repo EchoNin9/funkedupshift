@@ -10,10 +10,15 @@ later session can resume from here.
 
 ## Decisions
 
-- **Merge gate:** `npx vite build` + pytest on the PR branch, then a green
-  staging deploy (checked via the run's `conclusion`). The full `npm run build`
-  (imgly prebuild) can't be relied on in cloud sessions; run it locally when
-  possible.
+- **Merge gate (cloud-only, no local runs):** the `PR Check` workflow
+  (`.github/workflows/pr-check.yml`) must be green on the PR head: full
+  `npm ci && npm run build` (incl. imgly prebuild) + pytest on GitHub runners.
+  Then merge, and confirm the `Deploy Staging` run's `conclusion` is success
+  before the next merge. Cloud sessions can't run the full build:
+  `staticimgly.com` is blocked by the session proxy (403); agents use
+  `npx vite build` for iteration only.
+- **Why pre-merge matters:** `dev.yml` runs `terraform apply` *before* the SPA
+  build, so a frontend build break after merge leaves staging half-deployed.
 - **Agent runtime:** child cloud sessions (Sonnet tier) via `create_session`,
   each with `outcome_branch: redesign/<slug>`, reporting back by
   `send_message` to the lead session.
@@ -45,5 +50,6 @@ later session can resume from here.
 
 ## Log
 
+- 2026-10-14 — Added PR Check workflow as the pre-merge gate (user has no local machine).
 - 2026-10-14 — Wave 1 launched (`redesign/foundation`, brief = PROMPTS 1 + 2 +
   `usePins()`; minimal `shell/theme.ts` edit allowed for `[data-theme]`).
