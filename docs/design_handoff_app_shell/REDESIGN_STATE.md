@@ -5,7 +5,7 @@ this file on `development` after each launch, merge, or wave transition so any
 later session can resume from here.
 
 **Lead session:** `session_01F95VctFJZth9U2iYETcc8c`
-**Current wave:** 4 — cleanup-qa launched 2026-10-14 04:16 UTC (waves 1–3 fully merged)
+**Current wave:** ALL WAVES DONE — merged to `development` and deployed to staging (run 437). Next: user go-ahead for the `development` → `main` release PR.
 **Last updated:** 2026-10-14
 
 ## Decisions
@@ -48,6 +48,15 @@ later session can resume from here.
 - Test credentials for user / group member / admin are needed for signed-in
   screenshots and staging spot-checks.
 
+## Open items after the redesign
+
+- **Manual QA on staging** for signed-in / group member / admin rows in `QA.md` (cloud sessions have no test credentials and can't reach staging). Fonts also need a staging look (Google Fonts blocked in sandbox).
+- **Branch protection** on `development`/`main`: require `PR Check` (`pytest`, `spa-build`).
+- **Native app:** `MobileAppShell` still uses `MobileBottomTabs`/`MobileMorePage`; adopting `TabBar` needs a route table shared with `AppLayout`.
+- **Cosmetic (from QA.md):** admin pages start ~24px lower than app pages; plain `.card` lost its hover lift.
+- **Enhancement:** a "Create meme" button on the Memes page for members (never existed; generator reachable via launcher).
+- **Admin > Themes** is superadmin-only; README suggested managers too (one-line change per route if wanted).
+
 ## Wave tracker
 
 | Wave | Agent / branch | Session | PR | Status |
@@ -61,7 +70,7 @@ later session can resume from here.
 | 3 | `redesign/homes` | `session_013cQk2vfzAHwv7DqgUWaMFV` (archived) | [#143](https://github.com/EchoNin9/funkedupshift/pull/143) | merged `a8dbdfd`; deploy run 434 success |
 | 3 | `redesign/tools-restyle` | `session_018EbfRP2kn4e2m5KJikjXsU` (archived) | [#144](https://github.com/EchoNin9/funkedupshift/pull/144) | merged `da437f1`; deploy run 435 success |
 | 3 | `redesign/mobile` | `session_018Cja9GAUnWfsjmkTDU7uKV` (archived) | [#146](https://github.com/EchoNin9/funkedupshift/pull/146) (opened by lead — agent rules forbid PRs on agent request) | merged `68ee6ec`; deploy run 436 success |
-| 4 | `redesign/cleanup-qa` | `session_01WbULnK1mH8wrAPbVVxEHe8` | — | launched |
+| 4 | `redesign/cleanup-qa` | `session_01WbULnK1mH8wrAPbVVxEHe8` (archived) | [#147](https://github.com/EchoNin9/funkedupshift/pull/147) | merged `d2eeec6`; deploy run 437 success. QA matrix: `QA.md` |
 
 ## Wave 2 brief carry-overs (from #136 follow-ups)
 
@@ -84,6 +93,8 @@ Measured at launch: 37 files on heroicons, ~85 `n1–n4` token uses in 10 files,
 1 delete legacy shell files · 2 PopMarquee → renamed marquee (still used by UpdatesBanner/Branding) · 3 pop-* CSS + n1–n4 aliases + Syne audit · 4 heroicons → Phosphor, uninstall · 5 .btn/.input/.field classes, body type scale, components/index.ts exports · 6 viewport-fit=cover, account-sheet scrim vs tab bar, hydratePins per-user cache · 7 native MobileAppShell keeps old tabs (follow-up: shared route table) · 8 QA.md (signed-in cells = manual staging check).
 
 ## Log
+
+- 2026-10-14 — Wave 4 merged (`d2eeec6`), staging deploy run 437 success. All waves complete. Release PR to `main` awaiting user go-ahead.
 
 - 2026-10-14 — Wave 3 complete: #144 tools-restyle (`da437f1`), #146 mobile (`68ee6ec`). Wave 4 cleanup-qa launched (user go-ahead).
 
