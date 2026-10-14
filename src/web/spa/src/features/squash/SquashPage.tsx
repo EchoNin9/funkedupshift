@@ -1,9 +1,10 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useAuth, canAccessSquash } from "../../shell/AuthContext";
 import DateInput from "./DateInput";
 import { fetchWithAuth } from "../../utils/api";
-import { Badge } from "../../components";
+import PlayerPicker from "./PlayerPicker";
+import MatchSummary from "./MatchSummary";
 import TagFilterBar from "./TagFilterBar";
 import { matchesTagFilter } from "./tagFilter";
 import MatchForm from "./MatchForm";
@@ -28,8 +29,6 @@ const SquashPage: React.FC = () => {
   const [searchDate, setSearchDate] = useState(() => searchParams.get("date") ?? "");
   const [searchDateFrom, setSearchDateFrom] = useState(() => searchParams.get("dateFrom") ?? "");
   const [searchDateTo, setSearchDateTo] = useState(() => searchParams.get("dateTo") ?? "");
-  const [playerSearch, setPlayerSearch] = useState("");
-  const [playerDropdownOpen, setPlayerDropdownOpen] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -46,15 +45,8 @@ const SquashPage: React.FC = () => {
   const [shareOpen, setShareOpen] = useState(false);
   const [tagFilters, setTagFilters] = useState<string[]>([]);
   const [tagFilterMode, setTagFilterMode] = useState<"and" | "or">("or");
-  const playerDropdownRef = useRef<HTMLDivElement>(null);
 
   const access = canAccessSquash(user);
-
-  const playerName = (id: string) => {
-    const p = allPlayers.find((x) => x.id === id || x.PK === id);
-    return p ? p.name || p.id || id : id;
-  };
-
 
   const currentFilters: SearchFilters = {
     ...(searchDate ? { date: searchDate } : {}),
@@ -142,28 +134,12 @@ const SquashPage: React.FC = () => {
     setSearchDateFrom("");
     setSearchDateTo("");
     setSelectedPlayerIds([]);
-    setPlayerSearch("");
     setPlayerMode("and");
     setHasSearched(false);
     setAllMatches([]);
     setCurrentPage(1);
     setSearchParams({}, { replace: true });
   };
-
-  const addPlayer = (id: string) => {
-    if (!selectedPlayerIds.includes(id)) setSelectedPlayerIds([...selectedPlayerIds, id]);
-    setPlayerSearch("");
-  };
-
-  const removePlayer = (id: string) => {
-    setSelectedPlayerIds(selectedPlayerIds.filter((x) => x !== id));
-  };
-
-  const filteredPlayerOptions = allPlayers.filter(
-    (p) =>
-      !selectedPlayerIds.includes(p.id) &&
-      (!playerSearch.trim() || (p.name || "").toLowerCase().includes(playerSearch.toLowerCase()))
-  );
 
   useEffect(() => {
     if (access) loadPlayers();
@@ -178,18 +154,6 @@ const SquashPage: React.FC = () => {
     if (!access || !hasUrlSearchParams) return;
     searchMatches();
   }, []);
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (playerDropdownRef.current && !playerDropdownRef.current.contains(e.target as Node)) {
-        setPlayerDropdownOpen(false);
-      }
-    }
-    if (playerDropdownOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-      return () => document.removeEventListener("mousedown", handleClickOutside);
-    }
-  }, [playerDropdownOpen]);
 
   const sortedMatches = useMemo(() => {
     const copy = [...allMatches];
@@ -228,42 +192,17 @@ const SquashPage: React.FC = () => {
   const start = (currentPage - 1) * PAGE_SIZE;
   const pageMatches = tagFilteredMatches.slice(start, start + PAGE_SIZE);
 
-  const renderScore = (m: Match) => {
-    const ga = m.teamAGames ?? 0;
-    const gb = m.teamBGames ?? 0;
-    const leftGames = m.winningTeam === "B" ? gb : ga;
-    const rightGames = m.winningTeam === "B" ? ga : gb;
-    return `${leftGames}-${rightGames}`;
-  };
-
-  const renderMatchRow = (m: Match) => {
-    const teamA = [playerName(m.teamAPlayer1Id || ""), playerName(m.teamAPlayer2Id || "")].filter(Boolean).join(" & ");
-    const teamB = [playerName(m.teamBPlayer1Id || ""), playerName(m.teamBPlayer2Id || "")].filter(Boolean).join(" & ");
-    const leftTeam = m.winningTeam === "B" ? teamB : teamA;
-    const rightTeam = m.winningTeam === "B" ? teamA : teamB;
-    return (
-      <li key={m.id || m.date + leftTeam} className="flex items-center gap-2 flex-wrap py-2 border-b border-border-default last:border-0">
-        <span className="font-semibold text-text-primary">{m.date || ""}</span>
-        <span className="text-text-secondary">
-          {leftTeam} vs {rightTeam}
-        </span>
-        <span className="italic text-text-secondary">{renderScore(m)}</span>
-        {(m.tags || []).length > 0 && (
-          <span className="flex flex-wrap gap-1">
-            {(m.tags || []).map((t) => (
-              <Badge key={t} label={t} />
-            ))}
-          </span>
-        )}
-        <button type="button" onClick={() => setEditingMatch(m)} className={smallBtn}>
-          Edit
-        </button>
-        <button type="button" onClick={() => deleteMatch(m.id || "")} className={dangerBtn}>
-          Delete
-        </button>
-      </li>
-    );
-  };
+  const renderMatchRow = (m: Match) => (
+    <li key={m.id || m.date} className="flex items-center gap-2 flex-wrap py-2 border-b border-border-default last:border-0">
+      <MatchSummary match={m} players={allPlayers} />
+      <button type="button" onClick={() => setEditingMatch(m)} className={smallBtn}>
+        Edit
+      </button>
+      <button type="button" onClick={() => deleteMatch(m.id || "")} className={dangerBtn}>
+        Delete
+      </button>
+    </li>
+  );
 
   const pageNums: (number | string)[] = [];
   if (totalPages <= 7) {
@@ -327,7 +266,7 @@ const SquashPage: React.FC = () => {
       </div>
 
       {activeTab === "players" && <PlayersTab players={allPlayers} onChanged={loadPlayers} onError={setError} />}
-      {activeTab === "shares" && <SharesTab filters={currentFilters} onError={setError} />}
+      {activeTab === "shares" && <SharesTab onError={setError} />}
 
       {activeTab === "matches" && (
         <>
@@ -367,79 +306,13 @@ const SquashPage: React.FC = () => {
             label="Date to"
             className="max-w-[12rem]"
           />
-          <div className="relative max-w-[14rem] min-w-[12rem]" ref={playerDropdownRef}>
-            <label className="block text-xs font-semibold text-text-secondary mb-1">Filter by players</label>
-            <input aria-label="Filter by players"
-              type="text"
-              value={playerSearch}
-              onChange={(e) => setPlayerSearch(e.target.value)}
-              onFocus={() => setPlayerDropdownOpen(true)}
-              placeholder="Search players..."
-              autoComplete="off"
-              className="block w-full rounded-md border border-border-hover bg-surface-2 px-3 py-2 text-sm text-text-primary focus:border-accent-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-            />
-            {playerDropdownOpen && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-surface-2 border border-border-hover rounded-md max-h-48 overflow-y-auto scrollbar-thin z-10">
-                {filteredPlayerOptions.length ? (
-                  filteredPlayerOptions.map((p) => (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onClick={() => addPlayer(p.id)}
-                      className="w-full text-left px-3 py-2 text-sm text-text-primary hover:bg-surface-3 transition-colors"
-                    >
-                      {p.name || p.id}
-                    </button>
-                  ))
-                ) : (
-                  <div className="px-3 py-2 text-sm text-text-tertiary">No matches</div>
-                )}
-              </div>
-            )}
-            <div className="flex flex-wrap gap-1 mt-1">
-              {selectedPlayerIds.map((id) => (
-                <span
-                  key={id}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-3 text-text-primary text-xs"
-                >
-                  {playerName(id)}
-                  <button
-                    type="button"
-                    onClick={() => removePlayer(id)}
-                    className="text-text-secondary hover:text-text-primary transition-colors"
-                    aria-label="Remove"
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
-            </div>
-            {selectedPlayerIds.length > 0 && (
-              <div className="mt-2 flex items-center gap-2">
-                <span className="text-xs text-text-tertiary">Match:</span>
-                <div className="inline-flex rounded-md border border-border-hover bg-surface-1 p-0.5">
-                  <button
-                    type="button"
-                    onClick={() => setPlayerMode("and")}
-                    className={`rounded px-2 py-0.5 text-xs font-medium ${
-                      playerMode === "and" ? "bg-accent-500 text-surface-0" : "text-text-secondary hover:text-text-primary transition-colors"
-                    }`}
-                  >
-                    AND
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPlayerMode("or")}
-                    className={`rounded px-2 py-0.5 text-xs font-medium ${
-                      playerMode === "or" ? "bg-accent-500 text-surface-0" : "text-text-secondary hover:text-text-primary transition-colors"
-                    }`}
-                  >
-                    OR
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
+          <PlayerPicker
+            players={allPlayers}
+            selectedIds={selectedPlayerIds}
+            onChange={setSelectedPlayerIds}
+            mode={playerMode}
+            onModeChange={setPlayerMode}
+          />
           <div className="flex gap-2">
             <button
               type="button"

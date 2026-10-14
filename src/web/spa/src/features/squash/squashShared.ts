@@ -36,6 +36,7 @@ export interface Share {
   title?: string;
   mode?: "snapshot" | "live";
   expiresAt?: number;
+  filters?: SearchFilters;
 }
 
 export const SHARE_LIMIT = 10;

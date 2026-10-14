@@ -3,14 +3,13 @@ import { CopyButton } from "../../components/CopyButton";
 import { Badge } from "../../components";
 import { fetchWithAuth } from "../../utils/api";
 import ShareDialog from "./ShareDialog";
-import { SHARE_LIMIT, SearchFilters, Share, apiError, dangerBtn, getApiBaseUrl, shareUrl, smallBtn } from "./squashShared";
+import { SHARE_LIMIT, Share, apiError, dangerBtn, getApiBaseUrl, shareUrl, smallBtn } from "./squashShared";
 
 interface Props {
-  filters: SearchFilters;
   onError: (msg: string | null) => void;
 }
 
-const SharesTab: React.FC<Props> = ({ filters, onError }) => {
+const SharesTab: React.FC<Props> = ({ onError }) => {
   const [shares, setShares] = useState<Share[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Share | null>(null);
@@ -85,7 +84,7 @@ const SharesTab: React.FC<Props> = ({ filters, onError }) => {
         </ul>
       )}
       {editing && (
-        <ShareDialog share={editing} filters={filters} onClose={() => setEditing(null)} onSaved={load} />
+        <ShareDialog share={editing} onClose={() => setEditing(null)} onSaved={load} />
       )}
     </section>
   );
