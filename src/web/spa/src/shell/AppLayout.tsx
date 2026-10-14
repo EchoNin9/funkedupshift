@@ -7,12 +7,13 @@ import { usePlatform } from "./PlatformContext";
 import { AdminLayout } from "./AdminLayout";
 import { SocialGate } from "../features/social/SocialGate";
 import { LipsyncGate } from "../features/lipsync/LipsyncGate";
-import { Header } from "./Header";
-import { DesktopHeaderBar } from "./DesktopHeaderBar";
-import { LeftSidebar, SidebarCollapseProvider, useSidebarCollapse } from "./LeftSidebar";
+import { MobileHeader } from "./MobileHeader";
+import ImpersonationBanner from "./ImpersonationBanner";
 import { MobileAppShell } from "./MobileAppShell";
-import { PopBackground } from "./PopBackground";
-import { PopMarquee } from "./PopMarquee";
+import { TopBar } from "./TopBar";
+import { LauncherDrawer } from "./LauncherDrawer";
+import { LauncherProvider } from "./LauncherContext";
+import { UpdatesBanner } from "./UpdatesBanner";
 import { pageTransition } from "../components/motion";
 
 /* Eager-loaded (above-the-fold) */
@@ -78,9 +79,8 @@ function PageLoader() {
 
 const AppLayoutContent: React.FC = () => {
   const { user } = useAuth();
-  const { siteName, bannerText } = useBranding();
+  const { siteName } = useBranding();
   const location = useLocation();
-  const { collapsed } = useSidebarCollapse();
 
   React.useEffect(() => {
     if (siteName) document.title = siteName;
@@ -88,16 +88,19 @@ const AppLayoutContent: React.FC = () => {
 
   return (
     <div className="relative min-h-screen bg-surface-0 text-text-primary flex flex-col">
-      <PopBackground />
       <div className="relative z-10 flex-1 flex flex-col min-h-screen">
-      <Header />
-      <LeftSidebar />
+      {/* Desktop (>640px): impersonation banner + top bar. Mobile (<=640px): the existing mobile header. */}
+      <div className="only-wide contents">
+        <ImpersonationBanner />
+      </div>
+      <TopBar />
+      <div className="only-narrow flex-col">
+        <MobileHeader />
+      </div>
+      <LauncherDrawer />
 
-      {/* Content area - offset by sidebar width on desktop; sidebar is always
-          visible (incl. guests), so the offset just tracks collapsed state. */}
-      <div className={`flex-1 min-w-0 flex flex-col ${collapsed ? "md:pl-16" : "md:pl-60"}`}>
-        <DesktopHeaderBar />
-        <PopMarquee text={bannerText} />
+      <div className="flex-1 min-w-0 flex flex-col">
+        <UpdatesBanner />
         <main className="flex-1 min-w-0">
           <div className="container-max py-6">
             <AnimatePresence mode="wait">
@@ -244,9 +247,9 @@ const AppLayout: React.FC = () => {
   }
 
   return (
-    <SidebarCollapseProvider>
+    <LauncherProvider>
       <AppLayoutContent />
-    </SidebarCollapseProvider>
+    </LauncherProvider>
   );
 };
 
