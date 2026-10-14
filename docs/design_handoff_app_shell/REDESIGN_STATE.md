@@ -60,7 +60,7 @@ later session can resume from here.
 | 3 | `redesign/themes-ui` | `session_014NWXMLfXzFu1RdmmAfEJxG` (archived) | [#145](https://github.com/EchoNin9/funkedupshift/pull/145) | merged `3212caf` (added superadmin self-gate on review); deploy run 433 success |
 | 3 | `redesign/homes` | `session_013cQk2vfzAHwv7DqgUWaMFV` (archived) | [#143](https://github.com/EchoNin9/funkedupshift/pull/143) | merged `a8dbdfd`; deploy run 434 success |
 | 3 | `redesign/tools-restyle` | `session_018EbfRP2kn4e2m5KJikjXsU` (archived) | [#144](https://github.com/EchoNin9/funkedupshift/pull/144) | merged `da437f1`; deploy run 435 success |
-| 3 | `redesign/mobile` | `session_018Cja9GAUnWfsjmkTDU7uKV` (archived) | [#146](https://github.com/EchoNin9/funkedupshift/pull/146) (opened by lead — agent rules forbid PRs on agent request) | merged `68ee6ec`; deploy pending |
+| 3 | `redesign/mobile` | `session_018Cja9GAUnWfsjmkTDU7uKV` (archived) | [#146](https://github.com/EchoNin9/funkedupshift/pull/146) (opened by lead — agent rules forbid PRs on agent request) | merged `68ee6ec`; deploy run 436 success |
 | 4 | `redesign/cleanup-qa` | `session_01WbULnK1mH8wrAPbVVxEHe8` | — | launched |
 
 ## Wave 2 brief carry-overs (from #136 follow-ups)
