@@ -74,7 +74,7 @@ export function MobileAppShell() {
       >
         <div className="relative z-10 flex-1 flex flex-col">
         {/* Compact top bar */}
-        <header className="flex items-center justify-between px-4 py-2.5 bg-surface-1/80 backdrop-blur border-b-2 border-text-primary">
+        <header className="flex items-center justify-between px-4 py-2.5 bg-surface-1/80 backdrop-blur border-b border-border-default">
           <Link to="/" className="flex items-center gap-2">
             {logo?.url ? (
               <img

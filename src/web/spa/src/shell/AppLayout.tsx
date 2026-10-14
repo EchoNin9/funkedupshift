@@ -209,7 +209,7 @@ const AppLayoutContent: React.FC = () => {
         </main>
 
       {/* Footer */}
-      <footer className="border-t-2 border-text-primary bg-surface-0">
+      <footer className="border-t border-border-default bg-surface-0">
         <div className="container-max py-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div>

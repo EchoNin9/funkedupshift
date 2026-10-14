@@ -69,7 +69,7 @@ export default function StatsAdminPage() {
   );
 
   return (
-    <div className="container-max">
+    <div>
       <div className="flex items-center justify-between mb-8">
         <p className="text-text-secondary">
           View app statistics and per-user click paths.

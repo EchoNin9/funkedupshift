@@ -47,7 +47,7 @@ export function AdminDashboard() {
   }
 
   return (
-    <main className="container-max section-padding">
+    <main>
       <motion.div
         variants={stagger}
         initial="hidden"
