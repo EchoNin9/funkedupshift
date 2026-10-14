@@ -7,10 +7,11 @@ import { usePlatform } from "./PlatformContext";
 import { AdminLayout } from "./AdminLayout";
 import { SocialGate } from "../features/social/SocialGate";
 import { LipsyncGate } from "../features/lipsync/LipsyncGate";
-import { MobileHeader } from "./MobileHeader";
 import ImpersonationBanner from "./ImpersonationBanner";
 import { MobileAppShell } from "./MobileAppShell";
 import { TopBar } from "./TopBar";
+import { MobileTopBar } from "./MobileTopBar";
+import { TabBar } from "./TabBar";
 import { LauncherDrawer } from "./LauncherDrawer";
 import { LauncherProvider } from "./LauncherContext";
 import { UpdatesBanner } from "./UpdatesBanner";
@@ -92,14 +93,10 @@ const AppLayoutContent: React.FC = () => {
   return (
     <div className="relative min-h-screen bg-surface-0 text-text-primary flex flex-col">
       <div className="relative z-10 flex-1 flex flex-col min-h-screen">
-      {/* Desktop (>640px): impersonation banner + top bar. Mobile (<=640px): the existing mobile header. */}
-      <div className="only-wide contents">
-        <ImpersonationBanner />
-      </div>
+      {/* Impersonation banner shows at every width; then desktop (>640px) TopBar or mobile (<=640px) MobileTopBar. */}
+      <ImpersonationBanner />
       <TopBar />
-      <div className="only-narrow flex-col">
-        <MobileHeader />
-      </div>
+      <MobileTopBar />
       <LauncherDrawer />
 
       <div className="flex-1 min-w-0 flex flex-col">
@@ -250,8 +247,11 @@ const AppLayoutContent: React.FC = () => {
           </div>
         </div>
       </footer>
+      {/* Mobile: keeps the footer clear of the fixed tab bar (62px + safe-area inset). */}
+      <div className="only-narrow shrink-0" style={{ height: "calc(68px + env(safe-area-inset-bottom))" }} aria-hidden="true" />
       </div>
       </div>
+      <TabBar />
     </div>
   );
 };
