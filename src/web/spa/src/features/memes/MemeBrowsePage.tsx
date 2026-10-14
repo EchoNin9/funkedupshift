@@ -254,16 +254,6 @@ const MemeBrowsePage: React.FC = () => {
     }
   };
 
-  if (user && !canAccessMemes(user)) {
-    return (
-      <div className="space-y-6">
-        <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Memes</h1>
-        <div className="rounded-md border border-border-hover bg-surface-2 px-4 py-3 text-text-primary">
-          You do not have access to Memes. Join the Memes custom group or contact an admin.
-        </div>
-      </div>
-    );
-  }
 
   const setTab = (t: "all" | "mine") => {
     const next = new URLSearchParams(searchParams);
@@ -324,7 +314,7 @@ const MemeBrowsePage: React.FC = () => {
         </p>
       </motion.header>
 
-      {user && (
+      {canAccessMemes(user) && (
       <section className="rounded-xl border border-border-default bg-surface-1 p-4 space-y-4" aria-label="Search and filter">
         <form
           className="flex flex-col gap-3 sm:flex-row sm:items-center"

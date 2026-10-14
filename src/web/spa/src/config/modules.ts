@@ -5,7 +5,6 @@ import {
   canModifySquash,
   canAccessInvesting,
   canCreateMemes,
-  canAccessMemes,
   canAccessExpenses,
 } from "../shell/AuthContext";
 import {
@@ -219,7 +218,7 @@ const MODULE_GROUPS: ModuleGroup[] = [
     id: "memes",
     label: "Memes",
     icon: PhotoIcon,
-    isVisible: (u) => canAccessMemes(u) || canCreateMemes(u),
+    isVisible: () => true,
     getLinks: (u) => {
       const links: ModuleLink[] = [{ path: "/memes", label: "Memes Page" }];
       if (canCreateMemes(u)) links.push({ path: "/memes/create", label: "Meme Generator" });
