@@ -3,6 +3,7 @@ import { SegmentedControl } from "../../components/SegmentedControl";
 import { CopyButton } from "../../components/CopyButton";
 import { fetchWithAuth } from "../../utils/api";
 import DateInput from "./DateInput";
+import TagFilterBar from "./TagFilterBar";
 import PlayerPicker from "./PlayerPicker";
 import MatchSummary from "./MatchSummary";
 import {
@@ -12,6 +13,7 @@ import {
   SearchFilters,
   Share,
   apiError,
+  buildFilters,
   getApiBaseUrl,
   inputCls,
   primaryBtn,
@@ -38,13 +40,6 @@ const clampDays = (n: number) => (Number.isFinite(n) ? Math.min(90, Math.max(1, 
 
 const PREVIEW_ROWS = 5;
 
-const buildFilters = (date: string, dateFrom: string, dateTo: string, playerIds: string[], playerMode: "and" | "or"): SearchFilters => ({
-  ...(date ? { date } : {}),
-  ...(dateFrom ? { dateFrom } : {}),
-  ...(dateTo ? { dateTo } : {}),
-  ...(playerIds.length ? { playerIds, playerMode } : {})
-});
-
 const ShareDialog: React.FC<Props> = ({ share, filters: createFilters = {}, onClose, onSaved }) => {
   const editing = !!share;
   const [title, setTitle] = useState(share?.title ?? "");
@@ -57,15 +52,21 @@ const ShareDialog: React.FC<Props> = ({ share, filters: createFilters = {}, onCl
   const [qTo, setQTo] = useState(saved?.dateTo ?? "");
   const [qIds, setQIds] = useState<string[]>(saved?.playerIds ?? []);
   const [qMode, setQMode] = useState<"and" | "or">(saved?.playerMode === "or" ? "or" : "and");
+  const [qSort, setQSort] = useState<"newest" | "oldest">(saved?.sortOrder === "oldest" ? "oldest" : "newest");
+  const [qTags, setQTags] = useState<string[]>(saved?.tags ?? []);
+  const [qTagMode, setQTagMode] = useState<"and" | "or">(saved?.tagMode === "or" ? "or" : "and");
+  const [knownTags, setKnownTags] = useState<string[]>([]);
   const [editQuery, setEditQuery] = useState(false);
   const [players, setPlayers] = useState<Player[]>([]);
   const [preview, setPreview] = useState<{ total: number; rows: Match[] } | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
 
-  const editFilters = useMemo(() => buildFilters(qDate, qFrom, qTo, qIds, qMode), [qDate, qFrom, qTo, qIds, qMode]);
+  const editFilters = useMemo(() => buildFilters(qDate, qFrom, qTo, qIds, qMode, qSort, qTags, qTagMode),
+    [qDate, qFrom, qTo, qIds, qMode, qSort, qTags, qTagMode]
+  );
   const savedFilters = useMemo(
-    () => buildFilters(saved?.date ?? "", saved?.dateFrom ?? "", saved?.dateTo ?? "", saved?.playerIds ?? [], saved?.playerMode === "or" ? "or" : "and"),
+    () => buildFilters(saved?.date ?? "", saved?.dateFrom ?? "", saved?.dateTo ?? "", saved?.playerIds ?? [], saved?.playerMode === "or" ? "or" : "and", saved?.sortOrder, saved?.tags ?? [], saved?.tagMode),
     [saved]
   );
   const filtersChanged = JSON.stringify(editFilters) !== JSON.stringify(savedFilters);
@@ -78,6 +79,17 @@ const ShareDialog: React.FC<Props> = ({ share, filters: createFilters = {}, onCl
     fetchWithAuth(`${apiBase}/squash/players`)
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((d: { players?: Player[] }) => setPlayers((d.players ?? []).map((p) => ({ ...p, id: p.id || p.PK || "" }))))
+      .catch(() => undefined);
+  }, [editing]);
+
+  // Tag choices: every tag on the user's matches, from one unfiltered fetch (saved tags are merged in below).
+  useEffect(() => {
+    if (!editing) return;
+    const apiBase = getApiBaseUrl();
+    if (!apiBase) return;
+    fetchWithAuth(`${apiBase}/squash/matches`)
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((d: { matches?: Match[] }) => setKnownTags(Array.from(new Set((d.matches ?? []).flatMap((m) => m.tags ?? []))).sort()))
       .catch(() => undefined);
   }, [editing]);
 
@@ -94,6 +106,11 @@ const ShareDialog: React.FC<Props> = ({ share, filters: createFilters = {}, onCl
       params.set("playerIds", f.playerIds.join(","));
       params.set("playerMode", f.playerMode ?? "and");
     }
+    if (f.tags?.length) {
+      params.set("tags", f.tags.join(","));
+      params.set("tagMode", f.tagMode ?? "and");
+    }
+    if (f.sortOrder) params.set("sortOrder", f.sortOrder);
     const qs = params.toString() ? `?${params.toString()}` : "";
     const ctrl = new AbortController();
     setPreviewLoading(true);
@@ -102,7 +119,7 @@ const ShareDialog: React.FC<Props> = ({ share, filters: createFilters = {}, onCl
         const resp = await fetchWithAuth(`${apiBase}/squash/matches${qs}`, { signal: ctrl.signal });
         if (!resp.ok) throw new Error(await apiError(resp));
         const data = (await resp.json()) as { matches?: Match[] };
-        const all = [...(data.matches ?? [])].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+        const all = data.matches ?? [];
         setPreview({ total: all.length, rows: all.slice(0, PREVIEW_ROWS) });
         setPreviewError(null);
         setPreviewLoading(false);
@@ -125,8 +142,11 @@ const ShareDialog: React.FC<Props> = ({ share, filters: createFilters = {}, onCl
     if (editFilters.dateFrom || editFilters.dateTo) parts.push(`${editFilters.dateFrom || "…"} → ${editFilters.dateTo || "…"}`);
     if (editFilters.playerIds?.length)
       parts.push(`players: ${editFilters.playerIds.map(nameOf).join(editFilters.playerMode === "or" ? " OR " : " AND ")}`);
+    if (editFilters.tags?.length) parts.push(`tags: ${editFilters.tags.join(editFilters.tagMode === "or" ? " OR " : " AND ")}`);
+    if (editFilters.sortOrder === "oldest") parts.push("oldest first");
     return parts.length ? parts.join(" · ") : "all matches";
   })();
+  const tagChoices = useMemo(() => Array.from(new Set([...knownTags, ...qTags])).sort(), [knownTags, qTags]);
   const [count, setCount] = useState<number | null>(editing ? 0 : null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -303,6 +323,26 @@ const ShareDialog: React.FC<Props> = ({ share, filters: createFilters = {}, onCl
                       />
                     </div>
                     <PlayerPicker players={players} selectedIds={qIds} onChange={setQIds} mode={qMode} onModeChange={setQMode} className="" />
+                    <TagFilterBar
+                      availableTags={tagChoices}
+                      selectedTags={qTags}
+                      onToggleTag={(t) => setQTags((p) => (p.includes(t) ? p.filter((x) => x !== t) : [...p, t]))}
+                      mode={qTagMode}
+                      onModeChange={setQTagMode}
+                      onClear={() => {
+                        setQTags([]);
+                        setQTagMode("and");
+                      }}
+                    />
+                    <div>
+                      <label htmlFor="shareQSort" className="block text-xs font-semibold text-text-secondary mb-1">
+                        Order by
+                      </label>
+                      <select id="shareQSort" value={qSort} onChange={(e) => setQSort(e.target.value as "newest" | "oldest")} className={inputCls}>
+                        <option value="newest">Newest first</option>
+                        <option value="oldest">Oldest first</option>
+                      </select>
+                    </div>
                   </div>
                 )}
                 <div>

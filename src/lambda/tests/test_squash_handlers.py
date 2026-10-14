@@ -159,7 +159,7 @@ def test_match_update_and_filters(db):
     mkMatch(ids, date="2026-02-10")
     assert call("/squash/matches", "PUT", {"id": m1, **matchBody(ids, date="2026-01-11", win="B", ga=0, gb=3)})[0] == 200
     ms = call("/squash/matches")[1]["matches"]
-    assert [m["date"] for m in ms] == ["2026-01-11", "2026-02-10"] and ms[0]["teamBGames"] == 3
+    assert [m["date"] for m in ms] == ["2026-02-10", "2026-01-11"] and ms[1]["teamBGames"] == 3  # newest first by default
     assert len(call("/squash/matches", qs={"date": "2026-02-10"})[1]["matches"]) == 1
     assert len(call("/squash/matches", qs={"dateFrom": "2026-01-01", "dateTo": "2026-01-31"})[1]["matches"]) == 1
     assert len(call("/squash/matches", qs={"playerIds": ids[0]})[1]["matches"]) == 2
@@ -374,3 +374,91 @@ def test_migration_transform_player_and_match():
     assert not {"squashDate", "matchId", "entityType", "entitySk"} & set(out)
     with pytest.raises(ValueError):
         m.transformRow(out, "sub1")
+
+
+# ---------------------------------------------------------------- sortOrder + tag filters
+
+def _tagged(ids):
+    mkMatch(ids, date="2026-01-01", tags=["League", "Finals"])
+    mkMatch(ids, date="2026-02-01", tags=["league"])
+    mkMatch(ids, date="2026-03-01", tags=["social"])
+    mkMatch(ids, date="2026-04-01")
+
+
+def _dates(ms):
+    return [m["date"] for m in ms]
+
+
+def test_tags_and_vs_or_case_insensitive(db):
+    _tagged(mkPlayers())
+    g = lambda **q: _dates(call("/squash/matches", qs=q)[1]["matches"])
+    assert g(tags="LEAGUE, finals") == ["2026-01-01"]  # default AND
+    assert g(tags="league,finals", tagMode="and") == ["2026-01-01"]
+    assert g(tags="Finals,social", tagMode="OR") == ["2026-03-01", "2026-01-01"]
+    assert g(tags="league") == ["2026-02-01", "2026-01-01"]
+    assert len(g(tags="")) == 4 and len(g()) == 4
+
+
+def test_sort_order_matches_list(db):
+    _tagged(mkPlayers())
+    g = lambda **q: _dates(call("/squash/matches", qs=q)[1]["matches"])
+    assert g() == g(sortOrder="newest") == sorted(g(), reverse=True)
+    assert g(sortOrder="oldest") == sorted(g())
+    assert g(sortOrder="oldest", tags="league") == ["2026-01-01", "2026-02-01"]
+
+
+def test_sort_and_tags_public_live_and_snapshot(db):
+    _tagged(mkPlayers())
+    f = {"tags": ["League"], "tagMode": "or", "sortOrder": "oldest"}
+    for mode in ("live", "snapshot"):
+        sid = mkShare(mode=mode, filters=f)[1]["id"]
+        assert _dates(public(sid)[1]["matches"]) == ["2026-01-01", "2026-02-01"]
+        assert _dates(public(mkShare(mode=mode)[1]["id"])[1]["matches"]) == ["2026-04-01", "2026-03-01", "2026-02-01", "2026-01-01"]
+    row = db.rows[("SQUASH#SHARE#" + sid, "METADATA")]
+    assert json.loads(row["filters"]["S"]) == {"tags": ["league"], "tagMode": "or", "sortOrder": "oldest"}
+
+
+def test_default_sort_not_stored(db):
+    sid = mkShare(filters={"sortOrder": "newest", "tagMode": "or", "tags": []})[1]["id"]
+    assert json.loads(db.rows[("SQUASH#SHARE#" + sid, "METADATA")]["filters"]["S"]) == {}
+
+
+def test_snapshot_cap_applies_after_tag_filter(db):
+    ids = mkPlayers()
+    for i in range(501):
+        db.rows[("USER#alice", f"SQUASH#MATCH#m{i:04d}")] = {
+            "PK": {"S": "USER#alice"}, "SK": {"S": f"SQUASH#MATCH#m{i:04d}"}, "date": {"S": "2026-01-01"},
+            "teamAPlayer1Id": {"S": ids[0]}, "teamAPlayer2Id": {"S": ids[1]}, "teamBPlayer1Id": {"S": ids[2]},
+            "teamBPlayer2Id": {"S": ids[3]}, "winningTeam": {"S": "A"}, "teamAGames": {"N": "3"},
+            "teamBGames": {"N": "0"}, "tags": {"L": [{"S": "x"}] if i < 3 else []}}
+    assert mkShare(mode="snapshot")[0] == 400
+    s, b = mkShare(mode="snapshot", filters={"tags": ["x"]})
+    assert s == 201 and len(public(b["id"])[1]["matches"]) == 3
+
+
+@pytest.mark.parametrize("f", [
+    {"sortOrder": "sideways"}, {"tagMode": "xor"}, {"tags": [1]}, {"tags": {"a": 1}},
+    {"tags": [f"t{i}" for i in range(21)]}, {"tags": ["x" * 41]}, {"tags": ["a"], "tagMode": 5},
+])
+def test_filter_validation_400(db, f):
+    assert mkShare(filters=f)[0] == 400
+
+
+@pytest.mark.parametrize("qs", [{"sortOrder": "sideways"}, {"tagMode": "xor"},
+                                {"tags": ",".join(f"t{i}" for i in range(21))}, {"tags": "x" * 41}])
+def test_query_param_validation_400(db, qs):
+    assert call("/squash/matches", qs=qs)[0] == 400
+
+
+def test_put_tag_or_sort_change_resnapshots(db):
+    ids = mkPlayers()
+    _tagged(ids)
+    sid = mkShare()[1]["id"]
+    assert len(public(sid)[1]["matches"]) == 4
+    call("/squash/shares", "PUT", {"id": sid, "filters": {"tags": ["league"]}})
+    assert _dates(public(sid)[1]["matches"]) == ["2026-02-01", "2026-01-01"]
+    call("/squash/shares", "PUT", {"id": sid, "filters": {"tags": ["league"], "sortOrder": "oldest"}})
+    assert _dates(public(sid)[1]["matches"]) == ["2026-01-01", "2026-02-01"]
+    mkMatch(ids, date="2026-06-01", tags=["league"])
+    call("/squash/shares", "PUT", {"id": sid, "title": "same filters"})
+    assert len(public(sid)[1]["matches"]) == 2  # unchanged filters => no re-snapshot

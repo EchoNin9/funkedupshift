@@ -29,7 +29,29 @@ export interface SearchFilters {
   dateTo?: string;
   playerIds?: string[];
   playerMode?: "and" | "or";
+  sortOrder?: "newest" | "oldest";
+  tags?: string[];
+  tagMode?: "and" | "or";
 }
+
+/** Canonical filter shape: defaults (newest, no tags) are omitted, matching what the server stores. */
+export const buildFilters = (
+  date: string,
+  dateFrom: string,
+  dateTo: string,
+  playerIds: string[],
+  playerMode: "and" | "or",
+  sortOrder: "newest" | "oldest" = "newest",
+  tags: string[] = [],
+  tagMode: "and" | "or" = "and"
+): SearchFilters => ({
+  ...(date ? { date } : {}),
+  ...(dateFrom ? { dateFrom } : {}),
+  ...(dateTo ? { dateTo } : {}),
+  ...(playerIds.length ? { playerIds, playerMode } : {}),
+  ...(tags.length ? { tags, tagMode } : {}),
+  ...(sortOrder === "oldest" ? { sortOrder } : {})
+});
 
 export interface Share {
   id: string;

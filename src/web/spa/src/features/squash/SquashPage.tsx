@@ -11,7 +11,7 @@ import MatchForm from "./MatchForm";
 import PlayersTab from "./PlayersTab";
 import SharesTab from "./SharesTab";
 import ShareDialog from "./ShareDialog";
-import { Match, Player, SearchFilters, apiError, dangerBtn, getApiBaseUrl, smallBtn } from "./squashShared";
+import { Match, Player, SearchFilters, apiError, buildFilters, dangerBtn, getApiBaseUrl, smallBtn } from "./squashShared";
 
 const PAGE_SIZE = 10;
 
@@ -48,12 +48,16 @@ const SquashPage: React.FC = () => {
 
   const access = canAccessSquash(user);
 
-  const currentFilters: SearchFilters = {
-    ...(searchDate ? { date: searchDate } : {}),
-    ...(searchDateFrom ? { dateFrom: searchDateFrom } : {}),
-    ...(searchDateTo ? { dateTo: searchDateTo } : {}),
-    ...(selectedPlayerIds.length ? { playerIds: selectedPlayerIds, playerMode } : {})
-  };
+  const currentFilters: SearchFilters = buildFilters(
+    searchDate,
+    searchDateFrom,
+    searchDateTo,
+    selectedPlayerIds,
+    playerMode,
+    sortOrder,
+    tagFilters,
+    tagFilterMode
+  );
 
   const deleteMatch = async (id: string) => {
     if (!confirm("Delete this match?")) return;

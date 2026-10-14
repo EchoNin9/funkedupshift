@@ -248,6 +248,10 @@ def _matchOut(raw):
     return m
 
 
+MAX_FILTER_TAGS = 20
+MAX_FILTER_TAG_LEN = 40
+
+
 def _normFilters(raw):
     """Validate/normalise a filters dict (query-param shaped)."""
     if raw is None:
@@ -277,6 +281,35 @@ def _normFilters(raw):
         if mode not in ("and", "or"):
             raise ApiError(400, "filters.playerMode must be and|or")
         out["playerMode"] = mode
+    tags = raw.get("tags")
+    if isinstance(tags, str):
+        tags = tags.split(",")
+    if tags is None:
+        tags = []
+    if not isinstance(tags, list) or not all(isinstance(x, str) for x in tags):
+        raise ApiError(400, "filters.tags must be a list of strings")
+    if len(tags) > MAX_FILTER_TAGS:
+        raise ApiError(400, f"filters.tags is limited to {MAX_FILTER_TAGS} tags")
+    norm = []
+    for t in tags:
+        t = t.strip().lower()
+        if len(t) > MAX_FILTER_TAG_LEN:
+            raise ApiError(400, f"filters.tags entries must be at most {MAX_FILTER_TAG_LEN} characters")
+        if t and t not in norm:
+            norm.append(t)
+    if norm:
+        out["tags"] = norm
+        tmode = str(raw.get("tagMode") or "and").strip().lower()
+        if tmode not in ("and", "or"):
+            raise ApiError(400, "filters.tagMode must be and|or")
+        out["tagMode"] = tmode
+    elif str(raw.get("tagMode") or "and").strip().lower() not in ("and", "or"):
+        raise ApiError(400, "filters.tagMode must be and|or")
+    order = str(raw.get("sortOrder") or "newest").strip().lower()
+    if order not in ("newest", "oldest"):
+        raise ApiError(400, "filters.sortOrder must be newest|oldest")
+    if order == "oldest":  # "newest" is the default and is never stored
+        out["sortOrder"] = order
     return out
 
 
@@ -284,6 +317,7 @@ def _runFilters(db, table, sub, filters):
     """Matches in `sub`'s partition passing `filters`, as API dicts sorted by date."""
     out = []
     pids = set(filters.get("playerIds") or [])
+    tags = set(filters.get("tags") or [])
     for raw in _userItems(db, table, sub, MATCH_SK):
         m = _matchOut(raw)
         d = m.get("date", "")
@@ -298,9 +332,14 @@ def _runFilters(db, table, sub, filters):
             ok = bool(pids & in_match) if filters.get("playerMode") == "or" else pids <= in_match
             if not ok:
                 continue
+        if tags:
+            have = set(m.get("tags") or [])
+            ok = bool(tags & have) if filters.get("tagMode") == "or" else tags <= have
+            if not ok:
+                continue
         out.append(m)
     # ponytail: whole-partition query per search; fine to thousands of matches per user, add a date-sorted SK if it gets slow.
-    out.sort(key=lambda m: (m.get("date", ""), m.get("id", "")))
+    out.sort(key=lambda m: (m.get("date", ""), m.get("id", "")), reverse=filters.get("sortOrder") != "oldest")
     return out
 
 
@@ -309,6 +348,7 @@ def listMatches(event, user, table):
     filters = _normFilters({
         "date": qs.get("date"), "dateFrom": qs.get("dateFrom"), "dateTo": qs.get("dateTo"),
         "playerIds": qs.get("playerIds"), "playerMode": qs.get("playerMode"),
+        "tags": qs.get("tags"), "tagMode": qs.get("tagMode"), "sortOrder": qs.get("sortOrder"),
     })
     return 200, {"matches": _runFilters(_db(), table, user["userId"], filters)}
 
