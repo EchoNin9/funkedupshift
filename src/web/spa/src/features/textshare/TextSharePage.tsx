@@ -1,7 +1,12 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { motion } from "framer-motion";
-import { ClipboardDocumentIcon, DocumentTextIcon, TrashIcon } from "@heroicons/react/24/outline";
-import { Alert, fadeUpStaggered, stagger } from "../../components";
+import { Link } from "react-router-dom";
+import { CheckCircle, LockSimple, Trash } from "@phosphor-icons/react";
+import { Alert } from "../../components";
+import { buttonClasses, focusRing } from "../../components/buttonClasses";
+import { CopyButton } from "../../components/CopyButton";
+import { FormCard } from "../../components/FormCard";
+import { IconButton } from "../../components/IconButton";
+import { ListCard, ListEmpty, ListRow } from "../../components/ListCard";
 import { useAuth } from "../../shell/AuthContext";
 import {
   TextPasteSummary,
@@ -11,8 +16,7 @@ import {
   shareUrlFor,
 } from "./api";
 
-const input =
-  "rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary";
+const input = `rounded-ds-md border border-border-default bg-surface-0 px-3 text-[15px] text-text-primary placeholder:text-text-tertiary hover:border-border-hover motion-safe:transition-colors motion-safe:duration-150 ${focusRing}`;
 
 type ExpiryChoice = "3600" | "86400" | "604800" | "2592000";
 
@@ -28,71 +32,40 @@ function formatEpochDateTime(epochSeconds: number): string {
   return new Date(epochSeconds * 1000).toLocaleString();
 }
 
-const CopyButton: React.FC<{ text: string }> = ({ text }) => {
-  const [copied, setCopied] = useState(false);
-  const handleCopy = useCallback(async () => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 2000);
-    } catch {
-      setCopied(false);
-    }
-  }, [text]);
-
-  return (
-    <button
-      type="button"
-      onClick={handleCopy}
-      className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-border-hover bg-surface-2 px-3 py-1.5 text-xs font-medium text-text-primary hover:bg-surface-3 transition-colors shrink-0"
-    >
-      <ClipboardDocumentIcon className="h-3.5 w-3.5" />
-      {copied ? "Copied" : "Copy"}
-    </button>
-  );
-};
-
 const PasteRow: React.FC<{
   paste: TextPasteSummary;
-  index: number;
   onDelete: (id: string) => void;
   busy: boolean;
-}> = ({ paste, index, onDelete, busy }) => {
+}> = ({ paste, onDelete, busy }) => {
   const url = shareUrlFor(paste.id);
   return (
-    <motion.div
-      variants={fadeUpStaggered}
-      custom={index}
-      className="rounded-xl border border-border-default bg-surface-2/80 p-3 flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between"
-    >
-      <div className="min-w-0">
-        <a
-          href={url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-sm font-medium text-nav-text hover:underline break-all"
-        >
-          {url}
-        </a>
-        <p className="text-xs text-text-tertiary">
-          Expires {formatEpochDateTime(paste.expiresAt)}
-        </p>
+    <ListRow className={busy ? "opacity-60" : ""}>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+        <div className="min-w-0 flex-1 basis-[260px]">
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`break-all rounded-sm text-[15px] font-bold text-accent-text hover:underline ${focusRing}`}
+          >
+            {url}
+          </a>
+          <p className="text-xs text-text-secondary">Expires {formatEpochDateTime(paste.expiresAt)}</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <CopyButton text={url} />
+          <IconButton
+            icon={<Trash size={16} weight="regular" aria-hidden="true" />}
+            label="Delete paste"
+            tone="danger"
+            onClick={() => {
+              if (window.confirm("Delete this shared paste? This cannot be undone.")) onDelete(paste.id);
+            }}
+            disabled={busy}
+          />
+        </div>
       </div>
-      <div className="flex items-center gap-1.5 shrink-0">
-        <CopyButton text={url} />
-        <button
-          type="button"
-          onClick={() => {
-            if (window.confirm("Delete this shared paste? This cannot be undone.")) onDelete(paste.id);
-          }}
-          disabled={busy}
-          aria-label="Delete paste"
-          className="inline-flex items-center justify-center rounded-lg border border-border-hover bg-surface-2 p-1.5 text-danger hover:bg-surface-3 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <TrashIcon className="h-3.5 w-3.5" />
-        </button>
-      </div>
-    </motion.div>
+    </ListRow>
   );
 };
 
@@ -180,49 +153,52 @@ const TextSharePage: React.FC = () => {
     }
   }, []);
 
+  const srTitle = <h1 className="sr-only">Text Share</h1>;
+
   if (!user) {
     return (
       <div className="space-y-4">
-        <h1 className="text-xl font-semibold text-text-primary">Text Share</h1>
-        <p className="text-sm text-text-secondary">Sign in to share text snippets.</p>
+        {srTitle}
+        <div className="flex flex-wrap items-center gap-4 rounded-ds-lg border border-[color:var(--color-divider)] bg-surface-2 p-6">
+          <LockSimple size={26} weight="regular" aria-hidden="true" className="text-accent-text" />
+          <div className="min-w-[220px] flex-1">
+            <div className="font-bold text-text-primary">Sign in to share text snippets</div>
+            <div className="text-sm text-text-secondary">Anyone with a link can read it, no sign-in required.</div>
+          </div>
+          <Link to="/auth" className={buttonClasses("primary", "md")}>
+            Sign in
+          </Link>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      <motion.h1
-        className="text-2xl font-semibold tracking-tight text-text-primary flex items-center gap-2"
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-      >
-        <DocumentTextIcon className="h-6 w-6 text-accent-text" />
-        Text Share
-      </motion.h1>
-      <p className="text-sm text-text-secondary">
+    <div>
+      {srTitle}
+      <p className="mb-4 text-sm text-text-secondary">
         Paste text to mint a unique link — anyone with the link can read it, no sign-in required.
         Stored encrypted at rest in Canada.
       </p>
 
-      {error && <Alert variant="error">{error}</Alert>}
+      {error && <Alert variant="error" className="mb-3">{error}</Alert>}
 
-      <form onSubmit={handleSubmit} className="space-y-2">
+      <FormCard onSubmit={handleSubmit} className="space-y-2.5">
         <textarea
           aria-label="Text to share"
           placeholder="Paste or type text to share…"
           value={content}
           onChange={(e) => setContent(e.target.value)}
           rows={8}
-          className={`${input} w-full font-mono text-xs resize-y`}
+          className={`${input} w-full resize-y py-3 font-mono text-[13px]`}
           required
         />
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2.5">
           <select
             aria-label="Expiry"
             value={expiry}
             onChange={(e) => setExpiry(e.target.value as ExpiryChoice)}
-            className={input}
+            className={`${input} min-h-12 w-full sm:w-auto`}
           >
             {EXPIRY_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
@@ -233,56 +209,70 @@ const TextSharePage: React.FC = () => {
           <button
             type="submit"
             disabled={submitting || !content.trim()}
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-accent-500 px-4 py-2 text-sm font-medium text-white hover:bg-accent-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+            className={`${buttonClasses("primary", "lg")} w-full sm:w-auto`}
           >
             {submitting ? "Sharing…" : "Share"}
           </button>
         </div>
-      </form>
+      </FormCard>
 
       {mintedUrl && (
-        <div className="rounded-xl border border-border-default bg-surface-2/80 p-3 flex items-center gap-2">
-          <code className="flex-1 text-sm text-nav-text break-all">{mintedUrl}</code>
-          <CopyButton text={mintedUrl} />
+        <div
+          role="status"
+          className="mt-3 flex flex-wrap items-center gap-3.5 rounded-ds-lg border px-4 py-3.5"
+          style={{
+            background: "color-mix(in srgb, rgb(var(--color-hue-teal)) 12%, rgb(var(--color-surface-2)))",
+            borderColor: "color-mix(in srgb, rgb(var(--color-hue-teal)) 35%, transparent)",
+          }}
+        >
+          <CheckCircle size={22} weight="regular" aria-hidden="true" className="shrink-0 text-[rgb(var(--color-hue-teal))]" />
+          <div className="min-w-0 flex-1 basis-[200px]">
+            <div className="text-xs font-semibold text-text-secondary">Share link ready</div>
+            <div className="break-all font-heading text-[18px] font-semibold tracking-[-0.02em] text-text-primary">
+              {mintedUrl}
+            </div>
+          </div>
+          <CopyButton text={mintedUrl} size="md" />
         </div>
       )}
 
-      <div className="space-y-2 pt-2">
-        <h2 className="text-sm font-semibold text-text-primary">Your pastes</h2>
+      <section className="mt-9" aria-labelledby="your-pastes-heading">
+        <div className="mb-3 flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
+          <h2 id="your-pastes-heading" className="font-heading text-[20px] font-semibold text-text-primary">
+            Your pastes
+          </h2>
+          <span className="tag tag-neutral">{pastes.length}</span>
+        </div>
 
-        {listError && <Alert variant="error">{listError}</Alert>}
+        {listError && <Alert variant="error" className="mb-3">{listError}</Alert>}
 
-        {pastes.length === 0 && !listLoading && (
-          <p className="text-sm text-text-tertiary">You haven't shared any text yet.</p>
-        )}
-
-        {pastes.length > 0 && (
-          <motion.div className="space-y-2" initial="hidden" animate="visible" variants={stagger(0.05)}>
-            {pastes.map((paste, i) => (
-              <PasteRow
-                key={paste.id}
-                paste={paste}
-                index={i}
-                onDelete={handleDelete}
-                busy={busyId === paste.id}
-              />
-            ))}
-          </motion.div>
-        )}
+        <ListCard aria-busy={listLoading}>
+          {listLoading && pastes.length === 0 ? (
+            [0, 1, 2].map((i) => (
+              <ListRow key={i}>
+                <div className="motion-safe:animate-pulse space-y-2">
+                  <div className="h-4 w-48 max-w-full rounded bg-surface-3" />
+                  <div className="h-3 w-32 max-w-full rounded bg-surface-3" />
+                </div>
+              </ListRow>
+            ))
+          ) : pastes.length === 0 ? (
+            <ListEmpty>You haven't shared any text yet.</ListEmpty>
+          ) : (
+            pastes.map((paste) => (
+              <PasteRow key={paste.id} paste={paste} onDelete={handleDelete} busy={busyId === paste.id} />
+            ))
+          )}
+        </ListCard>
 
         {nextCursor && (
-          <div className="pt-1">
-            <button
-              type="button"
-              onClick={loadMore}
-              disabled={listLoading}
-              className="rounded-md border border-border-hover px-4 py-2 text-sm font-medium text-text-primary hover:bg-surface-3 disabled:opacity-50"
-            >
+          <div className="pt-3">
+            <button type="button" onClick={loadMore} disabled={listLoading} className={buttonClasses("secondary", "md")}>
               {listLoading ? "Loading…" : "Load more"}
             </button>
           </div>
         )}
-      </div>
+      </section>
     </div>
   );
 };
