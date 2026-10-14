@@ -5,7 +5,7 @@ this file on `development` after each launch, merge, or wave transition so any
 later session can resume from here.
 
 **Lead session:** `session_01F95VctFJZth9U2iYETcc8c`
-**Current wave:** 2 — four agents launched 2026-10-14 03:24 UTC
+**Current wave:** 3 — four agents launched 2026-10-14 03:50 UTC (wave 2 fully merged)
 **Last updated:** 2026-10-14
 
 ## Decisions
@@ -53,14 +53,14 @@ later session can resume from here.
 | Wave | Agent / branch | Session | PR | Status |
 |---|---|---|---|---|
 | 1 | `redesign/foundation` | `session_012RDDaaoPdSCUEfZ2uyANfF` (archived) | [#136](https://github.com/EchoNin9/funkedupshift/pull/136) | merged `779e156`; Deploy Staging run 426 success |
-| 2 | `redesign/themes-api` | `session_013KbockRqzwxNAd5mu9ttvp` | [#142](https://github.com/EchoNin9/funkedupshift/pull/142) | reviewed; fixed per-request seed write + marker-last; awaiting PR Check on `4ef9c21`; merges last |
+| 2 | `redesign/themes-api` | `session_013KbockRqzwxNAd5mu9ttvp` (archived) | [#142](https://github.com/EchoNin9/funkedupshift/pull/142) | merged `4cb905a`; deploy pending at wave 3 launch |
 | 2 | `redesign/shell-desktop` | `session_01CfgfuWvZwByKygyP7yHMbT` (archived) | [#139](https://github.com/EchoNin9/funkedupshift/pull/139) | merged `90057c6` (before themes-api: backend-only, no dependency); deploy run 428 success |
-| 2 | `redesign/app-frame` | `session_01Ati2nHZyx6KD4KZuNH9Ezu` | [#138](https://github.com/EchoNin9/funkedupshift/pull/138) | reviewed OK; rebased (`92941b1`), green; merges after #141 deploy |
-| 2 | `redesign/shortener` | `session_01AEXAGgAw83aKKGNJLtj3dk` | [#140](https://github.com/EchoNin9/funkedupshift/pull/140) | reviewed OK, green; merges after app-frame |
-| 3 | `redesign/themes-ui` | — | — | not started |
-| 3 | `redesign/homes` | — | — | not started |
-| 3 | `redesign/tools-restyle` | — | — | not started |
-| 3 | `redesign/mobile` | — | — | not started |
+| 2 | `redesign/app-frame` | `session_01Ati2nHZyx6KD4KZuNH9Ezu` (archived) | [#138](https://github.com/EchoNin9/funkedupshift/pull/138) | merged `6d00080`; deploy run 430 success |
+| 2 | `redesign/shortener` | `session_01AEXAGgAw83aKKGNJLtj3dk` (archived) | [#140](https://github.com/EchoNin9/funkedupshift/pull/140) | merged `c62a9e7`; deploy run 431 success |
+| 3 | `redesign/themes-ui` | `session_014NWXMLfXzFu1RdmmAfEJxG` | — | launched |
+| 3 | `redesign/homes` | `session_013cQk2vfzAHwv7DqgUWaMFV` | — | launched |
+| 3 | `redesign/tools-restyle` | `session_018EbfRP2kn4e2m5KJikjXsU` | — | launched |
+| 3 | `redesign/mobile` | `session_018Cja9GAUnWfsjmkTDU7uKV` | — | launched |
 | 4 | `redesign/cleanup-qa` | — | — | not started |
 
 ## Wave 2 brief carry-overs (from #136 follow-ups)
@@ -69,7 +69,18 @@ later session can resume from here.
   port `.btn/.input/.table/.dialog` set where names don't collide.
 - Remaining heroicons in `ADMIN_MODULES`/`MODULE_GROUPS` stay until wave 4.
 
+## Wave 3 brief decisions
+
+- **tools-restyle scope correction:** tool pages live in `features/{passwordgen,imagetool,croptool,removebg,dnstool,textshare,converters,myinfo,lipsync}` + `features/tools/ToolsIndexPage.tsx`, not `features/tools/*` as the plan says.
+- **Admin > Themes is admin-only** (backend `_requireAdmin`); README said managers too — following the backend. One-line change per route if managers should get it.
+- **themes-ui** owns `usePins.ts` (move to profile API, keep #141 same-tab sync), the Appearance section in `AccountMenu`, one `/admin/themes` route + `ADMIN_MODULES` entry. Skips saving prefs while impersonating.
+- **homes** owns `HomePage` + new `useRecentRoutes` (`funkedupshift_recent`), one call site in `AppPageLayout`.
+- **mobile** owns `TabBar`, mobile sheet wrappers of `LauncherDrawer`/`AccountMenu`, `MobileAppShell`, `AppLayout` mobile chrome outside `<Routes>`; must carry the impersonation banner on mobile.
+- Merge order: themes-ui → homes → tools-restyle → mobile.
+
 ## Log
+
+- 2026-10-14 — Wave 2 complete: #140 shortener merged (`c62a9e7`), #142 themes-api merged (`4cb905a`). Wave 3 launched (user go-ahead).
 
 - 2026-10-14 — #141 usePins sync merged (`4b016f6`). Merge order adjusted: shell-desktop → #141 → app-frame → shortener → themes-api (backend fixes landed later).
 
