@@ -451,6 +451,44 @@ def test_avatar_from_url_200_returns_key(mock_urlopen, mock_boto_client):
 
 
 # ------------------------------------------------------------------------------
+# listSites list query: projection + single S3 client
+# ------------------------------------------------------------------------------
+
+@patch("api.handler.MEDIA_BUCKET", "test-media-bucket")
+@patch("api.handler.TABLE_NAME", "fus-main")
+@patch("boto3.client")
+def test_listSites_projects_away_scrapedContent_and_reuses_s3_client(mock_boto_client):
+    """GET /sites list query has a ProjectionExpression without scrapedContent; one S3 client for all logos."""
+    mock_ddb = MagicMock()
+    mock_s3 = MagicMock()
+    mock_s3.generate_presigned_url.return_value = "https://signed.example/logo"
+    mock_boto_client.side_effect = lambda svc, **kw: mock_s3 if svc == "s3" else mock_ddb
+    mock_ddb.query.return_value = {"Items": [
+        {"PK": {"S": "SITE#1"}, "title": {"S": "One"}, "logoKey": {"S": "logos/1.png"}},
+        {"PK": {"S": "SITE#2"}, "title": {"S": "Two"}, "logoKey": {"S": "logos/2.png"}},
+        {"PK": {"S": "SITE#3"}, "title": {"S": "Three"}, "logoUrl": {"S": "https://ext.example/l.png"}},
+    ]}
+    mock_ddb.batch_get_item.return_value = {"Responses": {}}
+    from api.handler import handler
+    result = handler({
+        "rawPath": "/sites",
+        "requestContext": {"http": {"method": "GET", "path": "/sites"}},
+    }, None)
+    assert result["statusCode"] == 200
+    kw = mock_ddb.query.call_args.kwargs
+    assert "ProjectionExpression" in kw
+    projected = [kw["ExpressionAttributeNames"][t.strip()] for t in kw["ProjectionExpression"].split(",")]
+    assert "scrapedContent" not in projected
+    assert {"PK", "title", "url", "description", "categoryIds", "logoUrl", "logoKey"} <= set(projected)
+    sites = {s["PK"]: s for s in json.loads(result["body"])["sites"]}
+    assert sites["SITE#1"]["logoUrl"] == "https://signed.example/logo"
+    assert sites["SITE#2"]["logoUrl"] == "https://signed.example/logo"
+    assert sites["SITE#3"]["logoUrl"] == "https://ext.example/l.png"
+    assert [c.args[0] for c in mock_boto_client.call_args_list].count("s3") == 1
+    assert mock_s3.generate_presigned_url.call_count == 2
+
+
+# ------------------------------------------------------------------------------
 # createSite / updateSite scrapedContent and tags
 # ------------------------------------------------------------------------------
 

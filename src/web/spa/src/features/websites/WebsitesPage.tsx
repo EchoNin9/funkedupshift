@@ -127,6 +127,13 @@ const WebsitesPage: React.FC = () => {
     );
   }, [categoriesForDropdown, selectedCategoryIds, categorySearch]);
 
+  /* ── Debounce search so typing doesn't fire a request per keystroke ── */
+  const [debouncedSearch, setDebouncedSearch] = useState(search);
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
   /* ── Sync search params ── */
   const hasActiveFilters = search.trim().length > 0 || selectedCategoryIds.length > 0;
 
@@ -158,7 +165,7 @@ const WebsitesPage: React.FC = () => {
       try {
         const params = new URLSearchParams();
         params.set("limit", "100");
-        if (search.trim()) params.set("q", search.trim());
+        if (debouncedSearch.trim()) params.set("q", debouncedSearch.trim());
         if (selectedCategoryIds.length > 0) {
           params.set("categoryIds", selectedCategoryIds.join(","));
           params.set("categoryMode", categoryMode);
@@ -181,7 +188,7 @@ const WebsitesPage: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [search, selectedCategoryIds, categoryMode]);
+  }, [debouncedSearch, selectedCategoryIds, categoryMode]);
 
   /* ── Reset to page 1 whenever the filtered set changes ── */
   useEffect(() => {

@@ -2341,15 +2341,17 @@ def _addLogoUrls(sites, region=None):
     """Set logoUrl: use stored logoUrl if present; else presigned GET for logoKey. In-place."""
     if not sites:
         return
+    s3 = None
     for s in sites:
         if s.get("logoUrl") and isinstance(s["logoUrl"], str) and s["logoUrl"].strip():
             continue
         key = s.get("logoKey")
         if key and isinstance(key, str) and key.strip() and MEDIA_BUCKET:
             try:
-                import boto3
-                region = region or os.environ.get("AWS_REGION", "us-east-1")
-                s3 = boto3.client("s3", region_name=region)
+                if s3 is None:
+                    import boto3
+                    region = region or os.environ.get("AWS_REGION", "us-east-1")
+                    s3 = boto3.client("s3", region_name=region)
                 url = s3.generate_presigned_url(
                     "get_object",
                     Params={"Bucket": MEDIA_BUCKET, "Key": key},
@@ -2428,6 +2430,13 @@ def listSites(event, forceAll=False):
             "IndexName": "byEntity",
             "KeyConditionExpression": "entityType = :et",
             "ExpressionAttributeValues": {":et": {"S": "SITE"}},
+            # List view never uses scrapedContent (up to 100KB/item); project only what is read below.
+            "ProjectionExpression": "#pk, #title, #url, #desc, #descAi, #sum, #cnt, #cats, #logoUrl, #logoKey",
+            "ExpressionAttributeNames": {
+                "#pk": "PK", "#title": "title", "#url": "url", "#desc": "description",
+                "#descAi": "descriptionAiGenerated", "#sum": "totalStarsSum", "#cnt": "totalStarsCount",
+                "#cats": "categoryIds", "#logoUrl": "logoUrl", "#logoKey": "logoKey",
+            },
         }
         if page_limit is not None:
             request_kw["Limit"] = page_limit
