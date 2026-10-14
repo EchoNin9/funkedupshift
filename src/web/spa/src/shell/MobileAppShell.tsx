@@ -8,7 +8,6 @@ import { MobileModulesProvider } from "./MobileModulesContext";
 import { AdminLayout } from "./AdminLayout";
 import { pageTransition } from "../components/motion";
 import { UserCircleIcon } from "@heroicons/react/24/outline";
-import { PopBackground } from "./PopBackground";
 import { PopMarquee } from "./PopMarquee";
 import { ThemeToggle } from "./ThemeToggle";
 
@@ -70,7 +69,6 @@ export function MobileAppShell() {
         className="relative min-h-screen bg-surface-0 text-text-primary flex flex-col"
         style={{ paddingTop: "env(safe-area-inset-top)" }}
       >
-        <PopBackground />
         <div className="relative z-10 flex-1 flex flex-col">
         {/* Compact top bar */}
         <header className="flex items-center justify-between px-4 py-2.5 bg-surface-1/80 backdrop-blur border-b-2 border-text-primary">
