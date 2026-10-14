@@ -17,6 +17,18 @@ const GROUP_BLURBS: Record<LauncherGroupId, string> = {
 
 /** Site name as the hero H1: the word "up" in accent text, the last word on its own line, a final accent period. */
 function HeroTitle({ siteName }: { siteName: string }) {
+  // The brand is often stored as one word ("Funkedupshift"); render it as the prototype's "Funked up / shift.".
+  const brand = siteName.trim().match(/^(.*funked)\s*(up)\s*(shift.*)$/i);
+  if (brand) {
+    return (
+      <div className="font-display text-[clamp(52px,9vw,112px)] font-semibold leading-[0.9] tracking-[-0.05em] text-text-primary">
+        {brand[1]} <span className="text-accent-text">{brand[2]}</span>
+        <br />
+        {brand[3]}
+        <span className="text-accent">.</span>
+      </div>
+    );
+  }
   const words = siteName.trim().split(/\s+/);
   const last = words.length > 1 ? words[words.length - 1] : null;
   const head = last ? words.slice(0, -1) : words;
