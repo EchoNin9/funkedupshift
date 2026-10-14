@@ -53,12 +53,12 @@ later session can resume from here.
 | Wave | Agent / branch | Session | PR | Status |
 |---|---|---|---|---|
 | 1 | `redesign/foundation` | `session_012RDDaaoPdSCUEfZ2uyANfF` (archived) | [#136](https://github.com/EchoNin9/funkedupshift/pull/136) | merged `779e156`; Deploy Staging run 426 success |
-| 2 | `redesign/themes-api` | `session_013KbockRqzwxNAd5mu9ttvp` (archived) | [#142](https://github.com/EchoNin9/funkedupshift/pull/142) | merged `4cb905a`; deploy pending at wave 3 launch |
+| 2 | `redesign/themes-api` | `session_013KbockRqzwxNAd5mu9ttvp` (archived) | [#142](https://github.com/EchoNin9/funkedupshift/pull/142) | merged `4cb905a`; deploy run 432 success (terraform routes applied) |
 | 2 | `redesign/shell-desktop` | `session_01CfgfuWvZwByKygyP7yHMbT` (archived) | [#139](https://github.com/EchoNin9/funkedupshift/pull/139) | merged `90057c6` (before themes-api: backend-only, no dependency); deploy run 428 success |
 | 2 | `redesign/app-frame` | `session_01Ati2nHZyx6KD4KZuNH9Ezu` (archived) | [#138](https://github.com/EchoNin9/funkedupshift/pull/138) | merged `6d00080`; deploy run 430 success |
 | 2 | `redesign/shortener` | `session_01AEXAGgAw83aKKGNJLtj3dk` (archived) | [#140](https://github.com/EchoNin9/funkedupshift/pull/140) | merged `c62a9e7`; deploy run 431 success |
 | 3 | `redesign/themes-ui` | `session_014NWXMLfXzFu1RdmmAfEJxG` | — | launched |
-| 3 | `redesign/homes` | `session_013cQk2vfzAHwv7DqgUWaMFV` | — | launched |
+| 3 | `redesign/homes` | `session_013cQk2vfzAHwv7DqgUWaMFV` | [#143](https://github.com/EchoNin9/funkedupshift/pull/143) | reviewed; fixed branding hero + per-user recents (`55e58ff`); merges after themes-ui |
 | 3 | `redesign/tools-restyle` | `session_018EbfRP2kn4e2m5KJikjXsU` | — | launched |
 | 3 | `redesign/mobile` | `session_018Cja9GAUnWfsjmkTDU7uKV` | — | launched |
 | 4 | `redesign/cleanup-qa` | — | — | not started |
@@ -79,6 +79,8 @@ later session can resume from here.
 - Merge order: themes-ui → homes → tools-restyle → mobile.
 
 ## Log
+
+- 2026-10-14 — Wave 2 staging deploys all green (runs 427–432). #143 homes re-briefed: keep admin Branding hero fields; recents keyed per user, no admin record ids.
 
 - 2026-10-14 — Wave 2 complete: #140 shortener merged (`c62a9e7`), #142 themes-api merged (`4cb905a`). Wave 3 launched (user go-ahead).
 
