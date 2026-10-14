@@ -57,9 +57,9 @@ later session can resume from here.
 | 2 | `redesign/shell-desktop` | `session_01CfgfuWvZwByKygyP7yHMbT` (archived) | [#139](https://github.com/EchoNin9/funkedupshift/pull/139) | merged `90057c6` (before themes-api: backend-only, no dependency); deploy run 428 success |
 | 2 | `redesign/app-frame` | `session_01Ati2nHZyx6KD4KZuNH9Ezu` (archived) | [#138](https://github.com/EchoNin9/funkedupshift/pull/138) | merged `6d00080`; deploy run 430 success |
 | 2 | `redesign/shortener` | `session_01AEXAGgAw83aKKGNJLtj3dk` (archived) | [#140](https://github.com/EchoNin9/funkedupshift/pull/140) | merged `c62a9e7`; deploy run 431 success |
-| 3 | `redesign/themes-ui` | `session_014NWXMLfXzFu1RdmmAfEJxG` | — | launched |
-| 3 | `redesign/homes` | `session_013cQk2vfzAHwv7DqgUWaMFV` | [#143](https://github.com/EchoNin9/funkedupshift/pull/143) | reviewed; fixed branding hero + per-user recents (`55e58ff`); merges after themes-ui |
-| 3 | `redesign/tools-restyle` | `session_018EbfRP2kn4e2m5KJikjXsU` | — | launched |
+| 3 | `redesign/themes-ui` | `session_014NWXMLfXzFu1RdmmAfEJxG` (archived) | [#145](https://github.com/EchoNin9/funkedupshift/pull/145) | merged `3212caf` (added superadmin self-gate on review); deploy run 433 success |
+| 3 | `redesign/homes` | `session_013cQk2vfzAHwv7DqgUWaMFV` (archived) | [#143](https://github.com/EchoNin9/funkedupshift/pull/143) | merged `a8dbdfd`; deploy pending |
+| 3 | `redesign/tools-restyle` | `session_018EbfRP2kn4e2m5KJikjXsU` | [#144](https://github.com/EchoNin9/funkedupshift/pull/144) | reviewed OK (no logic changes; canvas refs stay mounted); green; merges after homes deploy |
 | 3 | `redesign/mobile` | `session_018Cja9GAUnWfsjmkTDU7uKV` | — | launched |
 | 4 | `redesign/cleanup-qa` | — | — | not started |
 
@@ -79,6 +79,8 @@ later session can resume from here.
 - Merge order: themes-ui → homes → tools-restyle → mobile.
 
 ## Log
+
+- 2026-10-14 — #145 themes-ui merged (`3212caf`), deployed; #143 homes merged (`a8dbdfd`). Known follow-up (wave 4): `hydratePins` can seed a new user's server pins from a previous user's cache if that session expired without sign-out on a shared browser.
 
 - 2026-10-14 — Wave 2 staging deploys all green (runs 427–432). #143 homes re-briefed: keep admin Branding hero fields; recents keyed per user, no admin record ids.
 
