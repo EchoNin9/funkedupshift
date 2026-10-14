@@ -25,6 +25,11 @@ later session can resume from here.
 - **Release note:** as of 2026-10-14 `development` was 0 commits ahead of
   `main`, so the first dev → main release carries only redesign work.
 
+## Decided
+
+- Shortener module id stays `tools` (not `shortener`); default pins use `tools`.
+- `--color-n1..n4` remain as aliases remapped onto the new palette until wave 4.
+
 ## Open questions
 
 - Test credentials for user / group member / admin are needed for signed-in
@@ -37,7 +42,7 @@ later session can resume from here.
 
 | Wave | Agent / branch | Session | PR | Status |
 |---|---|---|---|---|
-| 1 | `redesign/foundation` | `session_012RDDaaoPdSCUEfZ2uyANfF` | — | launched 2026-10-14 |
+| 1 | `redesign/foundation` | `session_012RDDaaoPdSCUEfZ2uyANfF` | [#136](https://github.com/EchoNin9/funkedupshift/pull/136) | reviewed; PR Check green; awaiting unused-heroicons cleanup push, then merge |
 | 2 | `redesign/themes-api` | — | — | not started |
 | 2 | `redesign/shell-desktop` | — | — | not started |
 | 2 | `redesign/app-frame` | — | — | not started |
@@ -50,6 +55,7 @@ later session can resume from here.
 
 ## Log
 
+- 2026-10-14 — #136 opened; lead review OK; asked agent to drop 9 dead heroicons imports in modules.ts (would block wave 4's "remove heroicons if unused"). PR Check green (first run).
 - 2026-10-14 — Added PR Check workflow as the pre-merge gate (user has no local machine).
 - 2026-10-14 — Wave 1 launched (`redesign/foundation`, brief = PROMPTS 1 + 2 +
   `usePins()`; minimal `shell/theme.ts` edit allowed for `[data-theme]`).
