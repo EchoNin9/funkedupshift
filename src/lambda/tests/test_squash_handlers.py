@@ -4,6 +4,7 @@ import json
 import sys
 from decimal import Decimal
 from pathlib import Path
+from datetime import date
 from unittest.mock import patch
 
 import pytest
@@ -44,7 +45,7 @@ class FakeDynamo:
 def db():
     d = FakeDynamo()
     with patch("boto3.client", return_value=d), patch("api.handler.TABLE_NAME", "t"), \
-            patch("api.squash._now", return_value=NOW), \
+            patch("api.squash._now", return_value=NOW), patch("api.squash._today", return_value=date(2026, 6, 10)), \
             patch("api.handler._getUserCustomGroups", return_value=["Squash"]):
         yield d
 
@@ -462,3 +463,53 @@ def test_put_tag_or_sort_change_resnapshots(db):
     mkMatch(ids, date="2026-06-01", tags=["league"])
     call("/squash/shares", "PUT", {"id": sid, "title": "same filters"})
     assert len(public(sid)[1]["matches"]) == 2  # unchanged filters => no re-snapshot
+
+
+# ---------------------------------------------------------------- lastDays
+
+def _lastDaysSeed(ids):
+    for d in ("2026-06-03", "2026-06-04", "2026-06-10", "2026-06-11"):  # 7d ago, 6d ago, today, future
+        mkMatch(ids, date=d)
+
+
+def test_last_days_boundaries(db):
+    _lastDaysSeed(mkPlayers())
+    g = lambda **q: _dates(call("/squash/matches", qs=q)[1]["matches"])
+    assert g(lastDays="7") == ["2026-06-10", "2026-06-04"]  # N-1 ago in, N ago out, future out
+    assert g(lastDays="1") == ["2026-06-10"]
+    assert len(g(lastDays="90")) == 3
+
+
+@pytest.mark.parametrize("ld", [0, 91, "abc", True, 1.5, "", -3])
+def test_last_days_validation_400(db, ld):
+    if ld == "":
+        assert mkShare(filters={"lastDays": ld})[0] == 201  # blank = unset
+        return
+    assert mkShare(filters={"lastDays": ld})[0] == 400
+    if not isinstance(ld, (bool, float)):
+        assert call("/squash/matches", qs={"lastDays": str(ld)})[0] == 400
+
+
+def test_last_days_with_date_filters_400(db):
+    for k in ("date", "dateFrom", "dateTo"):
+        s, b = mkShare(filters={"lastDays": 7, k: "2026-06-01"})
+        assert s == 400 and "cannot be combined" in b["error"]
+        assert call("/squash/matches", qs={"lastDays": "7", k: "2026-06-01"})[0] == 400
+
+
+def test_last_days_live_rolls_snapshot_frozen(db):
+    _lastDaysSeed(mkPlayers())
+    live = mkShare(mode="live", filters={"lastDays": 7})[1]["id"]
+    snap = mkShare(mode="snapshot", filters={"lastDays": 7})[1]["id"]
+    assert json.loads(db.rows[("SQUASH#SHARE#" + snap, "METADATA")]["filters"]["S"]) == {"lastDays": 7}
+    with patch("api.squash._today", return_value=date(2026, 6, 12)):
+        assert _dates(public(live)[1]["matches"]) == ["2026-06-11", "2026-06-10"]
+        assert _dates(public(snap)[1]["matches"]) == ["2026-06-10", "2026-06-04"]
+
+
+def test_put_last_days_change_resnapshots(db):
+    _lastDaysSeed(mkPlayers())
+    sid = mkShare(filters={"lastDays": 7})[1]["id"]
+    assert len(public(sid)[1]["matches"]) == 2
+    call("/squash/shares", "PUT", {"id": sid, "filters": {"lastDays": 1}})
+    assert _dates(public(sid)[1]["matches"]) == ["2026-06-10"]

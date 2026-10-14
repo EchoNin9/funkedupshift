@@ -32,7 +32,14 @@ export interface SearchFilters {
   sortOrder?: "newest" | "oldest";
   tags?: string[];
   tagMode?: "and" | "or";
+  lastDays?: number;
 }
+
+/** "Last X days" input text -> integer 1-90, or undefined when blank/invalid. */
+export const parseLastDays = (v: string): number | undefined => {
+  const n = Number(v);
+  return v.trim() !== "" && Number.isInteger(n) && n >= 1 && n <= 90 ? n : undefined;
+};
 
 /** Canonical filter shape: defaults (newest, no tags) are omitted, matching what the server stores. */
 export const buildFilters = (
@@ -43,11 +50,13 @@ export const buildFilters = (
   playerMode: "and" | "or",
   sortOrder: "newest" | "oldest" = "newest",
   tags: string[] = [],
-  tagMode: "and" | "or" = "and"
+  tagMode: "and" | "or" = "and",
+  lastDays?: number
 ): SearchFilters => ({
   ...(date ? { date } : {}),
   ...(dateFrom ? { dateFrom } : {}),
   ...(dateTo ? { dateTo } : {}),
+  ...(lastDays ? { lastDays } : {}),
   ...(playerIds.length ? { playerIds, playerMode } : {}),
   ...(tags.length ? { tags, tagMode } : {}),
   ...(sortOrder === "oldest" ? { sortOrder } : {})

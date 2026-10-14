@@ -11,7 +11,7 @@ import MatchForm from "./MatchForm";
 import PlayersTab from "./PlayersTab";
 import SharesTab from "./SharesTab";
 import ShareDialog from "./ShareDialog";
-import { Match, Player, SearchFilters, apiError, buildFilters, dangerBtn, getApiBaseUrl, smallBtn } from "./squashShared";
+import { Match, Player, SearchFilters, apiError, buildFilters, dangerBtn, getApiBaseUrl, inputCls, parseLastDays, smallBtn } from "./squashShared";
 
 const PAGE_SIZE = 10;
 
@@ -29,6 +29,11 @@ const SquashPage: React.FC = () => {
   const [searchDate, setSearchDate] = useState(() => searchParams.get("date") ?? "");
   const [searchDateFrom, setSearchDateFrom] = useState(() => searchParams.get("dateFrom") ?? "");
   const [searchDateTo, setSearchDateTo] = useState(() => searchParams.get("dateTo") ?? "");
+  const [searchLastDays, setSearchLastDays] = useState(() => {
+    const n = parseLastDays(searchParams.get("lastDays") ?? "");
+    return n ? String(n) : "";
+  });
+  const lastDaysN = parseLastDays(searchLastDays);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -56,7 +61,8 @@ const SquashPage: React.FC = () => {
     playerMode,
     sortOrder,
     tagFilters,
-    tagFilterMode
+    tagFilterMode,
+    lastDaysN
   );
 
   const deleteMatch = async (id: string) => {
@@ -99,6 +105,7 @@ const SquashPage: React.FC = () => {
     if (searchDate) params.set("date", searchDate);
     if (searchDateFrom) params.set("dateFrom", searchDateFrom);
     if (searchDateTo) params.set("dateTo", searchDateTo);
+    if (lastDaysN) params.set("lastDays", String(lastDaysN));
     if (selectedPlayerIds.length) {
       params.set("playerIds", selectedPlayerIds.join(","));
       params.set("playerMode", playerMode);
@@ -120,6 +127,7 @@ const SquashPage: React.FC = () => {
       if (searchDate) next.set("date", searchDate);
       if (searchDateFrom) next.set("dateFrom", searchDateFrom);
       if (searchDateTo) next.set("dateTo", searchDateTo);
+      if (lastDaysN) next.set("lastDays", String(lastDaysN));
       if (selectedPlayerIds.length) {
         next.set("playerIds", selectedPlayerIds.join(","));
         next.set("playerMode", playerMode);
@@ -137,6 +145,7 @@ const SquashPage: React.FC = () => {
     setSearchDate("");
     setSearchDateFrom("");
     setSearchDateTo("");
+    setSearchLastDays("");
     setSelectedPlayerIds([]);
     setPlayerMode("and");
     setHasSearched(false);
@@ -153,6 +162,7 @@ const SquashPage: React.FC = () => {
     searchParams.get("date") ||
     searchParams.get("dateFrom") ||
     searchParams.get("dateTo") ||
+    searchParams.get("lastDays") ||
     searchParams.get("playerIds");
   useEffect(() => {
     if (!access || !hasUrlSearchParams) return;
@@ -292,24 +302,56 @@ const SquashPage: React.FC = () => {
           <DateInput
             id="searchDate"
             value={searchDate}
-            onChange={setSearchDate}
+            onChange={(v) => {
+              setSearchDate(v);
+              if (v) setSearchLastDays("");
+            }}
             label="Date (exact)"
             className="max-w-[12rem]"
           />
           <DateInput
             id="searchDateFrom"
             value={searchDateFrom}
-            onChange={setSearchDateFrom}
+            onChange={(v) => {
+              setSearchDateFrom(v);
+              if (v) setSearchLastDays("");
+            }}
             label="Date from"
             className="max-w-[12rem]"
           />
           <DateInput
             id="searchDateTo"
             value={searchDateTo}
-            onChange={setSearchDateTo}
+            onChange={(v) => {
+              setSearchDateTo(v);
+              if (v) setSearchLastDays("");
+            }}
             label="Date to"
             className="max-w-[12rem]"
           />
+          <div className="max-w-[8rem]">
+            <label htmlFor="searchLastDays" className="block text-xs font-semibold text-text-secondary mb-1">
+              Last X days
+            </label>
+            <input
+              id="searchLastDays"
+              type="number"
+              min={1}
+              max={90}
+              step={1}
+              placeholder="e.g. 30"
+              value={searchLastDays}
+              onChange={(e) => {
+                setSearchLastDays(e.target.value);
+                if (parseLastDays(e.target.value)) {
+                  setSearchDate("");
+                  setSearchDateFrom("");
+                  setSearchDateTo("");
+                }
+              }}
+              className={inputCls}
+            />
+          </div>
           <PlayerPicker
             players={allPlayers}
             selectedIds={selectedPlayerIds}

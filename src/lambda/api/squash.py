@@ -18,7 +18,7 @@ import re
 import secrets
 import time
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -250,6 +250,12 @@ def _matchOut(raw):
 
 MAX_FILTER_TAGS = 20
 MAX_FILTER_TAG_LEN = 40
+MAX_LAST_DAYS = 90
+
+
+def _today():
+    # ponytail: UTC "today"; a match entered late evening in Pacific can be off by a day at the window boundary.
+    return datetime.now(timezone.utc).date()
 
 
 def _normFilters(raw):
@@ -266,6 +272,19 @@ def _normFilters(raw):
         if not isinstance(v, str) or not _DATE_RE.match(v.strip()):
             raise ApiError(400, f"filters.{k} must be YYYY-MM-DD")
         out[k] = v.strip()
+    ld = raw.get("lastDays")
+    if ld not in (None, ""):
+        if isinstance(ld, bool) or not isinstance(ld, (int, str)):
+            raise ApiError(400, "filters.lastDays must be an integer 1-90")
+        try:
+            ld = int(ld.strip()) if isinstance(ld, str) else ld
+        except ValueError:
+            raise ApiError(400, "filters.lastDays must be an integer 1-90")
+        if not 1 <= ld <= MAX_LAST_DAYS:
+            raise ApiError(400, "filters.lastDays must be an integer 1-90")
+        if any(k in out for k in ("date", "dateFrom", "dateTo")):
+            raise ApiError(400, "lastDays cannot be combined with date filters")
+        out["lastDays"] = ld
     pids = raw.get("playerIds")
     if isinstance(pids, str):
         pids = [x for x in pids.split(",")]
@@ -318,6 +337,10 @@ def _runFilters(db, table, sub, filters):
     out = []
     pids = set(filters.get("playerIds") or [])
     tags = set(filters.get("tags") or [])
+    lo = hi = None
+    if filters.get("lastDays"):
+        today = _today()
+        lo, hi = (today - timedelta(days=filters["lastDays"] - 1)).isoformat(), today.isoformat()
     for raw in _userItems(db, table, sub, MATCH_SK):
         m = _matchOut(raw)
         d = m.get("date", "")
@@ -326,6 +349,8 @@ def _runFilters(db, table, sub, filters):
         if filters.get("dateFrom") and d < filters["dateFrom"]:
             continue
         if filters.get("dateTo") and d > filters["dateTo"]:
+            continue
+        if lo and not lo <= d <= hi:
             continue
         if pids:
             in_match = {m.get(k) for k in ("teamAPlayer1Id", "teamAPlayer2Id", "teamBPlayer1Id", "teamBPlayer2Id")}
@@ -347,7 +372,7 @@ def listMatches(event, user, table):
     qs = _qs(event)
     filters = _normFilters({
         "date": qs.get("date"), "dateFrom": qs.get("dateFrom"), "dateTo": qs.get("dateTo"),
-        "playerIds": qs.get("playerIds"), "playerMode": qs.get("playerMode"),
+        "lastDays": qs.get("lastDays"), "playerIds": qs.get("playerIds"), "playerMode": qs.get("playerMode"),
         "tags": qs.get("tags"), "tagMode": qs.get("tagMode"), "sortOrder": qs.get("sortOrder"),
     })
     return 200, {"matches": _runFilters(_db(), table, user["userId"], filters)}

@@ -16,6 +16,7 @@ import {
   buildFilters,
   getApiBaseUrl,
   inputCls,
+  parseLastDays,
   primaryBtn,
   secondaryBtn,
   smallBtn,
@@ -50,6 +51,7 @@ const ShareDialog: React.FC<Props> = ({ share, filters: createFilters = {}, onCl
   const [qDate, setQDate] = useState(saved?.date ?? "");
   const [qFrom, setQFrom] = useState(saved?.dateFrom ?? "");
   const [qTo, setQTo] = useState(saved?.dateTo ?? "");
+  const [qLast, setQLast] = useState(saved?.lastDays ? String(saved.lastDays) : "");
   const [qIds, setQIds] = useState<string[]>(saved?.playerIds ?? []);
   const [qMode, setQMode] = useState<"and" | "or">(saved?.playerMode === "or" ? "or" : "and");
   const [qSort, setQSort] = useState<"newest" | "oldest">(saved?.sortOrder === "oldest" ? "oldest" : "newest");
@@ -62,11 +64,11 @@ const ShareDialog: React.FC<Props> = ({ share, filters: createFilters = {}, onCl
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
 
-  const editFilters = useMemo(() => buildFilters(qDate, qFrom, qTo, qIds, qMode, qSort, qTags, qTagMode),
-    [qDate, qFrom, qTo, qIds, qMode, qSort, qTags, qTagMode]
+  const editFilters = useMemo(() => buildFilters(qDate, qFrom, qTo, qIds, qMode, qSort, qTags, qTagMode, parseLastDays(qLast)),
+    [qDate, qFrom, qTo, qIds, qMode, qSort, qTags, qTagMode, qLast]
   );
   const savedFilters = useMemo(
-    () => buildFilters(saved?.date ?? "", saved?.dateFrom ?? "", saved?.dateTo ?? "", saved?.playerIds ?? [], saved?.playerMode === "or" ? "or" : "and", saved?.sortOrder, saved?.tags ?? [], saved?.tagMode),
+    () => buildFilters(saved?.date ?? "", saved?.dateFrom ?? "", saved?.dateTo ?? "", saved?.playerIds ?? [], saved?.playerMode === "or" ? "or" : "and", saved?.sortOrder, saved?.tags ?? [], saved?.tagMode, saved?.lastDays),
     [saved]
   );
   const filtersChanged = JSON.stringify(editFilters) !== JSON.stringify(savedFilters);
@@ -102,6 +104,7 @@ const ShareDialog: React.FC<Props> = ({ share, filters: createFilters = {}, onCl
     if (f.date) params.set("date", f.date);
     if (f.dateFrom) params.set("dateFrom", f.dateFrom);
     if (f.dateTo) params.set("dateTo", f.dateTo);
+    if (f.lastDays) params.set("lastDays", String(f.lastDays));
     if (f.playerIds?.length) {
       params.set("playerIds", f.playerIds.join(","));
       params.set("playerMode", f.playerMode ?? "and");
@@ -140,6 +143,7 @@ const ShareDialog: React.FC<Props> = ({ share, filters: createFilters = {}, onCl
     const parts: string[] = [];
     if (editFilters.date) parts.push(editFilters.date);
     if (editFilters.dateFrom || editFilters.dateTo) parts.push(`${editFilters.dateFrom || "…"} → ${editFilters.dateTo || "…"}`);
+    if (editFilters.lastDays) parts.push(`last ${editFilters.lastDays} days`);
     if (editFilters.playerIds?.length)
       parts.push(`players: ${editFilters.playerIds.map(nameOf).join(editFilters.playerMode === "or" ? " OR " : " AND ")}`);
     if (editFilters.tags?.length) parts.push(`tags: ${editFilters.tags.join(editFilters.tagMode === "or" ? " OR " : " AND ")}`);
@@ -298,6 +302,7 @@ const ShareDialog: React.FC<Props> = ({ share, filters: createFilters = {}, onCl
                         if (v) {
                           setQFrom("");
                           setQTo("");
+                          setQLast("");
                         }
                       }}
                       label="Date (exact)"
@@ -308,7 +313,10 @@ const ShareDialog: React.FC<Props> = ({ share, filters: createFilters = {}, onCl
                         value={qFrom}
                         onChange={(v) => {
                           setQFrom(v);
-                          if (v) setQDate("");
+                          if (v) {
+                            setQDate("");
+                            setQLast("");
+                          }
                         }}
                         label="Date from"
                       />
@@ -317,9 +325,35 @@ const ShareDialog: React.FC<Props> = ({ share, filters: createFilters = {}, onCl
                         value={qTo}
                         onChange={(v) => {
                           setQTo(v);
-                          if (v) setQDate("");
+                          if (v) {
+                            setQDate("");
+                            setQLast("");
+                          }
                         }}
                         label="Date to"
+                      />
+                    </div>
+                    <div className="max-w-[8rem]">
+                      <label htmlFor="shareQLast" className="block text-xs font-semibold text-text-secondary mb-1">
+                        Last X days
+                      </label>
+                      <input
+                        id="shareQLast"
+                        type="number"
+                        min={1}
+                        max={90}
+                        step={1}
+                        placeholder="e.g. 30"
+                        value={qLast}
+                        onChange={(e) => {
+                          setQLast(e.target.value);
+                          if (parseLastDays(e.target.value)) {
+                            setQDate("");
+                            setQFrom("");
+                            setQTo("");
+                          }
+                        }}
+                        className={inputCls}
                       />
                     </div>
                     <PlayerPicker players={players} selectedIds={qIds} onChange={setQIds} mode={qMode} onModeChange={setQMode} className="" />
