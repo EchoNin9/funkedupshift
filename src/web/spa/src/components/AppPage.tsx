@@ -12,6 +12,7 @@ import {
   type LauncherGroupId,
 } from "../config/modules";
 import { usePins } from "../hooks/usePins";
+import { useRecordRecentRoute } from "../hooks/useRecentRoutes";
 
 type Icon = React.ComponentType<{ className?: string }>;
 type Hue = "teal" | "violet" | "coral" | "amber";
@@ -247,6 +248,7 @@ export default function AppPage({ children }: { children?: React.ReactNode }) {
 
 /** Pathless layout route: frames whatever child route matched. Nest it inside any route guard so denied users never see it. */
 export function AppPageLayout() {
+  useRecordRecentRoute(useLocation().pathname);
   return (
     <AppPage>
       <Outlet />
