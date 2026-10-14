@@ -3,12 +3,10 @@ import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { useAuth } from "./AuthContext";
 import { useBranding } from "./BrandingContext";
-import { usePlatform } from "./PlatformContext";
 import { AdminLayout } from "./AdminLayout";
 import { SocialGate } from "../features/social/SocialGate";
 import { LipsyncGate } from "../features/lipsync/LipsyncGate";
 import ImpersonationBanner from "./ImpersonationBanner";
-import { MobileAppShell } from "./MobileAppShell";
 import { TopBar } from "./TopBar";
 import { MobileTopBar } from "./MobileTopBar";
 import { TabBar } from "./TabBar";
@@ -257,13 +255,8 @@ const AppLayoutContent: React.FC = () => {
   );
 };
 
+/** One shell for web and the Capacitor app: native renders the same ≤640px TabBar + launcher-sheet layout as phones. */
 const AppLayout: React.FC = () => {
-  const { isNative } = usePlatform();
-
-  if (isNative) {
-    return <MobileAppShell />;
-  }
-
   return (
     <LauncherProvider>
       <AppLayoutContent />
