@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { ShieldCheckIcon } from "@heroicons/react/24/outline";
+import { ShieldCheck } from "@phosphor-icons/react";
 
 const EFFECTIVE_DATE = "3 August 2026";
 const CONTACT_EMAIL = "adam@echo9.net";
@@ -30,7 +30,7 @@ const PrivacyPolicyPage: React.FC = () => {
     <main className="container-max section-padding">
       <div className="max-w-3xl">
         <div className="flex items-center gap-3 mb-4">
-          <ShieldCheckIcon className="h-8 w-8 shrink-0 text-accent-text" />
+          <ShieldCheck className="h-8 w-8 shrink-0 text-accent-text" />
           <h1 className="text-4xl sm:text-5xl font-display font-semibold tracking-[-0.025em] text-text-primary">
             Privacy Policy
           </h1>

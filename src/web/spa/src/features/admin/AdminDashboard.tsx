@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { PlusIcon } from "@heroicons/react/24/outline";
+import { Plus } from "@phosphor-icons/react";
 import { useAuth } from "../../shell/AuthContext";
 import { getVisibleAdminModules } from "../../config/modules";
 
@@ -71,7 +71,7 @@ export function AdminDashboard() {
                     to={mod.path + "?tab=add"}
                     className="mt-4 inline-flex items-center gap-1.5 text-sm font-sans font-semibold text-accent-text hover:underline"
                   >
-                    <PlusIcon className="w-4 h-4" />
+                    <Plus className="w-4 h-4" />
                     Add {mod.id === "websites" ? "Site" : "Media"}
                   </Link>
                 )}

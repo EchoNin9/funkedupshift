@@ -1,15 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import {
-  ArrowPathIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  PlusIcon,
-  CalendarDaysIcon,
-  Squares2X2Icon,
-  ListBulletIcon,
-} from "@heroicons/react/24/outline";
+import { ArrowsClockwise, CalendarBlank, CaretLeft, CaretRight, ListBullets, Plus, SquaresFour } from "@phosphor-icons/react";
 import { Alert, SkeletonCard } from "../../components";
 import { listPosts, type SocialPost } from "./api";
 import { MonthGrid } from "./MonthGrid";
@@ -27,9 +19,9 @@ import {
 
 type ViewMode = "month" | "day";
 
-const VIEW_OPTIONS: { value: ViewMode; label: string; icon: typeof Squares2X2Icon }[] = [
-  { value: "month", label: "Month", icon: Squares2X2Icon },
-  { value: "day", label: "Day", icon: ListBulletIcon },
+const VIEW_OPTIONS: { value: ViewMode; label: string; icon: typeof SquaresFour }[] = [
+  { value: "month", label: "Month", icon: SquaresFour },
+  { value: "day", label: "Day", icon: ListBullets },
 ];
 
 function parseView(raw: string | null): ViewMode {
@@ -192,14 +184,14 @@ export default function CalendarPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
         >
-          <CalendarDaysIcon className="h-6 w-6 text-accent-text" />
+          <CalendarBlank className="h-6 w-6 text-accent-text" />
           Social Scheduler
         </motion.h1>
         <Link
           to="/social/compose"
           className="inline-flex items-center gap-1.5 rounded-lg bg-accent-500 px-4 py-2 text-sm font-medium text-white hover:bg-accent-600 transition-colors shrink-0"
         >
-          <PlusIcon className="h-4 w-4" />
+          <Plus className="h-4 w-4" />
           New post
         </Link>
       </div>
@@ -212,7 +204,7 @@ export default function CalendarPage() {
             aria-label={`Previous ${view}`}
             className="inline-flex items-center justify-center rounded-lg border border-border-hover bg-surface-2 p-1.5 text-text-primary hover:bg-surface-3 transition-colors"
           >
-            <ChevronLeftIcon className="h-4 w-4" />
+            <CaretLeft className="h-4 w-4" />
           </button>
           <button
             type="button"
@@ -220,7 +212,7 @@ export default function CalendarPage() {
             aria-label={`Next ${view}`}
             className="inline-flex items-center justify-center rounded-lg border border-border-hover bg-surface-2 p-1.5 text-text-primary hover:bg-surface-3 transition-colors"
           >
-            <ChevronRightIcon className="h-4 w-4" />
+            <CaretRight className="h-4 w-4" />
           </button>
           <button
             type="button"
@@ -236,7 +228,7 @@ export default function CalendarPage() {
             title={hasLivework ? "Refreshing automatically while posts are in flight" : "Refresh"}
             className="rounded-lg border border-border-hover bg-surface-2 p-1.5 text-text-primary hover:bg-surface-3 transition-colors"
           >
-            <ArrowPathIcon className={`h-4 w-4 ${hasLivework ? "animate-spin [animation-duration:3s]" : ""}`} />
+            <ArrowsClockwise className={`h-4 w-4 ${hasLivework ? "animate-spin [animation-duration:3s]" : ""}`} />
           </button>
         </div>
 

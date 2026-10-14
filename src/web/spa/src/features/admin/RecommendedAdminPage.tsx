@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { Bars3Icon } from "@heroicons/react/24/outline";
+import { List, Star } from "@phosphor-icons/react";
 import { AdminPageHeader } from "./AdminPageHeader";
 import { AdminTabs } from "./AdminTabs";
-import { StarIcon } from "@heroicons/react/24/solid";
+
 import { useAuth, hasRole } from "../../shell/AuthContext";
 import { fetchWithAuth } from "../../utils/api";
 import { Alert } from "../../components";
@@ -437,7 +437,7 @@ const ListTab: React.FC<ListTabProps> = ({ config }) => {
           >
             <div className="flex items-center gap-2">
               {displayOrder === "custom" && (
-                <Bars3Icon className="h-4 w-4 flex-shrink-0 text-text-tertiary" aria-hidden />
+                <List className="h-4 w-4 flex-shrink-0 text-text-tertiary" aria-hidden />
               )}
               {editingIndex === index ? (
                 <input aria-label="Edit value"
@@ -469,7 +469,7 @@ const ListTab: React.FC<ListTabProps> = ({ config }) => {
               )}
               {config.id === "highestRated" && entry.averageRating != null && (
                 <span className="flex items-center gap-0.5 text-warning text-xs">
-                  <StarIcon className="h-3.5 w-3.5" />
+                  <Star weight="fill" className="h-3.5 w-3.5" />
                   {entry.averageRating}
                 </span>
               )}

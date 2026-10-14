@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Bars3Icon } from "@heroicons/react/24/outline";
+import { List } from "@phosphor-icons/react";
 import { useAuth, hasRole } from "../../shell/AuthContext";
 import { AdminPageHeader } from "./AdminPageHeader";
 import { fetchWithAuth } from "../../utils/api";
@@ -251,7 +251,7 @@ const InternetDashboardAdminPage: React.FC = () => {
               } ${displayOrder === "custom" ? "cursor-grab active:cursor-grabbing" : ""}`}
             >
               {displayOrder === "custom" && (
-                <Bars3Icon className="h-4 w-4 flex-shrink-0 text-text-tertiary" aria-hidden />
+                <List className="h-4 w-4 flex-shrink-0 text-text-tertiary" aria-hidden />
               )}
               <span className="font-medium text-text-primary break-all flex-1">{domain}</span>
               <button

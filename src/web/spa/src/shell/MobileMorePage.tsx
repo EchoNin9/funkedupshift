@@ -1,39 +1,28 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import {
-  GlobeAltIcon,
-  PhotoIcon,
-  TrophyIcon,
-  CurrencyDollarIcon,
-  TruckIcon,
-  SparklesIcon,
-  ChartBarIcon,
-  IdentificationIcon,
-  Cog6ToothIcon,
-  ShieldCheckIcon,
-} from "@heroicons/react/24/outline";
-import { ChevronRightIcon } from "@heroicons/react/20/solid";
+import { CaretRight, ChartBar, CurrencyDollar, Gear, Globe, IdentificationCard, ImageSquare, ShieldCheck, Sparkle, Trophy, Truck } from "@phosphor-icons/react";
+
 import { useMobileModulesCtx } from "./MobileModulesContext";
 import { useAuth } from "./AuthContext";
 import { hasRole } from "./AuthContext";
 import { getVisibleModuleGroups } from "../config/modules";
 
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
-  websites: GlobeAltIcon,
-  media: PhotoIcon,
-  "internet-dashboard": ChartBarIcon,
-  "my-info": IdentificationIcon,
-  squash: TrophyIcon,
-  "squash-admin": ShieldCheckIcon,
-  memes: PhotoIcon,
-  "meme-generator": PhotoIcon,
-  financial: CurrencyDollarIcon,
-  "financial-admin": CurrencyDollarIcon,
-  "vehicles-expenses": TruckIcon,
-  "general-expenses": TruckIcon,
-  highlights: SparklesIcon,
-  "highest-rated": SparklesIcon,
-  profile: Cog6ToothIcon,
+  websites: Globe,
+  media: ImageSquare,
+  "internet-dashboard": ChartBar,
+  "my-info": IdentificationCard,
+  squash: Trophy,
+  "squash-admin": ShieldCheck,
+  memes: ImageSquare,
+  "meme-generator": ImageSquare,
+  financial: CurrencyDollar,
+  "financial-admin": CurrencyDollar,
+  "vehicles-expenses": Truck,
+  "general-expenses": Truck,
+  highlights: Sparkle,
+  "highest-rated": Sparkle,
+  profile: Gear,
 };
 
 export default function MobileMorePage() {
@@ -68,7 +57,7 @@ export default function MobileMorePage() {
           </h2>
           <div className="rounded-xl bg-surface-1 overflow-hidden divide-y divide-border-default">
             {standalone.map((mod) => {
-              const Icon = ICON_MAP[mod.id] || GlobeAltIcon;
+              const Icon = ICON_MAP[mod.id] || Globe;
               return (
                 <Link
                   key={mod.id}
@@ -77,7 +66,7 @@ export default function MobileMorePage() {
                 >
                   <Icon className="w-5 h-5 text-text-tertiary flex-shrink-0" />
                   <span className="flex-1 text-sm text-text-primary">{mod.label}</span>
-                  <ChevronRightIcon className="w-4 h-4 text-text-tertiary" />
+                  <CaretRight weight="fill" className="w-4 h-4 text-text-tertiary" />
                 </Link>
               );
             })}
@@ -99,7 +88,7 @@ export default function MobileMorePage() {
             <div className="rounded-xl bg-surface-1 overflow-hidden divide-y divide-border-default">
               {links.map((link) => {
                 const mod = accessible.find((m) => m.path === link.path);
-                const Icon = mod ? (ICON_MAP[mod.id] || GlobeAltIcon) : GlobeAltIcon;
+                const Icon = mod ? (ICON_MAP[mod.id] || Globe) : Globe;
                 return (
                   <Link
                     key={link.path}
@@ -108,7 +97,7 @@ export default function MobileMorePage() {
                   >
                     <Icon className="w-5 h-5 text-text-tertiary flex-shrink-0" />
                     <span className="flex-1 text-sm text-text-primary">{link.label}</span>
-                    <ChevronRightIcon className="w-4 h-4 text-text-tertiary" />
+                    <CaretRight weight="fill" className="w-4 h-4 text-text-tertiary" />
                   </Link>
                 );
               })}
@@ -128,9 +117,9 @@ export default function MobileMorePage() {
               to="/admin"
               className="flex items-center gap-3 px-4 py-3 min-h-[48px] active:bg-surface-2 transition-colors"
             >
-              <ShieldCheckIcon className="w-5 h-5 text-text-tertiary flex-shrink-0" />
+              <ShieldCheck className="w-5 h-5 text-text-tertiary flex-shrink-0" />
               <span className="flex-1 text-sm text-text-primary">Admin Dashboard</span>
-              <ChevronRightIcon className="w-4 h-4 text-text-tertiary" />
+              <CaretRight weight="fill" className="w-4 h-4 text-text-tertiary" />
             </Link>
           </div>
         </section>
@@ -143,9 +132,9 @@ export default function MobileMorePage() {
             to="/mobile-settings"
             className="flex items-center gap-3 px-4 py-3 min-h-[48px] active:bg-surface-2 transition-colors"
           >
-            <Cog6ToothIcon className="w-5 h-5 text-text-tertiary flex-shrink-0" />
+            <Gear className="w-5 h-5 text-text-tertiary flex-shrink-0" />
             <span className="flex-1 text-sm text-text-primary">Settings</span>
-            <ChevronRightIcon className="w-4 h-4 text-text-tertiary" />
+            <CaretRight weight="fill" className="w-4 h-4 text-text-tertiary" />
           </Link>
         </div>
       </section>

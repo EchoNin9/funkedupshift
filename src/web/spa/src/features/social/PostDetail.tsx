@@ -1,10 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import {
-  ArrowPathIcon,
-  ArrowTopRightOnSquareIcon,
-  TrashIcon,
-  XMarkIcon,
-} from "@heroicons/react/24/outline";
+import { ArrowSquareOut, ArrowsClockwise, Trash, X } from "@phosphor-icons/react";
 import { Dialog } from "@headlessui/react";
 import { Alert } from "../../components";
 import { deletePost, getPost, retryPost, type PostTarget, type SocialPostDetail } from "./api";
@@ -94,7 +89,7 @@ export function PostDetail({ postId, onClose, onChanged }: PostDetailProps) {
             aria-label="Close"
             className="rounded-md p-1 text-text-tertiary hover:bg-surface-3 hover:text-text-primary transition-colors"
           >
-            <XMarkIcon className="h-5 w-5" />
+            <X className="h-5 w-5" />
           </button>
         </div>
 
@@ -152,7 +147,7 @@ export function PostDetail({ postId, onClose, onChanged }: PostDetailProps) {
                                 rel="noopener noreferrer"
                                 className="inline-flex items-center gap-1 text-xs text-hue-teal hover:underline"
                               >
-                                View <ArrowTopRightOnSquareIcon className="h-3 w-3" />
+                                View <ArrowSquareOut className="h-3 w-3" />
                               </a>
                             )}
                             {t.status === "failed" && (
@@ -162,7 +157,7 @@ export function PostDetail({ postId, onClose, onChanged }: PostDetailProps) {
                                 disabled={busyKey !== null}
                                 className="inline-flex items-center gap-1 rounded-md border border-border-hover bg-surface-2 px-2 py-1 text-xs font-medium text-text-primary hover:bg-surface-3 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                               >
-                                <ArrowPathIcon className={`h-3.5 w-3.5 ${busyKey === key ? "animate-spin" : ""}`} />
+                                <ArrowsClockwise className={`h-3.5 w-3.5 ${busyKey === key ? "animate-spin" : ""}`} />
                                 Retry
                               </button>
                             )}
@@ -188,7 +183,7 @@ export function PostDetail({ postId, onClose, onChanged }: PostDetailProps) {
                     disabled={busyKey !== null}
                     className="inline-flex items-center gap-1.5 rounded-md border border-border-hover bg-surface-2 px-3 py-1.5 text-xs font-medium text-text-primary hover:bg-surface-3 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <ArrowPathIcon className={`h-3.5 w-3.5 ${busyKey === "all" ? "animate-spin" : ""}`} />
+                    <ArrowsClockwise className={`h-3.5 w-3.5 ${busyKey === "all" ? "animate-spin" : ""}`} />
                     Retry all failed ({failedCount})
                   </button>
                 )}
@@ -199,7 +194,7 @@ export function PostDetail({ postId, onClose, onChanged }: PostDetailProps) {
                     disabled={busyKey !== null}
                     className="inline-flex items-center gap-1.5 rounded-md border border-danger/60 bg-danger/10 px-3 py-1.5 text-xs font-medium text-danger hover:bg-danger/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <TrashIcon className="h-3.5 w-3.5" />
+                    <Trash className="h-3.5 w-3.5" />
                     Cancel post
                   </button>
                 )}

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { PencilSquareIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
+import { MagnifyingGlass, PencilSimple } from "@phosphor-icons/react";
 import { motion } from "framer-motion";
 import { useAuth, hasRole } from "../../shell/AuthContext";
 import { fetchWithAuthOptional } from "../../utils/api";
@@ -325,7 +325,7 @@ const MediaPage: React.FC = () => {
           setSearch(search.trim());
         }}
       >
-        <MagnifyingGlassIcon className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-text-tertiary" />
+        <MagnifyingGlass className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-text-tertiary" />
         <input aria-label="Search the library by title or description..."
           type="text"
           value={search}
@@ -558,7 +558,7 @@ const MediaPage: React.FC = () => {
                         to={`/admin/media/edit/${encodeURIComponent(m.PK)}`}
                         className="inline-flex items-center gap-1 text-[11px] text-text-secondary hover:text-accent-text transition-colors"
                       >
-                        <PencilSquareIcon className="h-3.5 w-3.5" />
+                        <PencilSimple className="h-3.5 w-3.5" />
                         Edit
                       </Link>
                     )}

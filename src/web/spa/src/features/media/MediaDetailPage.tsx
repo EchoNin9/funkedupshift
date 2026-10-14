@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeftIcon, PencilSquareIcon } from "@heroicons/react/24/outline";
+import { ArrowLeft, PencilSimple } from "@phosphor-icons/react";
 import { useAuth, hasRole } from "../../shell/AuthContext";
 import { fetchWithAuth, fetchWithAuthOptional } from "../../utils/api";
 
@@ -91,7 +91,7 @@ const MediaDetailPage: React.FC = () => {
     return (
       <div className="space-y-4">
         <Link to="/media" className="inline-flex items-center gap-1 text-sm text-text-tertiary hover:text-text-primary transition-colors">
-          <ArrowLeftIcon className="h-4 w-4" />
+          <ArrowLeft className="h-4 w-4" />
           Back to Media
         </Link>
         <div className="text-sm text-text-secondary">Loading…</div>
@@ -103,7 +103,7 @@ const MediaDetailPage: React.FC = () => {
     return (
       <div className="space-y-4">
         <Link to="/media" className="inline-flex items-center gap-1 text-sm text-text-tertiary hover:text-text-primary transition-colors">
-          <ArrowLeftIcon className="h-4 w-4" />
+          <ArrowLeft className="h-4 w-4" />
           Back to Media
         </Link>
         <div className="rounded-xl border border-border-hover bg-surface-2 px-4 py-3 text-text-primary">
@@ -120,7 +120,7 @@ const MediaDetailPage: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-3">
         <Link to="/media" className="inline-flex items-center gap-1 text-sm text-text-tertiary hover:text-text-primary transition-colors">
-          <ArrowLeftIcon className="h-4 w-4" />
+          <ArrowLeft className="h-4 w-4" />
           Back to Media
         </Link>
         {canEdit && (
@@ -128,7 +128,7 @@ const MediaDetailPage: React.FC = () => {
             to={`/admin/media/edit/${encodeURIComponent(item.PK)}`}
             className="inline-flex items-center gap-1 text-sm text-text-tertiary hover:text-text-primary transition-colors"
           >
-            <PencilSquareIcon className="h-4 w-4" />
+            <PencilSimple className="h-4 w-4" />
             Edit
           </Link>
         )}

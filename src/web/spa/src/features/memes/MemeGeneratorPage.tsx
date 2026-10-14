@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeftIcon } from "@heroicons/react/24/outline";
+import { ArrowLeft } from "@phosphor-icons/react";
 import { useAuth, canCreateMemes } from "../../shell/AuthContext";
 import { Alert } from "../../components";
 import AddTagInput from "./AddTagInput";
@@ -338,7 +338,7 @@ const MemeGeneratorPage: React.FC = () => {
     <div className="space-y-6">
       <header className="flex items-center gap-4">
         <Link to="/memes" className="inline-flex items-center gap-1 text-sm text-text-secondary transition-colors hover:text-text-primary">
-          <ArrowLeftIcon className="h-4 w-4" />
+          <ArrowLeft className="h-4 w-4" />
           Back to Memes
         </Link>
       </header>

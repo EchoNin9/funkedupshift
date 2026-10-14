@@ -1,5 +1,5 @@
 import React from "react";
-import { SunIcon, MoonIcon } from "@heroicons/react/24/outline";
+import { Moon, Sun } from "@phosphor-icons/react";
 import { toggleTheme, useThemeState } from "./theme";
 
 /** Dark/light toggle button. Reflects the current mode (kept in sync with the account menu); persists via theme.ts. (FUNK-3) */
@@ -13,7 +13,7 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
       title={theme === "dark" ? "Switch to light" : "Switch to dark"}
       className={`inline-flex items-center justify-center w-9 h-9 rounded-full border-2 border-border-default text-text-secondary hover:text-text-primary hover:border-border-hover transition-colors duration-150 ${className}`}
     >
-      {theme === "dark" ? <SunIcon className="w-5 h-5" /> : <MoonIcon className="w-5 h-5" />}
+      {theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
     </button>
   );
 }

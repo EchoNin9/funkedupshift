@@ -1,13 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import {
-  ArrowPathIcon,
-  ArrowUpTrayIcon,
-  PaperClipIcon,
-  PencilSquareIcon,
-  XCircleIcon,
-} from "@heroicons/react/24/outline";
+import { ArrowsClockwise, Paperclip, PencilSimple, UploadSimple, XCircle } from "@phosphor-icons/react";
 import { Alert, FormField, SearchableSelect, type SelectOption } from "../../components";
 import {
   ApiError,
@@ -330,7 +324,7 @@ export default function ComposerPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
       >
-        <PencilSquareIcon className="h-6 w-6 text-accent-text" />
+        <PencilSimple className="h-6 w-6 text-accent-text" />
         New Social Post
       </motion.h1>
 
@@ -459,7 +453,7 @@ export default function ComposerPage() {
             onClick={() => fileInputRef.current?.click()}
             className="inline-flex items-center gap-1.5 rounded-lg border border-border-hover bg-surface-2 px-3 py-1.5 text-xs font-medium text-text-primary hover:bg-surface-3 transition-colors"
           >
-            <ArrowUpTrayIcon className="h-3.5 w-3.5" />
+            <UploadSimple className="h-3.5 w-3.5" />
             Add media
           </button>
 
@@ -509,7 +503,7 @@ export default function ComposerPage() {
                       aria-label="Retry upload"
                       className="shrink-0 rounded-md p-1 text-text-tertiary hover:bg-surface-3 hover:text-text-primary transition-colors"
                     >
-                      <ArrowPathIcon className="h-4 w-4" />
+                      <ArrowsClockwise className="h-4 w-4" />
                     </button>
                   )}
                   <button
@@ -518,7 +512,7 @@ export default function ComposerPage() {
                     aria-label="Remove image"
                     className="shrink-0 rounded-md p-1 text-text-tertiary hover:bg-surface-3 hover:text-danger transition-colors"
                   >
-                    <XCircleIcon className="h-4 w-4" />
+                    <XCircle className="h-4 w-4" />
                   </button>
                 </li>
               ))}
@@ -536,7 +530,7 @@ export default function ComposerPage() {
             placeholder="Comma-separated URLs (optional)"
           />
           <p className="mt-1 flex items-center gap-1 text-xs text-text-tertiary">
-            <PaperClipIcon className="h-3 w-3" /> Attached as link cards where the platform supports it.
+            <Paperclip className="h-3 w-3" /> Attached as link cards where the platform supports it.
           </p>
         </FormField>
 

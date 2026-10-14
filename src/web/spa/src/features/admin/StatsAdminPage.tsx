@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ChartBarIcon, ArrowPathIcon } from "@heroicons/react/24/outline";
+import { ArrowsClockwise, ChartBar } from "@phosphor-icons/react";
 import { fetchWithAuth } from "../../utils/api";
 
 function getApiBaseUrl(): string | null {
@@ -82,7 +82,7 @@ export default function StatsAdminPage() {
           {loading ? (
             <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
           ) : (
-            <ArrowPathIcon className="w-5 h-5" />
+            <ArrowsClockwise className="w-5 h-5" />
           )}
           <span>{loading ? "Recomputing..." : "Recompute"}</span>
         </button>
@@ -97,7 +97,7 @@ export default function StatsAdminPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
         <div className="card p-6 bg-surface-0 border border-border-subtle rounded-xl relative">
           <h2 className="text-xl font-bold mb-4 flex items-center">
-            <ChartBarIcon className="w-6 h-6 mr-2" />
+            <ChartBar className="w-6 h-6 mr-2" />
             Daily Snapshot{stats?.date ? ` — ${stats.date}` : ""}
           </h2>
           {loading && (

@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Dialog } from "@headlessui/react";
-import { XMarkIcon } from "@heroicons/react/24/outline";
+import { X } from "@phosphor-icons/react";
 import { useAuth, hasRole } from "../../shell/AuthContext";
 import { fetchWithAuthOptional } from "../../utils/api";
 import { Alert } from "../../components";
@@ -192,7 +192,7 @@ const OurPropertiesPage: React.FC = () => {
                   className="absolute right-0 top-0 rounded p-1 text-hue-teal hover:bg-hue-teal/15 hover:text-text-primary"
                   aria-label="Close modal"
                 >
-                  <XMarkIcon className="h-6 w-6" />
+                  <X className="h-6 w-6" />
                 </button>
                 {selectedSite.logoUrl ? (
                   <img

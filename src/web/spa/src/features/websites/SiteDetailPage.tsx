@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeftIcon, PencilSquareIcon } from "@heroicons/react/24/outline";
+import { ArrowLeft, PencilSimple } from "@phosphor-icons/react";
 import { useAuth, hasRole } from "../../shell/AuthContext";
 import { fetchWithAuth, fetchWithAuthOptional } from "../../utils/api";
 
@@ -116,7 +116,7 @@ const SiteDetailPage: React.FC = () => {
           to="/websites"
           className="inline-flex items-center gap-1 text-sm text-text-tertiary hover:text-text-primary transition-colors"
         >
-          <ArrowLeftIcon className="h-4 w-4" />
+          <ArrowLeft className="h-4 w-4" />
           Back to Websites
         </Link>
         <div className="text-sm text-text-secondary">Loading…</div>
@@ -131,7 +131,7 @@ const SiteDetailPage: React.FC = () => {
           to="/websites"
           className="inline-flex items-center gap-1 text-sm text-text-tertiary hover:text-text-primary transition-colors"
         >
-          <ArrowLeftIcon className="h-4 w-4" />
+          <ArrowLeft className="h-4 w-4" />
           Back to Websites
         </Link>
         <div className="rounded-xl border border-border-hover bg-surface-2 px-4 py-3 text-text-primary">
@@ -150,7 +150,7 @@ const SiteDetailPage: React.FC = () => {
           to="/websites"
           className="inline-flex items-center gap-1 text-sm text-text-tertiary hover:text-text-primary transition-colors"
         >
-          <ArrowLeftIcon className="h-4 w-4" />
+          <ArrowLeft className="h-4 w-4" />
           Back to Websites
         </Link>
         {canEdit && site && (
@@ -158,7 +158,7 @@ const SiteDetailPage: React.FC = () => {
             to={`/admin/sites/edit/${encodeURIComponent(site.PK)}`}
             className="inline-flex items-center gap-1 text-sm text-text-secondary hover:text-text-primary transition-colors"
           >
-            <PencilSquareIcon className="h-4 w-4" />
+            <PencilSimple className="h-4 w-4" />
             Edit site
           </Link>
         )}

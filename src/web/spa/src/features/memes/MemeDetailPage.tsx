@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import { ArrowLeftIcon, PencilSquareIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { ArrowLeft, PencilSimple, Trash } from "@phosphor-icons/react";
 import { useAuth, canRateMemes, canCreateMemes, canEditAnyMeme, hasRole } from "../../shell/AuthContext";
 import ShareMemeBox from "./ShareMemeBox";
 import { fetchWithAuthOptional } from "../../utils/api";
@@ -124,7 +124,7 @@ const MemeDetailPage: React.FC = () => {
     return (
       <div className="space-y-4">
         <Link to="/memes" className="inline-flex items-center gap-1 text-sm text-text-secondary transition-colors hover:text-text-primary">
-          <ArrowLeftIcon className="h-4 w-4" />
+          <ArrowLeft className="h-4 w-4" />
           Back to Memes
         </Link>
         <div className="text-sm text-text-secondary">Loading…</div>
@@ -136,7 +136,7 @@ const MemeDetailPage: React.FC = () => {
     return (
       <div className="space-y-4">
         <Link to="/memes" className="inline-flex items-center gap-1 text-sm text-text-secondary transition-colors hover:text-text-primary">
-          <ArrowLeftIcon className="h-4 w-4" />
+          <ArrowLeft className="h-4 w-4" />
           Back to Memes
         </Link>
         <div className="rounded-md border border-border-hover bg-surface-2 px-4 py-3 text-text-primary">
@@ -153,7 +153,7 @@ const MemeDetailPage: React.FC = () => {
     <div className="space-y-6">
       <header className="flex items-center justify-between gap-4">
         <Link to="/memes" className="inline-flex items-center gap-1 text-sm text-text-secondary transition-colors hover:text-text-primary">
-          <ArrowLeftIcon className="h-4 w-4" />
+          <ArrowLeft className="h-4 w-4" />
           Back to Memes
         </Link>
         <div className="flex items-center gap-3">
@@ -162,7 +162,7 @@ const MemeDetailPage: React.FC = () => {
               to={`/memes/${encodeURIComponent(item.PK)}/edit`}
               className="inline-flex items-center gap-1 text-sm text-text-secondary transition-colors hover:text-text-primary"
             >
-              <PencilSquareIcon className="h-4 w-4" />
+              <PencilSimple className="h-4 w-4" />
               Edit
             </Link>
           )}
@@ -172,7 +172,7 @@ const MemeDetailPage: React.FC = () => {
               onClick={() => setConfirmDelete(true)}
               className="inline-flex items-center gap-1 text-sm text-text-secondary transition-colors hover:text-danger"
             >
-              <TrashIcon className="h-4 w-4" />
+              <Trash className="h-4 w-4" />
               Delete
             </button>
           )}

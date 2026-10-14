@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import { ArrowLeftIcon } from "@heroicons/react/24/outline";
+import { ArrowLeft } from "@phosphor-icons/react";
 import { useAuth, canCreateMemes, canEditAnyMeme } from "../../shell/AuthContext";
 import { Alert } from "../../components";
 import AddTagInput from "./AddTagInput";
@@ -121,7 +121,7 @@ const EditMemePage: React.FC = () => {
     return (
       <div className="space-y-6">
         <Link to="/memes" className="inline-flex items-center gap-1 text-sm text-text-secondary transition-colors hover:text-text-primary">
-          <ArrowLeftIcon className="h-4 w-4" />
+          <ArrowLeft className="h-4 w-4" />
           Back to Memes
         </Link>
         <div className="rounded-md border border-border-hover bg-surface-2 px-4 py-3 text-text-primary">
@@ -135,7 +135,7 @@ const EditMemePage: React.FC = () => {
     return (
       <div className="space-y-4">
         <Link to="/memes" className="inline-flex items-center gap-1 text-sm text-text-secondary transition-colors hover:text-text-primary">
-          <ArrowLeftIcon className="h-4 w-4" />
+          <ArrowLeft className="h-4 w-4" />
           Back to Memes
         </Link>
         <div className="text-sm text-text-secondary">Loading…</div>
@@ -147,7 +147,7 @@ const EditMemePage: React.FC = () => {
     return (
       <div className="space-y-4">
         <Link to="/memes" className="inline-flex items-center gap-1 text-sm text-text-secondary transition-colors hover:text-text-primary">
-          <ArrowLeftIcon className="h-4 w-4" />
+          <ArrowLeft className="h-4 w-4" />
           Back to Memes
         </Link>
         <div className="rounded-md border border-border-hover bg-surface-2 px-4 py-3 text-text-primary">
@@ -164,7 +164,7 @@ const EditMemePage: React.FC = () => {
     <div className="space-y-6">
       <header className="flex items-center gap-4">
         <Link to={`/memes/${encodeURIComponent(item.PK)}`} className="inline-flex items-center gap-1 text-sm text-text-secondary transition-colors hover:text-text-primary">
-          <ArrowLeftIcon className="h-4 w-4" />
+          <ArrowLeft className="h-4 w-4" />
           Back to Meme
         </Link>
         <h1 className="text-xl font-semibold text-text-primary">Edit meme</h1>

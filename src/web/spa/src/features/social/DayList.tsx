@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { ArrowTopRightOnSquareIcon, PaperClipIcon } from "@heroicons/react/24/outline";
+import { ArrowSquareOut, Paperclip } from "@phosphor-icons/react";
 import type { SocialPost } from "./api";
 import { statusMeta } from "./statusStyles";
 import { platformMeta } from "./platformStyles";
@@ -70,7 +70,7 @@ export function DayList({ posts, onSelectPost }: DayListProps) {
                 </p>
                 {mediaCount > 0 && (
                   <p className="inline-flex items-center gap-1 text-xs text-text-tertiary">
-                    <PaperClipIcon className="h-3 w-3" />
+                    <Paperclip className="h-3 w-3" />
                     {mediaCount} media item{mediaCount === 1 ? "" : "s"}
                   </p>
                 )}
@@ -109,7 +109,7 @@ export function DayList({ posts, onSelectPost }: DayListProps) {
                         rel="noopener noreferrer"
                         className="shrink-0 inline-flex items-center gap-1 text-xs text-hue-teal hover:underline"
                       >
-                        View <ArrowTopRightOnSquareIcon className="h-3 w-3" />
+                        View <ArrowSquareOut className="h-3 w-3" />
                       </a>
                     )}
                   </li>

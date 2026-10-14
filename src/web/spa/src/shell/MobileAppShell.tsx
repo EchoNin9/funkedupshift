@@ -7,7 +7,7 @@ import { MobileBottomTabs } from "./MobileBottomTabs";
 import { MobileModulesProvider } from "./MobileModulesContext";
 import { AdminLayout } from "./AdminLayout";
 import { pageTransition } from "../components/motion";
-import { UserCircleIcon } from "@heroicons/react/24/outline";
+import { UserCircle } from "@phosphor-icons/react";
 import { Marquee } from "./Marquee";
 import { ThemeToggle } from "./ThemeToggle";
 
@@ -90,7 +90,7 @@ export function MobileAppShell() {
             <ThemeToggle />
             {user ? (
               <Link to="/profile" className="text-text-secondary">
-                <UserCircleIcon className="w-7 h-7" />
+                <UserCircle className="w-7 h-7" />
               </Link>
             ) : (
               <Link to="/auth" className="btn-primary text-xs !px-3 !py-1.5">
