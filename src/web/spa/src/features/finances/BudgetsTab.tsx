@@ -66,7 +66,7 @@ const BudgetsTab: React.FC<{ ctx: FinancesContext }> = ({ ctx }) => {
             type="button"
             onClick={addBudget}
             disabled={busy || !newCategory || !newLimit}
-            className="rounded-md bg-accent-500 px-3 py-2 text-sm font-medium text-ink hover:bg-accent-400 disabled:opacity-50"
+            className="rounded-md bg-accent-500 px-3 py-2 text-sm font-medium text-on-accent hover:bg-accent-400 disabled:opacity-50"
           >
             Add budget
           </button>

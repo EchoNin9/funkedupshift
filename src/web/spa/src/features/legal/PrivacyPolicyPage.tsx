@@ -10,7 +10,7 @@ const Section: React.FC<{ id: string; title: string; children: React.ReactNode }
   children,
 }) => (
   <section id={id} className="scroll-mt-24">
-    <h2 className="text-xl sm:text-2xl font-display font-extrabold uppercase tracking-tight text-text-primary mb-3">
+    <h2 className="text-xl sm:text-2xl font-display font-semibold tracking-[-0.025em] text-text-primary mb-3">
       {title}
     </h2>
     <div className="space-y-3 text-text-secondary leading-relaxed">{children}</div>
@@ -31,7 +31,7 @@ const PrivacyPolicyPage: React.FC = () => {
       <div className="max-w-3xl">
         <div className="flex items-center gap-3 mb-4">
           <ShieldCheckIcon className="h-8 w-8 shrink-0 text-accent-text" />
-          <h1 className="text-4xl sm:text-5xl font-display font-extrabold uppercase tracking-tight text-text-primary">
+          <h1 className="text-4xl sm:text-5xl font-display font-semibold tracking-[-0.025em] text-text-primary">
             Privacy Policy
           </h1>
         </div>
@@ -43,7 +43,7 @@ const PrivacyPolicyPage: React.FC = () => {
         </p>
 
         <div className="card p-5 mb-10">
-          <h2 className="text-lg font-display font-extrabold uppercase tracking-tight text-text-primary mb-2">
+          <h2 className="text-lg font-display font-semibold tracking-[-0.025em] text-text-primary mb-2">
             The short version
           </h2>
           <ul className="list-disc space-y-1.5 pl-5 text-text-secondary leading-relaxed">

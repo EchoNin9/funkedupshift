@@ -78,7 +78,7 @@ export function TopBar() {
             aria-label="Account menu"
             aria-haspopup="menu"
             aria-expanded={menuOpen}
-            className="grid h-9 w-9 place-items-center rounded-full font-display text-sm font-semibold text-white"
+            className="grid h-9 w-9 place-items-center rounded-full font-sans text-sm font-semibold text-white"
             style={{
               background: "linear-gradient(135deg, rgb(var(--color-hue-violet)), rgb(var(--color-hue-coral)))",
             }}

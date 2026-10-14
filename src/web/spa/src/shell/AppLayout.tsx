@@ -213,7 +213,7 @@ const AppLayoutContent: React.FC = () => {
         <div className="container-max py-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div>
-              <Link to="/" className="font-display font-extrabold uppercase tracking-tight text-text-primary">
+              <Link to="/" className="font-sans font-semibold text-text-primary">
                 {siteName}
               </Link>
               <p className="mt-1 text-sm text-text-tertiary">

@@ -120,7 +120,7 @@ export function AccountMenu({ onClose, returnFocusTo }: AccountMenuProps) {
       >
         <div className="flex items-center gap-3 px-2.5 pb-3 pt-2">
           <span
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-full font-display text-sm font-semibold text-white"
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-full font-sans text-sm font-semibold text-white"
             style={{ background: "linear-gradient(135deg, rgb(var(--color-hue-violet)), rgb(var(--color-hue-coral)))" }}
             aria-hidden="true"
           >

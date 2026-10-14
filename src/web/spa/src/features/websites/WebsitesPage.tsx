@@ -19,15 +19,15 @@ function domainOf(url?: string): string {
 const Stars: React.FC<{ avg?: number }> = ({ avg }) => {
   const filled = Math.round(avg ?? 0);
   return (
-    <span className="pop-stars" aria-label={avg ? `${avg.toFixed(1)} out of 5` : "unrated"}>
+    <span className="text-hue-amber tracking-[2px]" aria-label={avg ? `${avg.toFixed(1)} out of 5` : "unrated"}>
       {"★★★★★".slice(0, filled)}
-      <span className="empty">{"★★★★★".slice(filled)}</span>
+      <span className="text-text-tertiary">{"★★★★★".slice(filled)}</span>
     </span>
   );
 };
 
-/* Cycle brutalist card-accent classes so the grid isn't monochrome. */
-const CARD_ACCENTS = ["", "card-accent-n3", "card-accent-n2", "card-accent-n4"];
+/* Cycle card-accent classes so the grid isn't monochrome. */
+const CARD_ACCENTS = ["", "card-accent-teal", "card-accent-amber", "card-accent-coral"];
 
 interface SiteCategory {
   id: string;
@@ -277,7 +277,7 @@ const WebsitesPage: React.FC = () => {
         transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
       >
         <div className="space-y-1">
-          <h1 className="text-3xl sm:text-4xl font-display font-extrabold uppercase tracking-tight text-text-primary">
+          <h1 className="text-3xl sm:text-4xl font-display font-semibold tracking-[-0.025em] text-text-primary">
             The Stash
           </h1>
           <p className="text-sm text-text-secondary">
@@ -339,10 +339,10 @@ const WebsitesPage: React.FC = () => {
             <button
               type="button"
               onClick={() => setSelectedCategoryIds([])}
-              className={`flex-shrink-0 rounded-full border-2 px-3.5 py-1 text-xs font-display font-extrabold uppercase tracking-tight transition-colors ${
+              className={`flex-shrink-0 rounded-full border-2 px-3.5 py-1 text-xs font-sans font-semibold transition-colors ${
                 selectedCategoryIds.length === 0
-                  ? "border-ink bg-accent text-ink"
-                  : "border-border-default text-text-secondary hover:border-n3 hover:text-text-primary"
+                  ? "border-accent bg-accent text-on-accent"
+                  : "border-border-default text-text-secondary hover:border-hue-teal hover:text-text-primary"
               }`}
             >
               All
@@ -352,10 +352,10 @@ const WebsitesPage: React.FC = () => {
                 key={c.id}
                 type="button"
                 onClick={() => toggleCategory(c.id)}
-                className={`flex-shrink-0 rounded-full border-2 px-3.5 py-1 text-xs font-display font-extrabold uppercase tracking-tight transition-colors ${
+                className={`flex-shrink-0 rounded-full border-2 px-3.5 py-1 text-xs font-sans font-semibold transition-colors ${
                   selectedCategoryIds.includes(c.id)
-                    ? "border-ink bg-accent text-ink"
-                    : "border-border-default text-text-secondary hover:border-n3 hover:text-text-primary"
+                    ? "border-accent bg-accent text-on-accent"
+                    : "border-border-default text-text-secondary hover:border-hue-teal hover:text-text-primary"
                 }`}
               >
                 {c.name}
@@ -474,7 +474,7 @@ const WebsitesPage: React.FC = () => {
                 >
                   {/* Favicon / initial chip + title + domain */}
                   <div className="flex items-start gap-3">
-                    <span className="flex h-11 w-11 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg border-2 border-ink bg-surface-3 font-display text-lg font-extrabold text-text-primary">
+                    <span className="flex h-11 w-11 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg border-2 border-border-default bg-surface-3 font-display text-lg font-semibold text-text-primary">
                       {logo ? (
                         <img
                           src={logo}
@@ -489,7 +489,7 @@ const WebsitesPage: React.FC = () => {
                       )}
                     </span>
                     <div className="min-w-0 flex-1">
-                      <h2 className="truncate font-display text-base font-extrabold uppercase tracking-tight text-text-primary">
+                      <h2 className="truncate font-display text-base font-semibold tracking-[-0.025em] text-text-primary">
                         {title}
                       </h2>
                       {domain && (
@@ -512,7 +512,7 @@ const WebsitesPage: React.FC = () => {
                   {site.categories && site.categories.length > 0 && (
                     <div className="mt-3 flex flex-wrap gap-1.5">
                       {site.categories.map((c) => (
-                        <span key={c.id} className="pop-pill">{c.name}</span>
+                        <span key={c.id} className="tag tag-outline">{c.name}</span>
                       ))}
                     </div>
                   )}
@@ -522,7 +522,7 @@ const WebsitesPage: React.FC = () => {
                     {typeof site.averageRating === "number"
                       ? <Stars avg={site.averageRating} />
                       : <span className="text-xs text-text-tertiary">Unrated</span>}
-                    <span className="inline-flex items-center gap-1 font-display text-xs font-extrabold uppercase tracking-tight text-accent-text transition-all group-hover:gap-2">
+                    <span className="inline-flex items-center gap-1 font-sans text-xs font-semibold text-accent-text transition-all group-hover:gap-2">
                       Open →
                     </span>
                   </div>

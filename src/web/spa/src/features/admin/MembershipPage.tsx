@@ -719,7 +719,7 @@ const MembershipPage: React.FC = () => {
             <button
               type="submit"
               disabled={isSubmitting || !newName.trim()}
-              className="inline-flex items-center justify-center rounded-md bg-accent-500 px-4 py-2 text-sm font-semibold text-ink hover:bg-accent-400 disabled:opacity-50"
+              className="inline-flex items-center justify-center rounded-md bg-accent-500 px-4 py-2 text-sm font-semibold text-on-accent hover:bg-accent-400 disabled:opacity-50"
             >
               {isSubmitting ? "Creating…" : "Create"}
             </button>
@@ -762,7 +762,7 @@ const MembershipPage: React.FC = () => {
                           <button
                             type="submit"
                             disabled={isUpdating}
-                            className="rounded-md bg-accent-500 px-3 py-1.5 text-xs font-medium text-ink hover:bg-accent-400 disabled:opacity-50"
+                            className="rounded-md bg-accent-500 px-3 py-1.5 text-xs font-medium text-on-accent hover:bg-accent-400 disabled:opacity-50"
                           >
                             {isUpdating ? "Saving…" : "Save"}
                           </button>
@@ -871,7 +871,7 @@ const MembershipPage: React.FC = () => {
             <button
               type="submit"
               disabled={isRoleSubmitting || !newRoleName.trim()}
-              className="inline-flex items-center justify-center rounded-md bg-accent-500 px-4 py-2 text-sm font-semibold text-ink hover:bg-accent-400 disabled:opacity-50"
+              className="inline-flex items-center justify-center rounded-md bg-accent-500 px-4 py-2 text-sm font-semibold text-on-accent hover:bg-accent-400 disabled:opacity-50"
             >
               {isRoleSubmitting ? "Creating…" : "Create"}
             </button>
@@ -930,7 +930,7 @@ const MembershipPage: React.FC = () => {
                           <button
                             type="submit"
                             disabled={isRoleUpdating}
-                            className="rounded-md bg-accent-500 px-3 py-1.5 text-xs font-medium text-ink hover:bg-accent-400 disabled:opacity-50"
+                            className="rounded-md bg-accent-500 px-3 py-1.5 text-xs font-medium text-on-accent hover:bg-accent-400 disabled:opacity-50"
                           >
                             {isRoleUpdating ? "Saving…" : "Save"}
                           </button>

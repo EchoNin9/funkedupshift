@@ -25,7 +25,7 @@ export const Pager: React.FC<PagerProps> = ({ page, pageCount, onChange, classNa
       >
         ← Prev
       </button>
-      <span className="font-display text-xs font-extrabold uppercase tracking-tight text-text-secondary">
+      <span className="font-sans text-xs font-semibold text-text-secondary">
         Page {page} of {pageCount}
       </span>
       <button

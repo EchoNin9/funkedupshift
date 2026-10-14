@@ -33,7 +33,7 @@ export function SocialGate() {
   if (!user || !hasRole(user, "superadmin")) {
     return (
       <div className="container-max section-padding text-center">
-        <h1 className="text-2xl font-display font-extrabold uppercase text-text-primary mb-4">Access Denied</h1>
+        <h1 className="text-2xl font-display font-semibold tracking-[-0.025em] text-text-primary mb-4">Access Denied</h1>
         <p className="text-text-secondary">You don&rsquo;t have permission to access social scheduling.</p>
       </div>
     );

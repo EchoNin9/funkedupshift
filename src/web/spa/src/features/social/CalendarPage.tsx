@@ -290,7 +290,7 @@ export default function CalendarPage() {
           {view === "month" && posts.length === 0 && (
             <p className="text-sm text-text-tertiary text-center py-4">
               No posts scheduled this month —{" "}
-              <Link to="/social/compose" className="text-nav-text hover:underline">
+              <Link to="/social/compose" className="text-hue-teal hover:underline">
                 create one
               </Link>
               .

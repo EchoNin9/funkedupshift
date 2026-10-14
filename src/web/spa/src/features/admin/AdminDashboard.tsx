@@ -10,10 +10,10 @@ const fadeUp = { hidden: { opacity: 0, y: 15 }, show: { opacity: 1, y: 0, transi
 
 /* Cycle distinct neon accent shadows + icon colours so each panel pops differently. */
 const PANEL_ACCENTS = [
-  { card: "", icon: "text-n1-text" },
-  { card: "card-accent-n3", icon: "text-n3-text" },
-  { card: "card-accent-n2", icon: "text-n2-text" },
-  { card: "card-accent-n4", icon: "text-n4-text" },
+  { card: "", icon: "text-accent-text" },
+  { card: "card-accent-teal", icon: "text-hue-teal" },
+  { card: "card-accent-amber", icon: "text-hue-amber" },
+  { card: "card-accent-coral", icon: "text-hue-coral" },
 ];
 
 export function AdminDashboard() {
@@ -36,7 +36,7 @@ export function AdminDashboard() {
   if (!user || visibleModules.length === 0) {
     return (
       <div className="container-max section-padding text-center">
-        <h1 className="text-2xl font-display font-extrabold uppercase text-text-primary mb-4">
+        <h1 className="text-2xl font-display font-semibold tracking-[-0.025em] text-text-primary mb-4">
           Access Denied
         </h1>
         <p className="text-text-secondary">
@@ -61,7 +61,7 @@ export function AdminDashboard() {
               <div className={`card ${accent.card} p-6 group h-full`}>
                 <Link to={mod.path} className="block">
                   <mod.icon className={`w-8 h-8 ${accent.icon} mb-4 group-hover:scale-110 transition-transform`} />
-                  <h2 className="text-lg font-display font-extrabold uppercase tracking-tight text-text-primary mb-1">
+                  <h2 className="text-lg font-display font-semibold tracking-[-0.025em] text-text-primary mb-1">
                     {mod.label}
                   </h2>
                   <p className="text-sm text-text-secondary">{mod.description}</p>
@@ -69,7 +69,7 @@ export function AdminDashboard() {
                 {(mod.id === "websites" || mod.id === "media") && (
                   <Link
                     to={mod.path + "?tab=add"}
-                    className="mt-4 inline-flex items-center gap-1.5 text-sm font-display font-extrabold uppercase tracking-tight text-accent-text hover:underline"
+                    className="mt-4 inline-flex items-center gap-1.5 text-sm font-sans font-semibold text-accent-text hover:underline"
                   >
                     <PlusIcon className="w-4 h-4" />
                     Add {mod.id === "websites" ? "Site" : "Media"}

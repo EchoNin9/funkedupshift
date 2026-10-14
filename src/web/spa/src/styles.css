@@ -33,15 +33,6 @@
     --color-hue-teal: 51 201 170;     /* Discover */
     --color-hue-amber: 242 183 63;    /* Admin    */
 
-    /* Legacy Neon Pop names — ALIASES onto the new palette so existing pages keep working.
-       Removed in the cleanup wave. n1 accent, n2 amber, n3 teal, n4 coral. */
-    --color-n1: 124 92 255;
-    --color-n2: 242 183 63;
-    --color-n3: 51 201 170;
-    --color-n4: 255 127 92;
-    --color-nav: 51 201 170;
-    --color-n1-text: 167 144 255; --color-n2-text: 242 183 63; --color-n3-text: 51 201 170; --color-n4-text: 255 127 92;
-    --color-nav-text: 51 201 170;
     --color-danger: 255 107 107; --color-warning: 251 191 36; --color-success: 52 211 153;
     --color-on-danger: 20 8 26; --color-on-warning: 20 8 26; --color-on-success: 20 8 26;
     --color-ink: 17 17 23;     /* legacy brutalist border/shadow ink */
@@ -66,7 +57,7 @@
     --shadow-md: 0 0 0 1px var(--color-divider), 0 8px 24px rgba(0, 0, 0, .45);
     --shadow-lg: 0 0 0 1px var(--color-border-strong), 0 24px 60px rgba(0, 0, 0, .55);
 
-    --pop-spring: cubic-bezier(.34, 1.56, .64, 1);
+    --ease-spring: cubic-bezier(.34, 1.56, .64, 1);
   }
 
   :root[data-theme="light"] {
@@ -90,13 +81,6 @@
     --color-hue-teal: 14 148 121;
     --color-hue-amber: 185 124 6;
 
-    --color-n1: 106 72 245;
-    --color-n2: 242 183 63;   /* fills stay bright; text variants below are deepened */
-    --color-n3: 51 201 170;
-    --color-n4: 255 127 92;
-    --color-nav: 51 201 170;
-    --color-n1-text: 84 52 224; --color-n2-text: 185 124 6; --color-n3-text: 14 148 121; --color-n4-text: 217 80 42;
-    --color-nav-text: 14 148 121;
     --color-danger: 214 58 58; --color-warning: 146 64 14; --color-success: 4 120 87;
     --color-on-danger: 255 255 255; --color-on-warning: 255 255 255; --color-on-success: 255 255 255;
     --color-ink: 21 21 28;
@@ -145,14 +129,14 @@
     @apply inline-flex items-center justify-center gap-2 px-4 py-2
            font-display font-extrabold uppercase tracking-tight text-sm
            rounded-xl
-           focus:outline-none focus-visible:ring-2 focus-visible:ring-n3 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-0
+           focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface-0
            transition-[transform,box-shadow] duration-150
            disabled:opacity-50 disabled:cursor-not-allowed;
     color: rgb(var(--color-on-accent));
     background: rgb(var(--color-accent));
     border: 3px solid rgb(var(--color-ink));
     box-shadow: 6px 6px 0 rgb(var(--color-ink));
-    transition-timing-function: var(--pop-spring);
+    transition-timing-function: var(--ease-spring);
   }
   .btn-primary:hover { transform: translate(-2px, -2px); box-shadow: 8px 8px 0 rgb(var(--color-ink)); }
   .btn-primary:active { transform: translate(0, 0); box-shadow: 3px 3px 0 rgb(var(--color-ink)); }
@@ -163,7 +147,7 @@
            bg-transparent text-text-primary
            rounded-xl text-sm font-medium
            hover:bg-surface-3
-           focus:outline-none focus-visible:ring-2 focus-visible:ring-n3 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-0
+           focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface-0
            transition-[transform,box-shadow,background-color] duration-150
            disabled:opacity-50 disabled:cursor-not-allowed;
     border: 2px solid rgb(var(--color-border-default));
@@ -174,10 +158,10 @@
   .card {
     @apply bg-surface-2 rounded-lg;
     border: 3px solid rgb(var(--color-text-primary));
-    box-shadow: 6px 6px 0 rgb(var(--color-n1));
-    transition: transform .15s var(--pop-spring), box-shadow .15s ease;
+    box-shadow: 6px 6px 0 rgb(var(--color-accent));
+    transition: transform .15s var(--ease-spring), box-shadow .15s ease;
   }
-  .card:hover { transform: translate(-2px, -2px); box-shadow: 9px 9px 0 rgb(var(--color-n1)); }
+  .card:hover { transform: translate(-2px, -2px); box-shadow: 9px 9px 0 rgb(var(--color-accent)); }
   /* Recede a card whose content is history (e.g. a cancelled scheduled post)
      so live items alongside it stand out. .card sets `border` as a shorthand
      with a raw colour, so this overrides border-color specifically. */
@@ -190,12 +174,12 @@
   .card-flat { box-shadow: none; }
   .card-flat:hover { transform: none; box-shadow: none; }
   /* accent overrides */
-  .card-accent-n2 { box-shadow: 6px 6px 0 rgb(var(--color-n2)); }
-  .card-accent-n2:hover { box-shadow: 9px 9px 0 rgb(var(--color-n2)); }
-  .card-accent-n3 { box-shadow: 6px 6px 0 rgb(var(--color-n3)); }
-  .card-accent-n3:hover { box-shadow: 9px 9px 0 rgb(var(--color-n3)); }
-  .card-accent-n4 { box-shadow: 6px 6px 0 rgb(var(--color-n4)); }
-  .card-accent-n4:hover { box-shadow: 9px 9px 0 rgb(var(--color-n4)); }
+  .card-accent-amber { box-shadow: 6px 6px 0 rgb(var(--color-hue-amber)); }
+  .card-accent-amber:hover { box-shadow: 9px 9px 0 rgb(var(--color-hue-amber)); }
+  .card-accent-teal { box-shadow: 6px 6px 0 rgb(var(--color-hue-teal)); }
+  .card-accent-teal:hover { box-shadow: 9px 9px 0 rgb(var(--color-hue-teal)); }
+  .card-accent-coral { box-shadow: 6px 6px 0 rgb(var(--color-hue-coral)); }
+  .card-accent-coral:hover { box-shadow: 9px 9px 0 rgb(var(--color-hue-coral)); }
 
   /* Inputs — neon focus offset */
   .input-field {
@@ -205,40 +189,10 @@
   }
   .input-field:focus {
     outline: none;
-    border-color: rgb(var(--color-n3));
-    box-shadow: 3px 3px 0 rgb(var(--color-n3));
+    border-color: rgb(var(--color-hue-teal));
+    box-shadow: 3px 3px 0 rgb(var(--color-hue-teal));
   }
 
-  /* Pills / badges */
-  .pop-pill {
-    @apply inline-block rounded-full text-xs px-2.5 py-0.5 text-text-secondary;
-    border: 1.5px solid rgb(var(--color-border-default));
-  }
-  .pop-badge {
-    @apply inline-block rounded-full text-xs font-display font-extrabold uppercase px-3 py-1;
-    color: rgb(var(--color-on-accent));
-    background: rgb(var(--color-n1));
-    border: 2px solid rgb(var(--color-ink));
-    box-shadow: 4px 4px 0 rgb(var(--color-ink));
-  }
-
-  /* Star rating */
-  .pop-stars { color: rgb(var(--color-n2)); letter-spacing: 2px; }
-  .pop-stars .empty { color: rgb(var(--color-text-tertiary)); }
-
-  /* Marquee */
-  .pop-marquee {
-    @apply w-full overflow-hidden;
-    color: rgb(var(--color-on-accent));
-    background: rgb(var(--color-n1));
-    border-bottom: 3px solid rgb(var(--color-text-primary));
-  }
-  .pop-marquee__track {
-    @apply flex whitespace-nowrap font-display font-extrabold uppercase text-[13px] py-2;
-    width: max-content;
-    animation: pop-marquee 22s linear infinite;
-  }
-  .pop-marquee__item { @apply px-[18px]; }
 }
 
 /* Shell building blocks from the design system (used by the launcher / top bar / tab bar in later waves).
@@ -319,22 +273,6 @@
 }
 
 @layer utilities {
-  /* Neon ambiance background */
-  .pop-bg { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
-  .pop-blob {
-    position: absolute; width: 42vw; height: 42vw; border-radius: 50%;
-    filter: blur(50px); opacity: .26; animation: pop-drift 20s ease-in-out infinite;
-  }
-  .pop-blob--1 { top: -8%; left: -6%; background: radial-gradient(circle, rgb(var(--color-n1)), transparent 70%); }
-  .pop-blob--2 { bottom: -10%; right: -6%; background: radial-gradient(circle, rgb(var(--color-n3)), transparent 70%); animation-duration: 24s; }
-  .pop-blob--3 { top: 40%; left: 50%; background: radial-gradient(circle, rgb(var(--color-n2)), transparent 70%); opacity: .18; animation-duration: 18s; }
-  .pop-halftone {
-    position: fixed; inset: 0; z-index: 0; pointer-events: none;
-    background-image: radial-gradient(rgb(var(--color-border-default)) 1px, transparent 1px);
-    background-size: 21px 21px; opacity: .5;
-  }
-  .pop-pulse { animation: pop-pulse 1.6s ease-in-out infinite; }
-
   .scrollbar-thin {
     scrollbar-width: thin;
     scrollbar-color: rgb(var(--color-border-hover)) transparent;
@@ -348,14 +286,9 @@
 }
 
 @keyframes fus-marquee { to { transform: translateX(-50%); } }
-@keyframes pop-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-@keyframes pop-drift { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(4%, 6%) scale(1.12); } }
-@keyframes pop-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
-@keyframes pop-glitch-a { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(-2px, 1px); } }
-@keyframes pop-glitch-b { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(2px, -2px); } }
 
 @media (prefers-reduced-motion: reduce) {
-  .pop-marquee__track, .pop-blob, .pop-pulse, .marquee-track { animation: none; }
+  .marquee-track { animation: none; }
   .launcher, .launcher-scrim { transition: none; }
   .card, .btn-primary, .btn-secondary { transition: none; }
   .animate-pulse, .animate-fade-in { animation: none; }

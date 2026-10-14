@@ -552,7 +552,7 @@ const MemeGeneratorPage: React.FC = () => {
             type="button"
             onClick={handleSubmit}
             disabled={!imageSrc || isSubmitting}
-            className="w-full rounded-md bg-accent-500 px-4 py-3 text-sm font-semibold text-ink hover:bg-accent-400 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full rounded-md bg-accent-500 px-4 py-3 text-sm font-semibold text-on-accent hover:bg-accent-400 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSubmitting ? "Saving…" : "Save meme"}
           </button>

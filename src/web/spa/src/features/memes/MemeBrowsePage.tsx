@@ -331,7 +331,7 @@ const MemeBrowsePage: React.FC = () => {
           />
           <button
             type="submit"
-            className="inline-flex items-center justify-center rounded-md bg-accent-500 px-4 py-2 text-sm font-semibold text-ink hover:bg-accent-400"
+            className="inline-flex items-center justify-center rounded-md bg-accent-500 px-4 py-2 text-sm font-semibold text-on-accent hover:bg-accent-400"
           >
             Search
           </button>

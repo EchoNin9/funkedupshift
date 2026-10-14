@@ -69,7 +69,7 @@ const TABS: TabConfig[] = [
     emptyMessage: "No highlights yet. Generate from the highlight category or add a URL above.",
     generateSuccessMessage: "Cache generated from sites in the highlight category.",
     saveSuccessMessage: "Highlights list saved.",
-    buttonClass: "bg-n3 hover:bg-n3/80 !text-ink",
+    buttonClass: "bg-hue-teal hover:bg-hue-teal/80 !text-surface-0",
     viewPath: "/recommended/highlights",
   },
   {
@@ -412,7 +412,7 @@ const ListTab: React.FC<ListTabProps> = ({ config }) => {
         <button
           type="submit"
           disabled={isSaving || !newUrl.trim()}
-          className="rounded-md bg-accent-500 px-4 py-2 text-sm font-medium text-ink hover:bg-accent-400 disabled:opacity-50"
+          className="rounded-md bg-accent-500 px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent-400 disabled:opacity-50"
         >
           Add
         </button>

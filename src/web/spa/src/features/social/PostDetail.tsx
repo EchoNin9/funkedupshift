@@ -85,7 +85,7 @@ export function PostDetail({ postId, onClose, onChanged }: PostDetailProps) {
         className="w-full max-w-lg rounded-xl border border-border-hover bg-surface-2 shadow-xl max-h-[85vh] overflow-y-auto scrollbar-thin"
       >
         <div className="flex items-start justify-between gap-3 border-b border-border-default p-4">
-          <Dialog.Title as="h2"  className="text-lg font-display font-extrabold uppercase tracking-tight text-text-primary">
+          <Dialog.Title as="h2"  className="text-lg font-display font-semibold tracking-[-0.025em] text-text-primary">
             Post detail
           </Dialog.Title>
           <button
@@ -150,7 +150,7 @@ export function PostDetail({ postId, onClose, onChanged }: PostDetailProps) {
                                 href={t.permalink}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 text-xs text-nav-text hover:underline"
+                                className="inline-flex items-center gap-1 text-xs text-hue-teal hover:underline"
                               >
                                 View <ArrowTopRightOnSquareIcon className="h-3 w-3" />
                               </a>
