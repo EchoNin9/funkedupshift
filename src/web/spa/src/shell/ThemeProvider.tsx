@@ -40,7 +40,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       const [prefs] = await Promise.all([fetchProfilePrefs(), loadCatalog()]);
       if (cancelled || !prefs) return;
       applyServerPrefs({ themeId: prefs.themeId, mode: prefs.mode });
-      hydratePins(prefs.pins);
+      hydratePins(prefs.pins, userId);
     })();
     return () => {
       cancelled = true;

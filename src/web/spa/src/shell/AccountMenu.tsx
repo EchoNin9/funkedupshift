@@ -103,7 +103,8 @@ export function AccountMenu({ onClose, returnFocusTo }: AccountMenuProps) {
     <>
       <div
         className="fixed inset-0 z-[49]"
-        style={narrow ? { background: "color-mix(in srgb, #08080c 55%, transparent)" } : undefined}
+        // On the mobile sheet the scrim stops above the TabBar (68px = 56 tab + 12 padding) so the tabs stay tappable.
+        style={narrow ? { background: "color-mix(in srgb, #08080c 55%, transparent)", bottom: "calc(68px + env(safe-area-inset-bottom))" } : undefined}
         onClick={onClose}
         aria-hidden="true"
       />

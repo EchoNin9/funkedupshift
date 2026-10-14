@@ -4,6 +4,9 @@ import { canSync, saveProfilePrefs } from "../shell/profilePrefs";
 
 /** localStorage key for the pinned app ids — a cache; the profile API (PUT /profile `pins`) is the source of truth. */
 export const PINS_KEY = "funkedupshift_pins";
+/** userId the cached pins belong to. A cache written by a different user (shared browser, session expired
+ *  without sign-out) must never seed the next user's server pins. */
+export const PINS_OWNER_KEY = "funkedupshift_pins_owner";
 
 /** Defaults for a user who has never pinned/unpinned anything: URL Shortener, Websites, Finances,
  *  Vehicle Expenses, Squash, Media. NB the URL Shortener's id in config/modules.ts is "tools". */
@@ -22,9 +25,13 @@ export function readPins(): string[] {
   }
 }
 
+/** Owner of the in-memory/cached pins; null until the profile has hydrated (nothing is written to the cache then). */
+let cacheOwner: string | null = null;
+
 function writePins(pins: string[]): void {
   try {
     localStorage.setItem(PINS_KEY, JSON.stringify(pins));
+    if (cacheOwner) localStorage.setItem(PINS_OWNER_KEY, cacheOwner);
   } catch {
     /* storage unavailable — pins live in memory for this session */
   }
@@ -51,7 +58,19 @@ if (typeof window !== "undefined") {
 
 /** Adopt the profile's pins. The API cannot tell "never set" from "unpinned everything" (both come back `[]`),
  *  so an empty server list keeps the local cache and, if that holds explicit pins, seeds the server with them. */
-export function hydratePins(serverPins: string[]): void {
+export function hydratePins(serverPins: string[], userId: string): void {
+  let cacheIsOurs = false;
+  try {
+    cacheIsOurs = localStorage.getItem(PINS_OWNER_KEY) === userId;
+    if (!cacheIsOurs) {
+      // Someone else's (or an unowned legacy) cache: drop it before readPins() can pick it up.
+      localStorage.removeItem(PINS_KEY);
+      localStorage.removeItem(PINS_OWNER_KEY);
+    }
+  } catch {
+    /* storage unavailable */
+  }
+  cacheOwner = userId;
   if (serverPins.length > 0) {
     current = Array.from(new Set(serverPins));
     confirmed = current;
@@ -62,7 +81,7 @@ export function hydratePins(serverPins: string[]): void {
   current = readPins();
   confirmed = current;
   emit();
-  if (current.length > 0 && localStorage.getItem(PINS_KEY) !== null && canSync()) {
+  if (cacheIsOurs && current.length > 0 && localStorage.getItem(PINS_KEY) !== null && canSync()) {
     void saveProfilePrefs({ pins: current });
   }
 }
@@ -71,9 +90,11 @@ export function hydratePins(serverPins: string[]): void {
 export function resetPins(): void {
   try {
     localStorage.removeItem(PINS_KEY);
+    localStorage.removeItem(PINS_OWNER_KEY);
   } catch {
     /* ignore */
   }
+  cacheOwner = null;
   current = [...DEFAULT_PINS];
   confirmed = current;
   emit();

@@ -58,6 +58,9 @@ function PageLoader() {
   );
 }
 
+/** Native (Capacitor) shell. Still on MobileBottomTabs/MobileMorePage: adopting the web TabBar + sheet launcher
+ *  needs the route table shared with AppLayout first (module list lives in MobileModulesContext here).
+ *  Follow-up — see docs/design_handoff_app_shell/REDESIGN_STATE.md. */
 export function MobileAppShell() {
   const { user } = useAuth();
   const { logo, siteName, bannerText } = useBranding();
