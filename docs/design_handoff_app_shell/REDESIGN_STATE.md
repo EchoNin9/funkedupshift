@@ -54,9 +54,9 @@ later session can resume from here.
 |---|---|---|---|---|
 | 1 | `redesign/foundation` | `session_012RDDaaoPdSCUEfZ2uyANfF` (archived) | [#136](https://github.com/EchoNin9/funkedupshift/pull/136) | merged `779e156`; Deploy Staging run 426 success |
 | 2 | `redesign/themes-api` | `session_013KbockRqzwxNAd5mu9ttvp` | — | launched |
-| 2 | `redesign/shell-desktop` | `session_01CfgfuWvZwByKygyP7yHMbT` | — | launched |
-| 2 | `redesign/app-frame` | `session_01Ati2nHZyx6KD4KZuNH9Ezu` | — | launched |
-| 2 | `redesign/shortener` | `session_01AEXAGgAw83aKKGNJLtj3dk` | — | launched |
+| 2 | `redesign/shell-desktop` | `session_01CfgfuWvZwByKygyP7yHMbT` (archived) | [#139](https://github.com/EchoNin9/funkedupshift/pull/139) | merged `90057c6` (before themes-api: backend-only, no dependency); deploy pending |
+| 2 | `redesign/app-frame` | `session_01Ati2nHZyx6KD4KZuNH9Ezu` | [#138](https://github.com/EchoNin9/funkedupshift/pull/138) | reviewed OK; rebasing onto #137 + #139 (MemeBrowsePage conflict) |
+| 2 | `redesign/shortener` | `session_01AEXAGgAw83aKKGNJLtj3dk` | [#140](https://github.com/EchoNin9/funkedupshift/pull/140) | open; review pending |
 | 3 | `redesign/themes-ui` | — | — | not started |
 | 3 | `redesign/homes` | — | — | not started |
 | 3 | `redesign/tools-restyle` | — | — | not started |
@@ -70,6 +70,10 @@ later session can resume from here.
 - Remaining heroicons in `ADMIN_MODULES`/`MODULE_GROUPS` stay until wave 4.
 
 ## Log
+
+- 2026-10-14 — #137 memes fix merged (`3da866b`), deploy success. #139 shell-desktop merged (`90057c6`).
+  Lead fix PR [#141](https://github.com/EchoNin9/funkedupshift/pull/141): `usePins` same-tab sync
+  (launcher + AppPage Pin button each mount the hook). Wave 3 `themes-ui` must keep this behaviour.
 
 - 2026-10-14 — Wave 2 launched (themes-api, shell-desktop, app-frame, shortener). Memes fix PR #137 opened (lead, solo).
 
