@@ -909,6 +909,7 @@ resource "aws_lambda_function" "api" {
   source_code_hash = data.archive_file.api.output_base64sha256
   runtime          = "python3.12"
   timeout          = 60
+  memory_size      = 512
   layers           = [aws_lambda_layer_version.pillow.arn]
 
   environment {
