@@ -43,11 +43,34 @@ module.exports = {
         "on-danger": "rgb(var(--color-on-danger) / <alpha-value>)",
         "on-warning": "rgb(var(--color-on-warning) / <alpha-value>)",
         "on-success": "rgb(var(--color-on-success) / <alpha-value>)",
-        ink: "rgb(var(--color-ink) / <alpha-value>)"
+        ink: "rgb(var(--color-ink) / <alpha-value>)",
+        "on-accent": "rgb(var(--color-on-accent) / <alpha-value>)",
+        /* Design-system category hues (Discover / Tools / Modules / Admin) */
+        "hue-teal": "rgb(var(--color-hue-teal) / <alpha-value>)",
+        "hue-violet": "rgb(var(--color-hue-violet) / <alpha-value>)",
+        "hue-coral": "rgb(var(--color-hue-coral) / <alpha-value>)",
+        "hue-amber": "rgb(var(--color-hue-amber) / <alpha-value>)",
+        /* Full-colour tokens (no alpha modifier) */
+        divider: "var(--color-divider)",
+        "border-strong": "var(--color-border-strong)",
+        brand: "var(--color-brand)"
+      },
+      /* Named ds-* so the existing rounded and shadow utilities keep their meaning */
+      borderRadius: {
+        "ds-sm": "var(--radius-sm)",
+        "ds-md": "var(--radius-md)",
+        "ds-lg": "var(--radius-lg)"
+      },
+      boxShadow: {
+        "ds-sm": "var(--shadow-sm)",
+        "ds-md": "var(--shadow-md)",
+        "ds-lg": "var(--shadow-lg)"
       },
       fontFamily: {
-        sans: ["Space Grotesk", "system-ui", "sans-serif"],
-        display: ["Syne", "system-ui", "sans-serif"],
+        sans: ["Manrope", "system-ui", "sans-serif"],
+        display: ["Space Grotesk", "system-ui", "sans-serif"],
+        heading: ["Space Grotesk", "system-ui", "sans-serif"],
+        brand: ["Syne", "system-ui", "sans-serif"],
         mono: ["JetBrains Mono", "ui-monospace", "monospace"],
       },
       animation: {

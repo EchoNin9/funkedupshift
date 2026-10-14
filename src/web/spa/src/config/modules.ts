@@ -19,17 +19,35 @@ import {
   UserGroupIcon,
   TruckIcon,
   LinkIcon,
-  KeyIcon,
-  ScissorsIcon,
-  CubeTransparentIcon,
-  ServerIcon,
-  DocumentTextIcon,
-  ArrowsRightLeftIcon,
-  InformationCircleIcon,
   MegaphoneIcon,
-  VideoCameraIcon,
   BanknotesIcon,
 } from "@heroicons/react/24/outline";
+import {
+  GlobeHemisphereWest,
+  Images,
+  Smiley,
+  Pulse,
+  Sparkle,
+  Star,
+  Fingerprint,
+  LinkSimple,
+  Key,
+  Resize,
+  Crop,
+  SelectionBackground,
+  HardDrives,
+  Note,
+  ArrowsLeftRight,
+  VideoCamera,
+  Wallet,
+  ChartLineUp,
+  Car,
+  Receipt,
+  Trophy,
+  MagicWand,
+  UserCircle,
+  Medal,
+} from "@phosphor-icons/react";
 
 /** Public nav modules (sidebar/header links). */
 export interface PublicModule {
@@ -42,10 +60,18 @@ export interface PublicModule {
   visibility?: (user: AuthUser | null) => boolean;
   /** When true, show for any logged-in user regardless of role. */
   authOnly?: boolean;
-  /** Optional: icon + short blurb, used by card-grid pages (e.g. ToolsIndexPage). */
-  icon?: React.ComponentType<{ className?: string }>;
-  description?: string;
+  /** Launcher group (Discover / Tools / Modules). Drives the launcher, landing page, section pages and "More in…" footers. */
+  group: LauncherGroupId;
+  /** Phosphor icon. */
+  icon: React.ComponentType<{ className?: string }>;
+  /** One-line blurb for cards and launcher search. */
+  description: string;
+  /** False = reachable (nav, avatar menu, Squash page) but not a launcher tile. Default true. */
+  launcher?: boolean;
 }
+
+export type LauncherGroupId = "discover" | "tools" | "modules";
+export type LockReason = "guest" | "no-access";
 
 /** Admin dashboard modules (cards on /admin). */
 export interface AdminModule {
@@ -58,30 +84,30 @@ export interface AdminModule {
 }
 
 export const PUBLIC_MODULES: PublicModule[] = [
-  { id: "websites", label: "Websites", path: "/websites", section: "discover", minRole: "guest" },
-  { id: "media", label: "Media", path: "/media", section: "discover", minRole: "guest" },
-  { id: "internet-dashboard", label: "Internet Dashboard", path: "/internet-dashboard", section: "discover", minRole: "guest" },
-  { id: "my-info", label: "My Info", path: "/my-info", section: "discover", minRole: "guest", icon: InformationCircleIcon, description: "See what your browser, device, and network reveal about you." },
-  { id: "profile", label: "Profile", path: "/profile", section: "discover", minRole: "user", authOnly: true },
-  { id: "squash", label: "Squash", path: "/squash", section: "squash", minRole: "user", visibility: canAccessSquash },
-  { id: "squash-admin", label: "Squash Admin", path: "/squash-admin", section: "squash", minRole: "manager", visibility: canModifySquash },
-  { id: "memes", label: "Memes", path: "/memes", section: "memes", minRole: "guest" },
-  { id: "meme-generator", label: "Meme Generator", path: "/memes/create", section: "memes", minRole: "user", visibility: canCreateMemes },
-  { id: "finances", label: "Finances", path: "/finances", section: "financial", minRole: "user", authOnly: true },
-  { id: "investing", label: "Investing", path: "/investing", section: "financial", minRole: "user", visibility: canAccessInvesting },
-  { id: "vehicles-expenses", label: "Vehicles Expenses", path: "/vehicles-expenses", section: "vehicles", minRole: "user", visibility: canAccessExpenses },
-  { id: "general-expenses", label: "General expenses", path: "/general-expenses", section: "vehicles", minRole: "user", visibility: canAccessExpenses },
-  { id: "tools", label: "URL Shortener", path: "/shortener", section: "tools", minRole: "user", authOnly: true, icon: LinkIcon, description: "Mint short links for long URLs." },
-  { id: "passwordgen", label: "Password Generator", path: "/password", section: "tools", minRole: "user", authOnly: true, icon: KeyIcon, description: "Generate strong, random passwords in your browser." },
-  { id: "imagetool", label: "Image Resizer", path: "/images", section: "tools", minRole: "user", authOnly: true, icon: PhotoIcon, description: "Resize and compress images." },
-  { id: "croptool", label: "Crop Image", path: "/crop", section: "tools", minRole: "user", authOnly: true, icon: ScissorsIcon, description: "Crop images to the size you need." },
-  { id: "removebg", label: "Remove Background", path: "/removebg", section: "tools", minRole: "user", authOnly: true, icon: CubeTransparentIcon, description: "Remove the background from a photo." },
-  { id: "dnstool", label: "DNS Lookup", path: "/dns", section: "tools", minRole: "user", authOnly: true, icon: ServerIcon, description: "Look up DNS records for any domain." },
-  { id: "textshare", label: "Text Share", path: "/textshare", section: "tools", minRole: "user", authOnly: true, icon: DocumentTextIcon, description: "Share text snippets with an expiring link." },
-  { id: "converters", label: "Converters", path: "/converters", section: "tools", minRole: "user", authOnly: true, icon: ArrowsRightLeftIcon, description: "Convert units, temperatures, and more." },
-  { id: "lipsync", label: "Lipsync Studio", path: "/lipsync", section: "tools", minRole: "user", authOnly: true, icon: VideoCameraIcon, description: "Generate AI talking-head clips from a photo or video plus audio." },
-  { id: "highlights", label: "Highlights", path: "/recommended/highlights", section: "recommended", minRole: "guest" },
-  { id: "highest-rated", label: "Highest Rated", path: "/recommended/highest-rated", section: "recommended", minRole: "guest" },
+  { id: "websites", label: "Websites", path: "/websites", section: "discover", minRole: "guest", group: "discover", icon: GlobeHemisphereWest, description: "The curated index — browse, rate and rank sites." },
+  { id: "media", label: "Media", path: "/media", section: "discover", minRole: "guest", group: "discover", icon: Images, description: "A gallery of clips, tracks and oddities." },
+  { id: "internet-dashboard", label: "Internet Dashboard", path: "/internet-dashboard", section: "discover", minRole: "guest", group: "discover", icon: Pulse, description: "Live pulse of the domains we track." },
+  { id: "my-info", label: "My Info", path: "/my-info", section: "discover", minRole: "guest", group: "tools", icon: Fingerprint, description: "See what your browser, device, and network reveal about you." },
+  { id: "profile", label: "Profile", path: "/profile", section: "discover", minRole: "user", authOnly: true, group: "discover", launcher: false, icon: UserCircle, description: "Your account details." },
+  { id: "squash", label: "Squash", path: "/squash", section: "squash", minRole: "user", visibility: canAccessSquash, group: "modules", icon: Trophy, description: "Ladder, players and match results." },
+  { id: "squash-admin", label: "Squash Admin", path: "/squash-admin", section: "squash", minRole: "manager", visibility: canModifySquash, group: "modules", launcher: false, icon: Medal, description: "Manage squash players and matches." },
+  { id: "memes", label: "Memes", path: "/memes", section: "memes", minRole: "guest", group: "discover", icon: Smiley, description: "Browse and rate the freshest memes." },
+  { id: "meme-generator", label: "Meme Generator", path: "/memes/create", section: "memes", minRole: "user", visibility: canCreateMemes, group: "modules", icon: MagicWand, description: "Make memes from templates." },
+  { id: "finances", label: "Finances", path: "/finances", section: "financial", minRole: "user", authOnly: true, group: "modules", icon: Wallet, description: "Accounts, budgets, transactions and insights." },
+  { id: "investing", label: "Investing", path: "/investing", section: "financial", minRole: "user", visibility: canAccessInvesting, group: "modules", icon: ChartLineUp, description: "Watchlists and market data." },
+  { id: "vehicles-expenses", label: "Vehicles Expenses", path: "/vehicles-expenses", section: "vehicles", minRole: "user", visibility: canAccessExpenses, group: "modules", icon: Car, description: "Log and track what your rides cost." },
+  { id: "general-expenses", label: "General expenses", path: "/general-expenses", section: "vehicles", minRole: "user", visibility: canAccessExpenses, group: "modules", icon: Receipt, description: "Everything else that hits the books." },
+  { id: "tools", label: "URL Shortener", path: "/shortener", section: "tools", minRole: "user", authOnly: true, group: "tools", icon: LinkSimple, description: "Mint short links for long URLs." },
+  { id: "passwordgen", label: "Password Generator", path: "/password", section: "tools", minRole: "user", authOnly: true, group: "tools", icon: Key, description: "Generate strong, random passwords in your browser." },
+  { id: "imagetool", label: "Image Resizer", path: "/images", section: "tools", minRole: "user", authOnly: true, group: "tools", icon: Resize, description: "Resize and compress images." },
+  { id: "croptool", label: "Crop Image", path: "/crop", section: "tools", minRole: "user", authOnly: true, group: "tools", icon: Crop, description: "Crop images to the size you need." },
+  { id: "removebg", label: "Remove Background", path: "/removebg", section: "tools", minRole: "user", authOnly: true, group: "tools", icon: SelectionBackground, description: "Remove the background from a photo." },
+  { id: "dnstool", label: "DNS Lookup", path: "/dns", section: "tools", minRole: "user", authOnly: true, group: "tools", icon: HardDrives, description: "Look up DNS records for any domain." },
+  { id: "textshare", label: "Text Share", path: "/textshare", section: "tools", minRole: "user", authOnly: true, group: "tools", icon: Note, description: "Share text snippets with an expiring link." },
+  { id: "converters", label: "Converters", path: "/converters", section: "tools", minRole: "user", authOnly: true, group: "tools", icon: ArrowsLeftRight, description: "Convert units, temperatures, and more." },
+  { id: "lipsync", label: "Lipsync Studio", path: "/lipsync", section: "tools", minRole: "user", authOnly: true, group: "tools", icon: VideoCamera, description: "Generate AI talking-head clips from a photo or video plus audio." },
+  { id: "highlights", label: "Highlights", path: "/recommended/highlights", section: "recommended", minRole: "guest", group: "discover", icon: Sparkle, description: "Hand-picked properties worth a look." },
+  { id: "highest-rated", label: "Highest Rated", path: "/recommended/highest-rated", section: "recommended", minRole: "guest", group: "discover", icon: Star, description: "The top of the index, by rating." },
 ];
 
 export const ADMIN_MODULES: AdminModule[] = [
@@ -100,13 +126,48 @@ export const ADMIN_MODULES: AdminModule[] = [
 /** Sections for sidebar grouping, in display order. */
 export const SECTIONS = ["discover", "recommended", "memes", "squash", "financial", "vehicles", "tools", "admin"] as const;
 
+/** Can this user open the module? (authOnly → any signed-in user; else visibility(); else hasRole(minRole).) */
+export function canOpenModule(m: PublicModule, user: AuthUser | null): boolean {
+  if (m.authOnly) return user !== null;
+  if (m.visibility) return m.visibility(user);
+  return hasRole(user, m.minRole);
+}
+
 /** Filter public modules visible to the given user. */
 export function getVisiblePublicModules(user: AuthUser | null): PublicModule[] {
-  return PUBLIC_MODULES.filter((m) => {
-    if (m.authOnly) return user !== null;
-    if (m.visibility) return m.visibility(user);
-    return hasRole(user, m.minRole);
-  });
+  return PUBLIC_MODULES.filter((m) => canOpenModule(m, user));
+}
+
+/** A launcher tile: the module plus its lock state for this user. */
+export interface LauncherApp extends PublicModule {
+  locked: boolean;
+  /** "guest" → signed out (tile sends them to sign-in); "no-access" → signed in but not allowed (inert). */
+  lockReason?: LockReason;
+}
+
+export interface LauncherGroup {
+  id: LauncherGroupId;
+  label: string;
+  apps: LauncherApp[];
+}
+
+export const LAUNCHER_GROUP_LABELS: Record<LauncherGroupId, string> = {
+  discover: "Discover",
+  tools: "Tools",
+  modules: "Modules",
+};
+
+/** Every launchable app in Discover / Tools / Modules order — locked ones included, flagged with why. */
+export function getLauncherGroups(user: AuthUser | null): LauncherGroup[] {
+  const isGuest = !user || user.role === "guest";
+  return (Object.keys(LAUNCHER_GROUP_LABELS) as LauncherGroupId[]).map((id) => ({
+    id,
+    label: LAUNCHER_GROUP_LABELS[id],
+    apps: PUBLIC_MODULES.filter((m) => m.group === id && m.launcher !== false).map((m) => {
+      const locked = !canOpenModule(m, user);
+      return { ...m, locked, lockReason: locked ? (isGuest ? "guest" : "no-access") : undefined };
+    }),
+  }));
 }
 
 /** Group public modules by section (admin items come from ADMIN_MODULES). */
