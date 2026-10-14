@@ -19,15 +19,7 @@ import {
   UserGroupIcon,
   TruckIcon,
   LinkIcon,
-  KeyIcon,
-  ScissorsIcon,
-  CubeTransparentIcon,
-  ServerIcon,
-  DocumentTextIcon,
-  ArrowsRightLeftIcon,
-  InformationCircleIcon,
   MegaphoneIcon,
-  VideoCameraIcon,
   BanknotesIcon,
 } from "@heroicons/react/24/outline";
 import {
