@@ -1,9 +1,8 @@
 import React from "react";
 import { WarningCircle } from "@phosphor-icons/react";
-import { focusRing } from "./buttonClasses";
 
 /**
- * IconTextField — 48px text input with a leading icon. Forwards ref + native <input> props.
+ * IconTextField — 48px .input with a leading icon. Forwards ref + native <input> props.
  * Props: icon: ReactNode (e.g. <LinkSimple size={18} />), invalid?: boolean (sets aria-invalid + danger border),
  *        wrapperClassName?: string (for flex sizing, e.g. "flex-1 basis-[320px]"). Always pass aria-label or a <label>.
  * FieldError — inline 13px/600 danger message with WarningCircle. Props: id (match aria-describedby), children.
@@ -27,9 +26,7 @@ export const IconTextField = React.forwardRef<HTMLInputElement, IconTextFieldPro
       <input
         ref={ref}
         aria-invalid={invalid || undefined}
-        className={`min-h-12 w-full rounded-ds-md border bg-surface-0 pl-[42px] pr-3 text-[15px] text-text-primary placeholder:text-text-tertiary motion-safe:transition-colors motion-safe:duration-150 disabled:opacity-60 ${
-          invalid ? "border-danger" : "border-border-default hover:border-border-hover"
-        } ${focusRing} ${className}`}
+        className={`input min-h-12 pl-[42px] text-[15px]${invalid ? " !border-danger" : ""}${className ? ` ${className}` : ""}`}
         {...rest}
       />
     </div>

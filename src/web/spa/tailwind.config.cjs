@@ -32,7 +32,6 @@ module.exports = {
         "on-danger": "rgb(var(--color-on-danger) / <alpha-value>)",
         "on-warning": "rgb(var(--color-on-warning) / <alpha-value>)",
         "on-success": "rgb(var(--color-on-success) / <alpha-value>)",
-        ink: "rgb(var(--color-ink) / <alpha-value>)",
         "on-accent": "rgb(var(--color-on-accent) / <alpha-value>)",
         /* Design-system category hues (Discover / Tools / Modules / Admin) */
         "hue-teal": "rgb(var(--color-hue-teal) / <alpha-value>)",

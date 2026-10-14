@@ -133,7 +133,6 @@ export function themeVars(th: ThemeRecord, mode: ThemeMode): Record<string, stri
     "--color-hue-violet": trip(violet),
     "--color-hue-coral": trip(coral),
     "--color-hue-amber": trip(amber),
-    "--color-ink": trip(dark ? bg : text),
   };
   const tc = trip(text);
   vars["--color-divider"] = `color-mix(in srgb, rgb(${tc}) ${dark ? 11 : 10}%, transparent)`;
