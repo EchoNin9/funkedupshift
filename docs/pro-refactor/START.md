@@ -47,6 +47,7 @@ every web change has to be ported twice forever. `fus-mobile` keeps only the rel
 | 3b | [03b-file-saving.md](03b-file-saving.md) | **Must fix**: every save/download/attachment path, with one helper on Filesystem + Share + Browser |
 | 4 | [04-parity-qa-matrix.md](04-parity-qa-matrix.md) | Every route × persona, with expected visibility. This is the acceptance checklist. |
 | 5 | [05-release.md](05-release.md) | Version bump, Android/iOS build and store rollout, artifact and keystore hygiene |
+| 6 | [06-local-android-testing.md](06-local-android-testing.md) | Running the app locally in Android Studio against staging, plus debugging and live reload |
 
 ## Phases at a glance
 
