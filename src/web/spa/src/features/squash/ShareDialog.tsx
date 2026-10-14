@@ -3,7 +3,7 @@ import { SegmentedControl } from "../../components/SegmentedControl";
 import { CopyButton } from "../../components/CopyButton";
 import { fetchWithAuth } from "../../utils/api";
 import DateInput from "./DateInput";
-import TagFilterBar from "./TagFilterBar";
+import AddTagInput from "../memes/AddTagInput";
 import PlayerPicker from "./PlayerPicker";
 import MatchSummary from "./MatchSummary";
 import {
@@ -150,7 +150,6 @@ const ShareDialog: React.FC<Props> = ({ share, filters: createFilters = {}, onCl
     if (editFilters.sortOrder === "oldest") parts.push("oldest first");
     return parts.length ? parts.join(" · ") : "all matches";
   })();
-  const tagChoices = useMemo(() => Array.from(new Set([...knownTags, ...qTags])).sort(), [knownTags, qTags]);
   const [count, setCount] = useState<number | null>(editing ? 0 : null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -357,17 +356,46 @@ const ShareDialog: React.FC<Props> = ({ share, filters: createFilters = {}, onCl
                       />
                     </div>
                     <PlayerPicker players={players} selectedIds={qIds} onChange={setQIds} mode={qMode} onModeChange={setQMode} className="" />
-                    <TagFilterBar
-                      availableTags={tagChoices}
-                      selectedTags={qTags}
-                      onToggleTag={(t) => setQTags((p) => (p.includes(t) ? p.filter((x) => x !== t) : [...p, t]))}
-                      mode={qTagMode}
-                      onModeChange={setQTagMode}
-                      onClear={() => {
-                        setQTags([]);
-                        setQTagMode("and");
-                      }}
-                    />
+                    <div>
+                      <label className="block text-xs font-semibold text-text-secondary mb-1">Filter by tags</label>
+                      <AddTagInput
+                        tags={qTags}
+                        onTagsChange={(t) => setQTags(Array.from(new Set(t.map((x) => x.trim().toLowerCase()).filter(Boolean))))}
+                        allTags={knownTags}
+                        placeholder={knownTags.length ? "Type a tag (Enter to add)…" : "No tags on your matches yet — type one to add"}
+                      />
+                      {knownTags.filter((t) => !qTags.includes(t)).length > 0 && (
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {knownTags.filter((t) => !qTags.includes(t)).map((t) => (
+                            <button
+                              key={t}
+                              type="button"
+                              onClick={() => setQTags((p) => [...p, t])}
+                              className="rounded-full border border-border-hover px-2 py-0.5 text-xs text-text-secondary hover:bg-surface-3"
+                            >
+                              + {t}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      {qTags.length > 1 && (
+                        <div className="mt-2 flex items-center gap-2">
+                          <span className="text-xs text-text-tertiary">Match:</span>
+                          <div className="inline-flex rounded-md border border-border-hover bg-surface-1 p-0.5">
+                            {(["and", "or"] as const).map((m) => (
+                              <button
+                                key={m}
+                                type="button"
+                                onClick={() => setQTagMode(m)}
+                                className={`rounded px-2 py-0.5 text-xs font-medium ${qTagMode === m ? "bg-accent-500 text-surface-0" : "text-text-secondary hover:text-text-primary transition-colors"}`}
+                              >
+                                {m.toUpperCase()}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                     <div>
                       <label htmlFor="shareQSort" className="block text-xs font-semibold text-text-secondary mb-1">
                         Order by
