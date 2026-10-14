@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState } from "react";
 import { Clipboard, LinkSimple } from "@phosphor-icons/react";
+import { publicOrigin } from "../../utils/api";
 
 interface ShareMemePopoverProps {
   memeId: string;
@@ -10,7 +11,7 @@ interface ShareMemePopoverProps {
 
 function getShareUrl(path: string): string {
   if (typeof window === "undefined") return path;
-  const base = window.location.origin;
+  const base = publicOrigin();
   return `${base}${path.startsWith("/") ? path : `/${path}`}`;
 }
 

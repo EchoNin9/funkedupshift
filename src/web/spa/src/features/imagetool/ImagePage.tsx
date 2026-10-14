@@ -4,6 +4,7 @@ import { DownloadSimple, LockSimple, Scissors } from "@phosphor-icons/react";
 import { Alert } from "../../components";
 import { buttonClasses, focusRing } from "../../components/buttonClasses";
 import { useAuth } from "../../shell/AuthContext";
+import { saveBlob } from "../../utils/saveFile";
 
 // ---- client-side image crop + downsize ----
 // Duplicated in the tools-site app's src/ImageTool.tsx — the two frontends
@@ -288,10 +289,7 @@ const ImagePage: React.FC = () => {
   const handleDownload = () => {
     if (!result) return;
     const ext = format === "image/webp" ? "webp" : "jpg";
-    const a = document.createElement("a");
-    a.href = result.url;
-    a.download = `image.${ext}`;
-    a.click();
+    void saveBlob(result.blob, `image.${ext}`).catch((e) => setError(e instanceof Error ? e.message : "Could not save the file."));
   };
 
   const selStyle = (): React.CSSProperties | undefined => {

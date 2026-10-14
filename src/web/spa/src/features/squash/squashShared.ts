@@ -1,3 +1,5 @@
+import { publicOrigin } from "../../utils/api";
+
 export function getApiBaseUrl(): string | null {
   if (typeof window === "undefined") return null;
   const raw = (window as any).API_BASE_URL as string | undefined;
@@ -77,7 +79,7 @@ export async function apiError(resp: Response, fallback = "Failed"): Promise<str
   return (d as { error?: string }).error || fallback;
 }
 
-export const shareUrl = (id: string) => `${window.location.origin}/squash/s/${id}`;
+export const shareUrl = (id: string) => `${publicOrigin()}/squash/s/${id}`;
 
 export const inputCls =
   "block w-full rounded-md border border-border-hover bg-surface-2 px-3 py-2 text-sm text-text-primary focus:border-accent-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent";

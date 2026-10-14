@@ -46,6 +46,7 @@ jobs:
           API_BASE_URL: ${{ vars.API_BASE_URL_PRODUCTION }}
           COGNITO_POOL_ID: ${{ vars.COGNITO_POOL_ID_PRODUCTION }}
           COGNITO_CLIENT_ID: ${{ vars.COGNITO_CLIENT_ID_PRODUCTION }}
+          PUBLIC_SITE_URL: ${{ vars.PUBLIC_SITE_URL_PRODUCTION || 'https://funkedupshift.com' }}
 
       - name: Build web + sync native
         run: npm run build:mobile

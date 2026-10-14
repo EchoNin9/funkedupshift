@@ -1,3 +1,5 @@
+import { Capacitor } from "@capacitor/core";
+
 /**
  * Get impersonation headers for API requests.
  * Reads from sessionStorage so it can be used outside React context.
@@ -52,3 +54,9 @@ export async function fetchWithAuthOptional(
   };
   return fetch(url, { ...options, headers });
 }
+
+/** Origin for links shared outside the app. Inside the native WebView location.origin is https://localhost. */
+export const publicOrigin = (): string =>
+  Capacitor.isNativePlatform()
+    ? ((window as any).PUBLIC_SITE_URL as string | undefined) || "https://funkedupshift.com"
+    : window.location.origin;
