@@ -94,6 +94,8 @@ Measured at launch: 37 files on heroicons, ~85 `n1–n4` token uses in 10 files,
 
 ## Log
 
+- 2026-10-14 — User staging check found hero title rendering one-word siteName `Funkedupshift` without accent/break. Fixed in [#148](https://github.com/EchoNin9/funkedupshift/pull/148) (`ff22fdf`), deploy run 438 success. Release PR still waits on user go-ahead.
+
 - 2026-10-14 — User decision: release PR to `main` waits until the user has checked staging (signed-in user / group member / admin).
 
 - 2026-10-14 — Wave 4 merged (`d2eeec6`), staging deploy run 437 success. All waves complete. Release PR to `main` awaiting user go-ahead.
