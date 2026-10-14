@@ -1,17 +1,18 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { motion } from "framer-motion";
-import {
-  ClipboardDocumentIcon,
-  LinkIcon,
-  TrashIcon,
-  PencilSquareIcon,
-} from "@heroicons/react/24/outline";
-import { Alert, fadeUpStaggered, stagger } from "../../components";
+import { Link } from "react-router-dom";
+import { CalendarDots, CheckCircle, LinkSimple, LockSimple, Trash } from "@phosphor-icons/react";
+import { Alert } from "../../components";
+import { buttonClasses, focusRing } from "../../components/buttonClasses";
+import { CopyButton } from "../../components/CopyButton";
+import { FormCard } from "../../components/FormCard";
+import { IconButton } from "../../components/IconButton";
+import { FieldError, IconTextField } from "../../components/IconTextField";
+import { ListCard, ListEmpty, ListRow } from "../../components/ListCard";
 import { useAuth } from "../../shell/AuthContext";
 import { mintShortLink, listLinks, deleteLink, updateExpiry, type ShortLink } from "./api";
 
-const input =
-  "rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary flex-1 min-w-0";
+const URL_PATTERN = /^https?:\/\/[^\s/]+\.[^\s/]+/i;
+const URL_ERROR = "Enter a full URL starting with http:// or https://";
 
 /** epoch seconds -> value for <input type="datetime-local"> (local time, no seconds). */
 function toDatetimeLocalValue(epochSeconds: number): string {
@@ -47,37 +48,12 @@ function formatIsoDate(iso: string): string {
   });
 }
 
-const CopyButton: React.FC<{ text: string }> = ({ text }) => {
-  const [copied, setCopied] = useState(false);
-  const handleCopy = useCallback(async () => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 2000);
-    } catch {
-      setCopied(false);
-    }
-  }, [text]);
-
-  return (
-    <button
-      type="button"
-      onClick={handleCopy}
-      className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-border-hover bg-surface-2 px-3 py-1.5 text-xs font-medium text-text-primary hover:bg-surface-3 transition-colors shrink-0"
-    >
-      <ClipboardDocumentIcon className="h-3.5 w-3.5" />
-      {copied ? "Copied" : "Copy"}
-    </button>
-  );
-};
-
 const LinkRow: React.FC<{
   link: ShortLink;
-  index: number;
   onDelete: (code: string) => void;
   onSaveExpiry: (code: string, expiresAt: number) => Promise<void>;
   busy: boolean;
-}> = ({ link, index, onDelete, onSaveExpiry, busy }) => {
+}> = ({ link, onDelete, onSaveExpiry, busy }) => {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(() => toDatetimeLocalValue(link.expiresAt));
   const [saving, setSaving] = useState(false);
@@ -92,7 +68,7 @@ const LinkRow: React.FC<{
   const saveEdit = useCallback(async () => {
     const epoch = fromDatetimeLocalValue(draft);
     if (epoch === null || epoch <= Math.floor(Date.now() / 1000)) {
-      setRowError("Pick a date/time in the future.");
+      setRowError("Pick a date and time in the future.");
       return;
     }
     setSaving(true);
@@ -108,88 +84,97 @@ const LinkRow: React.FC<{
   }, [draft, link.code, onSaveExpiry]);
 
   return (
-    <motion.div
-      variants={fadeUpStaggered}
-      custom={index}
-      className="rounded-xl border border-border-default bg-surface-2/80 p-3 flex flex-col gap-1.5"
-    >
-      <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0">
+    <ListRow className={busy ? "opacity-60" : ""}>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+        <div className="min-w-0 flex-1 basis-[260px]">
           <a
             href={link.shortUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-sm font-medium text-nav-text hover:underline break-all"
+            className={`break-all rounded-sm text-[15px] font-bold text-accent-text hover:underline ${focusRing}`}
           >
             {link.shortUrl}
           </a>
-          <p className="text-xs text-text-tertiary truncate">{link.url}</p>
-          <p className="text-xs text-text-tertiary">
-            Created {formatIsoDate(link.createdAt)} · Expires {formatEpochDate(link.expiresAt)}
-          </p>
+          <div className="truncate text-[13px] text-text-secondary" title={link.url}>
+            {link.url}
+          </div>
         </div>
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="min-w-[150px] text-xs leading-snug text-text-secondary">
+          <div>Created {formatIsoDate(link.createdAt)}</div>
+          <div>
+            Expires <span className="font-semibold text-text-primary">{formatEpochDate(link.expiresAt)}</span>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5">
           <CopyButton text={link.shortUrl} />
-          <button
-            type="button"
+          <IconButton
+            icon={<CalendarDots size={16} weight="regular" aria-hidden="true" />}
+            label="Edit expiry"
             onClick={startEdit}
             disabled={busy}
-            aria-label="Edit expiry"
-            className="inline-flex items-center justify-center rounded-lg border border-border-hover bg-surface-2 p-1.5 text-text-primary hover:bg-surface-3 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <PencilSquareIcon className="h-3.5 w-3.5" />
-          </button>
-          <button
-            type="button"
+          />
+          <IconButton
+            icon={<Trash size={16} weight="regular" aria-hidden="true" />}
+            label="Delete link"
+            tone="danger"
             onClick={() => {
               if (window.confirm(`Delete ${link.shortUrl}? This cannot be undone.`)) onDelete(link.code);
             }}
             disabled={busy}
-            aria-label="Delete link"
-            className="inline-flex items-center justify-center rounded-lg border border-border-hover bg-surface-2 p-1.5 text-danger hover:bg-surface-3 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <TrashIcon className="h-3.5 w-3.5" />
-          </button>
+          />
         </div>
       </div>
 
       {editing && (
-        <div className="flex flex-wrap items-center gap-2 border-t border-border-default pt-2">
+        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-dashed border-[color:var(--color-divider)] pt-3">
+          <label htmlFor={`expiry-${link.code}`} className="text-[13px] font-semibold text-text-primary">
+            New expiry
+          </label>
           <input
+            id={`expiry-${link.code}`}
             type="datetime-local"
-            aria-label="New expiry"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            className={input}
+            aria-invalid={rowError ? true : undefined}
+            aria-describedby={rowError ? `expiry-err-${link.code}` : undefined}
+            className={`min-h-9 rounded-ds-md border border-border-default bg-surface-0 px-2.5 text-sm text-text-primary hover:border-border-hover ${focusRing}`}
           />
-          <button
-            type="button"
-            onClick={saveEdit}
-            disabled={saving}
-            className="rounded-md bg-accent-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
+          <button type="button" onClick={saveEdit} disabled={saving} className={buttonClasses("primary", "sm")}>
             {saving ? "Saving…" : "Save"}
           </button>
-          <button
-            type="button"
-            onClick={() => setEditing(false)}
-            disabled={saving}
-            className="rounded-md border border-border-hover px-3 py-1.5 text-xs font-medium text-text-primary hover:bg-surface-3 transition-colors disabled:opacity-50"
-          >
+          <button type="button" onClick={() => setEditing(false)} disabled={saving} className={buttonClasses("ghost", "sm")}>
             Cancel
           </button>
-          {rowError && <span className="text-xs text-danger w-full">{rowError}</span>}
+          {rowError && (
+            <span id={`expiry-err-${link.code}`} role="alert" className="w-full text-[13px] text-danger">
+              {rowError}
+            </span>
+          )}
         </div>
       )}
-    </motion.div>
+    </ListRow>
   );
 };
+
+const SkeletonRows: React.FC = () => (
+  <>
+    {[0, 1, 2].map((i) => (
+      <ListRow key={i}>
+        <div className="motion-safe:animate-pulse space-y-2">
+          <div className="h-4 w-48 max-w-full rounded bg-surface-3" />
+          <div className="h-3 w-72 max-w-full rounded bg-surface-3" />
+        </div>
+      </ListRow>
+    ))}
+  </>
+);
 
 const ShortenerPage: React.FC = () => {
   const { user } = useAuth();
   const [url, setUrl] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [minted, setMinted] = useState<ShortLink | null>(null);
 
   const [links, setLinks] = useState<ShortLink[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -234,11 +219,16 @@ const ShortenerPage: React.FC = () => {
     async (e: React.FormEvent) => {
       e.preventDefault();
       if (!url.trim() || submitting) return;
+      if (!URL_PATTERN.test(url.trim())) {
+        setError(URL_ERROR);
+        return;
+      }
       setSubmitting(true);
       setError(null);
       try {
         const result = await mintShortLink(url.trim());
         setLinks((prev) => [result, ...prev]);
+        setMinted(result);
         setUrl("");
       } catch (err) {
         setError(err instanceof Error ? err.message : "Could not shorten that URL.");
@@ -255,6 +245,7 @@ const ShortenerPage: React.FC = () => {
     try {
       await deleteLink(code);
       setLinks((prev) => prev.filter((l) => l.code !== code));
+      setMinted((m) => (m && m.code === code ? null : m));
     } catch (err) {
       setListError(err instanceof Error ? err.message : "Could not delete that link.");
     } finally {
@@ -267,88 +258,119 @@ const ShortenerPage: React.FC = () => {
     setLinks((prev) => prev.map((l) => (l.code === code ? updated : l)));
   }, []);
 
+  const srTitle = <h1 className="sr-only">URL Shortener</h1>;
+
   if (!user) {
     return (
       <div className="space-y-4">
-        <h1 className="text-xl font-semibold text-text-primary">URL Shortener</h1>
-        <p className="text-sm text-text-secondary">Sign in to create short links.</p>
+        {srTitle}
+        <div className="flex flex-wrap items-center gap-4 rounded-ds-lg border border-[color:var(--color-divider)] bg-surface-2 p-6">
+          <LockSimple size={26} weight="regular" aria-hidden="true" className="text-accent-text" />
+          <div className="min-w-[220px] flex-1">
+            <div className="font-bold text-text-primary">Sign in to create short links</div>
+            <div className="text-sm text-text-secondary">Your links stay private to your account.</div>
+          </div>
+          <Link to="/auth" className={buttonClasses("primary", "md")}>
+            Sign in
+          </Link>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      <motion.h1
-        className="text-2xl font-semibold tracking-tight text-text-primary flex items-center gap-2"
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-      >
-        <LinkIcon className="h-6 w-6 text-accent-text" />
-        URL Shortener
-      </motion.h1>
-      <p className="text-sm text-text-secondary">
-        Paste a long URL to mint a short link on fus.fyi.
-      </p>
+    <div>
+      {srTitle}
+      <p className="mb-4 text-sm text-text-secondary">Paste a long URL to mint a short link on fus.fyi.</p>
 
-      {error && <Alert variant="error">{error}</Alert>}
-
-      <form onSubmit={handleSubmit} className="flex flex-wrap gap-2 items-center">
-        <input
-          type="url"
+      <FormCard onSubmit={handleSubmit} noValidate className="flex flex-wrap gap-2.5">
+        <IconTextField
+          type="text"
+          inputMode="url"
+          autoComplete="url"
+          autoCapitalize="none"
+          spellCheck={false}
           aria-label="URL to shorten"
+          aria-describedby={error ? "shortener-error" : undefined}
           placeholder="https://example.com/some/very/long/path"
           value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          className={input}
-          required
+          onChange={(e) => {
+            setUrl(e.target.value);
+            if (error) setError(null);
+          }}
+          icon={<LinkSimple size={18} weight="regular" />}
+          invalid={!!error}
+          wrapperClassName="flex-1 basis-[280px] min-w-0"
         />
         <button
           type="submit"
           disabled={submitting || !url.trim()}
-          className="inline-flex items-center justify-center gap-2 rounded-lg bg-accent-500 px-4 py-2 text-sm font-medium text-white hover:bg-accent-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+          className={`${buttonClasses("primary", "lg")} w-full sm:w-auto`}
         >
           {submitting ? "Shortening…" : "Shorten"}
         </button>
-      </form>
+      </FormCard>
+      <FieldError id="shortener-error">{error}</FieldError>
 
-      <div className="space-y-2 pt-2">
-        <h2 className="text-sm font-semibold text-text-primary">Your links</h2>
+      {minted && (
+        <div
+          role="status"
+          className="mt-3 flex flex-wrap items-center gap-3.5 rounded-ds-lg border px-4 py-3.5"
+          style={{
+            background: "color-mix(in srgb, rgb(var(--color-hue-teal)) 12%, rgb(var(--color-surface-2)))",
+            borderColor: "color-mix(in srgb, rgb(var(--color-hue-teal)) 35%, transparent)",
+          }}
+        >
+          <CheckCircle size={22} weight="regular" aria-hidden="true" className="shrink-0 text-[rgb(var(--color-hue-teal))]" />
+          <div className="min-w-0 flex-1 basis-[200px]">
+            <div className="text-xs font-semibold text-text-secondary">Short link ready</div>
+            <div className="break-all font-heading text-[20px] font-semibold tracking-[-0.02em] text-text-primary">
+              {minted.shortUrl}
+            </div>
+          </div>
+          <CopyButton text={minted.shortUrl} size="md" />
+        </div>
+      )}
 
-        {listError && <Alert variant="error">{listError}</Alert>}
+      <section className="mt-9" aria-labelledby="your-links-heading">
+        <div className="mb-3 flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
+          <h2 id="your-links-heading" className="font-heading text-[20px] font-semibold text-text-primary">
+            Your links
+          </h2>
+          <span className="tag tag-neutral">{links.length}</span>
+          <span className="text-[13px] text-text-secondary sm:ml-auto">
+            Links expire after 90 days unless you change the date.
+          </span>
+        </div>
 
-        {links.length === 0 && !listLoading && (
-          <p className="text-sm text-text-tertiary">No short links yet — mint one above.</p>
-        )}
+        {listError && <Alert variant="error" className="mb-3">{listError}</Alert>}
 
-        {links.length > 0 && (
-          <motion.div className="space-y-2" initial="hidden" animate="visible" variants={stagger(0.05)}>
-            {links.map((link, i) => (
+        <ListCard aria-busy={listLoading}>
+          {listLoading && links.length === 0 ? (
+            <SkeletonRows />
+          ) : links.length === 0 ? (
+            <ListEmpty>No short links yet — mint one above.</ListEmpty>
+          ) : (
+            links.map((link) => (
               <LinkRow
                 key={link.code}
                 link={link}
-                index={i}
                 onDelete={handleDelete}
                 onSaveExpiry={handleSaveExpiry}
                 busy={busyCode === link.code}
               />
-            ))}
-          </motion.div>
-        )}
+            ))
+          )}
+        </ListCard>
 
         {nextCursor && (
-          <div className="pt-1">
-            <button
-              type="button"
-              onClick={loadMore}
-              disabled={listLoading}
-              className="rounded-md border border-border-hover px-4 py-2 text-sm font-medium text-text-primary hover:bg-surface-3 disabled:opacity-50"
-            >
+          <div className="pt-3">
+            <button type="button" onClick={loadMore} disabled={listLoading} className={buttonClasses("secondary", "md")}>
               {listLoading ? "Loading…" : "Load more"}
             </button>
           </div>
         )}
-      </div>
+      </section>
     </div>
   );
 };
