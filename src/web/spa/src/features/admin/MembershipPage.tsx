@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Dialog } from "@headlessui/react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Bars3Icon, UserGroupIcon, Squares2X2Icon, KeyIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { Key, List, SquaresFour, UsersThree, X } from "@phosphor-icons/react";
 import { useAuth, hasRole } from "../../shell/AuthContext";
 import { AdminPageHeader } from "./AdminPageHeader";
 import { fetchWithAuth } from "../../utils/api";
@@ -533,9 +533,9 @@ const MembershipPage: React.FC = () => {
   }
 
   const membershipNavItems = [
-    { id: "users" as const, label: "Users", icon: UserGroupIcon },
-    { id: "groups" as const, label: "Groups", icon: Squares2X2Icon },
-    ...(isSuperAdmin ? [{ id: "roles" as const, label: "Roles", icon: KeyIcon }] : []),
+    { id: "users" as const, label: "Users", icon: UsersThree },
+    { id: "groups" as const, label: "Groups", icon: SquaresFour },
+    ...(isSuperAdmin ? [{ id: "roles" as const, label: "Roles", icon: Key }] : []),
   ];
 
   const sidebarContent = (
@@ -580,7 +580,7 @@ const MembershipPage: React.FC = () => {
               className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md text-text-secondary hover:text-white hover:bg-surface-3 transition-colors"
               aria-label="Open membership menu"
             >
-              <Bars3Icon className="w-6 h-6" />
+              <List className="w-6 h-6" />
             </button>
             <span className="text-sm font-medium text-text-secondary">
               {membershipNavItems.find((i) => i.id === activeTab)?.label ?? "Menu"}
@@ -602,7 +602,7 @@ const MembershipPage: React.FC = () => {
                 className="absolute top-4 right-4 p-2 text-text-secondary hover:text-white"
                 aria-label="Close menu"
               >
-                <XMarkIcon className="w-6 h-6" />
+                <X className="w-6 h-6" />
               </button>
               {sidebarContent}
             </Dialog.Panel>
@@ -719,7 +719,7 @@ const MembershipPage: React.FC = () => {
             <button
               type="submit"
               disabled={isSubmitting || !newName.trim()}
-              className="inline-flex items-center justify-center rounded-md bg-accent-500 px-4 py-2 text-sm font-semibold text-ink hover:bg-accent-400 disabled:opacity-50"
+              className="inline-flex items-center justify-center rounded-md bg-accent-500 px-4 py-2 text-sm font-semibold text-on-accent hover:bg-accent-400 disabled:opacity-50"
             >
               {isSubmitting ? "Creating…" : "Create"}
             </button>
@@ -762,7 +762,7 @@ const MembershipPage: React.FC = () => {
                           <button
                             type="submit"
                             disabled={isUpdating}
-                            className="rounded-md bg-accent-500 px-3 py-1.5 text-xs font-medium text-ink hover:bg-accent-400 disabled:opacity-50"
+                            className="rounded-md bg-accent-500 px-3 py-1.5 text-xs font-medium text-on-accent hover:bg-accent-400 disabled:opacity-50"
                           >
                             {isUpdating ? "Saving…" : "Save"}
                           </button>
@@ -871,7 +871,7 @@ const MembershipPage: React.FC = () => {
             <button
               type="submit"
               disabled={isRoleSubmitting || !newRoleName.trim()}
-              className="inline-flex items-center justify-center rounded-md bg-accent-500 px-4 py-2 text-sm font-semibold text-ink hover:bg-accent-400 disabled:opacity-50"
+              className="inline-flex items-center justify-center rounded-md bg-accent-500 px-4 py-2 text-sm font-semibold text-on-accent hover:bg-accent-400 disabled:opacity-50"
             >
               {isRoleSubmitting ? "Creating…" : "Create"}
             </button>
@@ -930,7 +930,7 @@ const MembershipPage: React.FC = () => {
                           <button
                             type="submit"
                             disabled={isRoleUpdating}
-                            className="rounded-md bg-accent-500 px-3 py-1.5 text-xs font-medium text-ink hover:bg-accent-400 disabled:opacity-50"
+                            className="rounded-md bg-accent-500 px-3 py-1.5 text-xs font-medium text-on-accent hover:bg-accent-400 disabled:opacity-50"
                           >
                             {isRoleUpdating ? "Saving…" : "Save"}
                           </button>

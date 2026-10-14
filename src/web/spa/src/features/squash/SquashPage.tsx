@@ -347,7 +347,7 @@ const SquashPage: React.FC = () => {
               onFocus={() => setPlayerDropdownOpen(true)}
               placeholder="Search players..."
               autoComplete="off"
-              className="block w-full rounded-md border border-border-hover bg-surface-2 px-3 py-2 text-sm text-text-primary focus:border-accent-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-n3"
+              className="block w-full rounded-md border border-border-hover bg-surface-2 px-3 py-2 text-sm text-text-primary focus:border-accent-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             />
             {playerDropdownOpen && (
               <div className="absolute top-full left-0 right-0 mt-1 bg-surface-2 border border-border-hover rounded-md max-h-48 overflow-y-auto scrollbar-thin z-10">
@@ -416,7 +416,7 @@ const SquashPage: React.FC = () => {
               type="button"
               onClick={searchMatches}
               disabled={isLoading}
-              className="rounded-md bg-accent-500 px-4 py-2 text-sm font-medium text-ink hover:bg-accent-400 disabled:opacity-50"
+              className="rounded-md bg-accent-500 px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent-400 disabled:opacity-50"
             >
               {isLoading ? "Searching…" : "Search"}
             </button>

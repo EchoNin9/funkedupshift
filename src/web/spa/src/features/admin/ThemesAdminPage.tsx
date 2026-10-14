@@ -178,7 +178,7 @@ const ThemesAdminPage: React.FC = () => {
   };
 
   return (
-    <div className="container-max section-padding space-y-6">
+    <div className="space-y-6">
       <AdminPageHeader
         description="Colour themes available in the account menu. Every theme works in dark and light."
         actions={<button type="button" className="btn-primary" onClick={() => setEditing({ ...BLANK })}>New theme</button>}

@@ -133,18 +133,6 @@ export function themeVars(th: ThemeRecord, mode: ThemeMode): Record<string, stri
     "--color-hue-violet": trip(violet),
     "--color-hue-coral": trip(coral),
     "--color-hue-amber": trip(amber),
-    // Legacy Neon Pop aliases (n1 accent, n2 amber, n3 teal, n4 coral) — fills stay bright, text variants deepen.
-    "--color-n1": trip(accent),
-    "--color-n2": trip(hexToRgb(th.admin)),
-    "--color-n3": trip(hexToRgb(th.discover)),
-    "--color-n4": trip(hexToRgb(th.modules)),
-    "--color-nav": trip(hexToRgb(th.discover)),
-    "--color-n1-text": trip(accentText),
-    "--color-n2-text": trip(amber),
-    "--color-n3-text": trip(teal),
-    "--color-n4-text": trip(coral),
-    "--color-nav-text": trip(teal),
-    "--color-ink": trip(dark ? bg : text),
   };
   const tc = trip(text);
   vars["--color-divider"] = `color-mix(in srgb, rgb(${tc}) ${dark ? 11 : 10}%, transparent)`;

@@ -1,5 +1,5 @@
 import React from "react";
-import { XMarkIcon } from "@heroicons/react/24/outline";
+import { X } from "@phosphor-icons/react";
 import { useImpersonation } from "./ImpersonationContext";
 import { useAuth } from "./AuthContext";
 
@@ -27,7 +27,7 @@ const ImpersonationBanner: React.FC = () => {
         className="flex items-center gap-1.5 min-h-[44px] min-w-[44px] sm:min-w-0 rounded-md px-3 py-2 font-semibold hover:bg-warning/50 shrink-0"
         aria-label="Stop impersonating"
       >
-        <XMarkIcon className="h-4 w-4" />
+        <X className="h-4 w-4" />
         <span className="hidden sm:inline">Stop impersonating</span>
       </button>
     </div>

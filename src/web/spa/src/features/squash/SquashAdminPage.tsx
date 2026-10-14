@@ -542,7 +542,7 @@ const SquashAdminPage: React.FC = () => {
                   id="matchTeamAP1"
                   value={matchTeamAP1}
                   onChange={(e) => setMatchTeamAP1(e.target.value)}
-                  className="block w-full rounded-md border border-border-hover bg-surface-2 px-3 py-2 text-sm text-text-primary focus:border-accent-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-n3"
+                  className="block w-full rounded-md border border-border-hover bg-surface-2 px-3 py-2 text-sm text-text-primary focus:border-accent-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                 >
                   <option value="">— Select —</option>
                   {playerOptionsFor("p1").map((p) => (
@@ -560,7 +560,7 @@ const SquashAdminPage: React.FC = () => {
                   id="matchTeamAP2"
                   value={matchTeamAP2}
                   onChange={(e) => setMatchTeamAP2(e.target.value)}
-                  className="block w-full rounded-md border border-border-hover bg-surface-2 px-3 py-2 text-sm text-text-primary focus:border-accent-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-n3"
+                  className="block w-full rounded-md border border-border-hover bg-surface-2 px-3 py-2 text-sm text-text-primary focus:border-accent-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                 >
                   <option value="">— Select —</option>
                   {playerOptionsFor("p2").map((p) => (
@@ -578,7 +578,7 @@ const SquashAdminPage: React.FC = () => {
                   id="matchTeamBP1"
                   value={matchTeamBP1}
                   onChange={(e) => setMatchTeamBP1(e.target.value)}
-                  className="block w-full rounded-md border border-border-hover bg-surface-2 px-3 py-2 text-sm text-text-primary focus:border-accent-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-n3"
+                  className="block w-full rounded-md border border-border-hover bg-surface-2 px-3 py-2 text-sm text-text-primary focus:border-accent-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                 >
                   <option value="">— Select —</option>
                   {playerOptionsFor("p3").map((p) => (
@@ -596,7 +596,7 @@ const SquashAdminPage: React.FC = () => {
                   id="matchTeamBP2"
                   value={matchTeamBP2}
                   onChange={(e) => setMatchTeamBP2(e.target.value)}
-                  className="block w-full rounded-md border border-border-hover bg-surface-2 px-3 py-2 text-sm text-text-primary focus:border-accent-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-n3"
+                  className="block w-full rounded-md border border-border-hover bg-surface-2 px-3 py-2 text-sm text-text-primary focus:border-accent-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                 >
                   <option value="">— Select —</option>
                   {playerOptionsFor("p4").map((p) => (
@@ -614,7 +614,7 @@ const SquashAdminPage: React.FC = () => {
                   id="matchWinningTeam"
                   value={matchWinningTeam}
                   onChange={(e) => setMatchWinningTeam(e.target.value as "A" | "B")}
-                  className="block w-full rounded-md border border-border-hover bg-surface-2 px-3 py-2 text-sm text-text-primary focus:border-accent-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-n3"
+                  className="block w-full rounded-md border border-border-hover bg-surface-2 px-3 py-2 text-sm text-text-primary focus:border-accent-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                 >
                   <option value="A">Team A</option>
                   <option value="B">Team B</option>
@@ -628,7 +628,7 @@ const SquashAdminPage: React.FC = () => {
                   id="matchLoserGames"
                   value={matchLoserGames}
                   onChange={(e) => setMatchLoserGames(parseInt(e.target.value, 10))}
-                  className="block w-full rounded-md border border-border-hover bg-surface-2 px-3 py-2 text-sm text-text-primary focus:border-accent-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-n3"
+                  className="block w-full rounded-md border border-border-hover bg-surface-2 px-3 py-2 text-sm text-text-primary focus:border-accent-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                 >
                   <option value={0}>0</option>
                   <option value={1}>1</option>
@@ -648,7 +648,7 @@ const SquashAdminPage: React.FC = () => {
                 <button
                   type="submit"
                   disabled={isMatchSubmitting}
-                  className="rounded-md bg-accent-500 px-4 py-2 text-sm font-medium text-ink hover:bg-accent-400 disabled:opacity-50"
+                  className="rounded-md bg-accent-500 px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent-400 disabled:opacity-50"
                 >
                   {editingMatchId ? "Update match" : "Add match"}
                 </button>
@@ -696,7 +696,7 @@ const SquashAdminPage: React.FC = () => {
                   onFocus={() => setPlayerDropdownOpen(true)}
                   placeholder="Search players..."
                   autoComplete="off"
-                  className="block w-full rounded-md border border-border-hover bg-surface-2 px-3 py-2 text-sm text-text-primary focus:border-accent-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-n3"
+                  className="block w-full rounded-md border border-border-hover bg-surface-2 px-3 py-2 text-sm text-text-primary focus:border-accent-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                 />
                 {playerDropdownOpen && (
                   <div className="absolute top-full left-0 right-0 mt-1 bg-surface-2 border border-border-hover rounded-md max-h-48 overflow-y-auto scrollbar-thin z-10">
@@ -760,7 +760,7 @@ const SquashAdminPage: React.FC = () => {
                   type="button"
                   onClick={searchMatches}
                   disabled={isMatchesLoading}
-                  className="rounded-md bg-accent-500 px-4 py-2 text-sm font-medium text-ink hover:bg-accent-400 disabled:opacity-50"
+                  className="rounded-md bg-accent-500 px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent-400 disabled:opacity-50"
                 >
                   {isMatchesLoading ? "Searching…" : "Search"}
                 </button>
@@ -927,7 +927,7 @@ const SquashAdminPage: React.FC = () => {
                   onChange={(e) => setPlayerFormName(e.target.value)}
                   required
                   placeholder="Player name"
-                  className="block w-full rounded-md border border-border-hover bg-surface-2 px-3 py-2 text-sm text-text-primary focus:border-accent-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-n3"
+                  className="block w-full rounded-md border border-border-hover bg-surface-2 px-3 py-2 text-sm text-text-primary focus:border-accent-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                 />
               </div>
               <div>
@@ -940,7 +940,7 @@ const SquashAdminPage: React.FC = () => {
                   value={playerFormEmail}
                   onChange={(e) => setPlayerFormEmail(e.target.value)}
                   placeholder="player@example.com"
-                  className="block w-full rounded-md border border-border-hover bg-surface-2 px-3 py-2 text-sm text-text-primary focus:border-accent-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-n3"
+                  className="block w-full rounded-md border border-border-hover bg-surface-2 px-3 py-2 text-sm text-text-primary focus:border-accent-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                 />
               </div>
               <div>
@@ -951,7 +951,7 @@ const SquashAdminPage: React.FC = () => {
                   id="playerUserId"
                   value={playerFormUserId}
                   onChange={(e) => setPlayerFormUserId(e.target.value)}
-                  className="block w-full rounded-md border border-border-hover bg-surface-2 px-3 py-2 text-sm text-text-primary focus:border-accent-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-n3"
+                  className="block w-full rounded-md border border-border-hover bg-surface-2 px-3 py-2 text-sm text-text-primary focus:border-accent-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                 >
                   <option value="">— None —</option>
                   {adminUsers.map((u) => (
@@ -965,7 +965,7 @@ const SquashAdminPage: React.FC = () => {
                 <button
                   type="submit"
                   disabled={isPlayerSubmitting}
-                  className="rounded-md bg-accent-500 px-4 py-2 text-sm font-medium text-ink hover:bg-accent-400 disabled:opacity-50"
+                  className="rounded-md bg-accent-500 px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent-400 disabled:opacity-50"
                 >
                   {editingPlayerId ? "Update player" : "Add player"}
                 </button>

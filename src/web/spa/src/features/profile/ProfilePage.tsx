@@ -4,7 +4,7 @@ import { useAuth } from "../../shell/AuthContext";
 import { usePlatform } from "../../shell/PlatformContext";
 import { fetchWithAuth } from "../../utils/api";
 import { takePhoto, base64ToBlob } from "../../hooks/useCamera";
-import { CameraIcon } from "@heroicons/react/24/outline";
+import { Camera } from "@phosphor-icons/react";
 import { Alert } from "../../components";
 
 const ROLE_DISPLAY: Record<string, string> = {
@@ -583,7 +583,7 @@ const ProfilePage: React.FC = () => {
               type="button"
               onClick={handleChangePassword}
               disabled={isChangingPassword}
-              className="rounded-md bg-accent-500 px-4 py-2 text-sm font-semibold text-ink hover:bg-accent-400 disabled:opacity-50"
+              className="rounded-md bg-accent-500 px-4 py-2 text-sm font-semibold text-on-accent hover:bg-accent-400 disabled:opacity-50"
             >
               {isChangingPassword ? "Changing…" : "Change password"}
             </button>
@@ -698,7 +698,7 @@ const ProfilePage: React.FC = () => {
                         onClick={handleCameraCapture}
                         className="inline-flex items-center gap-2 self-start rounded-md border border-border-hover bg-surface-3 px-3 py-1.5 text-xs font-medium text-text-primary hover:bg-surface-2"
                       >
-                        <CameraIcon className="w-4 h-4" />
+                        <Camera className="w-4 h-4" />
                         Take Photo
                       </button>
                     )}
@@ -763,7 +763,7 @@ const ProfilePage: React.FC = () => {
                 type="button"
                 onClick={handleSave}
                 disabled={isSaving}
-                className="rounded-md bg-accent-500 px-4 py-2 text-sm font-semibold text-ink hover:bg-accent-400 disabled:opacity-50"
+                className="rounded-md bg-accent-500 px-4 py-2 text-sm font-semibold text-on-accent hover:bg-accent-400 disabled:opacity-50"
               >
                 {isSaving ? "Saving…" : "Save"}
               </button>

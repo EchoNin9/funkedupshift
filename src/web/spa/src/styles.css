@@ -33,18 +33,8 @@
     --color-hue-teal: 51 201 170;     /* Discover */
     --color-hue-amber: 242 183 63;    /* Admin    */
 
-    /* Legacy Neon Pop names — ALIASES onto the new palette so existing pages keep working.
-       Removed in the cleanup wave. n1 accent, n2 amber, n3 teal, n4 coral. */
-    --color-n1: 124 92 255;
-    --color-n2: 242 183 63;
-    --color-n3: 51 201 170;
-    --color-n4: 255 127 92;
-    --color-nav: 51 201 170;
-    --color-n1-text: 167 144 255; --color-n2-text: 242 183 63; --color-n3-text: 51 201 170; --color-n4-text: 255 127 92;
-    --color-nav-text: 51 201 170;
     --color-danger: 255 107 107; --color-warning: 251 191 36; --color-success: 52 211 153;
     --color-on-danger: 20 8 26; --color-on-warning: 20 8 26; --color-on-success: 20 8 26;
-    --color-ink: 17 17 23;     /* legacy brutalist border/shadow ink */
 
     /* Full-colour convenience names (collision-free with the triplets above) */
     --color-bg: rgb(var(--color-surface-0));
@@ -66,7 +56,6 @@
     --shadow-md: 0 0 0 1px var(--color-divider), 0 8px 24px rgba(0, 0, 0, .45);
     --shadow-lg: 0 0 0 1px var(--color-border-strong), 0 24px 60px rgba(0, 0, 0, .55);
 
-    --pop-spring: cubic-bezier(.34, 1.56, .64, 1);
   }
 
   :root[data-theme="light"] {
@@ -90,16 +79,8 @@
     --color-hue-teal: 14 148 121;
     --color-hue-amber: 185 124 6;
 
-    --color-n1: 106 72 245;
-    --color-n2: 242 183 63;   /* fills stay bright; text variants below are deepened */
-    --color-n3: 51 201 170;
-    --color-n4: 255 127 92;
-    --color-nav: 51 201 170;
-    --color-n1-text: 84 52 224; --color-n2-text: 185 124 6; --color-n3-text: 14 148 121; --color-n4-text: 217 80 42;
-    --color-nav-text: 14 148 121;
     --color-danger: 214 58 58; --color-warning: 146 64 14; --color-success: 4 120 87;
     --color-on-danger: 255 255 255; --color-on-warning: 255 255 255; --color-on-success: 255 255 255;
-    --color-ink: 21 21 28;
 
     --color-divider: color-mix(in srgb, #15151c 10%, transparent);
     --color-border-strong: color-mix(in srgb, #15151c 22%, transparent);
@@ -118,17 +99,31 @@
     height: 100%;
   }
 
+  /* Body type scale (design system): 15px / 1.55 Manrope. */
   body {
     margin: 0;
+    font-size: 15px;
+    line-height: 1.55;
+    font-weight: 400;
     @apply font-sans antialiased scrollbar-thin;
   }
 
   /* Headings: Space Grotesk 600, tight. Not force-uppercased globally to avoid breaking dense pages. */
-  h1, h2, h3 {
+  h1, h2, h3, h4, h5, h6 {
     @apply font-display;
     font-weight: var(--font-heading-weight);
+    line-height: 1.1;
     letter-spacing: -0.025em;
   }
+  /* Heading scale. Base layer, so any text-* utility on the element still wins. */
+  h1 { font-size: 44px; }
+  h2 { font-size: 32px; }
+  h3 { font-size: 24px; }
+  h4 { font-size: 19px; }
+  h5 { font-size: 16px; }
+  h6 { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
+  :focus-visible { outline: 2px solid rgb(var(--color-accent)); outline-offset: 2px; }
+  ::selection { background: color-mix(in srgb, rgb(var(--color-accent)) 32%, transparent); }
 }
 
 @layer components {
@@ -140,105 +135,64 @@
     @apply py-12 sm:py-16 lg:py-20;
   }
 
-  /* Primary "pop" button */
-  .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2
-           font-display font-extrabold uppercase tracking-tight text-sm
-           rounded-xl
-           focus:outline-none focus-visible:ring-2 focus-visible:ring-n3 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-0
-           transition-[transform,box-shadow] duration-150
-           disabled:opacity-50 disabled:cursor-not-allowed;
-    color: rgb(var(--color-on-accent));
-    background: rgb(var(--color-accent));
-    border: 3px solid rgb(var(--color-ink));
-    box-shadow: 6px 6px 0 rgb(var(--color-ink));
-    transition-timing-function: var(--pop-spring);
+  /* Buttons — design-system .btn set. .btn-primary / .btn-secondary / .btn-ghost also work
+     standalone (legacy call sites use them without .btn). */
+  .btn, .btn-primary, .btn-secondary, .btn-ghost {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    cursor: pointer; text-decoration: none; white-space: nowrap;
+    font-family: var(--font-body); font-weight: 600; font-size: 14px; line-height: 1.2;
+    color: rgb(var(--color-text-primary)); background: transparent;
+    border: 1px solid transparent; padding: 9px 14px; border-radius: var(--radius-md);
+    transition: background-color .15s, border-color .15s, color .15s;
   }
-  .btn-primary:hover { transform: translate(-2px, -2px); box-shadow: 8px 8px 0 rgb(var(--color-ink)); }
-  .btn-primary:active { transform: translate(0, 0); box-shadow: 3px 3px 0 rgb(var(--color-ink)); }
+  .btn svg, .btn-primary svg, .btn-secondary svg, .btn-ghost svg { display: block; }
+  .btn:disabled, .btn-primary:disabled, .btn-secondary:disabled, .btn-ghost:disabled,
+  .btn[aria-disabled="true"] { opacity: .45; cursor: not-allowed; }
+  .btn-primary { background: rgb(var(--color-accent)); color: rgb(var(--color-on-accent)); }
+  .btn-primary:hover { background: rgb(var(--color-accent-hover)); color: rgb(var(--color-on-accent)); }
+  .btn-secondary { background: rgb(var(--color-surface-2)); border-color: var(--color-divider); }
+  .btn-secondary:hover { background: rgb(var(--color-surface-3)); border-color: var(--color-border-strong); }
+  .btn-ghost { color: rgb(var(--color-accent-text)); padding-inline: 8px; }
+  .btn-ghost:hover { background: color-mix(in srgb, rgb(var(--color-accent)) 12%, transparent); }
+  .btn-ghost:active { background: color-mix(in srgb, rgb(var(--color-accent)) 20%, transparent); }
+  .btn-icon { width: 36px; height: 36px; padding: 0; flex: none; }
+  .btn-sm { font-size: 13px; padding: 6px 12px; min-height: 36px; }
+  .btn-lg { font-size: 15px; padding: 12px 20px; min-height: 46px; }
+  .btn-block { width: 100%; margin-top: var(--space-2); }
 
-  /* Ghost / secondary button */
-  .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2
-           bg-transparent text-text-primary
-           rounded-xl text-sm font-medium
-           hover:bg-surface-3
-           focus:outline-none focus-visible:ring-2 focus-visible:ring-n3 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-0
-           transition-[transform,box-shadow,background-color] duration-150
-           disabled:opacity-50 disabled:cursor-not-allowed;
-    border: 2px solid rgb(var(--color-border-default));
-  }
-  .btn-secondary:hover { transform: translate(-2px, -2px); box-shadow: 4px 4px 0 rgb(var(--color-border-default)); }
-
-  /* Brutalist card */
+  /* Cards — hairline surface. No padding/flex: legacy call sites set their own. */
   .card {
-    @apply bg-surface-2 rounded-lg;
-    border: 3px solid rgb(var(--color-text-primary));
-    box-shadow: 6px 6px 0 rgb(var(--color-n1));
-    transition: transform .15s var(--pop-spring), box-shadow .15s ease;
+    @apply bg-surface-2;
+    border: 1px solid var(--color-divider);
+    border-radius: var(--radius-lg);
+    transition: border-color .15s, box-shadow .15s;
   }
-  .card:hover { transform: translate(-2px, -2px); box-shadow: 9px 9px 0 rgb(var(--color-n1)); }
-  /* Recede a card whose content is history (e.g. a cancelled scheduled post)
-     so live items alongside it stand out. .card sets `border` as a shorthand
-     with a raw colour, so this overrides border-color specifically. */
-  .card-muted {
-    border-color: rgb(var(--color-border-default));
-    opacity: .7;
-  }
+  a.card:hover, button.card:hover, .card-hover:hover { border-color: var(--color-border-strong); box-shadow: var(--shadow-md); }
+  /* Recede a card whose content is history (e.g. a cancelled scheduled post). */
+  .card-muted { opacity: .7; }
   .card-muted:hover { opacity: 1; }
-  /* opt-out for dense/non-interactive cards that shouldn't lift */
-  .card-flat { box-shadow: none; }
-  .card-flat:hover { transform: none; box-shadow: none; }
-  /* accent overrides */
-  .card-accent-n2 { box-shadow: 6px 6px 0 rgb(var(--color-n2)); }
-  .card-accent-n2:hover { box-shadow: 9px 9px 0 rgb(var(--color-n2)); }
-  .card-accent-n3 { box-shadow: 6px 6px 0 rgb(var(--color-n3)); }
-  .card-accent-n3:hover { box-shadow: 9px 9px 0 rgb(var(--color-n3)); }
-  .card-accent-n4 { box-shadow: 6px 6px 0 rgb(var(--color-n4)); }
-  .card-accent-n4:hover { box-shadow: 9px 9px 0 rgb(var(--color-n4)); }
+  .card-flat:hover { box-shadow: none; }
+  /* Category-hue accent: a 3px hue rule along the top edge. */
+  .card-accent-teal { box-shadow: inset 0 3px 0 rgb(var(--color-hue-teal)); }
+  .card-accent-amber { box-shadow: inset 0 3px 0 rgb(var(--color-hue-amber)); }
+  .card-accent-coral { box-shadow: inset 0 3px 0 rgb(var(--color-hue-coral)); }
 
-  /* Inputs — neon focus offset */
-  .input-field {
-    @apply w-full px-3 py-2 bg-surface-0 text-text-primary placeholder-text-tertiary text-sm rounded-lg
-           transition-[border-color,box-shadow] duration-150;
-    border: 2px solid rgb(var(--color-border-default));
+  /* Inputs — .input is the design-system name; .input-field is the legacy alias. */
+  .input, .input-field {
+    width: 100%; min-height: 40px; padding: 8px 12px; font: inherit; font-size: 14px;
+    color: rgb(var(--color-text-primary)); caret-color: rgb(var(--color-accent));
+    background: rgb(var(--color-surface-0)); border: 1px solid var(--color-divider);
+    border-radius: var(--radius-md); transition: border-color .15s, box-shadow .15s;
   }
-  .input-field:focus {
-    outline: none;
-    border-color: rgb(var(--color-n3));
-    box-shadow: 3px 3px 0 rgb(var(--color-n3));
+  .input::placeholder, .input-field::placeholder { color: rgb(var(--color-text-secondary)); }
+  .input:hover, .input-field:hover { border-color: var(--color-border-strong); }
+  .input:focus-visible, .input-field:focus-visible {
+    outline: 0; border-color: rgb(var(--color-accent));
+    box-shadow: 0 0 0 3px color-mix(in srgb, rgb(var(--color-accent)) 28%, transparent);
   }
-
-  /* Pills / badges */
-  .pop-pill {
-    @apply inline-block rounded-full text-xs px-2.5 py-0.5 text-text-secondary;
-    border: 1.5px solid rgb(var(--color-border-default));
-  }
-  .pop-badge {
-    @apply inline-block rounded-full text-xs font-display font-extrabold uppercase px-3 py-1;
-    color: rgb(var(--color-on-accent));
-    background: rgb(var(--color-n1));
-    border: 2px solid rgb(var(--color-ink));
-    box-shadow: 4px 4px 0 rgb(var(--color-ink));
-  }
-
-  /* Star rating */
-  .pop-stars { color: rgb(var(--color-n2)); letter-spacing: 2px; }
-  .pop-stars .empty { color: rgb(var(--color-text-tertiary)); }
-
-  /* Marquee */
-  .pop-marquee {
-    @apply w-full overflow-hidden;
-    color: rgb(var(--color-on-accent));
-    background: rgb(var(--color-n1));
-    border-bottom: 3px solid rgb(var(--color-text-primary));
-  }
-  .pop-marquee__track {
-    @apply flex whitespace-nowrap font-display font-extrabold uppercase text-[13px] py-2;
-    width: max-content;
-    animation: pop-marquee 22s linear infinite;
-  }
-  .pop-marquee__item { @apply px-[18px]; }
+  .input:disabled, .input-field:disabled { opacity: .6; cursor: not-allowed; }
+  textarea.input, textarea.input-field { min-height: 96px; resize: vertical; }
+  .field > label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: rgb(var(--color-text-primary)); }
 }
 
 /* Shell building blocks from the design system (used by the launcher / top bar / tab bar in later waves).
@@ -304,6 +258,7 @@
 
   .tag { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; }
   .tag-accent { background: color-mix(in srgb, rgb(var(--color-accent)) 18%, transparent); color: rgb(var(--color-accent-text)); }
+  .tag-accent-2 { background: color-mix(in srgb, rgb(var(--color-hue-coral)) 18%, transparent); color: rgb(var(--color-hue-coral)); }
   .tag-neutral { background: rgb(var(--color-surface-3)); color: rgb(var(--color-text-secondary)); }
   .tag-outline { border: 1px solid var(--color-divider); color: rgb(var(--color-text-primary)); }
 
@@ -319,22 +274,6 @@
 }
 
 @layer utilities {
-  /* Neon ambiance background */
-  .pop-bg { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
-  .pop-blob {
-    position: absolute; width: 42vw; height: 42vw; border-radius: 50%;
-    filter: blur(50px); opacity: .26; animation: pop-drift 20s ease-in-out infinite;
-  }
-  .pop-blob--1 { top: -8%; left: -6%; background: radial-gradient(circle, rgb(var(--color-n1)), transparent 70%); }
-  .pop-blob--2 { bottom: -10%; right: -6%; background: radial-gradient(circle, rgb(var(--color-n3)), transparent 70%); animation-duration: 24s; }
-  .pop-blob--3 { top: 40%; left: 50%; background: radial-gradient(circle, rgb(var(--color-n2)), transparent 70%); opacity: .18; animation-duration: 18s; }
-  .pop-halftone {
-    position: fixed; inset: 0; z-index: 0; pointer-events: none;
-    background-image: radial-gradient(rgb(var(--color-border-default)) 1px, transparent 1px);
-    background-size: 21px 21px; opacity: .5;
-  }
-  .pop-pulse { animation: pop-pulse 1.6s ease-in-out infinite; }
-
   .scrollbar-thin {
     scrollbar-width: thin;
     scrollbar-color: rgb(var(--color-border-hover)) transparent;
@@ -348,16 +287,11 @@
 }
 
 @keyframes fus-marquee { to { transform: translateX(-50%); } }
-@keyframes pop-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-@keyframes pop-drift { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(4%, 6%) scale(1.12); } }
-@keyframes pop-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
-@keyframes pop-glitch-a { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(-2px, 1px); } }
-@keyframes pop-glitch-b { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(2px, -2px); } }
 
 @media (prefers-reduced-motion: reduce) {
-  .pop-marquee__track, .pop-blob, .pop-pulse, .marquee-track { animation: none; }
+  .marquee-track { animation: none; }
   .launcher, .launcher-scrim { transition: none; }
-  .card, .btn-primary, .btn-secondary { transition: none; }
+  .card, .btn, .btn-primary, .btn-secondary, .btn-ghost, .input, .input-field { transition: none; }
   .animate-pulse, .animate-fade-in { animation: none; }
   /* Keep loading signal: spinners stay, but slow down. */
   .animate-spin { animation-duration: 2.5s; }

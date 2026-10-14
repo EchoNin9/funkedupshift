@@ -8,21 +8,16 @@ import {
   canAccessExpenses,
 } from "../shell/AuthContext";
 import {
-  GlobeAltIcon,
-  PhotoIcon,
-  ChartBarIcon,
-  TrophyIcon,
-  SparklesIcon,
-  CurrencyDollarIcon,
-  Cog6ToothIcon,
-  UserGroupIcon,
-  TruckIcon,
-  LinkIcon,
-  MegaphoneIcon,
-  BanknotesIcon,
-  SwatchIcon,
-} from "@heroicons/react/24/outline";
-import {
+  ChartBar,
+  CurrencyDollar,
+  Gear,
+  Globe,
+  ImageSquare,
+  Megaphone,
+  Money,
+  Palette,
+  Truck,
+  UsersThree,
   GlobeHemisphereWest,
   Images,
   Smiley,
@@ -111,17 +106,17 @@ export const PUBLIC_MODULES: PublicModule[] = [
 ];
 
 export const ADMIN_MODULES: AdminModule[] = [
-  { id: "websites", label: "Websites", path: "/admin/websites", description: "Add and manage curated sites, categories, and logos.", icon: GlobeAltIcon, minRole: "manager" },
-  { id: "media", label: "Media", path: "/admin/media", description: "Upload and organize media files.", icon: PhotoIcon, minRole: "manager" },
-  { id: "internet-dashboard", label: "Internet Dashboard", path: "/admin/internet-dashboard", description: "Manage domains shown on the internet dashboard.", icon: ChartBarIcon, minRole: "superadmin" },
-  { id: "recommended", label: "Recommended", path: "/admin/recommended", description: "Curate highlights and highest-rated lists.", icon: SparklesIcon, minRole: "manager" },
-  { id: "membership", label: "Membership", path: "/admin/membership", description: "Manage custom groups and member access.", icon: UserGroupIcon, minRole: "manager" },
-  { id: "branding", label: "Branding", path: "/admin/branding", description: "Set global logo and branding assets.", icon: Cog6ToothIcon, minRole: "superadmin" },
-  { id: "themes", label: "Themes", path: "/admin/themes", description: "Colour themes and the site-wide default theme and mode.", icon: SwatchIcon, minRole: "superadmin" },
-  { id: "squash", label: "Squash", path: "/squash-admin", description: "Manage squash players and matches.", icon: TrophyIcon, minRole: "manager" },
-  { id: "stats", label: "Stats", path: "/admin/stats", description: "View app statistics and per-user click paths.", icon: ChartBarIcon, minRole: "superadmin" },
-  { id: "social", label: "Social Scheduler", path: "/social", description: "Schedule and publish posts to connected social accounts.", icon: MegaphoneIcon, minRole: "superadmin" },
-  { id: "lipsync-budgets", label: "Lipsync Budgets", path: "/admin/lipsync-budgets", description: "Review the fal balance and manage each user's lipsync spend budget.", icon: BanknotesIcon, minRole: "superadmin" },
+  { id: "websites", label: "Websites", path: "/admin/websites", description: "Add and manage curated sites, categories, and logos.", icon: Globe, minRole: "manager" },
+  { id: "media", label: "Media", path: "/admin/media", description: "Upload and organize media files.", icon: ImageSquare, minRole: "manager" },
+  { id: "internet-dashboard", label: "Internet Dashboard", path: "/admin/internet-dashboard", description: "Manage domains shown on the internet dashboard.", icon: ChartBar, minRole: "superadmin" },
+  { id: "recommended", label: "Recommended", path: "/admin/recommended", description: "Curate highlights and highest-rated lists.", icon: Sparkle, minRole: "manager" },
+  { id: "membership", label: "Membership", path: "/admin/membership", description: "Manage custom groups and member access.", icon: UsersThree, minRole: "manager" },
+  { id: "branding", label: "Branding", path: "/admin/branding", description: "Set global logo and branding assets.", icon: Gear, minRole: "superadmin" },
+  { id: "themes", label: "Themes", path: "/admin/themes", description: "Colour themes and the site-wide default theme and mode.", icon: Palette, minRole: "superadmin" },
+  { id: "squash", label: "Squash", path: "/squash-admin", description: "Manage squash players and matches.", icon: Trophy, minRole: "manager" },
+  { id: "stats", label: "Stats", path: "/admin/stats", description: "View app statistics and per-user click paths.", icon: ChartBar, minRole: "superadmin" },
+  { id: "social", label: "Social Scheduler", path: "/social", description: "Schedule and publish posts to connected social accounts.", icon: Megaphone, minRole: "superadmin" },
+  { id: "lipsync-budgets", label: "Lipsync Budgets", path: "/admin/lipsync-budgets", description: "Review the fal balance and manage each user's lipsync spend budget.", icon: Money, minRole: "superadmin" },
 ];
 
 /** Sections for sidebar grouping, in display order. */
@@ -219,7 +214,7 @@ const MODULE_GROUPS: ModuleGroup[] = [
   {
     id: "memes",
     label: "Memes",
-    icon: PhotoIcon,
+    icon: ImageSquare,
     isVisible: () => true,
     getLinks: (u) => {
       const links: ModuleLink[] = [{ path: "/memes", label: "Memes Page" }];
@@ -230,7 +225,7 @@ const MODULE_GROUPS: ModuleGroup[] = [
   {
     id: "expenses",
     label: "Expenses",
-    icon: TruckIcon,
+    icon: Truck,
     isVisible: canAccessExpenses,
     getLinks: () => [
       { path: "/vehicles-expenses", label: "Vehicle expenses" },
@@ -240,7 +235,7 @@ const MODULE_GROUPS: ModuleGroup[] = [
   {
     id: "squash",
     label: "Squash",
-    icon: TrophyIcon,
+    icon: Trophy,
     isVisible: (u) => canAccessSquash(u) || canModifySquash(u),
     getLinks: (u) => {
       const links: ModuleLink[] = [];
@@ -252,7 +247,7 @@ const MODULE_GROUPS: ModuleGroup[] = [
   {
     id: "financial",
     label: "Financial",
-    icon: CurrencyDollarIcon,
+    icon: CurrencyDollar,
     isVisible: (u) => !!u?.userId,
     getLinks: (u) => {
       const links: ModuleLink[] = [{ path: "/finances", label: "Finances" }];
@@ -263,7 +258,7 @@ const MODULE_GROUPS: ModuleGroup[] = [
   {
     id: "tools",
     label: "Tools",
-    icon: LinkIcon,
+    icon: LinkSimple,
     // Visible to guests too — the /tools landing grid and My Info are usable
     // signed-out; the remaining links open their own in-component sign-in
     // prompt when a guest clicks through (see ShortenerPage.tsx etc).

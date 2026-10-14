@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Dialog } from "@headlessui/react";
-import { XMarkIcon } from "@heroicons/react/24/outline";
+import { X } from "@phosphor-icons/react";
 import { useAuth, hasRole } from "../../shell/AuthContext";
 import { fetchWithAuthOptional } from "../../utils/api";
 import { Alert } from "../../components";
@@ -81,10 +81,10 @@ const OurPropertiesPage: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold tracking-tight text-n3-text">
+      <h1 className="text-2xl font-semibold tracking-tight text-hue-teal">
         Highlights and faves
       </h1>
-      <div className="rounded-xl border border-n3/40 bg-gradient-to-br from-n3/10 to-surface-1/90 p-4 shadow-lg">
+      <div className="rounded-xl border border-hue-teal/40 bg-gradient-to-br from-hue-teal/10 to-surface-1/90 p-4 shadow-lg">
         <p className="text-sm font-medium text-text-primary">
           Our curated list of exceptional sites
         </p>
@@ -95,7 +95,7 @@ const OurPropertiesPage: React.FC = () => {
           <p className="mt-2">
             <Link
               to="/admin/recommended?tab=highlights"
-              className="text-n3-text hover:underline font-semibold text-sm"
+              className="text-hue-teal hover:underline font-semibold text-sm"
             >
               Edit sites list
             </Link>
@@ -117,7 +117,7 @@ const OurPropertiesPage: React.FC = () => {
           {canEdit && (
             <Link
               to="/admin/recommended?tab=highlights"
-              className="text-n3-text hover:underline"
+              className="text-hue-teal hover:underline"
             >
               Add sites
             </Link>
@@ -131,10 +131,10 @@ const OurPropertiesPage: React.FC = () => {
             const status = (s.status || "up").toLowerCase();
             const statusClass =
               status === "up"
-                ? "border-n3/60 bg-n3/25 text-n3-text"
+                ? "border-hue-teal/60 bg-hue-teal/25 text-hue-teal"
                 : status === "degraded"
-                ? "border-n3/45 bg-n3/15 text-n3-text"
-                : "border-n3/30 bg-n3/10 text-n3-text";
+                ? "border-hue-teal/45 bg-hue-teal/15 text-hue-teal"
+                : "border-hue-teal/30 bg-hue-teal/10 text-hue-teal";
             const hasDescription = (s.description || "").trim().length > 0;
             const displayTitle = s.title || s.domain;
             const fullUrl = s.url || `https://${s.domain}`;
@@ -163,7 +163,7 @@ const OurPropertiesPage: React.FC = () => {
                     {displayTitle}
                   </a>
                   <span
-                    className="absolute left-0 top-full mt-1 px-2 py-1.5 rounded bg-surface-2 border border-n3/40 text-xs text-n3-text break-all max-w-[280px] shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-10 pointer-events-none"
+                    className="absolute left-0 top-full mt-1 px-2 py-1.5 rounded bg-surface-2 border border-hue-teal/40 text-xs text-hue-teal break-all max-w-[280px] shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-10 pointer-events-none"
                     role="tooltip"
                   >
                     {fullUrl}
@@ -183,16 +183,16 @@ const OurPropertiesPage: React.FC = () => {
       <Dialog open={!!selectedSite} onClose={() => setSelectedSite(null)} className="relative z-50">
         <div className="fixed inset-0 bg-black/50" aria-hidden="true" />
         <div className="fixed inset-0 flex items-center justify-center p-4">
-          <Dialog.Panel className="mx-auto w-full max-w-xl rounded-xl border border-n3/40 bg-gradient-to-br from-n3/10 to-surface-1/90 p-6 shadow-xl">
+          <Dialog.Panel className="mx-auto w-full max-w-xl rounded-xl border border-hue-teal/40 bg-gradient-to-br from-hue-teal/10 to-surface-1/90 p-6 shadow-xl">
             {selectedSite && (
               <div className="relative flex min-h-[12rem] items-center justify-center">
                 <button
                   type="button"
                   onClick={() => setSelectedSite(null)}
-                  className="absolute right-0 top-0 rounded p-1 text-n3-text hover:bg-n3/15 hover:text-text-primary"
+                  className="absolute right-0 top-0 rounded p-1 text-hue-teal hover:bg-hue-teal/15 hover:text-text-primary"
                   aria-label="Close modal"
                 >
-                  <XMarkIcon className="h-6 w-6" />
+                  <X className="h-6 w-6" />
                 </button>
                 {selectedSite.logoUrl ? (
                   <img
@@ -204,7 +204,7 @@ const OurPropertiesPage: React.FC = () => {
                     }}
                   />
                 ) : (
-                  <div className="h-24 w-24 rounded-lg border border-n3/40 bg-n3/10" />
+                  <div className="h-24 w-24 rounded-lg border border-hue-teal/40 bg-hue-teal/10" />
                 )}
               </div>
             )}

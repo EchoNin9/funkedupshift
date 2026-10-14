@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { fetchWithAuthOptional } from "../utils/api";
-import { DEFAULT_BANNER } from "./PopMarquee";
+import { DEFAULT_BANNER } from "./Marquee";
 
 interface LogoMeta {
   url: string;

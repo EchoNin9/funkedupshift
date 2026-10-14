@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from "react";
-import { LinkIcon, ClipboardDocumentIcon } from "@heroicons/react/24/outline";
+import { Clipboard, LinkSimple } from "@phosphor-icons/react";
 
 interface ShareMemePopoverProps {
   memeId: string;
@@ -62,7 +62,7 @@ const ShareMemePopover: React.FC<ShareMemePopoverProps> = ({
       {open && (
         <div className="absolute left-0 top-full z-20 mt-1 min-w-[180px] rounded-lg border border-border-hover bg-surface-2 p-2 shadow-xl">
           <div className="flex items-center gap-1.5 px-2 py-1 mb-2 text-xs font-medium text-text-tertiary uppercase">
-            <LinkIcon className="h-3.5 w-3.5" />
+            <LinkSimple className="h-3.5 w-3.5" />
             Share
           </div>
           <div className="flex flex-col gap-1">
@@ -71,7 +71,7 @@ const ShareMemePopover: React.FC<ShareMemePopoverProps> = ({
               onClick={handleCopyLink}
               className="flex items-center gap-2 rounded px-2 py-1.5 text-left text-sm text-text-primary transition-colors hover:bg-surface-3"
             >
-              <ClipboardDocumentIcon className="h-4 w-4 text-text-tertiary" />
+              <Clipboard className="h-4 w-4 text-text-tertiary" />
               Copy link
               {copied && <span className="text-success text-xs">✓</span>}
             </button>

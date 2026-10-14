@@ -104,7 +104,7 @@ const ImportPanel: React.FC<{ accounts: Account[]; onImported: () => void }> = (
           {busy ? "Working…" : "Preview"}
         </button>
         <button type="button" onClick={() => run(true)} disabled={busy || !file || !accountId || !preview}
-          className="rounded-md bg-accent-500 px-3 py-2 text-sm font-medium text-ink hover:bg-accent-400 disabled:opacity-50">
+          className="rounded-md bg-accent-500 px-3 py-2 text-sm font-medium text-on-accent hover:bg-accent-400 disabled:opacity-50">
           Commit import
         </button>
         {preview && (

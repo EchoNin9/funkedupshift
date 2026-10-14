@@ -3,7 +3,7 @@ import { useAuth, hasRole } from "../../shell/AuthContext";
 import { AdminPageHeader } from "./AdminPageHeader";
 import { fetchWithAuth } from "../../utils/api";
 import { Alert } from "../../components";
-import { PopMarquee, DEFAULT_BANNER } from "../../shell/PopMarquee";
+import { Marquee, DEFAULT_BANNER } from "../../shell/Marquee";
 import {
   useBranding,
   DEFAULT_HERO_TAGLINE,
@@ -434,7 +434,7 @@ const BrandingPage: React.FC = () => {
       </form>
 
       <form className="card p-6 space-y-4 max-w-2xl" onSubmit={onHeroTextSave}>
-        <h2 className="text-lg font-display font-extrabold uppercase tracking-tight text-text-primary">Hero section</h2>
+        <h2 className="text-lg font-display font-semibold tracking-[-0.025em] text-text-primary">Hero section</h2>
         <p className="text-sm text-text-secondary">
           Edit the home page hero text and background image. Text uses fallbacks when empty.
         </p>
@@ -545,7 +545,7 @@ const BrandingPage: React.FC = () => {
       {hasRole(user ?? null, "manager") && (
         <form className="card p-6 space-y-4 max-w-2xl" onSubmit={onBannerSave}>
           <div>
-            <h2 className="text-lg font-display font-extrabold uppercase tracking-tight text-text-primary">
+            <h2 className="text-lg font-display font-semibold tracking-[-0.025em] text-text-primary">
               Scrolling Banner
             </h2>
             <p className="mt-1 text-sm text-text-secondary">
@@ -568,10 +568,10 @@ const BrandingPage: React.FC = () => {
 
           {/* Live preview — re-renders on each keystroke */}
           <div className="space-y-1">
-            <span className="text-xs font-display font-extrabold uppercase tracking-tight text-text-tertiary">
+            <span className="text-xs font-sans font-semibold text-text-tertiary">
               Live preview
             </span>
-            <PopMarquee text={bannerDraft.trim() || DEFAULT_BANNER} />
+            <Marquee text={bannerDraft.trim() || DEFAULT_BANNER} className="rounded-lg border border-border-default bg-surface-0 py-2" />
           </div>
 
           <button type="submit" disabled={bannerSaving} className="btn-primary disabled:opacity-50">
