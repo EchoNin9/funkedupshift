@@ -72,6 +72,7 @@ interface ProfileData {
   customGroups?: string[];
   profile?: {
     description?: string;
+    displayName?: string;
     avatarUrl?: string;
     avatarKey?: string;
     lastLoginAt?: string;
@@ -95,6 +96,9 @@ const ProfilePage: React.FC = () => {
 
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [description, setDescription] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [nameMessage, setNameMessage] = useState<{ text: string; error: boolean } | null>(null);
+  const [isSavingName, setIsSavingName] = useState(false);
   const [timezoneOffset, setTimezoneOffset] = useState(getStoredTz);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -148,6 +152,7 @@ const ProfilePage: React.FC = () => {
         if (cancelled) return;
         setProfile(data);
         setDescription(data.profile?.description ?? "");
+        setDisplayName(data.profile?.displayName ?? "");
       })
       .catch((e) => {
         if (!cancelled) setMessage({ text: `Failed to load profile: ${e?.message ?? "Unknown"}`, error: true });
@@ -259,6 +264,32 @@ const ProfilePage: React.FC = () => {
     }
   };
 
+  const handleSaveName = async () => {
+    if (!apiBase) return;
+    setIsSavingName(true);
+    setNameMessage(null);
+    try {
+      const resp = await fetchWithAuth(`${apiBase}/profile`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ displayName: displayName.trim() })
+      });
+      if (!resp.ok) {
+        const d = await resp.json().catch(() => ({}));
+        throw new Error(d.error || "Failed");
+      }
+      const saved = displayName.trim();
+      setDisplayName(saved);
+      setProfile((p) => (p ? { ...p, profile: { ...p.profile, displayName: saved } } : p));
+      setNameMessage({ text: "Saved.", error: false });
+      await refreshAuth(); // greeting + header pick up the new name
+    } catch (e: any) {
+      setNameMessage({ text: `Error: ${e?.message ?? "Unknown"}`, error: true });
+    } finally {
+      setIsSavingName(false);
+    }
+  };
+
   const handleSave = async () => {
     if (!apiBase) return;
     setIsSaving(true);
@@ -319,6 +350,7 @@ const ProfilePage: React.FC = () => {
       }
       const fresh = await fetchWithAuth(`${apiBase}/profile`).then((r) => r.json());
       setProfile(fresh);
+      refreshAuth();
     } catch (e: any) {
       setAvatarError(`Error: ${e?.message ?? "Unknown"}`);
     }
@@ -341,6 +373,7 @@ const ProfilePage: React.FC = () => {
             }
           : null
       );
+      refreshAuth();
     } catch (e: any) {
       setAvatarError(`Error: ${e?.message ?? "Unknown"}`);
     }
@@ -373,6 +406,7 @@ const ProfilePage: React.FC = () => {
       }
       const fresh = await fetchWithAuth(`${apiBase}/profile`).then((r) => r.json());
       setProfile(fresh);
+      refreshAuth();
       setAvatarImageUrl("");
     } catch (e: any) {
       setAvatarError(`Error: ${e?.message ?? "Unknown"}`);
@@ -416,6 +450,7 @@ const ProfilePage: React.FC = () => {
       }
       const fresh = await fetchWithAuth(`${apiBase}/profile`).then((r) => r.json());
       setProfile(fresh);
+      refreshAuth();
     } catch (e: any) {
       if (e?.message !== "User cancelled photos app") {
         setAvatarError(`Error: ${e?.message ?? "Unknown"}`);
@@ -633,6 +668,36 @@ const ProfilePage: React.FC = () => {
                 <tr>
                   <td className="py-1 pr-4 font-medium text-text-secondary">Last login</td>
                   <td className="text-text-secondary">{lastLoginText}</td>
+                </tr>
+                <tr>
+                  <td className="py-1 pr-4 font-medium text-text-secondary align-top pt-2">
+                    <label htmlFor="profile-display-name">Display name</label>
+                  </td>
+                  <td className="py-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <input
+                        id="profile-display-name"
+                        type="text"
+                        value={displayName}
+                        onChange={(e) => setDisplayName(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && handleSaveName()}
+                        maxLength={40}
+                        placeholder={(profile.email ?? "").split("@")[0]}
+                        className="w-full max-w-xs rounded-md border border-border-hover bg-surface-1 px-3 py-1.5 text-sm text-text-primary placeholder:text-text-tertiary focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleSaveName}
+                        disabled={isSavingName || displayName.trim() === (profile.profile?.displayName ?? "")}
+                        className="rounded-md bg-accent-500 px-3 py-1.5 text-sm font-semibold text-on-accent hover:bg-accent-400 disabled:opacity-50"
+                      >
+                        {isSavingName ? "Saving…" : "Save"}
+                      </button>
+                    </div>
+                    <p className={`mt-1 text-xs ${nameMessage?.error ? "text-danger" : "text-text-tertiary"}`}>
+                      {nameMessage?.text ?? "Used in your home greeting. Leave blank to use your email name."}
+                    </p>
+                  </td>
                 </tr>
               </tbody>
             </table></div>

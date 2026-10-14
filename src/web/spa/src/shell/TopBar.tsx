@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { MagnifyingGlass, Moon, SquaresFour, Sun } from "@phosphor-icons/react";
 import { useAuth } from "./AuthContext";
 import { useLauncher } from "./LauncherContext";
-import { AccountMenu, userInitials } from "./AccountMenu";
+import { AccountMenu, UserAvatar } from "./AccountMenu";
 import { getTheme, toggleTheme, type Theme } from "./theme";
 
 /** Desktop (>640px) top bar: launcher, wordmark, ⌘K search trigger, theme toggle, avatar / Sign in. */
@@ -78,12 +78,9 @@ export function TopBar() {
             aria-label="Account menu"
             aria-haspopup="menu"
             aria-expanded={menuOpen}
-            className="grid h-9 w-9 place-items-center rounded-full font-sans text-sm font-semibold text-white"
-            style={{
-              background: "linear-gradient(135deg, rgb(var(--color-hue-violet)), rgb(var(--color-hue-coral)))",
-            }}
+            className="rounded-full"
           >
-            {userInitials(user!.email)}
+            <UserAvatar user={user!} className="h-9 w-9 rounded-full" />
           </button>
           {menuOpen && <AccountMenu onClose={() => setMenuOpen(false)} returnFocusTo={avatarRef} />}
         </>

@@ -1,13 +1,13 @@
 import React, { lazy, Suspense } from "react";
 import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
+import { UserAvatar } from "./AccountMenu";
 import { useAuth } from "./AuthContext";
 import { useBranding } from "./BrandingContext";
 import { MobileBottomTabs } from "./MobileBottomTabs";
 import { MobileModulesProvider } from "./MobileModulesContext";
 import { AdminLayout } from "./AdminLayout";
 import { pageTransition } from "../components/motion";
-import { UserCircle } from "@phosphor-icons/react";
 import { Marquee } from "./Marquee";
 import { ThemeToggle } from "./ThemeToggle";
 
@@ -92,8 +92,8 @@ export function MobileAppShell() {
           <div className="flex items-center gap-2">
             <ThemeToggle />
             {user ? (
-              <Link to="/profile" className="text-text-secondary">
-                <UserCircle className="w-7 h-7" />
+              <Link to="/profile" aria-label="Profile">
+                <UserAvatar user={user} className="h-7 w-7 rounded-full" />
               </Link>
             ) : (
               <Link to="/auth" className="btn-primary text-xs !px-3 !py-1.5">

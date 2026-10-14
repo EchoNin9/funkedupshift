@@ -2870,7 +2870,30 @@ def getMe(event):
     real_user_id = getEffectiveUserInfo(event).get("userId", "")
     if real_user_id and not user.get("impersonated"):
         _recordLastLogin(event, real_user_id)
-    return jsonResponse(user)
+    return jsonResponse({**user, **_profileBadge(user.get("userId", ""))})
+
+
+def _profileBadge(user_id):
+    """displayName + presigned avatarUrl from the PROFILE item; {} on any failure (never breaks /me)."""
+    try:
+        if not (TABLE_NAME and user_id):
+            return {}
+        import boto3
+        item = boto3.client("dynamodb").get_item(
+            TableName=TABLE_NAME,
+            Key={"PK": {"S": f"USER#{user_id}"}, "SK": {"S": "PROFILE"}},
+        ).get("Item") or {}
+        out = {"displayName": item.get("displayName", {}).get("S", "")}
+        avatar_key = item.get("avatarKey", {}).get("S", "")
+        if avatar_key and MEDIA_BUCKET:
+            s3 = boto3.client("s3", region_name=os.environ.get("AWS_REGION", "us-east-1"))
+            out["avatarUrl"] = s3.generate_presigned_url(
+                "get_object", Params={"Bucket": MEDIA_BUCKET, "Key": avatar_key}, ExpiresIn=3600
+            )
+        return out
+    except Exception:
+        logger.exception("_profileBadge error")
+        return {}
 
 
 def listThemes(event):
@@ -2967,6 +2990,7 @@ def getProfile(event):
             if "Item" in resp:
                 item = resp["Item"]
                 profile["description"] = item.get("description", {}).get("S", "")
+                profile["displayName"] = item.get("displayName", {}).get("S", "")
                 profile["lastLoginAt"] = item.get("lastLoginAt", {}).get("S", "")
                 profile["lastLoginIp"] = item.get("lastLoginIp", {}).get("S", "")
                 avatar_key = item.get("avatarKey", {}).get("S", "")
@@ -3002,8 +3026,11 @@ def getProfile(event):
     return jsonResponse(out)
 
 
+DISPLAY_NAME_MAX = 40
+
+
 def updateProfile(event):
-    """PUT /profile - Update current user's profile (description, avatarKey)."""
+    """PUT /profile - Update current user's profile (description, displayName, avatarKey)."""
     user = getEffectiveUserInfo(event)
     if not user.get("userId"):
         return jsonResponse({"error": "Unauthorized"}, 401)
@@ -3015,6 +3042,7 @@ def updateProfile(event):
         body = json.loads(event.get("body", "{}"))
         description = body.get("description")
         avatar_key = body.get("avatarKey")
+        display_name = body.get("displayName")
         user_id = user.get("userId", "")
         pk = f"USER#{user_id}"
         now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
@@ -3025,6 +3053,11 @@ def updateProfile(event):
                 return jsonResponse({"error": "description must be at most 100 characters"}, 400)
         else:
             desc_str = None
+
+        if display_name is not None:
+            display_name = str(display_name).strip()
+            if len(display_name) > DISPLAY_NAME_MAX:
+                return jsonResponse({"error": f"displayName must be at most {DISPLAY_NAME_MAX} characters"}, 400)
 
         from api.themes import validate_profile_prefs
         prefs, prefs_err = validate_profile_prefs(body)
@@ -3053,6 +3086,11 @@ def updateProfile(event):
             updates.append("#desc = :desc")
             names["#desc"] = "description"
             values[":desc"] = {"S": desc_str}
+        if display_name:
+            updates.append("displayName = :dn")
+            values[":dn"] = {"S": display_name}
+        elif display_name is not None:
+            removes.append("displayName")  # empty clears it -> greeting falls back to email
         if avatar_key is not None:
             key_str = str(avatar_key).strip() if avatar_key else ""
             updates.append("avatarKey = :ak")

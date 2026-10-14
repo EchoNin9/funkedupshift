@@ -9,6 +9,8 @@ export interface AuthUser {
   groups: string[];
   role: UserRole;
   customGroups?: string[];
+  displayName?: string;
+  avatarUrl?: string;
   impersonated?: boolean;
   impersonatedAs?: string;
 }
@@ -95,6 +97,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         groups,
         role,
         customGroups,
+        displayName: data.displayName ? String(data.displayName) : undefined,
+        avatarUrl: data.avatarUrl ? String(data.avatarUrl) : undefined,
         impersonated: !!data.impersonated,
         impersonatedAs: data.impersonatedAs
       });
