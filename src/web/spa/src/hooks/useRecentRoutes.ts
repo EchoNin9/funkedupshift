@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { resolveAppFrame } from "../components/AppPage";
+import { ADMIN_MODULES } from "../config/modules";
+import { useAuth } from "../shell/AuthContext";
 
-/** localStorage key for the recently visited app routes. */
+/** localStorage key prefix for recently visited app routes; stored per user (`funkedupshift_recent:<userId>`) so shared devices don't leak history. */
 export const RECENT_KEY = "funkedupshift_recent";
+const keyFor = (userId: string) => `${RECENT_KEY}:${userId}`;
 const MAX_RECENT = 6;
 
 export interface RecentRoute {
@@ -13,9 +16,10 @@ export interface RecentRoute {
 }
 
 /** Stored recents, newest first. Malformed storage or storage errors yield []. */
-export function readRecentRoutes(): RecentRoute[] {
+export function readRecentRoutes(userId?: string | null): RecentRoute[] {
+  if (!userId) return [];
   try {
-    const raw = localStorage.getItem(RECENT_KEY);
+    const raw = localStorage.getItem(keyFor(userId));
     if (!raw) return [];
     const parsed: unknown = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
@@ -34,35 +38,46 @@ export function readRecentRoutes(): RecentRoute[] {
   }
 }
 
-const subscribers = new Set<(r: RecentRoute[]) => void>();
+const subscribers = new Set<(userId: string, r: RecentRoute[]) => void>();
 
-/** Record a visit. Ignores paths that don't resolve to an app frame; dedupes; keeps the last 6. */
-export function recordRecentRoute(rawPath: string): void {
-  const path = rawPath.length > 1 ? rawPath.replace(/\/+$/, "") : rawPath;
-  if (!resolveAppFrame(path)) return;
-  const next = [{ path, at: Date.now() }, ...readRecentRoutes().filter((r) => r.path !== path)].slice(0, MAX_RECENT);
+/** Record a visit for `userId` (no-op for guests). Ignores paths that don't resolve to an app frame; admin pages are
+ *  stored as their parent module path so record ids (e.g. /admin/users/edit/<id>) are never kept; dedupes; keeps the last 6. */
+export function recordRecentRoute(rawPath: string, userId?: string | null): void {
+  if (!userId) return;
+  let path = rawPath.length > 1 ? rawPath.replace(/\/+$/, "") : rawPath;
+  const frame = resolveAppFrame(path);
+  if (!frame) return;
+  if (frame.kind === "admin" && frame.adminId) {
+    path = ADMIN_MODULES.find((m) => m.id === frame.adminId)?.path ?? "/admin";
+  }
+  const next = [{ path, at: Date.now() }, ...readRecentRoutes(userId).filter((r) => r.path !== path)].slice(0, MAX_RECENT);
   try {
-    localStorage.setItem(RECENT_KEY, JSON.stringify(next));
+    localStorage.setItem(keyFor(userId), JSON.stringify(next));
   } catch {
     /* storage unavailable — recents are best-effort */
   }
-  subscribers.forEach((notify) => notify(next));
+  subscribers.forEach((notify) => notify(userId, next));
 }
 
-/** The last visited app routes, newest first. Callers filter by access (see HomePage). */
+/** The signed-in user's last visited app routes, newest first. Callers filter by access (see Dashboard). */
 export function useRecentRoutes(): RecentRoute[] {
-  const [recent, setRecent] = useState<RecentRoute[]>(readRecentRoutes);
+  const { user } = useAuth();
+  const userId = user?.userId ?? null;
+  const [recent, setRecent] = useState<RecentRoute[]>(() => readRecentRoutes(userId));
   useEffect(() => {
-    subscribers.add(setRecent);
+    setRecent(readRecentRoutes(userId));
+    const notify = (id: string, r: RecentRoute[]) => id === userId && setRecent(r);
+    subscribers.add(notify);
     return () => {
-      subscribers.delete(setRecent);
+      subscribers.delete(notify);
     };
-  }, []);
+  }, [userId]);
   return recent;
 }
 
-/** Records the current pathname as a visit whenever it changes. Mount once inside the app frame. */
+/** Records the current pathname as a visit for the signed-in user whenever it changes. Mount once inside the app frame. */
 export function useRecordRecentRoute(pathname: string): void {
-  const record = useCallback(recordRecentRoute, []);
-  useEffect(() => record(pathname), [pathname, record]);
+  const { user } = useAuth();
+  const userId = user?.userId ?? null;
+  useEffect(() => recordRecentRoute(pathname, userId), [pathname, userId]);
 }

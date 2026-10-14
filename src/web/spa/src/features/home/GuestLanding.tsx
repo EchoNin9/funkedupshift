@@ -21,7 +21,7 @@ function HeroTitle({ siteName }: { siteName: string }) {
   const last = words.length > 1 ? words[words.length - 1] : null;
   const head = last ? words.slice(0, -1) : words;
   return (
-    <h1 className="font-display text-[clamp(52px,9vw,112px)] font-semibold leading-[0.9] tracking-[-0.05em] text-text-primary">
+    <div className="font-display text-[clamp(52px,9vw,112px)] font-semibold leading-[0.9] tracking-[-0.05em] text-text-primary">
       {head.map((w, i) => (
         <React.Fragment key={i}>
           {i > 0 && " "}
@@ -35,7 +35,7 @@ function HeroTitle({ siteName }: { siteName: string }) {
         </>
       )}
       <span className="text-accent">.</span>
-    </h1>
+    </div>
   );
 }
 
@@ -65,11 +65,15 @@ const GuestLanding: React.FC = () => {
             </li>
           ))}
         </ul>
-        <HeroTitle siteName={siteName} />
-        <p className="mt-6 max-w-[560px] text-[19px] leading-[1.5] text-text-secondary">
-          A curated index of the web, a media library and a kit of everyday tools. Open to browse — sign in to rate, save and
-          use the modules.
+        <p className="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-accent-text">{hero.tagline}</p>
+        <h1 className="sr-only">{siteName}</h1>
+        <div aria-hidden="true">
+          <HeroTitle siteName={siteName} />
+        </div>
+        <p className="mt-6 max-w-[640px] font-display text-[clamp(20px,2.4vw,28px)] font-semibold leading-tight tracking-[-0.02em] text-text-primary">
+          {hero.headline}
         </p>
+        <p className="mt-3 max-w-[560px] text-[19px] leading-[1.5] text-text-secondary">{hero.subtext}</p>
         <div className="mt-8 flex flex-wrap gap-3">
           <button type="button" onClick={() => openLauncher()} className={buttonClasses("primary", "lg")}>
             <SquaresFour className="h-5 w-5" aria-hidden="true" />
