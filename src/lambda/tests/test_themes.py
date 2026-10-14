@@ -45,6 +45,13 @@ class FakeTable:
         return {"Items": [dict(v) for v in self.items.values()]}
 
 
+@pytest.fixture(autouse=True)
+def _reset_seeded():
+    themes._seeded = False
+    yield
+    themes._seeded = False
+
+
 @pytest.fixture
 def tbl():
     t = FakeTable()
@@ -367,3 +374,54 @@ def test_new_routes_in_infra():
     for rk in ["GET /themes", "POST /themes", "GET /themes/{id}", "PUT /themes/{id}",
                "DELETE /themes/{id}", "GET /site-settings", "PUT /site-settings"]:
         assert f'route_key          = "{rk}"' in infra or f'route_key = "{rk}"' in infra, rk
+
+
+# ---- seeding robustness / perf ----
+
+def test_ensure_seeded_second_call_makes_no_table_calls(tbl):
+    assert themes.ensure_seeded() is True
+    t = MagicMock()
+    with patch("api.themes._tbl", return_value=t):
+        assert themes.ensure_seeded() is False
+    assert t.method_calls == []
+
+
+def test_ensure_seeded_steady_state_cold_start_reads_only(tbl):
+    themes.ensure_seeded()
+    themes._seeded = False  # simulate a new warm container
+    writes = len(tbl.puts)
+    assert themes.ensure_seeded() is False
+    assert len(tbl.puts) == writes  # marker present: no writes
+    assert themes._seeded is True
+
+
+def test_marker_written_last(tbl):
+    themes.seed()
+    assert tbl.puts[-1]["SK"] == "THEMES_SEEDED"
+
+
+def test_marker_absent_themes_present_completes_without_clobber(tbl):
+    themes.seed()
+    del tbl.items[("SITE", "THEMES_SEEDED")]
+    del tbl.items[("SITE", "SETTINGS")]
+    tbl.items[("THEME", "THEME#ember")]["name"] = "Edited"
+    assert themes.ensure_seeded() is True
+    assert tbl.items[("THEME", "THEME#ember")]["name"] == "Edited"
+    assert ("SITE", "SETTINGS") in tbl.items and ("SITE", "THEMES_SEEDED") in tbl.items
+    assert len([k for k in tbl.items if k[0] == "THEME"]) == 4
+
+
+def test_get_themes_serializes_tint_as_json_number(tbl):
+    ev = _ev("/themes")
+    with patch("api.handler.getEffectiveUserInfo", side_effect=_fake_user(ev)):
+        r = handler.handler(ev, None)
+    raw = json.loads(r["body"])["themes"]
+    assert all(type(t["tint"]) in (int, float) for t in raw)
+    assert '"tint": 285' in r["body"]
+
+
+def test_profile_put_theme_null_only_has_valid_expression(tbl):
+    code, _, fd = _put_profile(tbl, {"themeId": None})
+    assert code == 200
+    expr = fd.updates[0]["UpdateExpression"]
+    assert expr == "SET updatedAt = :now REMOVE themeId"

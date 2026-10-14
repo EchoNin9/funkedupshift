@@ -39,6 +39,7 @@ SEED_THEMES = [
 SEED_SETTINGS = {"defaultThemeId": "funk", "defaultMode": "dark"}
 
 _table = None
+_seeded = False
 
 
 def _tbl():
@@ -95,18 +96,29 @@ def _public_theme(item):
 
 
 def seed():
-    """Write seed marker, then (only if we won the marker) seed themes + settings."""
-    if not _put_if_absent({"PK": "SITE", "SK": "THEMES_SEEDED", "seededAt": _now()}):
-        return False
+    """Put-if-absent every theme and the settings, then the marker LAST.
+
+    The marker is written last so a seed that dies midway is completed on the
+    next call. Returns True if this call wrote the marker.
+    """
     for (tid, name, tint, accent, discover, tools, modules, admin) in SEED_THEMES:
         colors = dict(accent=accent, discover=discover, tools=tools, modules=modules, admin=admin)
         _put_if_absent(_theme_item(tid, name, Decimal(str(tint)), colors, True))
     _put_if_absent({"PK": "SITE", "SK": "SETTINGS", **SEED_SETTINGS, "updatedAt": _now()})
-    return True
+    return _put_if_absent({"PK": "SITE", "SK": "THEMES_SEEDED", "seededAt": _now()})
 
 
 def ensure_seeded():
-    return seed()
+    """Seed once per warm Lambda: zero writes in steady state, <=1 read per cold start."""
+    global _seeded
+    if _seeded:
+        return False
+    if _tbl().get_item(Key={"PK": "SITE", "SK": "THEMES_SEEDED"}).get("Item"):
+        _seeded = True
+        return False
+    wrote = seed()
+    _seeded = True
+    return wrote
 
 
 def _get_settings():
