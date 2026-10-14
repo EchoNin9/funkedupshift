@@ -20,6 +20,7 @@ import {
   LinkIcon,
   MegaphoneIcon,
   BanknotesIcon,
+  SwatchIcon,
 } from "@heroicons/react/24/outline";
 import {
   GlobeHemisphereWest,
@@ -116,6 +117,7 @@ export const ADMIN_MODULES: AdminModule[] = [
   { id: "recommended", label: "Recommended", path: "/admin/recommended", description: "Curate highlights and highest-rated lists.", icon: SparklesIcon, minRole: "manager" },
   { id: "membership", label: "Membership", path: "/admin/membership", description: "Manage custom groups and member access.", icon: UserGroupIcon, minRole: "manager" },
   { id: "branding", label: "Branding", path: "/admin/branding", description: "Set global logo and branding assets.", icon: Cog6ToothIcon, minRole: "superadmin" },
+  { id: "themes", label: "Themes", path: "/admin/themes", description: "Colour themes and the site-wide default theme and mode.", icon: SwatchIcon, minRole: "superadmin" },
   { id: "squash", label: "Squash", path: "/squash-admin", description: "Manage squash players and matches.", icon: TrophyIcon, minRole: "manager" },
   { id: "stats", label: "Stats", path: "/admin/stats", description: "View app statistics and per-user click paths.", icon: ChartBarIcon, minRole: "superadmin" },
   { id: "social", label: "Social Scheduler", path: "/social", description: "Schedule and publish posts to connected social accounts.", icon: MegaphoneIcon, minRole: "superadmin" },
@@ -193,7 +195,7 @@ export interface ModuleLink {
 }
 
 /** Admin Home sidebar modules (Branding, Membership, Websites, etc.) – excludes Squash/Financial which live under Modules. */
-const ADMIN_HOME_IDS = ["branding", "membership", "websites", "media", "internet-dashboard", "recommended", "stats", "social", "lipsync-budgets"] as const;
+const ADMIN_HOME_IDS = ["branding", "themes", "membership", "websites", "media", "internet-dashboard", "recommended", "stats", "social", "lipsync-budgets"] as const;
 
 /** Admin modules for the Admin Home sidebar section, in display order. */
 export function getAdminHomeModules(user: AuthUser | null): AdminModule[] {

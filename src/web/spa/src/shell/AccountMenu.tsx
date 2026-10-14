@@ -4,7 +4,9 @@ import { MoonStars, SignOut, Sun, UserCircle, type Icon } from "@phosphor-icons/
 import { getVisibleAdminModules } from "../config/modules";
 import { useAuth } from "./AuthContext";
 import ImpersonationSelector from "./ImpersonationSelector";
-import { getTheme, toggleTheme, type Theme } from "./theme";
+import { useImpersonation } from "./ImpersonationContext";
+import { setMode, setThemeId, useThemeState } from "./theme";
+import { Segmented, ThemeChip } from "./ThemeChips";
 
 export function userInitials(email: string): string {
   const local = (email || "").split("@")[0] || "";
@@ -36,7 +38,8 @@ interface AccountMenuProps {
 export function AccountMenu({ onClose, returnFocusTo }: AccountMenuProps) {
   const { user, signOut } = useAuth();
   const menuRef = useRef<HTMLDivElement>(null);
-  const [theme, setThemeState] = React.useState<Theme>(getTheme);
+  const { themes, theme, mode } = useThemeState();
+  const { impersonation } = useImpersonation();
 
   // Esc closes — unless the key landed inside a nested dialog (impersonation picker).
   useEffect(() => {
@@ -93,14 +96,26 @@ export function AccountMenu({ onClose, returnFocusTo }: AccountMenuProps) {
 
         <div className="mt-1 border-t pt-1" style={{ borderColor: "var(--color-divider)" }}>
           <p className="px-2.5 pb-1 pt-2 text-[11px] font-bold uppercase tracking-wider text-text-tertiary">Appearance</p>
-          <button type="button" role="menuitem" onClick={() => setThemeState(toggleTheme())} className={rowClass}>
-            <Row
-              icon={theme === "dark" ? MoonStars : Sun}
-              trailing={<span className="text-xs text-text-secondary">{theme === "dark" ? "Dark" : "Light"}</span>}
-            >
-              Theme
-            </Row>
-          </button>
+          <div className="px-1.5 pb-1.5">
+            <Segmented
+              label="Colour mode"
+              role="menuitemradio"
+              value={mode}
+              onChange={setMode}
+              options={[
+                { value: "dark", label: "Dark", icon: <MoonStars size={14} aria-hidden="true" /> },
+                { value: "light", label: "Light", icon: <Sun size={14} aria-hidden="true" /> },
+              ]}
+            />
+            <div role="group" aria-label="Theme" className="mt-2 grid grid-cols-2 gap-1.5">
+              {themes.map((t) => (
+                <ThemeChip key={t.id} theme={t} mode={mode} role="menuitemradio" selected={t.id === theme.id} onSelect={() => setThemeId(t.id)} />
+              ))}
+            </div>
+            {impersonation && (
+              <p className="mt-2 text-[11px] text-text-tertiary">Appearance isn’t saved to the profile while impersonating.</p>
+            )}
+          </div>
         </div>
 
         {(adminModules.length > 0 || isAdmin) && (
