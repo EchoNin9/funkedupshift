@@ -74,7 +74,6 @@ const DnsPage: React.FC = () => {
   if (!user) {
     return (
       <div className="space-y-4">
-        <h1 className="text-xl font-semibold text-text-primary">DNS Lookup</h1>
         <p className="text-sm text-text-secondary">Sign in to look up DNS records.</p>
       </div>
     );

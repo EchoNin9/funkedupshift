@@ -272,7 +272,6 @@ const EditUserPage: React.FC = () => {
   if (!canAccess) {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Edit User</h1>
         <p className="text-sm text-text-secondary">Manager or SuperAdmin access is required.</p>
       </div>
     );
@@ -281,7 +280,6 @@ const EditUserPage: React.FC = () => {
   if (!username) {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Edit User</h1>
         <p className="text-sm text-text-secondary">Missing username in URL.</p>
       </div>
     );
@@ -290,7 +288,6 @@ const EditUserPage: React.FC = () => {
   if (loading) {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Edit User</h1>
         <p className="text-sm text-text-tertiary">Loading…</p>
       </div>
     );
@@ -299,7 +296,6 @@ const EditUserPage: React.FC = () => {
   if (error || !userData) {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Edit User</h1>
         <Alert variant="error">{error ?? "Failed to load user"}</Alert>
       </div>
     );

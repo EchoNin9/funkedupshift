@@ -148,7 +148,6 @@ const InternetDashboardAdminPage: React.FC = () => {
   if (!isSuperAdmin) {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Internet Dashboard</h1>
         <p className="text-sm text-text-secondary">
           Only SuperAdmin users can edit the dashboard sites list.
         </p>
@@ -159,7 +158,6 @@ const InternetDashboardAdminPage: React.FC = () => {
   if (isLoading) {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Internet Dashboard</h1>
         <p className="text-sm text-text-secondary">Loading sites…</p>
       </div>
     );

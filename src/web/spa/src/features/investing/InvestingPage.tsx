@@ -179,7 +179,6 @@ const InvestingPage: React.FC = () => {
   if (!allowed) {
     return (
       <div className="space-y-4">
-        <h1 className="text-xl font-semibold text-text-primary">Investing</h1>
         <p className="text-sm text-text-secondary">
           You need to be a member of the Financial group to access Investing. Contact an admin.
         </p>

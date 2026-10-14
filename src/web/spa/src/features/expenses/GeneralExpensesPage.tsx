@@ -461,7 +461,6 @@ const GeneralExpensesPage: React.FC = () => {
   if (!user) {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-sans font-bold text-text-primary">General expenses</h1>
         <p className="text-text-secondary">Sign in to access your expenses.</p>
       </div>
     );
@@ -470,7 +469,6 @@ const GeneralExpensesPage: React.FC = () => {
   if (!canAccess) {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-sans font-bold text-text-primary">General expenses</h1>
         <p className="text-text-secondary">
           You need to be in the expenses group to access this section. Contact an admin to be added.
         </p>
@@ -487,7 +485,6 @@ const GeneralExpensesPage: React.FC = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-sans font-bold text-text-primary">General expenses</h1>
         <p className="text-text-secondary mt-1">Track expenses by section. Data is private to you.</p>
       </div>
 

@@ -318,7 +318,6 @@ const MemeGeneratorPage: React.FC = () => {
   if (!user) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-semibold text-text-primary">Meme Generator</h1>
         <div className="rounded-md border border-border-hover bg-surface-2 px-4 py-3 text-text-primary">
           Sign in to create memes.
         </div>
@@ -328,7 +327,6 @@ const MemeGeneratorPage: React.FC = () => {
   if (!canCreate) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-semibold text-text-primary">Meme Generator</h1>
         <div className="rounded-md border border-border-hover bg-surface-2 px-4 py-3 text-text-primary">
           Meme creator access required (user + Memes group). Join the Memes custom group or contact an admin.
         </div>
@@ -343,7 +341,6 @@ const MemeGeneratorPage: React.FC = () => {
           <ArrowLeftIcon className="h-4 w-4" />
           Back to Memes
         </Link>
-        <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Meme Generator</h1>
       </header>
 
       <div className="grid gap-6 lg:grid-cols-[1fr,320px]">

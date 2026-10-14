@@ -231,7 +231,6 @@ const CropPage: React.FC = () => {
   if (!user) {
     return (
       <div className="space-y-4">
-        <h1 className="text-xl font-semibold text-text-primary">Crop Image</h1>
         <p className="text-sm text-text-secondary">Sign in to use the crop tool.</p>
       </div>
     );
