@@ -36,6 +36,7 @@ const AdminDashboard = lazy(() =>
   import("../features/admin/AdminDashboard").then((m) => ({ default: m.AdminDashboard }))
 );
 const BrandingPage = lazy(() => import("../features/admin/BrandingPage"));
+const ThemesAdminPage = lazy(() => import("../features/admin/ThemesAdminPage"));
 const InternetDashboardAdminPage = lazy(() => import("../features/admin/InternetDashboardAdminPage"));
 const RecommendedAdminPage = lazy(() => import("../features/admin/RecommendedAdminPage"));
 const MembershipPage = lazy(() => import("../features/admin/MembershipPage"));
@@ -158,6 +159,7 @@ const AppLayoutContent: React.FC = () => {
                 <Route element={<AppPageLayout />}>
                 <Route index element={<AdminDashboard />} />
                 <Route path="branding" element={<BrandingPage />} />
+                <Route path="themes" element={<ThemesAdminPage />} />
                 <Route path="internet-dashboard" element={<InternetDashboardAdminPage />} />
                 <Route path="recommended" element={<RecommendedAdminPage />} />
                 <Route path="membership" element={<MembershipPage />} />
