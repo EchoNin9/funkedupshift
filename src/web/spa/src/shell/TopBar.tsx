@@ -13,7 +13,7 @@ export function TopBar() {
   const [theme, setThemeState] = useState<Theme>(getTheme);
   const [menuOpen, setMenuOpen] = useState(false);
   const avatarRef = useRef<HTMLButtonElement>(null);
-  const signedIn = !!user && user.role !== "guest";
+  const signedIn = !!user;
   const isMac = typeof navigator !== "undefined" && /mac|iphone|ipad/i.test(navigator.platform || "");
 
   return (

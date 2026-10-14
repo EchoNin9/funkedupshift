@@ -123,7 +123,7 @@ export function LauncherDrawer() {
   const panelRef = useRef<HTMLElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
-  const signedIn = !!user && user.role !== "guest";
+  const signedIn = !!user;
   const groups = useMemo<LauncherGroup[]>(() => getLauncherGroups(user), [user]);
   const allApps = useMemo(() => groups.flatMap((g) => g.apps), [groups]);
   const lockedCount = allApps.filter((a) => a.locked).length;

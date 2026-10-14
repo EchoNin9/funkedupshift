@@ -22,7 +22,7 @@ export function UpdatesBanner() {
   const { bannerText } = useBranding();
   const [dismissed, setDismissed] = useState(readDismissed);
 
-  const signedIn = !!user && user.role !== "guest";
+  const signedIn = !!user;
   if (pathname !== "/" || (signedIn && dismissed)) return null;
 
   const dismiss = () => {

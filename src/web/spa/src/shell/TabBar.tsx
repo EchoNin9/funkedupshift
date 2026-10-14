@@ -31,7 +31,7 @@ export function TabBar() {
   const { pathname } = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const accountRef = useRef<HTMLButtonElement>(null);
-  const signedIn = !!user && user.role !== "guest";
+  const signedIn = !!user;
 
   const appsActive = launcherOpen && !focusSearch;
   const searchActive = launcherOpen && focusSearch;

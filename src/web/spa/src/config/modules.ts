@@ -151,7 +151,7 @@ export const LAUNCHER_GROUP_LABELS: Record<LauncherGroupId, string> = {
 
 /** Every launchable app in Discover / Tools / Modules order — locked ones included, flagged with why. */
 export function getLauncherGroups(user: AuthUser | null): LauncherGroup[] {
-  const isGuest = !user || user.role === "guest";
+  const isGuest = !user; // signed-in "guest" role (no Cognito group) sees "No access", not "Sign in"
   return (Object.keys(LAUNCHER_GROUP_LABELS) as LauncherGroupId[]).map((id) => ({
     id,
     label: LAUNCHER_GROUP_LABELS[id],
