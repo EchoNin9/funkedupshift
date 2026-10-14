@@ -1,19 +1,20 @@
 import type { LipsyncJobStatus, LipsyncMode } from "./api";
 
 /**
- * Compact colour + label metadata for job status badges.
+ * Compact colour + label metadata for job status badges. `badge` is a set of
+ * background/text utilities meant to be combined with the `.tag` class (see LipsyncTags.tsx).
  * Mirrors features/social/statusStyles.ts's shape and intent.
  */
 export const STATUS_META: Record<LipsyncJobStatus, { label: string; badge: string }> = {
-  queued: { label: "Queued", badge: "border-n3 text-n3-text" },
-  submitting: { label: "Submitting", badge: "border-n2 text-n2-text" },
-  processing: { label: "Processing", badge: "border-n4 text-n4-text" },
-  completed: { label: "Completed", badge: "border-success text-success" },
-  failed: { label: "Failed", badge: "border-danger text-danger" },
+  queued: { label: "Queued", badge: "bg-surface-3 text-text-secondary" },
+  submitting: { label: "Submitting", badge: "bg-hue-amber/15 text-hue-amber" },
+  processing: { label: "Processing", badge: "bg-hue-violet/15 text-accent-text" },
+  completed: { label: "Completed", badge: "bg-success/15 text-success" },
+  failed: { label: "Failed", badge: "bg-danger/15 text-danger" },
   // Deliberately the dullest badge in the set, same reasoning as social's
   // "cancelled" chip: a cancelled job is history and shouldn't compete with
   // live jobs for attention.
-  cancelled: { label: "Cancelled", badge: "border-border-hover text-text-tertiary" },
+  cancelled: { label: "Cancelled", badge: "bg-surface-3 text-text-tertiary" },
 };
 
 export function statusMeta(status: LipsyncJobStatus) {

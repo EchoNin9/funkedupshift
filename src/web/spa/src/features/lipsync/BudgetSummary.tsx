@@ -1,5 +1,5 @@
 import React from "react";
-import { ExclamationTriangleIcon } from "@heroicons/react/24/outline";
+import { Warning } from "@phosphor-icons/react";
 import type { LipsyncBudget } from "./api";
 import { formatCents, formatCentsRemaining } from "./money";
 
@@ -19,15 +19,17 @@ interface BudgetSummaryProps {
  */
 export function BudgetSummary({ budget, loading, error }: BudgetSummaryProps) {
   if (loading) {
-    return <div className="h-6 w-56 animate-pulse rounded bg-surface-3" aria-hidden="true" />;
+    return <div className="h-14 w-full rounded-ds-lg bg-surface-3 motion-safe:animate-pulse" aria-hidden="true" />;
   }
+
+  const card = "rounded-ds-lg border border-[color:var(--color-divider)] bg-surface-2 px-4 py-3.5";
 
   if (error) {
     // Degrade gracefully -- a failed budget fetch shouldn't block the rest
     // of the page (create form, job history) from rendering.
     return (
-      <p className="flex items-center gap-1.5 text-sm text-warning">
-        <ExclamationTriangleIcon className="h-4 w-4 shrink-0" />
+      <p role="alert" className={`${card} flex items-center gap-2 text-sm text-warning`}>
+        <Warning size={18} weight="regular" aria-hidden="true" className="shrink-0" />
         Could not load your budget. {error}
       </p>
     );
@@ -35,22 +37,24 @@ export function BudgetSummary({ budget, loading, error }: BudgetSummaryProps) {
 
   if (!budget || budget.budgetCents <= 0) {
     return (
-      <p className="rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-warning">
+      <p className="flex items-center gap-2 rounded-ds-lg border border-warning/40 bg-warning/10 px-4 py-3.5 text-sm text-warning">
+        <Warning size={18} weight="regular" aria-hidden="true" className="shrink-0" />
         No budget allocated — ask an admin to grant you one before generating clips.
       </p>
     );
   }
 
   return (
-    <p className="text-sm">
-      <span className="font-display font-extrabold uppercase tracking-tight text-text-primary">
+    <div className={`${card} flex flex-wrap items-baseline gap-x-3 gap-y-1`}>
+      <span className="text-xs font-semibold text-text-secondary">Your budget</span>
+      <span className="font-heading text-[20px] font-semibold tracking-[-0.02em] text-text-primary">
         {formatCents(budget.budgetCents)} budget, {formatCentsRemaining(budget.remainingCents)} remaining
       </span>
       {budget.reservedCents > 0 && (
-        <span className="ml-1.5 text-text-tertiary">
+        <span className="text-[13px] text-text-secondary">
           ({formatCents(budget.reservedCents)} reserved for clips in progress)
         </span>
       )}
-    </p>
+    </div>
   );
 }

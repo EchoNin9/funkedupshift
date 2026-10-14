@@ -1,16 +1,19 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { motion } from "framer-motion";
 import {
-  ArrowPathIcon,
-  FilmIcon,
-  MicrophoneIcon,
-  PhotoIcon,
-  ShieldCheckIcon,
-  SparklesIcon,
-  VideoCameraIcon,
-  XCircleIcon,
-} from "@heroicons/react/24/outline";
-import { Alert, FormField, SkeletonCard } from "../../components";
+  ArrowsClockwise,
+  FilmStrip,
+  Image as ImageIcon,
+  Microphone,
+  ShieldCheck,
+  VideoCamera,
+  XCircle,
+  type Icon as PhosphorIcon,
+} from "@phosphor-icons/react";
+import { Alert } from "../../components";
+import { buttonClasses, focusRing } from "../../components/buttonClasses";
+import { FormCard } from "../../components/FormCard";
+import { IconButton } from "../../components/IconButton";
+import { ListCard, ListEmpty } from "../../components/ListCard";
 import {
   ApiError,
   createJob,
@@ -33,12 +36,13 @@ import {
   modelLabel,
   modelMeta,
   modelsForMode,
-  statusMeta,
 } from "./statusStyles";
 import { formatDateTime, formatExpiry, isExpiringSoon } from "./dateUtils";
 import { formatCents, formatCentsRemaining } from "./money";
 import { BudgetSummary } from "./BudgetSummary";
 import { JobDetail } from "./JobDetail";
+import { LipsyncAiTag, LipsyncModeTag, LipsyncStatusTag } from "./LipsyncTags";
+import { LipsyncSegmented } from "./LipsyncSegmented";
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const MAX_AUDIO_BYTES = 20 * 1024 * 1024;
@@ -51,10 +55,46 @@ const PAGE_SIZE = 20;
 // doesn't lag noticeably behind what's actually happening server-side.
 const POLL_INTERVAL_MS = 15000;
 
-const MODE_OPTIONS: { value: LipsyncMode; label: string; icon: typeof PhotoIcon }[] = [
-  { value: "avatar", label: "Avatar", icon: PhotoIcon },
-  { value: "relip", label: "Re-lip", icon: FilmIcon },
+const MODE_OPTIONS: { value: LipsyncMode; label: string; icon: PhosphorIcon }[] = [
+  { value: "avatar", label: "Avatar", icon: ImageIcon },
+  { value: "relip", label: "Re-lip", icon: FilmStrip },
 ];
+
+// Shared control styling (select / textarea) — same tokens as IconTextField, without the leading icon.
+const controlClass = `w-full rounded-ds-md border border-border-default bg-surface-0 px-3 text-[15px] text-text-primary placeholder:text-text-tertiary hover:border-border-hover motion-safe:transition-colors motion-safe:duration-150 disabled:opacity-60 ${focusRing}`;
+
+/** Labelled form row. With `htmlFor` the label targets that control; without it the row is an aria-labelled group (upload slots, consent). */
+function Field({
+  label,
+  required,
+  htmlFor,
+  children,
+}: {
+  label: string;
+  required?: boolean;
+  htmlFor?: string;
+  children: React.ReactNode;
+}) {
+  const labelId = React.useId();
+  const text = (
+    <>
+      {label}
+      {required && <span className="ml-0.5 text-accent-text" aria-hidden="true">*</span>}
+    </>
+  );
+  const cls = "mb-1.5 block text-[13px] font-semibold text-text-primary";
+  return htmlFor ? (
+    <div>
+      <label htmlFor={htmlFor} className={cls}>{text}</label>
+      {children}
+    </div>
+  ) : (
+    <div role="group" aria-labelledby={labelId}>
+      <span id={labelId} className={cls}>{text}</span>
+      {children}
+    </div>
+  );
+}
 
 const STATUS_FILTER_OPTIONS: { value: "" | LipsyncJobStatus; label: string }[] = [
   { value: "", label: "All statuses" },
@@ -104,7 +144,7 @@ async function readAudioDuration(file: File): Promise<number | undefined> {
 
 interface UploadSlotProps {
   kindLabel: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: PhosphorIcon;
   accept: string;
   item: UploadItem | null;
   inputRef: React.RefObject<HTMLInputElement>;
@@ -126,6 +166,7 @@ function UploadSlot({ kindLabel, icon: Icon, accept, item, inputRef, onFile, onR
         type="file"
         accept={accept}
         className="hidden"
+        aria-label={`Choose ${kindLabel} file`}
         onChange={(e) => {
           const file = e.target.files?.[0];
           if (file) onFile(file);
@@ -136,13 +177,13 @@ function UploadSlot({ kindLabel, icon: Icon, accept, item, inputRef, onFile, onR
         <button
           type="button"
           onClick={() => inputRef.current?.click()}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-border-hover bg-surface-2 px-3 py-1.5 text-xs font-medium text-text-primary hover:bg-surface-3 transition-colors"
+          className={`${buttonClasses("secondary", "md")} w-full border-dashed sm:w-auto`}
         >
-          <Icon className="h-3.5 w-3.5" />
+          <Icon size={18} weight="regular" aria-hidden="true" />
           Choose {kindLabel}
         </button>
       ) : (
-        <div className="flex items-start gap-2 rounded-lg border border-border-default bg-surface-1 p-2">
+        <div className="flex flex-wrap items-start gap-3 rounded-ds-md border border-[color:var(--color-divider)] bg-surface-0 p-2.5 sm:flex-nowrap">
           {isVideo && (
             <video
               src={item.previewUrl}
@@ -150,19 +191,19 @@ function UploadSlot({ kindLabel, icon: Icon, accept, item, inputRef, onFile, onR
               muted
               playsInline
               preload="metadata"
-              className="h-20 w-28 shrink-0 rounded object-cover border border-border-subtle bg-surface-3"
+              className="h-20 w-28 shrink-0 rounded-ds-sm border border-[color:var(--color-divider)] bg-surface-3 object-cover"
             />
           )}
           {!isAudio && !isVideo && (
             <img
               src={item.previewUrl}
               alt={item.file.name}
-              className="h-20 w-28 shrink-0 rounded object-cover border border-border-subtle"
+              className="h-20 w-28 shrink-0 rounded-ds-sm border border-[color:var(--color-divider)] object-cover"
             />
           )}
-          <div className="min-w-0 flex-1 space-y-1 pt-1">
-            <p className="truncate text-xs text-text-primary">{item.file.name}</p>
-            <p className="text-xs text-text-tertiary">
+          <div className="min-w-0 flex-1 basis-[160px] space-y-1 pt-0.5">
+            <p className="truncate text-[13px] font-semibold text-text-primary" title={item.file.name}>{item.file.name}</p>
+            <p className="text-xs text-text-secondary">
               {formatBytes(item.file.size)}
               {item.durationSec != null ? ` · ${item.durationSec.toFixed(1)}s` : ""}
             </p>
@@ -170,32 +211,35 @@ function UploadSlot({ kindLabel, icon: Icon, accept, item, inputRef, onFile, onR
               <audio src={item.previewUrl} controls className="h-8 w-full max-w-[16rem]" />
             )}
             {item.status === "uploading" && (
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-3">
-                <div className="h-full bg-accent-500 transition-[width]" style={{ width: `${item.progress}%` }} />
+              <div
+                className="h-1.5 w-full overflow-hidden rounded-full bg-surface-3"
+                role="progressbar"
+                aria-label={`Uploading ${kindLabel}`}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={item.progress}
+              >
+                <div className="h-full bg-accent motion-safe:transition-[width]" style={{ width: `${item.progress}%` }} />
               </div>
             )}
-            {item.status === "uploaded" && <p className="text-xs text-success">Uploaded</p>}
-            {item.status === "error" && <p className="text-xs text-danger break-words">{item.error}</p>}
-          </div>
-          <div className="flex shrink-0 flex-col gap-1">
+            {item.status === "uploaded" && <p className="text-xs font-semibold text-success">Uploaded</p>}
             {item.status === "error" && (
-              <button
-                type="button"
-                onClick={onRetry}
-                aria-label="Retry upload"
-                className="rounded-md p-1 text-text-tertiary hover:bg-surface-3 hover:text-text-primary transition-colors"
-              >
-                <ArrowPathIcon className="h-4 w-4" />
-              </button>
+              <p role="alert" className="break-words text-xs font-semibold text-danger">{item.error}</p>
             )}
-            <button
-              type="button"
+          </div>
+          <div className="ml-auto flex shrink-0 gap-1.5">
+            {item.status === "error" && (
+              <IconButton
+                icon={<ArrowsClockwise size={16} weight="regular" aria-hidden="true" />}
+                label="Retry upload"
+                onClick={onRetry}
+              />
+            )}
+            <IconButton
+              icon={<XCircle size={16} weight="regular" aria-hidden="true" />}
+              label={`Remove ${kindLabel}`}
               onClick={onRemove}
-              aria-label={`Remove ${kindLabel}`}
-              className="rounded-md p-1 text-text-tertiary hover:bg-surface-3 hover:text-danger transition-colors"
-            >
-              <XCircleIcon className="h-4 w-4" />
-            </button>
+            />
           </div>
         </div>
       )}
@@ -204,40 +248,29 @@ function UploadSlot({ kindLabel, icon: Icon, accept, item, inputRef, onFile, onR
 }
 
 function JobCard({ job, onSelect }: { job: LipsyncJob; onSelect: () => void }) {
-  const status = statusMeta(job.status);
-  const modeLabel = MODE_META[job.mode]?.label ?? job.mode;
   const expiring = isExpiringSoon(job.expiresAt);
   return (
-    <li>
+    <div role="listitem">
       <button
         type="button"
         onClick={onSelect}
-        className="w-full space-y-2 rounded-xl border border-border-default bg-surface-1 p-3 text-left transition-colors hover:border-border-hover hover:bg-surface-2"
+        className={`block w-full space-y-1.5 px-4 py-3.5 text-left hover:bg-surface-3/50 motion-safe:transition-colors motion-safe:duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent`}
       >
         <div className="flex flex-wrap items-center justify-between gap-1.5">
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className="inline-flex items-center rounded-full border border-border-hover px-2 py-0.5 text-xs font-medium text-text-secondary">
-              {modeLabel}
-            </span>
-            <span
-              className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${status.badge}`}
-            >
-              {status.label}
-            </span>
+            <LipsyncModeTag mode={job.mode} />
+            <LipsyncStatusTag status={job.status} />
           </div>
-          <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent-text">
-            <SparklesIcon className="h-3 w-3" />
-            AI-generated
-          </span>
+          <LipsyncAiTag />
         </div>
-        <p className="text-xs text-text-tertiary">{modelLabel(job.model)}</p>
-        <p className="text-xs text-text-tertiary">Created {formatDateTime(job.createdAt)}</p>
-        <p className={`text-xs ${expiring ? "text-warning" : "text-text-tertiary"}`}>
-          Expires {formatExpiry(job.expiresAt)}
+        <p className="text-[15px] font-bold text-text-primary">{modelLabel(job.model)}</p>
+        <p className="text-xs text-text-secondary">
+          Created {formatDateTime(job.createdAt)} ·{" "}
+          <span className={expiring ? "font-semibold text-warning" : ""}>Expires {formatExpiry(job.expiresAt)}</span>
         </p>
-        {job.status === "failed" && job.error && <p className="break-words text-xs text-danger">{job.error}</p>}
+        {job.status === "failed" && job.error && <p className="break-words text-[13px] text-danger">{job.error}</p>}
       </button>
-    </li>
+    </div>
   );
 }
 
@@ -643,24 +676,19 @@ export default function LipsyncPage() {
   const modeInfo = MODE_META[mode];
 
   return (
-    <div className="space-y-6">
-      <motion.h1
-        className="text-2xl font-semibold tracking-tight text-text-primary flex items-center gap-2"
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-      >
-        <VideoCameraIcon className="h-6 w-6 text-accent-text" />
-        Lipsync Studio
-      </motion.h1>
+    <div className="space-y-8">
+      <h1 className="sr-only">Lipsync Studio</h1>
 
       <BudgetSummary budget={budget} loading={budgetLoading} error={budgetError} />
 
-      <section className="max-w-2xl space-y-4">
+      <section className="max-w-2xl space-y-3" aria-labelledby="lipsync-create-heading">
+        <h2 id="lipsync-create-heading" className="font-heading text-[20px] font-semibold text-text-primary">
+          New clip
+        </h2>
         {submitError && <Alert variant="error">{submitError}</Alert>}
         {generalErrors.length > 0 && (
           <Alert variant="error">
-            <ul className="list-disc pl-4 space-y-0.5">
+            <ul className="list-disc space-y-0.5 pl-4">
               {generalErrors.map((e, i) => (
                 <li key={i}>{e}</li>
               ))}
@@ -668,39 +696,27 @@ export default function LipsyncPage() {
           </Alert>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <FormField label="Mode" required>
-            <div
-              role="group"
-              aria-label="Mode"
-              className="inline-flex items-center rounded-lg border border-border-hover bg-surface-2 p-0.5"
-            >
-              {MODE_OPTIONS.map(({ value, label, icon: Icon }) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => changeMode(value)}
-                  aria-pressed={mode === value}
-                  className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                    mode === value
-                      ? "bg-accent-500 text-white"
-                      : "text-text-secondary hover:bg-surface-3 hover:text-text-primary"
-                  }`}
-                >
-                  <Icon className="h-3.5 w-3.5" />
-                  {label}
-                </button>
-              ))}
-            </div>
-            <p className="mt-1.5 text-xs text-text-tertiary">{modeInfo.hint}</p>
-          </FormField>
+        <FormCard onSubmit={handleSubmit} className="space-y-5 !p-4 sm:!p-5">
+          <Field label="Mode" required>
+            <LipsyncSegmented
+              label="Mode"
+              value={mode}
+              onChange={changeMode}
+              options={MODE_OPTIONS.map(({ value, label, icon: Icon }) => ({
+                value,
+                label,
+                icon: <Icon size={16} weight="regular" aria-hidden="true" />,
+              }))}
+            />
+            <p className="mt-1.5 text-xs text-text-secondary">{modeInfo.hint}</p>
+          </Field>
 
-          <FormField label="Model" required>
+          <Field label="Model" required htmlFor="lipsync-model">
             <select
+              id="lipsync-model"
               value={model}
               onChange={(e) => changeModel(e.target.value)}
-              aria-label="Model"
-              className="w-full rounded-lg border border-border-hover bg-surface-0 px-3 py-2 text-sm text-text-primary"
+              className={`${controlClass} min-h-12`}
             >
               {modelOptions.map((m) => (
                 <option key={m.id} value={m.id}>
@@ -708,16 +724,16 @@ export default function LipsyncPage() {
                 </option>
               ))}
             </select>
-          </FormField>
+          </Field>
 
           {/* key forces a distinct instance per mode — without it React
               reconciles both branches as the same UploadSlot and the two
               inputRefs alias one reused DOM node. */}
           {mode === "avatar" ? (
-            <FormField key="image" label="Portrait image" required>
+            <Field key="image" label="Portrait image" required>
               <UploadSlot
                 kindLabel="image"
-                icon={PhotoIcon}
+                icon={ImageIcon}
                 accept="image/png,image/jpeg,image/webp"
                 item={imageItem}
                 inputRef={imageInputRef}
@@ -728,12 +744,12 @@ export default function LipsyncPage() {
                 }}
                 onRetry={() => imageItem && runUpload("image", imageItem, setImageItem)}
               />
-            </FormField>
+            </Field>
           ) : (
-            <FormField key="video" label="Source video" required>
+            <Field key="video" label="Source video" required>
               <UploadSlot
                 kindLabel="video"
-                icon={FilmIcon}
+                icon={FilmStrip}
                 accept="video/mp4,video/quicktime,video/webm"
                 item={videoItem}
                 inputRef={videoInputRef}
@@ -744,13 +760,13 @@ export default function LipsyncPage() {
                 }}
                 onRetry={() => videoItem && runUpload("video", videoItem, setVideoItem)}
               />
-            </FormField>
+            </Field>
           )}
 
-          <FormField label="Audio" required>
+          <Field label="Audio" required>
             <UploadSlot
               kindLabel="audio"
-              icon={MicrophoneIcon}
+              icon={Microphone}
               accept="audio/mpeg,audio/wav,audio/mp4,audio/x-m4a"
               item={audioItem}
               inputRef={audioInputRef}
@@ -761,25 +777,26 @@ export default function LipsyncPage() {
               }}
               onRetry={() => audioItem && runUpload("audio", audioItem, setAudioItem)}
             />
-            <p className="mt-1 text-xs text-text-tertiary">Up to 20s. Longer clips are rejected by the server.</p>
-          </FormField>
+            <p className="mt-1.5 text-xs text-text-secondary">Up to 20s. Longer clips are rejected by the server.</p>
+          </Field>
 
           {estimateCents != null && (
             <div
-              className={`rounded-lg border px-3 py-2 text-xs ${
+              role="status"
+              className={`rounded-ds-md border px-3.5 py-2.5 text-[13px] ${
                 overBudget && !noBudget
                   ? "border-danger/60 bg-danger/10 text-danger"
-                  : "border-border-default bg-surface-1 text-text-secondary"
+                  : "border-[color:var(--color-divider)] bg-surface-0 text-text-secondary"
               }`}
             >
               <p>
-                Estimated cost: <span className="font-medium text-text-primary">~{formatCents(estimateCents)}</span>
+                Estimated cost: <span className="font-semibold text-text-primary">~{formatCents(estimateCents)}</span>
                 {selectedModelMeta && !selectedModelMeta.priceVerified && (
-                  <span className="text-text-tertiary"> — conservative estimate, this model's price isn't confirmed</span>
+                  <span className="text-text-secondary"> — conservative estimate, this model's price isn't confirmed</span>
                 )}
               </p>
               {budget && !noBudget && (
-                <p className={overBudget ? "mt-1 text-danger" : "mt-1 text-text-tertiary"}>
+                <p className={overBudget ? "mt-1 font-semibold text-danger" : "mt-1 text-text-secondary"}>
                   {overBudget
                     ? `This exceeds your remaining budget of ${formatCentsRemaining(budget.remainingCents)}.`
                     : `You have ${formatCentsRemaining(budget.remainingCents)} remaining.`}
@@ -789,8 +806,9 @@ export default function LipsyncPage() {
           )}
 
           {selectedModelMeta?.acceptsPrompt && (
-            <FormField label="Prompt" required={promptRequired}>
+            <Field label="Prompt" required={promptRequired} htmlFor="lipsync-prompt">
               <textarea
+                id="lipsync-prompt"
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 required={promptRequired}
@@ -799,51 +817,55 @@ export default function LipsyncPage() {
                     ? "Required for this model — describe the motion or scene…"
                     : "Optional — describe the motion or scene…"
                 }
-                className="w-full min-h-[5rem] resize-y rounded-lg border border-border-hover bg-surface-0 px-3 py-2 text-sm text-text-primary"
+                className={`${controlClass} min-h-24 resize-y py-2.5`}
               />
               {promptRequired && (
-                <p className="mt-1 text-xs text-text-tertiary">{selectedModelMeta.label} requires a prompt.</p>
+                <p className="mt-1.5 text-xs text-text-secondary">{selectedModelMeta.label} requires a prompt.</p>
               )}
-            </FormField>
+            </Field>
           )}
 
-          <FormField label="Likeness consent" required>
-            <label className="flex items-start gap-2 text-sm text-text-secondary select-none cursor-pointer">
+          <Field label="Likeness consent" required>
+            <label className="flex min-h-10 cursor-pointer select-none items-start gap-2.5 text-sm text-text-secondary">
               <input
                 type="checkbox"
                 checked={consentAttested}
                 onChange={(e) => setConsentAttested(e.target.checked)}
-                className="mt-0.5 h-4 w-4 rounded border-border-hover"
+                className={`mt-0.5 h-5 w-5 shrink-0 rounded-ds-sm accent-[rgb(var(--color-accent))] ${focusRing}`}
               />
               <span className="inline-flex items-start gap-1.5">
-                <ShieldCheckIcon className="h-4 w-4 shrink-0 text-accent-text" />
+                <ShieldCheck size={18} weight="regular" aria-hidden="true" className="shrink-0 text-accent-text" />
                 I have the right to use this likeness
               </span>
             </label>
-          </FormField>
+          </Field>
 
-          <div className="flex items-center gap-2 pt-2">
+          <div className="pt-1">
             <button
               type="submit"
               disabled={submitting || !consentAttested || (promptRequired && !prompt.trim()) || overBudget}
               title={overBudget ? "This clip's estimated cost doesn't fit your remaining budget." : undefined}
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-accent-500 px-4 py-2 text-sm font-medium text-white hover:bg-accent-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className={`${buttonClasses("primary", "lg")} w-full sm:w-auto`}
             >
+              <VideoCamera size={18} weight="regular" aria-hidden="true" />
               {submitting ? "Submitting…" : "Generate clip"}
             </button>
           </div>
-        </form>
+        </FormCard>
       </section>
 
-      <section className="space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-text-tertiary">Clips</h2>
-          <div className="flex items-center gap-2">
+      <section aria-labelledby="lipsync-clips-heading">
+        <div className="mb-3 flex flex-wrap items-center gap-x-2.5 gap-y-2">
+          <h2 id="lipsync-clips-heading" className="font-heading text-[20px] font-semibold text-text-primary">
+            Clips
+          </h2>
+          <span className="tag tag-neutral">{jobs.length}</span>
+          <div className="flex items-center gap-2 sm:ml-auto">
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as "" | LipsyncJobStatus)}
               aria-label="Filter by status"
-              className="rounded-lg border border-border-hover bg-surface-0 px-2.5 py-1.5 text-xs text-text-primary"
+              className={`${controlClass} min-h-10 w-auto py-0 text-sm`}
             >
               {STATUS_FILTER_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -851,44 +873,44 @@ export default function LipsyncPage() {
                 </option>
               ))}
             </select>
-            <button
-              type="button"
+            <IconButton
+              icon={
+                <ArrowsClockwise
+                  size={16}
+                  weight="regular"
+                  aria-hidden="true"
+                  className={hasLivework ? "motion-safe:animate-spin [animation-duration:3s]" : ""}
+                />
+              }
+              label="Refresh clips"
               onClick={handleChanged}
-              aria-label="Refresh clips"
-              title={hasLivework ? "Refreshing automatically while a clip is in flight" : "Refresh"}
-              className="rounded-lg border border-border-hover bg-surface-2 p-1.5 text-text-primary hover:bg-surface-3 transition-colors"
-            >
-              <ArrowPathIcon className={`h-4 w-4 ${hasLivework ? "animate-spin [animation-duration:3s]" : ""}`} />
-            </button>
+              className="!h-10 !w-10"
+            />
           </div>
         </div>
 
-        {listError && <Alert variant="error">{listError}</Alert>}
+        {listError && <Alert variant="error" className="mb-3">{listError}</Alert>}
 
-        {loading ? (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <SkeletonCard key={i} imageHeight="h-16" lines={2} />
-            ))}
-          </div>
-        ) : jobs.length === 0 ? (
-          <p className="py-6 text-center text-sm text-text-tertiary">No clips yet — create one above to get started.</p>
-        ) : (
-          <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {jobs.map((job) => (
-              <JobCard key={job.jobId} job={job} onSelect={() => setSelectedJobId(job.jobId)} />
-            ))}
-          </ul>
-        )}
+        <ListCard aria-busy={loading} role="list">
+          {loading ? (
+            [0, 1, 2].map((i) => (
+              <div key={i} role="listitem" className="px-4 py-3.5">
+                <div className="space-y-2 motion-safe:animate-pulse">
+                  <div className="h-4 w-48 max-w-full rounded bg-surface-3" />
+                  <div className="h-3 w-72 max-w-full rounded bg-surface-3" />
+                </div>
+              </div>
+            ))
+          ) : jobs.length === 0 ? (
+            <div role="listitem"><ListEmpty>No clips yet — create one above to get started.</ListEmpty></div>
+          ) : (
+            jobs.map((job) => <JobCard key={job.jobId} job={job} onSelect={() => setSelectedJobId(job.jobId)} />)
+          )}
+        </ListCard>
 
         {cursor && (
-          <div className="flex justify-center pt-1">
-            <button
-              type="button"
-              onClick={loadMore}
-              disabled={loadingMore}
-              className="rounded-lg border border-border-hover bg-surface-2 px-3 py-1.5 text-xs font-medium text-text-primary hover:bg-surface-3 transition-colors disabled:opacity-50"
-            >
+          <div className="pt-3">
+            <button type="button" onClick={loadMore} disabled={loadingMore} className={buttonClasses("secondary", "md")}>
               {loadingMore ? "Loading…" : "Load more"}
             </button>
           </div>
