@@ -1,13 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { House, Lock, MagnifyingGlass, PushPin, X } from "@phosphor-icons/react";
+import { CaretDown, House, Lock, MagnifyingGlass, PushPin, X } from "@phosphor-icons/react";
 import {
   getLauncherGroups,
   type LauncherApp,
   type LauncherGroup,
   type LauncherGroupId,
 } from "../config/modules";
+import { useCollapsedGroups } from "../hooks/useCollapsedGroups";
 import { usePins } from "../hooks/usePins";
 import { useAuth } from "./AuthContext";
 import { useLauncher } from "./LauncherContext";
@@ -99,13 +100,48 @@ function AppTile({ app, hue, current, canPin, pinned, onTogglePin, onNavigate }:
   );
 }
 
-function SectionLabel({ hue, label, count }: { hue: string; label: string; count: number }) {
-  return (
-    <div className={`${hue} flex items-center gap-2 px-2 pb-1 pt-4`}>
+function SectionLabel({
+  hue,
+  label,
+  count,
+  collapsible,
+  collapsed,
+  controls,
+  onToggle,
+}: {
+  hue: string;
+  label: string;
+  count: number;
+  collapsible?: boolean;
+  collapsed?: boolean;
+  controls?: string;
+  onToggle?: () => void;
+}) {
+  const body = (
+    <>
       <span className="hue-dot h-[7px] w-[7px] rounded-full" aria-hidden="true" />
       <h3 className="text-xs font-bold uppercase tracking-[.06em] text-text-secondary">{label}</h3>
       <span className="text-xs text-text-tertiary">{count}</span>
-    </div>
+      {collapsible && (
+        <CaretDown
+          size={12}
+          aria-hidden="true"
+          className={`ml-auto text-text-tertiary transition-transform motion-reduce:transition-none ${collapsed ? "-rotate-90" : ""}`}
+        />
+      )}
+    </>
+  );
+  if (!collapsible) return <div className={`${hue} flex items-center gap-2 px-2 pb-1 pt-4`}>{body}</div>;
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={!collapsed}
+      aria-controls={controls}
+      className={`${hue} mt-3 flex w-full items-center gap-2 rounded-[10px] px-2 pb-1 pt-1 text-left hover:bg-surface-2 max-[640px]:min-h-11`}
+    >
+      {body}
+    </button>
   );
 }
 
@@ -114,6 +150,7 @@ export function LauncherDrawer() {
   const { open, focusSearch, closeLauncher } = useLauncher();
   const { user } = useAuth();
   const { pins, isPinned, togglePin } = usePins();
+  const { isCollapsed, toggleCollapsed } = useCollapsedGroups();
   const location = useLocation();
   const navigate = useNavigate();
   const reduceMotion = useReducedMotion();
@@ -298,12 +335,27 @@ export function LauncherDrawer() {
                 </section>
               )}
 
-              {visibleGroups.map((g) => (
-                <section key={g.id} aria-label={g.label}>
-                  <SectionLabel hue={GROUP_HUE[g.id]} label={g.label} count={g.apps.length} />
-                  <ul className="grid grid-cols-3 gap-1">{g.apps.map((a) => tile(a, GROUP_HUE[g.id]))}</ul>
-                </section>
-              ))}
+              {visibleGroups.map((g) => {
+                // A search always shows every hit, whatever is collapsed.
+                const hidden = !q && isCollapsed(g.id);
+                const listId = `launcher-group-${g.id}`;
+                return (
+                  <section key={g.id} aria-label={g.label}>
+                    <SectionLabel
+                      hue={GROUP_HUE[g.id]}
+                      label={g.label}
+                      count={g.apps.length}
+                      collapsible={!q}
+                      collapsed={hidden}
+                      controls={listId}
+                      onToggle={() => toggleCollapsed(g.id)}
+                    />
+                    <ul id={listId} className={`${hidden ? "hidden" : "grid"} grid-cols-3 gap-1`}>
+                      {g.apps.map((a) => tile(a, GROUP_HUE[g.id]))}
+                    </ul>
+                  </section>
+                );
+              })}
 
               {q && matchCount === 0 && (
                 <p className="px-3 py-10 text-center text-sm text-text-secondary" role="status">

@@ -4,6 +4,7 @@ import { useImpersonation } from "./ImpersonationContext";
 import { applyServerPrefs, loadCatalog, resetUserTheme } from "./theme";
 import { fetchProfilePrefs, setSyncUser } from "./profilePrefs";
 import { hydratePins, resetPins } from "../hooks/usePins";
+import { hydrateCollapsedGroups, resetCollapsedGroups } from "../hooks/useCollapsedGroups";
 
 /**
  * Keeps <html data-theme data-palette> and the generated theme stylesheet in step with the server:
@@ -30,6 +31,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         hadUser.current = false;
         resetUserTheme();
         resetPins();
+        resetCollapsedGroups();
       }
       return;
     }
@@ -41,6 +43,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       if (cancelled || !prefs) return;
       applyServerPrefs({ themeId: prefs.themeId, mode: prefs.mode });
       hydratePins(prefs.pins, userId);
+      hydrateCollapsedGroups(prefs.collapsedGroups, userId);
     })();
     return () => {
       cancelled = true;

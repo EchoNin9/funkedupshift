@@ -445,3 +445,36 @@ def test_profile_get_and_me_return_display_name(tbl):
             patch("api.handler._recordLastLogin"):
         code, out = _call(_ev("/me", "GET", groups="user"))
     assert code == 200 and out["displayName"] == "Adam" and "avatarUrl" not in out
+
+
+# ---- collapsedGroups (launcher section collapse) ----
+
+def test_profile_put_collapsed_groups_shape_and_dedupe(tbl):
+    code, _, fd = _put_profile(tbl, {"collapsedGroups": [" tools ", "modules", "tools"]})
+    assert code == 200
+    u = fd.updates[0]
+    assert u["ExpressionAttributeValues"][":cg"] == {"L": [{"S": "tools"}, {"S": "modules"}]}
+    assert "collapsedGroups = :cg" in u["UpdateExpression"]
+
+
+@pytest.mark.parametrize("body", [
+    {"collapsedGroups": "tools"}, {"collapsedGroups": None}, {"collapsedGroups": [1]},
+    {"collapsedGroups": [""]}, {"collapsedGroups": ["x" * 33]},
+    {"collapsedGroups": [str(i) for i in range(21)]},
+])
+def test_profile_put_collapsed_groups_invalid(tbl, body):
+    code, _, fd = _put_profile(tbl, {"description": "ok", **body})
+    assert code == 400
+    assert fd.updates == []
+
+
+def test_profile_collapsed_groups_boundaries(tbl):
+    assert _put_profile(tbl, {"collapsedGroups": [str(i) for i in range(20)]})[0] == 200
+    assert _put_profile(tbl, {"collapsedGroups": ["x" * 32]})[0] == 200
+    assert _put_profile(tbl, {"collapsedGroups": []})[0] == 200
+
+
+def test_profile_get_collapsed_groups_default_and_stored(tbl):
+    assert _get_profile(tbl, None)[1]["profile"]["collapsedGroups"] == []
+    item = {"collapsedGroups": {"L": [{"S": "tools"}, {"S": "modules"}]}}
+    assert _get_profile(tbl, item)[1]["profile"]["collapsedGroups"] == ["tools", "modules"]

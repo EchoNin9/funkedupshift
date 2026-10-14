@@ -6,6 +6,7 @@ import { fetchWithAuth, getImpersonationHeaders } from "../utils/api";
 
 export interface ProfilePrefs {
   pins: string[];
+  collapsedGroups: string[];
   themeId: string;
   mode: string;
 }
@@ -45,6 +46,9 @@ export async function fetchProfilePrefs(): Promise<ProfilePrefs | null> {
     const p = data?.profile ?? {};
     return {
       pins: Array.isArray(p.pins) ? p.pins.filter((v: unknown): v is string => typeof v === "string") : [],
+      collapsedGroups: Array.isArray(p.collapsedGroups)
+        ? p.collapsedGroups.filter((v: unknown): v is string => typeof v === "string")
+        : [],
       themeId: typeof p.themeId === "string" ? p.themeId : "",
       mode: typeof p.mode === "string" ? p.mode : "",
     };

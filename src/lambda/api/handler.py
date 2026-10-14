@@ -2978,7 +2978,7 @@ def getProfile(event):
     except Exception:
         pass
     profile = {}
-    stored_pins, stored_theme, stored_mode = [], "", ""
+    stored_pins, stored_collapsed, stored_theme, stored_mode = [], [], "", ""
     try:
         if TABLE_NAME and user_id:
             import boto3
@@ -3004,6 +3004,7 @@ def getProfile(event):
                     )
                 profile["avatarKey"] = avatar_key
                 stored_pins = [p.get("S", "") for p in item.get("pins", {}).get("L", []) if "S" in p]
+                stored_collapsed = [p.get("S", "") for p in item.get("collapsedGroups", {}).get("L", []) if "S" in p]
                 stored_theme = item.get("themeId", {}).get("S", "")
                 stored_mode = item.get("mode", {}).get("S", "")
     except Exception as e:
@@ -3011,6 +3012,7 @@ def getProfile(event):
         return jsonResponse({"error": str(e)}, 500)
     from api.themes import resolve_profile_prefs
     profile["pins"] = stored_pins
+    profile["collapsedGroups"] = stored_collapsed
     profile["themeId"], profile["mode"] = resolve_profile_prefs(stored_theme, stored_mode)
     custom_groups = _getUserCustomGroups(user_id)
     out = {
@@ -3072,6 +3074,9 @@ def updateProfile(event):
         if "pins" in prefs:
             updates.append("pins = :pins")
             values[":pins"] = {"L": [{"S": p} for p in prefs["pins"]]}
+        if "collapsedGroups" in prefs:
+            updates.append("collapsedGroups = :cg")
+            values[":cg"] = {"L": [{"S": g} for g in prefs["collapsedGroups"]]}
         if "mode" in prefs:
             updates.append("#mode = :mode")
             names["#mode"] = "mode"
