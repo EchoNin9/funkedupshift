@@ -10,10 +10,10 @@ const fadeUp = { hidden: { opacity: 0, y: 15 }, show: { opacity: 1, y: 0, transi
 
 /* Cycle distinct neon accent shadows + icon colours so each panel pops differently. */
 const PANEL_ACCENTS = [
-  { card: "", icon: "text-n1" },
-  { card: "card-accent-n3", icon: "text-n3" },
-  { card: "card-accent-n2", icon: "text-n2" },
-  { card: "card-accent-n4", icon: "text-n4" },
+  { card: "", icon: "text-n1-text" },
+  { card: "card-accent-n3", icon: "text-n3-text" },
+  { card: "card-accent-n2", icon: "text-n2-text" },
+  { card: "card-accent-n4", icon: "text-n4-text" },
 ];
 
 export function AdminDashboard() {
@@ -78,7 +78,7 @@ export function AdminDashboard() {
                 {(mod.id === "websites" || mod.id === "media") && (
                   <Link
                     to={mod.path + "?tab=add"}
-                    className="mt-4 inline-flex items-center gap-1.5 text-sm font-display font-extrabold uppercase tracking-tight text-accent hover:underline"
+                    className="mt-4 inline-flex items-center gap-1.5 text-sm font-display font-extrabold uppercase tracking-tight text-accent-text hover:underline"
                   >
                     <PlusIcon className="w-4 h-4" />
                     Add {mod.id === "websites" ? "Site" : "Media"}

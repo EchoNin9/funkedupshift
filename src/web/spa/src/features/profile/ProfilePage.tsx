@@ -428,7 +428,7 @@ const ProfilePage: React.FC = () => {
       <div className="space-y-4">
         <h1 className="text-2xl font-semibold tracking-tight text-text-primary">My Profile</h1>
         <p className="text-sm text-text-secondary">
-          <Link to="/auth" className="text-accent-500 hover:underline">
+          <Link to="/auth" className="text-accent-text hover:underline">
             Sign in
           </Link>{" "}
           to view and edit your profile.
@@ -441,7 +441,7 @@ const ProfilePage: React.FC = () => {
     return (
       <div className="space-y-4">
         <h1 className="text-2xl font-semibold tracking-tight text-text-primary">My Profile</h1>
-        <p className="text-sm text-red-400">API URL not set.</p>
+        <p className="text-sm text-danger">API URL not set.</p>
       </div>
     );
   }
@@ -522,8 +522,8 @@ const ProfilePage: React.FC = () => {
                       disabled={togglingGroup === g.name}
                       className={`rounded-md px-3 py-1.5 text-xs font-medium ${
                         isMember
-                          ? "border border-amber-500/60 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20"
-                          : "border border-emerald-500/60 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20"
+                          ? "border border-warning/60 bg-warning/10 text-warning hover:bg-warning/20"
+                          : "border border-success/60 bg-success/10 text-success hover:bg-success/20"
                       } disabled:opacity-50`}
                     >
                       {togglingGroup === g.name ? "…" : isMember ? "Leave" : "Join"}
@@ -590,7 +590,7 @@ const ProfilePage: React.FC = () => {
               type="button"
               onClick={handleChangePassword}
               disabled={isChangingPassword}
-              className="rounded-md bg-accent-500 px-4 py-2 text-sm font-semibold text-surface-0 hover:bg-orange-500 disabled:opacity-50"
+              className="rounded-md bg-accent-500 px-4 py-2 text-sm font-semibold text-ink hover:bg-accent-400 disabled:opacity-50"
             >
               {isChangingPassword ? "Changing…" : "Change password"}
             </button>
@@ -602,7 +602,7 @@ const ProfilePage: React.FC = () => {
         <>
       <div className="space-y-2">
         <label className="block text-xs font-medium text-text-secondary">Last login timezone</label>
-        <select
+        <select aria-label="Last login timezone"
           value={timezoneOffset}
           onChange={(e) => {
             const v = parseInt(e.target.value, 10);
@@ -627,7 +627,7 @@ const ProfilePage: React.FC = () => {
         <div className="space-y-6">
           <section className="rounded-xl border border-border-default bg-surface-1 p-4">
             <h2 className="text-sm font-semibold text-text-primary mb-3">User info</h2>
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto"><table className="w-full text-sm">
               <tbody>
                 <tr>
                   <td className="py-1 pr-4 font-medium text-text-secondary w-28">Email</td>
@@ -642,7 +642,7 @@ const ProfilePage: React.FC = () => {
                   <td className="text-text-secondary">{lastLoginText}</td>
                 </tr>
               </tbody>
-            </table>
+            </table></div>
           </section>
 
           <section className="rounded-xl border border-border-default bg-surface-1 p-4">
@@ -652,7 +652,7 @@ const ProfilePage: React.FC = () => {
                 profile.cognitoGroups!.map((g) => {
                   const display = ROLE_DISPLAY[g] ?? g;
                   const cls =
-                    g === "admin" ? "bg-amber-500/20 text-amber-300" : g === "manager" ? "bg-blue-500/20 text-blue-300" : "bg-surface-3 text-text-primary";
+                    g === "admin" ? "bg-warning/20 text-warning" : g === "manager" ? "bg-blue-500/20 text-blue-300" : "bg-surface-3 text-text-primary";
                   return (
                     <span key={g} className={`rounded-md px-2 py-0.5 text-xs font-medium ${cls}`}>
                       {display}
@@ -670,7 +670,7 @@ const ProfilePage: React.FC = () => {
             {(profile.customGroups?.length ?? 0) > 0 ? (
               <div className="flex flex-wrap gap-2">
                 {profile.customGroups!.map((g) => (
-                  <span key={g} className="rounded-md px-2 py-0.5 text-xs font-medium bg-emerald-500/20 text-emerald-300">
+                  <span key={g} className="rounded-md px-2 py-0.5 text-xs font-medium bg-success/20 text-success">
                     {g}
                   </span>
                 ))}
@@ -709,7 +709,7 @@ const ProfilePage: React.FC = () => {
                         Take Photo
                       </button>
                     )}
-                    <input
+                    <input aria-label="Avatar image file"
                       type="file"
                       accept="image/png,image/jpeg,image/gif,image/webp"
                       onChange={handleAvatarChange}
@@ -717,7 +717,7 @@ const ProfilePage: React.FC = () => {
                     />
                     <p className="text-xs text-text-tertiary">Or paste image URL (min 48×48, max 5 MB):</p>
                     <div className="flex gap-2">
-                      <input
+                      <input aria-label="Avatar image URL"
                         type="url"
                         value={avatarImageUrl}
                         onChange={(e) => setAvatarImageUrl(e.target.value)}
@@ -737,7 +737,7 @@ const ProfilePage: React.FC = () => {
                       <button
                         type="button"
                         onClick={handleAvatarDelete}
-                        className="self-start rounded-md border border-red-500/60 bg-red-500/10 px-2 py-1 text-xs font-medium text-red-300 hover:bg-red-500/20"
+                        className="self-start rounded-md border border-danger/60 bg-danger/10 px-2 py-1 text-xs font-medium text-danger hover:bg-danger/20"
                       >
                         Remove icon
                       </button>
@@ -745,7 +745,7 @@ const ProfilePage: React.FC = () => {
                   </div>
                 </div>
                 <p className="mt-1 text-xs text-text-tertiary">PNG, JPEG, GIF, or WebP. Same constraints as thumbnail uploads.</p>
-                {avatarError && <p className="mt-1 text-xs text-red-400">{avatarError}</p>}
+                {avatarError && <p className="mt-1 text-xs text-danger">{avatarError}</p>}
               </div>
 
               <div>
@@ -761,7 +761,7 @@ const ProfilePage: React.FC = () => {
                   rows={4}
                   className="w-full max-w-md rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
                 />
-                <div className={`mt-1 text-xs ${description.length >= 100 ? "text-red-400" : "text-text-tertiary"}`}>
+                <div className={`mt-1 text-xs ${description.length >= 100 ? "text-danger" : "text-text-tertiary"}`}>
                   {description.length} / 100
                 </div>
               </div>
@@ -770,7 +770,7 @@ const ProfilePage: React.FC = () => {
                 type="button"
                 onClick={handleSave}
                 disabled={isSaving}
-                className="rounded-md bg-accent-500 px-4 py-2 text-sm font-semibold text-surface-0 hover:bg-orange-500 disabled:opacity-50"
+                className="rounded-md bg-accent-500 px-4 py-2 text-sm font-semibold text-ink hover:bg-accent-400 disabled:opacity-50"
               >
                 {isSaving ? "Saving…" : "Save"}
               </button>

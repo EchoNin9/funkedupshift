@@ -107,7 +107,7 @@ export function DayList({ posts, onSelectPost }: DayListProps) {
                         href={t.permalink}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="shrink-0 inline-flex items-center gap-1 text-xs text-nav hover:underline"
+                        className="shrink-0 inline-flex items-center gap-1 text-xs text-nav-text hover:underline"
                       >
                         View <ArrowTopRightOnSquareIcon className="h-3 w-3" />
                       </a>

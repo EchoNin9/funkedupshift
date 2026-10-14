@@ -46,7 +46,7 @@ const CategoriesSection: React.FC<{ categories: string[]; onChanged: () => void 
             {c}
             <button type="button" aria-label={`Remove category ${c}`}
               onClick={() => { setList(list.filter((x) => x !== c)); setDirty(true); }}
-              className="text-text-tertiary hover:text-red-400">
+              className="text-text-tertiary hover:text-danger">
               ×
             </button>
           </span>
@@ -63,11 +63,11 @@ const CategoriesSection: React.FC<{ categories: string[]; onChanged: () => void 
           className="rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary"
         />
         <button type="button" onClick={add} disabled={!newCat.trim()}
-          className="rounded-md border border-accent-500 px-3 py-2 text-sm font-medium text-accent-500 hover:bg-surface-2 disabled:opacity-50">
+          className="rounded-md border border-accent-500 px-3 py-2 text-sm font-medium text-accent-text hover:bg-surface-2 disabled:opacity-50">
           Add
         </button>
         <button type="button" onClick={save} disabled={busy || !dirty || list.length === 0}
-          className="rounded-md bg-accent-500 px-3 py-2 text-sm font-medium text-surface-0 hover:bg-orange-500 disabled:opacity-50">
+          className="rounded-md bg-accent-500 px-3 py-2 text-sm font-medium text-ink hover:bg-accent-400 disabled:opacity-50">
           {busy ? "Saving…" : "Save categories"}
         </button>
         <span className="text-xs text-text-tertiary">

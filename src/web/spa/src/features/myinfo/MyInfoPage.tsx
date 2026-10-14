@@ -99,17 +99,17 @@ function formatKv(rows: { label: string; value: string | number | boolean | null
 const SectionCard: React.FC<{
   title: string;
   subtitle?: string;
-  accent: "teal" | "slate" | "violet" | "orange";
+  accent: "teal" | "slate" | "cyan" | "orange";
   className?: string;
   children: React.ReactNode;
 }> = ({ title, subtitle, accent, className, children }) => {
   const border =
     accent === "teal"
       ? "border-teal-800/60 from-teal-900/40 to-teal-950/60"
-      : accent === "violet"
-      ? "border-violet-800/50 from-violet-900/35 to-violet-950/55"
+      : accent === "cyan"
+      ? "border-n3/40 from-n3/10 to-surface-1/90"
       : accent === "orange"
-      ? "border-orange-800/55 from-orange-900/35 to-orange-950/55"
+      ? "border-accent/40 from-accent/10 to-surface-1/90"
       : "border-border-default from-surface-2/80 to-surface-1/90";
   return (
     <div
@@ -405,7 +405,7 @@ const MyInfoPage: React.FC = () => {
         </motion.div>
 
         <motion.div variants={fadeUpStaggered} custom={2} className="h-full">
-          <SectionCard title="Screen & display" accent="violet" className="h-full">
+          <SectionCard title="Screen & display" accent="cyan" className="h-full">
             {formatKv([
               { label: "Screen (CSS px)", value: screenBlock.screen },
               { label: "Available viewport", value: screenBlock.available },
@@ -420,7 +420,7 @@ const MyInfoPage: React.FC = () => {
         </motion.div>
 
         <motion.div variants={fadeUpStaggered} custom={3} className="h-full">
-          <SectionCard title="Device & input" accent="violet" className="h-full">
+          <SectionCard title="Device & input" accent="cyan" className="h-full">
             {formatKv([
               { label: "Logical CPU cores", value: browserBlock.hardwareConcurrency },
               { label: "Device memory (GB est.)", value: browserBlock.deviceMemory },

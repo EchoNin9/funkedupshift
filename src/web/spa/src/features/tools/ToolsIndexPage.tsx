@@ -9,10 +9,10 @@ const fadeUp = { hidden: { opacity: 0, y: 15 }, show: { opacity: 1, y: 0, transi
 
 /* Cycle distinct neon accent shadows + icon colours so each card pops differently. */
 const PANEL_ACCENTS = [
-  { card: "", icon: "text-n1" },
-  { card: "card-accent-n3", icon: "text-n3" },
-  { card: "card-accent-n2", icon: "text-n2" },
-  { card: "card-accent-n4", icon: "text-n4" },
+  { card: "", icon: "text-n1-text" },
+  { card: "card-accent-n3", icon: "text-n3-text" },
+  { card: "card-accent-n2", icon: "text-n2-text" },
+  { card: "card-accent-n4", icon: "text-n4-text" },
 ];
 
 // The tools directory: every "tools" section module, plus My Info (which

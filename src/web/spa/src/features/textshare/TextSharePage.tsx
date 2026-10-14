@@ -70,7 +70,7 @@ const PasteRow: React.FC<{
           href={url}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-sm font-medium text-nav hover:underline break-all"
+          className="text-sm font-medium text-nav-text hover:underline break-all"
         >
           {url}
         </a>
@@ -87,7 +87,7 @@ const PasteRow: React.FC<{
           }}
           disabled={busy}
           aria-label="Delete paste"
-          className="inline-flex items-center justify-center rounded-lg border border-border-hover bg-surface-2 p-1.5 text-red-500 hover:bg-surface-3 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="inline-flex items-center justify-center rounded-lg border border-border-hover bg-surface-2 p-1.5 text-danger hover:bg-surface-3 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <TrashIcon className="h-3.5 w-3.5" />
         </button>
@@ -197,7 +197,7 @@ const TextSharePage: React.FC = () => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
       >
-        <DocumentTextIcon className="h-6 w-6 text-accent" />
+        <DocumentTextIcon className="h-6 w-6 text-accent-text" />
         Text Share
       </motion.h1>
       <p className="text-sm text-text-secondary">
@@ -242,7 +242,7 @@ const TextSharePage: React.FC = () => {
 
       {mintedUrl && (
         <div className="rounded-xl border border-border-default bg-surface-2/80 p-3 flex items-center gap-2">
-          <code className="flex-1 text-sm text-nav break-all">{mintedUrl}</code>
+          <code className="flex-1 text-sm text-nav-text break-all">{mintedUrl}</code>
           <CopyButton text={mintedUrl} />
         </div>
       )}

@@ -16,7 +16,7 @@
     --color-border-hover: 74 58 100;
     --color-text-primary: 253 246 255;   /* #fdf6ff */
     --color-text-secondary: 154 133 181;  /* #9a85b5 */
-    --color-text-tertiary: 122 105 145;
+    --color-text-tertiary: 148 130 172;
     --color-accent: 255 43 214;      /* n1 magenta — primary accent */
     --color-accent-hover: 214 32 178;
     --color-accent-light: 255 107 224;
@@ -27,6 +27,10 @@
     --color-n3: 0 229 255;    /* cyan    */
     --color-n4: 182 255 61;   /* lime    */
     --color-nav: 57 255 122;  /* fixed nav green (both themes) */
+    --color-n1-text: 255 43 214; --color-n2-text: 255 230 0; --color-n3-text: 0 229 255; --color-n4-text: 182 255 61;
+    --color-nav-text: 57 255 122; --color-accent-text: 255 43 214;
+    --color-danger: 248 113 113; --color-warning: 251 191 36; --color-success: 52 211 153;
+    --color-on-danger: 20 8 26; --color-on-warning: 20 8 26; --color-on-success: 20 8 26;
     --color-ink: 20 8 26;     /* brutalist border/shadow ink */
 
     --pop-spring: cubic-bezier(.34, 1.56, .64, 1);
@@ -43,7 +47,7 @@
     --color-border-hover: 20 8 26;
     --color-text-primary: 20 8 26;    /* #14081a */
     --color-text-secondary: 107 90 122;
-    --color-text-tertiary: 140 124 156;
+    --color-text-tertiary: 112 95 130;
     --color-accent: 255 43 214;
     --color-accent-hover: 214 32 178;
     --color-accent-light: 255 107 224;
@@ -52,6 +56,10 @@
     --color-n3: 0 184 212;   /* #00b8d4 */
     --color-n4: 123 208 0;   /* #7bd000 */
     --color-nav: 57 255 122;
+    --color-n1-text: 190 0 155; --color-n2-text: 125 95 0; --color-n3-text: 0 105 125; --color-n4-text: 70 115 0;
+    --color-nav-text: 0 125 50; --color-accent-text: 190 0 155;
+    --color-danger: 185 28 28; --color-warning: 146 64 14; --color-success: 4 120 87;
+    --color-on-danger: 255 255 255; --color-on-warning: 255 255 255; --color-on-success: 255 255 255;
     --color-ink: 20 8 26;
   }
 
@@ -221,4 +229,7 @@
 @media (prefers-reduced-motion: reduce) {
   .pop-marquee__track, .pop-blob, .pop-pulse { animation: none; }
   .card, .btn-primary, .btn-secondary { transition: none; }
+  .animate-pulse, .animate-fade-in { animation: none; }
+  /* Keep loading signal: spinners stay, but slow down. */
+  .animate-spin { animation-duration: 2.5s; }
 }

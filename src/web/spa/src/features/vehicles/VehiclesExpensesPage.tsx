@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState, useRef, lazy, Suspense } from "react";
+import React, { useId, useCallback, useEffect, useState, useRef, lazy, Suspense } from "react";
 import { useAuth, canAccessExpenses } from "../../shell/AuthContext";
 import { usePlatform } from "../../shell/PlatformContext";
 import { fetchWithAuth } from "../../utils/api";
@@ -186,6 +186,7 @@ function calcFuelMetrics(
 }
 
 const VehiclesExpensesPage: React.FC = () => {
+  const uid = useId();
   const { user } = useAuth();
   const { isNative } = usePlatform();
   const canAccess = canAccessExpenses(user);
@@ -1177,7 +1178,7 @@ const VehiclesExpensesPage: React.FC = () => {
         <div className="rounded-lg border border-border-hover bg-surface-2 p-4">
           <h2 className="text-sm font-semibold text-text-secondary mb-3">Add vehicle</h2>
           <div className="flex gap-2">
-            <input
+            <input aria-label="Vehicle name"
               type="text"
               placeholder="Vehicle name"
               value={newVehicleName}
@@ -1200,7 +1201,7 @@ const VehiclesExpensesPage: React.FC = () => {
               <div className="flex items-center gap-2">
                 {renamingVehicleId === selectedVehicleId ? (
                   <div className="flex items-center gap-2">
-                    <input
+                    <input aria-label="Vehicle name"
                       type="text"
                       value={renameValue}
                       onChange={(e) => setRenameValue(e.target.value)}
@@ -1218,7 +1219,7 @@ const VehiclesExpensesPage: React.FC = () => {
                     <button
                       onClick={() => handleRenameVehicle(selectedVehicleId, renameValue)}
                       disabled={saving || !renameValue.trim()}
-                      className="text-sm text-accent-400 hover:text-accent-300"
+                      className="text-sm text-accent-text hover:text-accent-text"
                     >
                       Save
                     </button>
@@ -1253,7 +1254,7 @@ const VehiclesExpensesPage: React.FC = () => {
               <button
                 onClick={() => handleDeleteVehicle(selectedVehicleId)}
                 disabled={saving || !!exporting}
-                className="text-sm text-red-400 hover:text-red-300"
+                className="text-sm text-danger hover:text-danger"
               >
                 Delete vehicle
               </button>
@@ -1336,13 +1337,13 @@ const VehiclesExpensesPage: React.FC = () => {
               </Suspense>
             )}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              <input
+              <input aria-label="Date"
                 type="date"
                 value={fuelForm.date}
                 onChange={(e) => setFuelForm((f) => ({ ...f, date: e.target.value }))}
                 className="w-full min-w-0 rounded-md border border-border-hover bg-surface-3 px-3 py-2 text-text-primary"
               />
-              <input
+              <input aria-label="Fuel price ($)"
                 type="number"
                 step="0.01"
                 placeholder="Fuel price ($)"
@@ -1350,7 +1351,7 @@ const VehiclesExpensesPage: React.FC = () => {
                 onChange={(e) => setFuelForm((f) => ({ ...f, fuelPrice: e.target.value }))}
                 className="rounded-md border border-border-hover bg-surface-3 px-3 py-2 text-text-primary placeholder-text-tertiary"
               />
-              <input
+              <input aria-label="Fuel litres"
                 type="number"
                 step="0.001"
                 placeholder="Fuel litres"
@@ -1358,7 +1359,7 @@ const VehiclesExpensesPage: React.FC = () => {
                 onChange={(e) => setFuelForm((f) => ({ ...f, fuelLitres: e.target.value }))}
                 className="rounded-md border border-border-hover bg-surface-3 px-3 py-2 text-text-primary placeholder-text-tertiary"
               />
-              <input
+              <input aria-label="Odometer (km)"
                 type="number"
                 step="1"
                 placeholder="Odometer (km)"
@@ -1379,13 +1380,13 @@ const VehiclesExpensesPage: React.FC = () => {
               <div className="space-y-4">
                 <h2 className="text-sm font-semibold text-text-secondary">Add maintenance expense</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <input
+                  <input aria-label="Date"
                     type="date"
                     value={maintenanceForm.date}
                     onChange={(e) => setMaintenanceForm((f) => ({ ...f, date: e.target.value }))}
                     className="rounded-md border border-border-hover bg-surface-3 px-3 py-2 text-text-primary"
                   />
-                  <input
+                  <input aria-label="Price ($)"
                     type="number"
                     step="0.01"
                     placeholder="Price ($)"
@@ -1393,7 +1394,7 @@ const VehiclesExpensesPage: React.FC = () => {
                     onChange={(e) => setMaintenanceForm((f) => ({ ...f, price: e.target.value }))}
                     className="rounded-md border border-border-hover bg-surface-3 px-3 py-2 text-text-primary"
                   />
-                  <input
+                  <input aria-label="Mileage (km)"
                     type="number"
                     step="1"
                     placeholder="Mileage (km)"
@@ -1401,7 +1402,7 @@ const VehiclesExpensesPage: React.FC = () => {
                     onChange={(e) => setMaintenanceForm((f) => ({ ...f, mileage: e.target.value }))}
                     className="rounded-md border border-border-hover bg-surface-3 px-3 py-2 text-text-primary"
                   />
-                  <input
+                  <input aria-label="Vendor"
                     type="text"
                     list="maintenance-vendors-list"
                     placeholder="Vendor"
@@ -1414,7 +1415,7 @@ const VehiclesExpensesPage: React.FC = () => {
                     className="rounded-md border border-border-hover bg-surface-3 px-3 py-2 text-text-primary"
                   />
                 </div>
-                <textarea
+                <textarea aria-label="Description"
                   rows={3}
                   placeholder="Description"
                   value={maintenanceForm.description}
@@ -1432,8 +1433,8 @@ const VehiclesExpensesPage: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="mb-2 block text-xs text-text-tertiary">Attachments</label>
-                  <input
+                  <label htmlFor={`${uid}-f1`} className="mb-2 block text-xs text-text-tertiary">Attachments</label>
+                  <input id={`${uid}-f1`} aria-label="Attachments"
                     type="file"
                     multiple
                     accept=".pdf,.jpg,.jpeg,.png,.txt,.csv,.doc,.docx,.xls,.xlsx,.webp,.gif"
@@ -1504,8 +1505,8 @@ const VehiclesExpensesPage: React.FC = () => {
               <div className="px-4 pb-4 pt-1 border-t border-border-hover space-y-3">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                   <div>
-                    <label className="block text-xs text-text-tertiary mb-1">Start date</label>
-                    <input
+                    <label htmlFor={`${uid}-f2`} className="block text-xs text-text-tertiary mb-1">Start date</label>
+                    <input id={`${uid}-f2`} aria-label="Start date"
                       type="date"
                       value={filters.startDate}
                       onChange={(e) => setFilters((f) => ({ ...f, startDate: e.target.value }))}
@@ -1513,8 +1514,8 @@ const VehiclesExpensesPage: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-text-tertiary mb-1">End date</label>
-                    <input
+                    <label htmlFor={`${uid}-f3`} className="block text-xs text-text-tertiary mb-1">End date</label>
+                    <input id={`${uid}-f3`} aria-label="End date"
                       type="date"
                       value={filters.endDate}
                       onChange={(e) => setFilters((f) => ({ ...f, endDate: e.target.value }))}
@@ -1522,8 +1523,8 @@ const VehiclesExpensesPage: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-text-tertiary mb-1">Sort order</label>
-                    <select
+                    <label htmlFor={`${uid}-f4`} className="block text-xs text-text-tertiary mb-1">Sort order</label>
+                    <select id={`${uid}-f4`} aria-label="Sort order"
                       value={filters.sortNewestFirst ? "newest" : "oldest"}
                       onChange={(e) =>
                         setFilters((f) => ({ ...f, sortNewestFirst: e.target.value === "newest" }))
@@ -1538,9 +1539,9 @@ const VehiclesExpensesPage: React.FC = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="flex gap-2 items-end">
                     <div className="flex-1">
-                      <label className="block text-xs text-text-tertiary mb-1">Fuel price ($)</label>
+                      <label htmlFor={`${uid}-f5`} className="block text-xs text-text-tertiary mb-1">Fuel price ($)</label>
                       <div className="flex gap-2">
-                        <select
+                        <select id={`${uid}-f5`} aria-label="Fuel price ($)"
                           value={filters.fuelPriceOp}
                           onChange={(e) =>
                             setFilters((f) => ({
@@ -1553,7 +1554,7 @@ const VehiclesExpensesPage: React.FC = () => {
                           <option value="higher">Higher than</option>
                           <option value="lower">Lower than</option>
                         </select>
-                        <input
+                        <input aria-label="Fuel price amount"
                           type="number"
                           step="0.01"
                           placeholder="e.g. 50"
@@ -1566,9 +1567,9 @@ const VehiclesExpensesPage: React.FC = () => {
                   </div>
                   <div className="flex gap-2 items-end">
                     <div className="flex-1">
-                      <label className="block text-xs text-text-tertiary mb-1">$/L</label>
+                      <label htmlFor={`${uid}-f6`} className="block text-xs text-text-tertiary mb-1">$/L</label>
                       <div className="flex gap-2">
-                        <select
+                        <select id={`${uid}-f6`} aria-label="$/L"
                           value={filters.pricePerLOp}
                           onChange={(e) =>
                             setFilters((f) => ({
@@ -1581,7 +1582,7 @@ const VehiclesExpensesPage: React.FC = () => {
                           <option value="higher">Higher than</option>
                           <option value="lower">Lower than</option>
                         </select>
-                        <input
+                        <input aria-label="Price per litre amount"
                           type="number"
                           step="0.001"
                           placeholder="e.g. 1.50"
@@ -1693,7 +1694,7 @@ const VehiclesExpensesPage: React.FC = () => {
                           {isEditing ? (
                             <>
                               <td className="px-4 py-2">
-                                <input
+                                <input aria-label="Date"
                                   type="date"
                                   value={editFuelForm.date}
                                   onChange={(e) => setEditFuelForm((f) => ({ ...f, date: e.target.value }))}
@@ -1705,7 +1706,7 @@ const VehiclesExpensesPage: React.FC = () => {
                                 />
                               </td>
                               <td className="px-4 py-2">
-                                <input
+                                <input aria-label="Fuel price ($)"
                                   type="number"
                                   step="0.01"
                                   value={editFuelForm.fuelPrice}
@@ -1714,7 +1715,7 @@ const VehiclesExpensesPage: React.FC = () => {
                                 />
                               </td>
                               <td className="px-4 py-2">
-                                <input
+                                <input aria-label="Fuel litres"
                                   type="number"
                                   step="0.001"
                                   value={editFuelForm.fuelLitres}
@@ -1726,7 +1727,7 @@ const VehiclesExpensesPage: React.FC = () => {
                               <td className="px-4 py-2 text-sm text-text-tertiary">—</td>
                               <td className="px-4 py-2 text-sm text-text-tertiary">—</td>
                               <td className="px-4 py-2">
-                                <input
+                                <input aria-label="Odometer"
                                   type="number"
                                   step="1"
                                   value={editFuelForm.odometerKm}
@@ -1740,7 +1741,7 @@ const VehiclesExpensesPage: React.FC = () => {
                                 <button
                                   onClick={() => handleUpdateFuel(entry.id)}
                                   disabled={saving || !editFuelForm.date || !editFuelForm.fuelPrice || !editFuelForm.fuelLitres || !editFuelForm.odometerKm}
-                                  className="text-accent-400 hover:text-accent-300 text-sm mr-2"
+                                  className="text-accent-text hover:text-accent-text text-sm mr-2"
                                 >
                                   Save
                                 </button>
@@ -1756,7 +1757,7 @@ const VehiclesExpensesPage: React.FC = () => {
                                 <button
                                   onClick={() => handleDeleteFuel(entry.id)}
                                   disabled={saving}
-                                  className="text-red-400 hover:text-red-300 text-sm"
+                                  className="text-danger hover:text-danger text-sm"
                                 >
                                   Delete
                                 </button>
@@ -1807,7 +1808,7 @@ const VehiclesExpensesPage: React.FC = () => {
                                 <button
                                   onClick={() => handleDeleteFuel(entry.id)}
                                   disabled={saving}
-                                  className="text-red-400 hover:text-red-300 text-sm"
+                                  className="text-danger hover:text-danger text-sm"
                                 >
                                   Delete
                                 </button>
@@ -1869,8 +1870,8 @@ const VehiclesExpensesPage: React.FC = () => {
                 <div className="px-4 pb-4 pt-1 border-t border-border-hover space-y-3">
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                     <div>
-                      <label className="block text-xs text-text-tertiary mb-1">Start date</label>
-                      <input
+                      <label htmlFor={`${uid}-f7`} className="block text-xs text-text-tertiary mb-1">Start date</label>
+                      <input id={`${uid}-f7`} aria-label="Start date"
                         type="date"
                         value={maintenanceFilters.startDate}
                         onChange={(e) => setMaintenanceFilters((f) => ({ ...f, startDate: e.target.value }))}
@@ -1878,8 +1879,8 @@ const VehiclesExpensesPage: React.FC = () => {
                       />
                     </div>
                     <div>
-                      <label className="block text-xs text-text-tertiary mb-1">End date</label>
-                      <input
+                      <label htmlFor={`${uid}-f8`} className="block text-xs text-text-tertiary mb-1">End date</label>
+                      <input id={`${uid}-f8`} aria-label="End date"
                         type="date"
                         value={maintenanceFilters.endDate}
                         onChange={(e) => setMaintenanceFilters((f) => ({ ...f, endDate: e.target.value }))}
@@ -1887,8 +1888,8 @@ const VehiclesExpensesPage: React.FC = () => {
                       />
                     </div>
                     <div>
-                      <label className="block text-xs text-text-tertiary mb-1">Sort order</label>
-                      <select
+                      <label htmlFor={`${uid}-f9`} className="block text-xs text-text-tertiary mb-1">Sort order</label>
+                      <select id={`${uid}-f9`} aria-label="Sort order"
                         value={maintenanceFilters.sortNewestFirst ? "newest" : "oldest"}
                         onChange={(e) =>
                           setMaintenanceFilters((f) => ({ ...f, sortNewestFirst: e.target.value === "newest" }))
@@ -1900,8 +1901,8 @@ const VehiclesExpensesPage: React.FC = () => {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-xs text-text-tertiary mb-1">Vendor contains</label>
-                      <input
+                      <label htmlFor={`${uid}-f10`} className="block text-xs text-text-tertiary mb-1">Vendor contains</label>
+                      <input id={`${uid}-f10`} aria-label="Vendor contains"
                         type="text"
                         value={maintenanceFilters.vendorQuery}
                         onChange={(e) => setMaintenanceFilters((f) => ({ ...f, vendorQuery: e.target.value }))}
@@ -1913,9 +1914,9 @@ const VehiclesExpensesPage: React.FC = () => {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="flex gap-2 items-end">
                       <div className="flex-1">
-                        <label className="block text-xs text-text-tertiary mb-1">Price ($)</label>
+                        <label htmlFor={`${uid}-f11`} className="block text-xs text-text-tertiary mb-1">Price ($)</label>
                         <div className="flex gap-2">
-                          <select
+                          <select id={`${uid}-f11`} aria-label="Price ($)"
                             value={maintenanceFilters.priceOp}
                             onChange={(e) =>
                               setMaintenanceFilters((f) => ({
@@ -1928,7 +1929,7 @@ const VehiclesExpensesPage: React.FC = () => {
                             <option value="higher">Higher than</option>
                             <option value="lower">Lower than</option>
                           </select>
-                          <input
+                          <input aria-label="Price amount"
                             type="number"
                             step="0.01"
                             placeholder="e.g. 200"
@@ -1941,9 +1942,9 @@ const VehiclesExpensesPage: React.FC = () => {
                     </div>
                     <div className="flex gap-2 items-end">
                       <div className="flex-1">
-                        <label className="block text-xs text-text-tertiary mb-1">Mileage (km)</label>
+                        <label htmlFor={`${uid}-f12`} className="block text-xs text-text-tertiary mb-1">Mileage (km)</label>
                         <div className="flex gap-2">
-                          <select
+                          <select id={`${uid}-f12`} aria-label="Mileage (km)"
                             value={maintenanceFilters.mileageOp}
                             onChange={(e) =>
                               setMaintenanceFilters((f) => ({
@@ -1956,7 +1957,7 @@ const VehiclesExpensesPage: React.FC = () => {
                             <option value="higher">Higher than</option>
                             <option value="lower">Lower than</option>
                           </select>
-                          <input
+                          <input aria-label="Mileage amount"
                             type="number"
                             step="1"
                             placeholder="e.g. 100000"
@@ -1997,10 +1998,10 @@ const VehiclesExpensesPage: React.FC = () => {
                         {isEditing ? (
                           <div className="space-y-3">
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                              <input type="date" value={editMaintenanceForm.date} onChange={(e) => setEditMaintenanceForm((f) => ({ ...f, date: e.target.value }))} className="rounded border border-border-hover bg-surface-3 px-2 py-1.5 text-sm text-text-primary" />
-                              <input type="number" step="0.01" value={editMaintenanceForm.price} onChange={(e) => setEditMaintenanceForm((f) => ({ ...f, price: e.target.value }))} className="rounded border border-border-hover bg-surface-3 px-2 py-1.5 text-sm text-text-primary" placeholder="Price" />
-                              <input type="number" step="1" value={editMaintenanceForm.mileage} onChange={(e) => setEditMaintenanceForm((f) => ({ ...f, mileage: e.target.value }))} className="rounded border border-border-hover bg-surface-3 px-2 py-1.5 text-sm text-text-primary" placeholder="Mileage" />
-                              <input
+                              <input aria-label="Date" type="date" value={editMaintenanceForm.date} onChange={(e) => setEditMaintenanceForm((f) => ({ ...f, date: e.target.value }))} className="rounded border border-border-hover bg-surface-3 px-2 py-1.5 text-sm text-text-primary" />
+                              <input aria-label="Price" type="number" step="0.01" value={editMaintenanceForm.price} onChange={(e) => setEditMaintenanceForm((f) => ({ ...f, price: e.target.value }))} className="rounded border border-border-hover bg-surface-3 px-2 py-1.5 text-sm text-text-primary" placeholder="Price" />
+                              <input aria-label="Mileage" type="number" step="1" value={editMaintenanceForm.mileage} onChange={(e) => setEditMaintenanceForm((f) => ({ ...f, mileage: e.target.value }))} className="rounded border border-border-hover bg-surface-3 px-2 py-1.5 text-sm text-text-primary" placeholder="Mileage" />
+                              <input aria-label="Vendor"
                                 type="text"
                                 list="maintenance-vendors-list"
                                 value={editMaintenanceForm.vendor}
@@ -2013,7 +2014,7 @@ const VehiclesExpensesPage: React.FC = () => {
                                 placeholder="Vendor"
                               />
                             </div>
-                            <textarea rows={2} value={editMaintenanceForm.description} onChange={(e) => setEditMaintenanceForm((f) => ({ ...f, description: e.target.value }))} className="w-full rounded border border-border-hover bg-surface-3 px-2 py-1.5 text-sm text-text-primary" placeholder="Description" />
+                            <textarea aria-label="Description" rows={2} value={editMaintenanceForm.description} onChange={(e) => setEditMaintenanceForm((f) => ({ ...f, description: e.target.value }))} className="w-full rounded border border-border-hover bg-surface-3 px-2 py-1.5 text-sm text-text-primary" placeholder="Description" />
                             <AddTagInput
                               tags={editMaintenanceForm.tags}
                               onTagsChange={(tags) => setEditMaintenanceForm((f) => ({ ...f, tags }))}
@@ -2022,7 +2023,7 @@ const VehiclesExpensesPage: React.FC = () => {
                               placeholder="Edit tags"
                             />
                             <div className="flex gap-2">
-                              <button onClick={() => handleUpdateMaintenance(entry.id)} disabled={saving} className="text-accent-400 hover:text-accent-300 text-sm">Save</button>
+                              <button onClick={() => handleUpdateMaintenance(entry.id)} disabled={saving} className="text-accent-text hover:text-accent-text text-sm">Save</button>
                               <button onClick={() => setEditingMaintenanceId(null)} disabled={saving} className="text-text-secondary hover:text-text-primary text-sm">Cancel</button>
                             </div>
                           </div>
@@ -2051,7 +2052,7 @@ const VehiclesExpensesPage: React.FC = () => {
                                 >
                                   Edit
                                 </button>
-                                <button onClick={() => handleDeleteMaintenance(entry.id)} disabled={saving} className="text-red-400 hover:text-red-300 text-sm">
+                                <button onClick={() => handleDeleteMaintenance(entry.id)} disabled={saving} className="text-danger hover:text-danger text-sm">
                                   Delete
                                 </button>
                               </div>
@@ -2066,7 +2067,7 @@ const VehiclesExpensesPage: React.FC = () => {
                                 {(entry.attachments || []).map((a) => (
                                   <li key={a.key}>
                                     {a.url ? (
-                                      <a href={a.url} target="_blank" rel="noreferrer" className="text-accent-400 hover:text-accent-300">
+                                      <a href={a.url} target="_blank" rel="noreferrer" className="text-accent-text hover:text-accent-text">
                                         {a.filename || a.key}
                                       </a>
                                     ) : (
@@ -2102,8 +2103,8 @@ const VehiclesExpensesPage: React.FC = () => {
                   <div className="px-4 pb-4 pt-1 border-t border-border-hover">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                       <div>
-                        <label className="block text-xs text-text-tertiary mb-1">Start date</label>
-                        <input
+                        <label htmlFor={`${uid}-f13`} className="block text-xs text-text-tertiary mb-1">Start date</label>
+                        <input id={`${uid}-f13`} aria-label="Start date"
                           type="date"
                           value={totalsFilters.startDate}
                           onChange={(e) => setTotalsFilters((f) => ({ ...f, startDate: e.target.value }))}
@@ -2111,8 +2112,8 @@ const VehiclesExpensesPage: React.FC = () => {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-text-tertiary mb-1">End date</label>
-                        <input
+                        <label htmlFor={`${uid}-f14`} className="block text-xs text-text-tertiary mb-1">End date</label>
+                        <input id={`${uid}-f14`} aria-label="End date"
                           type="date"
                           value={totalsFilters.endDate}
                           onChange={(e) => setTotalsFilters((f) => ({ ...f, endDate: e.target.value }))}

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Dialog } from "@headlessui/react";
 import { useAuth, hasRole } from "../../shell/AuthContext";
 import { AdminPageHeader } from "./AdminPageHeader";
 import { AdminTabs } from "./AdminTabs";
@@ -408,26 +409,23 @@ const MediaAdminPage: React.FC = () => {
               Videos get an auto-generated thumbnail from the 3–4 sec frame. Change it when editing.
             </p>
             {file?.type.startsWith("video/") && thumbnailFile && (
-              <p className="mt-1 text-xs text-emerald-400">
+              <p className="mt-1 text-xs text-success">
                 Custom thumbnail: {thumbnailFile.name}{" "}
-                <button type="button" onClick={() => setShowThumbnailDialog(true)} className="text-accent-500 hover:underline">
+                <button type="button" onClick={() => setShowThumbnailDialog(true)} className="text-accent-text hover:underline">
                   Change
                 </button>
               </p>
             )}
             {showThumbnailDialog && file?.type.startsWith("video/") && (
-              <div
+              <Dialog
+                open
+                onClose={() => setShowThumbnailDialog(false)}
                 className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="thumbnail-dialog-title"
-                onClick={() => setShowThumbnailDialog(false)}
               >
-                <div
+                <Dialog.Panel
                   className="rounded-lg border border-border-hover bg-surface-2 p-6 shadow-xl max-w-sm w-full mx-4"
-                  onClick={(e) => e.stopPropagation()}
                 >
-                  <h2 id="thumbnail-dialog-title" className="text-lg font-medium text-text-primary mb-2">Add thumbnail</h2>
+                  <Dialog.Title as="h2" className="text-lg font-medium text-text-primary mb-2">Add thumbnail</Dialog.Title>
                   <p className="text-sm text-text-secondary mb-4">Choose a custom thumbnail image for this video (optional).</p>
                   <input
                     ref={thumbnailInputRef}
@@ -452,8 +450,8 @@ const MediaAdminPage: React.FC = () => {
                       Skip
                     </button>
                   </div>
-                </div>
-              </div>
+                </Dialog.Panel>
+              </Dialog>
             )}
             {filePreview && (
               <div className="mt-2">
@@ -474,7 +472,7 @@ const MediaAdminPage: React.FC = () => {
             {categories.length === 0 && (
               <p className="mt-1 text-xs text-text-tertiary">
                 No categories.{" "}
-                <button type="button" onClick={() => setTab("categories")} className="text-accent-500 hover:underline">
+                <button type="button" onClick={() => setTab("categories")} className="text-accent-text hover:underline">
                   Create media categories
                 </button>
               </p>
@@ -536,7 +534,7 @@ const MediaAdminPage: React.FC = () => {
                   <li key={c.id} className="rounded-lg border border-border-default bg-surface-1 px-3 py-2 text-sm">
                     {editingId === c.id ? (
                       <form onSubmit={handleUpdateCategory} className="space-y-2">
-                        <input
+                        <input aria-label="Name"
                           type="text"
                           value={editName}
                           onChange={(e) => setEditName(e.target.value)}
@@ -545,7 +543,7 @@ const MediaAdminPage: React.FC = () => {
                           className="input-field w-full"
                           autoFocus
                         />
-                        <input
+                        <input aria-label="Description (optional)"
                           type="text"
                           value={editDescription}
                           onChange={(e) => setEditDescription(e.target.value)}
@@ -571,12 +569,12 @@ const MediaAdminPage: React.FC = () => {
                             type="button"
                             onClick={() => handleDeleteCategory(c.id)}
                             disabled={deletingId === c.id}
-                            className="rounded-md border border-red-500/60 px-3 py-1.5 text-xs font-medium text-red-400 hover:bg-red-500/20 disabled:opacity-50"
+                            className="rounded-md border border-danger/60 px-3 py-1.5 text-xs font-medium text-danger hover:bg-danger/20 disabled:opacity-50"
                           >
                             {deletingId === c.id ? "Deleting…" : "Delete"}
                           </button>
                         </div>
-                        {updateError && <p className="text-xs text-red-400">{updateError}</p>}
+                        {updateError && <p className="text-xs text-danger">{updateError}</p>}
                       </form>
                     ) : (
                       <div className="flex items-center justify-between gap-2">
@@ -592,7 +590,7 @@ const MediaAdminPage: React.FC = () => {
                           type="button"
                           onClick={() => handleDeleteCategory(c.id)}
                           disabled={deletingId === c.id}
-                          className="rounded px-2 py-1 text-xs font-medium text-red-400 hover:bg-red-500/20 disabled:opacity-50 shrink-0"
+                          className="rounded px-2 py-1 text-xs font-medium text-danger hover:bg-danger/20 disabled:opacity-50 shrink-0"
                           aria-label="Delete category"
                         >
                           {deletingId === c.id ? "…" : "Delete"}

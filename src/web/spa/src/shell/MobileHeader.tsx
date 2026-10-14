@@ -47,7 +47,7 @@ export function MobileHeader() {
 
   const navItemClass = (isActive: boolean) =>
     `flex items-center gap-3 px-4 py-2.5 min-h-[44px] text-sm rounded-md transition-colors duration-150 ${
-      isActive ? "bg-surface-3 text-nav font-medium border-l-2 border-nav" : "text-text-secondary hover:bg-surface-2 hover:text-text-primary"
+      isActive ? "bg-surface-3 text-nav-text font-medium border-l-2 border-nav" : "text-text-secondary hover:bg-surface-2 hover:text-text-primary"
     }`;
 
   return (
@@ -165,7 +165,7 @@ export function MobileHeader() {
                       </NavLink>
                       <button
                         onClick={handleSignOut}
-                        className="flex items-center w-full px-4 py-2.5 min-h-[44px] text-sm text-red-400 hover:bg-surface-2 rounded-md transition-colors duration-150"
+                        className="flex items-center w-full px-4 py-2.5 min-h-[44px] text-sm text-danger hover:bg-surface-2 rounded-md transition-colors duration-150"
                       >
                         Sign out
                       </button>

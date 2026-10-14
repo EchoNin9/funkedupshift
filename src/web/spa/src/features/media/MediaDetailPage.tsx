@@ -139,7 +139,7 @@ const MediaDetailPage: React.FC = () => {
           <h1 className="text-xl font-semibold tracking-tight text-text-primary">{title}</h1>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             {typeof item.averageRating === "number" && (
-              <span className="inline-flex items-center rounded-full bg-surface-3 px-2 py-0.5 text-sm text-amber-300">
+              <span className="inline-flex items-center rounded-full bg-surface-3 px-2 py-0.5 text-sm text-warning">
                 {item.averageRating.toFixed(1)}★ average
               </span>
             )}

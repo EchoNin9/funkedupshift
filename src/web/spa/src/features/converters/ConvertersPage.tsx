@@ -163,7 +163,7 @@ const ZonePicker: React.FC<{ label: string; value: string; onChange: (z: string)
             onClick={() => onChange(z)}
             className={`rounded-full border px-2.5 py-1 text-xs ${
               value === z
-                ? "border-accent-500 text-accent-400"
+                ? "border-accent-500 text-accent-text"
                 : "border-border-hover text-text-tertiary hover:text-text-primary"
             }`}
           >
@@ -171,14 +171,14 @@ const ZonePicker: React.FC<{ label: string; value: string; onChange: (z: string)
           </button>
         ))}
       </div>
-      <input
+      <input aria-label="Filter zones…"
         type="text"
         placeholder="Filter zones…"
         value={filter}
         onChange={(e) => setFilter(e.target.value)}
         className={`w-full ${fieldClass}`}
       />
-      <select value={value} onChange={(e) => onChange(e.target.value)} className={`w-full ${fieldClass}`}>
+      <select aria-label="Time zone" value={value} onChange={(e) => onChange(e.target.value)} className={`w-full ${fieldClass}`}>
         {filtered.map((z) => (
           <option key={z} value={z}>
             {z}
@@ -315,7 +315,7 @@ const ConvertersPage: React.FC = () => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
       >
-        <ArrowsRightLeftIcon className="h-6 w-6 text-accent" />
+        <ArrowsRightLeftIcon className="h-6 w-6 text-accent-text" />
         Converters
       </motion.h1>
       <p className="text-sm text-text-secondary">Runs locally — nothing leaves your browser.</p>
@@ -328,7 +328,7 @@ const ConvertersPage: React.FC = () => {
             onClick={() => setTab(t.id)}
             className={`min-h-[44px] flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors ${
               tab === t.id
-                ? "bg-accent-500/20 text-accent-400"
+                ? "bg-accent-500/20 text-accent-text"
                 : "text-text-secondary hover:text-text-primary hover:bg-surface-3"
             }`}
           >
@@ -390,7 +390,7 @@ const ConvertersPage: React.FC = () => {
                 onClick={() => selectDimension(key)}
                 className={`rounded-full border px-3 py-1 text-xs ${
                   dimKey === key
-                    ? "border-accent-500 text-accent-400"
+                    ? "border-accent-500 text-accent-text"
                     : "border-border-hover text-text-tertiary hover:text-text-primary"
                 }`}
               >
@@ -399,13 +399,13 @@ const ConvertersPage: React.FC = () => {
             ))}
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <input
+            <input aria-label="Value"
               type="number"
               value={unitValue}
               onChange={(e) => setUnitValue(e.target.value)}
               className={`w-28 ${fieldClass}`}
             />
-            <select value={fromUnit} onChange={(e) => setFromUnit(e.target.value)} className={fieldClass}>
+            <select aria-label="From unit" value={fromUnit} onChange={(e) => setFromUnit(e.target.value)} className={fieldClass}>
               {unitNames.map((u) => (
                 <option key={u} value={u}>
                   {u}
@@ -413,8 +413,8 @@ const ConvertersPage: React.FC = () => {
               ))}
             </select>
             <span className="text-text-tertiary">&rarr;</span>
-            <input type="text" readOnly value={unitResult} className={`w-28 ${fieldClass}`} />
-            <select value={toUnit} onChange={(e) => setToUnit(e.target.value)} className={fieldClass}>
+            <input aria-label="Converted value" type="text" readOnly value={unitResult} className={`w-28 ${fieldClass}`} />
+            <select aria-label="To unit" value={toUnit} onChange={(e) => setToUnit(e.target.value)} className={fieldClass}>
               {unitNames.map((u) => (
                 <option key={u} value={u}>
                   {u}
@@ -428,15 +428,15 @@ const ConvertersPage: React.FC = () => {
       {tab === "date" && (
         <div className="space-y-4">
           <div className={cardClass}>
-            <h2 className="text-sm font-semibold text-accent">Days from a date</h2>
+            <h2 className="text-sm font-semibold text-accent-text">Days from a date</h2>
             <div className="flex flex-wrap gap-2">
-              <input
+              <input aria-label="From date"
                 type="date"
                 value={fromDate}
                 onChange={(e) => setFromDate(e.target.value)}
                 className={fieldClass}
               />
-              <input
+              <input aria-label="days (negative = ago)"
                 type="number"
                 value={dayOffset}
                 onChange={(e) => setDayOffset(e.target.value)}
@@ -452,17 +452,17 @@ const ConvertersPage: React.FC = () => {
           </div>
 
           <div className={cardClass}>
-            <h2 className="text-sm font-semibold text-accent">Days between two dates</h2>
+            <h2 className="text-sm font-semibold text-accent-text">Days between two dates</h2>
             <div className="flex flex-wrap gap-2">
-              <input type="date" value={dateA} onChange={(e) => setDateA(e.target.value)} className={fieldClass} />
-              <input type="date" value={dateB} onChange={(e) => setDateB(e.target.value)} className={fieldClass} />
+              <input aria-label="First date" type="date" value={dateA} onChange={(e) => setDateA(e.target.value)} className={fieldClass} />
+              <input aria-label="Second date" type="date" value={dateB} onChange={(e) => setDateB(e.target.value)} className={fieldClass} />
             </div>
             {betweenResult !== null && <p className="text-sm text-text-primary">{betweenResult} days</p>}
           </div>
 
           <div className={cardClass}>
-            <h2 className="text-sm font-semibold text-accent">Unix timestamp &rarr; date</h2>
-            <input
+            <h2 className="text-sm font-semibold text-accent-text">Unix timestamp &rarr; date</h2>
+            <input aria-label="Unix timestamp"
               type="number"
               value={unixTs}
               onChange={(e) => setUnixTs(e.target.value)}
@@ -478,8 +478,8 @@ const ConvertersPage: React.FC = () => {
           </div>
 
           <div className={cardClass}>
-            <h2 className="text-sm font-semibold text-accent">Date &rarr; Unix timestamp</h2>
-            <input
+            <h2 className="text-sm font-semibold text-accent-text">Date &rarr; Unix timestamp</h2>
+            <input aria-label="Date and time"
               type="datetime-local"
               value={localDt}
               onChange={(e) => setLocalDt(e.target.value)}
@@ -489,8 +489,8 @@ const ConvertersPage: React.FC = () => {
           </div>
 
           <div className={cardClass}>
-            <h2 className="text-sm font-semibold text-accent">Age from birthdate</h2>
-            <input
+            <h2 className="text-sm font-semibold text-accent-text">Age from birthdate</h2>
+            <input aria-label="Birthdate"
               type="date"
               value={birthdate}
               onChange={(e) => setBirthdate(e.target.value)}
@@ -504,8 +504,8 @@ const ConvertersPage: React.FC = () => {
       {tab === "timezone" && (
         <div className={cardClass}>
           <div className="flex flex-wrap gap-2">
-            <input type="date" value={tzDate} onChange={(e) => setTzDate(e.target.value)} className={fieldClass} />
-            <input type="time" value={tzTime} onChange={(e) => setTzTime(e.target.value)} className={fieldClass} />
+            <input aria-label="Date" type="date" value={tzDate} onChange={(e) => setTzDate(e.target.value)} className={fieldClass} />
+            <input aria-label="Time" type="time" value={tzTime} onChange={(e) => setTzTime(e.target.value)} className={fieldClass} />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <ZonePicker label="From" value={fromZone} onChange={setFromZone} />
@@ -517,7 +517,7 @@ const ConvertersPage: React.FC = () => {
                 {tzResult.time} on {tzResult.date} ({tzResult.weekday}) in {toZone}
               </p>
               {tzResult.dayOffset !== 0 && (
-                <div className="rounded-md border border-accent-500/40 bg-accent-500/10 px-3 py-2 text-sm text-accent-400">
+                <div className="rounded-md border border-accent-500/40 bg-accent-500/10 px-3 py-2 text-sm text-accent-text">
                   {tzResult.dayOffset > 0 ? "Next day" : "Previous day"} relative to the source date.
                 </div>
               )}

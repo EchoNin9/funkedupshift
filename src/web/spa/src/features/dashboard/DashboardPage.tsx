@@ -128,7 +128,7 @@ const DashboardPage: React.FC = () => {
         </p>
         {hasRole(user ?? null, "superadmin") && (
           <p className="mt-2">
-            <Link to="/admin/internet-dashboard" className="text-accent-500 hover:text-orange-400 text-sm">
+            <Link to="/admin/internet-dashboard" className="text-accent-text hover:text-accent-text text-sm">
               Edit sites list
             </Link>
           </p>
@@ -160,10 +160,10 @@ const DashboardPage: React.FC = () => {
           const status = (s.status || "down").toLowerCase();
           const statusClass =
             status === "up"
-              ? "border-emerald-500/50 bg-emerald-500/15 text-emerald-200"
+              ? "border-success/50 bg-success/15 text-success"
               : status === "degraded"
-              ? "border-amber-500/50 bg-amber-500/15 text-amber-200"
-              : "border-red-500/50 bg-red-500/15 text-red-200";
+              ? "border-warning/50 bg-warning/15 text-warning"
+              : "border-danger/50 bg-danger/15 text-danger";
           const rtStr =
             s.responseTimeMs != null ? `${s.responseTimeMs} ms` : null;
           return (

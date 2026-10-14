@@ -1,4 +1,5 @@
-import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useId, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Dialog } from "@headlessui/react";
 import { useAuth, canAccessExpenses } from "../../shell/AuthContext";
 import { fetchWithAuth } from "../../utils/api";
 import { Alert } from "../../components";
@@ -65,6 +66,7 @@ function attachmentOpensInModal(a: GenAttachment): boolean {
 }
 
 const GeneralExpensesPage: React.FC = () => {
+  const uid = useId();
   const { user } = useAuth();
   const canAccess = canAccessExpenses(user);
   const { isNative } = usePlatform();
@@ -513,7 +515,7 @@ const GeneralExpensesPage: React.FC = () => {
             <div className="rounded-lg border border-border-hover bg-surface-2 p-4">
               <h2 className="text-sm font-semibold text-text-secondary mb-3">Add section</h2>
               <div className="flex flex-wrap gap-2">
-                <input
+                <input aria-label="Section name"
                   type="text"
                   placeholder="Section name"
                   value={newSectionName}
@@ -537,7 +539,7 @@ const GeneralExpensesPage: React.FC = () => {
                   <div className="flex items-center gap-2">
                     {renamingSectionId === selectedSectionId ? (
                       <div className="flex flex-wrap items-center gap-2">
-                        <input
+                        <input aria-label="Section name"
                           type="text"
                           value={renameValue}
                           onChange={(e) => setRenameValue(e.target.value)}
@@ -555,7 +557,7 @@ const GeneralExpensesPage: React.FC = () => {
                           type="button"
                           onClick={() => handleRenameSection(selectedSectionId, renameValue)}
                           disabled={saving || !renameValue.trim()}
-                          className="text-sm text-accent-400 hover:text-accent-300"
+                          className="text-sm text-accent-text hover:text-accent-text"
                         >
                           Save
                         </button>
@@ -593,7 +595,7 @@ const GeneralExpensesPage: React.FC = () => {
                     type="button"
                     onClick={() => handleDeleteSection(selectedSectionId)}
                     disabled={saving}
-                    className="text-sm text-red-400 hover:text-red-300"
+                    className="text-sm text-danger hover:text-danger"
                   >
                     Delete section
                   </button>
@@ -611,8 +613,8 @@ const GeneralExpensesPage: React.FC = () => {
                   {limitOpen && (
                     <div className="px-4 pb-4 pt-1 border-t border-border-hover grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                       <div>
-                        <label className="block text-xs text-text-tertiary mb-1">Start date</label>
-                        <input
+                        <label htmlFor={`${uid}-f1`} className="block text-xs text-text-tertiary mb-1">Start date</label>
+                        <input id={`${uid}-f1`} aria-label="Start date"
                           type="date"
                           value={filters.startDate}
                           onChange={(e) => setFilters((f) => ({ ...f, startDate: e.target.value }))}
@@ -620,8 +622,8 @@ const GeneralExpensesPage: React.FC = () => {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-text-tertiary mb-1">End date</label>
-                        <input
+                        <label htmlFor={`${uid}-f2`} className="block text-xs text-text-tertiary mb-1">End date</label>
+                        <input id={`${uid}-f2`} aria-label="End date"
                           type="date"
                           value={filters.endDate}
                           onChange={(e) => setFilters((f) => ({ ...f, endDate: e.target.value }))}
@@ -629,8 +631,8 @@ const GeneralExpensesPage: React.FC = () => {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-text-tertiary mb-1">Search (vendor / description)</label>
-                        <input
+                        <label htmlFor={`${uid}-f3`} className="block text-xs text-text-tertiary mb-1">Search (vendor / description)</label>
+                        <input id={`${uid}-f3`} aria-label="Search (vendor / description)"
                           type="text"
                           value={filters.search}
                           onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value }))}
@@ -639,8 +641,8 @@ const GeneralExpensesPage: React.FC = () => {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-text-tertiary mb-1">Reimbursed</label>
-                        <select
+                        <label htmlFor={`${uid}-f4`} className="block text-xs text-text-tertiary mb-1">Reimbursed</label>
+                        <select id={`${uid}-f4`} aria-label="Reimbursed"
                           value={filters.reimbursed}
                           onChange={(e) =>
                             setFilters((f) => ({
@@ -656,8 +658,8 @@ const GeneralExpensesPage: React.FC = () => {
                         </select>
                       </div>
                       <div>
-                        <label className="block text-xs text-text-tertiary mb-1">Sort</label>
-                        <select
+                        <label htmlFor={`${uid}-f5`} className="block text-xs text-text-tertiary mb-1">Sort</label>
+                        <select id={`${uid}-f5`} aria-label="Sort"
                           value={filters.sortNewestFirst ? "newest" : "oldest"}
                           onChange={(e) =>
                             setFilters((f) => ({ ...f, sortNewestFirst: e.target.value === "newest" }))
@@ -730,8 +732,8 @@ const GeneralExpensesPage: React.FC = () => {
                     <h3 className="text-sm font-semibold text-text-primary">{editingId ? "Edit expense" : "New expense"}</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-xs text-text-tertiary mb-1">Date</label>
-                        <input
+                        <label htmlFor={`${uid}-f6`} className="block text-xs text-text-tertiary mb-1">Date</label>
+                        <input id={`${uid}-f6`} aria-label="Date"
                           type="date"
                           value={form.date}
                           onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
@@ -739,8 +741,8 @@ const GeneralExpensesPage: React.FC = () => {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-text-tertiary mb-1">Price</label>
-                        <input
+                        <label htmlFor={`${uid}-f7`} className="block text-xs text-text-tertiary mb-1">Price</label>
+                        <input id={`${uid}-f7`} aria-label="Price"
                           type="text"
                           inputMode="decimal"
                           value={form.price}
@@ -750,8 +752,8 @@ const GeneralExpensesPage: React.FC = () => {
                         />
                       </div>
                       <div className="sm:col-span-2">
-                        <label className="block text-xs text-text-tertiary mb-1">Vendor</label>
-                        <input
+                        <label htmlFor={`${uid}-f8`} className="block text-xs text-text-tertiary mb-1">Vendor</label>
+                        <input id={`${uid}-f8`} aria-label="Vendor"
                           type="text"
                           value={form.vendor}
                           onChange={(e) => setForm((f) => ({ ...f, vendor: e.target.value }))}
@@ -759,8 +761,8 @@ const GeneralExpensesPage: React.FC = () => {
                         />
                       </div>
                       <div className="sm:col-span-2">
-                        <label className="block text-xs text-text-tertiary mb-1">Description</label>
-                        <textarea
+                        <label htmlFor={`${uid}-f9`} className="block text-xs text-text-tertiary mb-1">Description</label>
+                        <textarea id={`${uid}-f9`} aria-label="Description"
                           value={form.description}
                           onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
                           rows={2}
@@ -781,8 +783,9 @@ const GeneralExpensesPage: React.FC = () => {
                       </div>
                     </div>
                     <div>
-                      <label className="block text-xs text-text-tertiary mb-1">Attachments</label>
+                      <label htmlFor={`${uid}-attachments`} className="block text-xs text-text-tertiary mb-1">Attachments</label>
                       <input
+                        id={`${uid}-attachments`}
                         ref={fileInputRef}
                         type="file"
                         multiple
@@ -800,7 +803,7 @@ const GeneralExpensesPage: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
-                        className="text-sm text-accent-400 hover:text-accent-300"
+                        className="text-sm text-accent-text hover:text-accent-text"
                       >
                         Add files…
                       </button>
@@ -819,7 +822,7 @@ const GeneralExpensesPage: React.FC = () => {
                               <button
                                 type="button"
                                 onClick={() => removeAttachment(a.key)}
-                                className="text-red-400 hover:text-red-300 shrink-0"
+                                className="text-danger hover:text-danger shrink-0"
                               >
                                 Remove
                               </button>
@@ -877,7 +880,7 @@ const GeneralExpensesPage: React.FC = () => {
                                 {" — "}
                                 <span className="font-medium">${Number(entry.price || 0).toFixed(2)}</span>
                                 {entry.reimbursed && (
-                                  <span className="ml-2 text-xs text-accent-400">Reimbursed</span>
+                                  <span className="ml-2 text-xs text-accent-text">Reimbursed</span>
                                 )}
                               </p>
                               <div className="flex gap-2">
@@ -893,7 +896,7 @@ const GeneralExpensesPage: React.FC = () => {
                                   type="button"
                                   onClick={() => handleDeleteEntry(entry.id)}
                                   disabled={saving}
-                                  className="text-sm text-red-400 hover:text-red-300"
+                                  className="text-sm text-danger hover:text-danger"
                                 >
                                   Delete
                                 </button>
@@ -912,7 +915,7 @@ const GeneralExpensesPage: React.FC = () => {
                                     <button
                                       type="button"
                                       onClick={() => openAttachment(a)}
-                                      className="text-accent-400 hover:text-accent-300 text-left underline-offset-2 hover:underline"
+                                      className="text-accent-text hover:text-accent-text text-left underline-offset-2 hover:underline"
                                     >
                                       {a.filename || a.key}
                                     </button>
@@ -935,16 +938,14 @@ const GeneralExpensesPage: React.FC = () => {
       )}
 
       {preview && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70"
-          role="dialog"
-          aria-modal="true"
+        <Dialog
+          open
+          onClose={() => setPreview(null)}
           aria-label="Attachment preview"
-          onClick={() => setPreview(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70"
         >
-          <div
+          <Dialog.Panel
             className="bg-surface-2 rounded-lg border border-border-hover max-w-4xl w-full max-h-[90vh] flex flex-col shadow-xl"
-            onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between px-4 py-2 border-b border-border-hover">
               <span className="text-sm font-medium text-text-primary truncate pr-2">{preview.filename}</span>
@@ -971,8 +972,8 @@ const GeneralExpensesPage: React.FC = () => {
                 />
               )}
             </div>
-          </div>
-        </div>
+          </Dialog.Panel>
+        </Dialog>
       )}
     </div>
   );

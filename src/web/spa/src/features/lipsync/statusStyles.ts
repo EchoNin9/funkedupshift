@@ -5,11 +5,11 @@ import type { LipsyncJobStatus, LipsyncMode } from "./api";
  * Mirrors features/social/statusStyles.ts's shape and intent.
  */
 export const STATUS_META: Record<LipsyncJobStatus, { label: string; badge: string }> = {
-  queued: { label: "Queued", badge: "border-n3 text-n3" },
-  submitting: { label: "Submitting", badge: "border-n2 text-n2" },
-  processing: { label: "Processing", badge: "border-n4 text-n4" },
-  completed: { label: "Completed", badge: "border-emerald-500 text-emerald-400" },
-  failed: { label: "Failed", badge: "border-red-500 text-red-400" },
+  queued: { label: "Queued", badge: "border-n3 text-n3-text" },
+  submitting: { label: "Submitting", badge: "border-n2 text-n2-text" },
+  processing: { label: "Processing", badge: "border-n4 text-n4-text" },
+  completed: { label: "Completed", badge: "border-success text-success" },
+  failed: { label: "Failed", badge: "border-danger text-danger" },
   // Deliberately the dullest badge in the set, same reasoning as social's
   // "cancelled" chip: a cancelled job is history and shouldn't compete with
   // live jobs for attention.

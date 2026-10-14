@@ -221,7 +221,7 @@ const InvestingPage: React.FC = () => {
           type="button"
           onClick={() => runSearch(false)}
           disabled={!query.trim() || busy === "search"}
-          className="rounded-md bg-accent-500 px-3 py-2 text-sm font-medium text-surface-0 hover:bg-orange-500 disabled:opacity-50"
+          className="rounded-md bg-accent-500 px-3 py-2 text-sm font-medium text-ink hover:bg-accent-400 disabled:opacity-50"
         >
           {busy === "search" ? "Searching…" : "Search"}
         </button>
@@ -229,7 +229,7 @@ const InvestingPage: React.FC = () => {
           type="button"
           onClick={() => runSearch(true)}
           disabled={!query.trim() || busy === "suggest"}
-          className="rounded-md border border-accent-500 px-3 py-2 text-sm font-medium text-accent-500 hover:bg-surface-2 disabled:opacity-50"
+          className="rounded-md border border-accent-500 px-3 py-2 text-sm font-medium text-accent-text hover:bg-surface-2 disabled:opacity-50"
         >
           {busy === "suggest" ? "Asking AI…" : "AI Suggest"}
         </button>
@@ -291,14 +291,14 @@ const InvestingPage: React.FC = () => {
                   <td className="px-4 py-3 text-sm text-text-secondary">{r.name}</td>
                   <td className="px-4 py-3 text-sm text-text-secondary">{r.exchDisp}</td>
                   <td className="px-4 py-3 text-sm text-right space-x-3">
-                    <button type="button" onClick={() => viewSymbol(r.symbol)} className="text-accent-500 hover:text-orange-400">
+                    <button type="button" onClick={() => viewSymbol(r.symbol)} className="text-accent-text hover:text-accent-text">
                       View
                     </button>
                     <button
                       type="button"
                       onClick={() => !tracker.includes(r.symbol) && saveTracker([...tracker, r.symbol])}
                       disabled={tracker.includes(r.symbol)}
-                      className="text-accent-500 hover:text-orange-400 disabled:text-text-tertiary"
+                      className="text-accent-text hover:text-accent-text disabled:text-text-tertiary"
                     >
                       {tracker.includes(r.symbol) ? "Tracked" : "Track"}
                     </button>
@@ -378,7 +378,7 @@ const InvestingPage: React.FC = () => {
                   type="button"
                   onClick={analyze}
                   disabled={busy === "analyze"}
-                  className="ml-auto rounded-md border border-accent-500 px-3 py-1 text-xs font-medium text-accent-500 hover:bg-surface-2 disabled:opacity-50"
+                  className="ml-auto rounded-md border border-accent-500 px-3 py-1 text-xs font-medium text-accent-text hover:bg-surface-2 disabled:opacity-50"
                 >
                   {busy === "analyze" ? "Analyzing…" : "AI Analyze"}
                 </button>
@@ -386,7 +386,7 @@ const InvestingPage: React.FC = () => {
                   type="button"
                   onClick={() => !tracker.includes(selected) && saveTracker([...tracker, selected])}
                   disabled={tracker.includes(selected)}
-                  className="rounded-md bg-accent-500 px-3 py-1 text-xs font-medium text-surface-0 hover:bg-orange-500 disabled:opacity-50"
+                  className="rounded-md bg-accent-500 px-3 py-1 text-xs font-medium text-ink hover:bg-accent-400 disabled:opacity-50"
                 >
                   {tracker.includes(selected) ? "Tracked" : "Track"}
                 </button>
@@ -415,13 +415,13 @@ const InvestingPage: React.FC = () => {
                   selected === sym ? "border-accent-500 text-text-primary" : "border-border-hover text-text-secondary"
                 }`}
               >
-                <button type="button" onClick={() => viewSymbol(sym)} className="hover:text-accent-500">
+                <button type="button" onClick={() => viewSymbol(sym)} className="hover:text-accent-text">
                   {sym}
                 </button>
                 <button
                   type="button"
                   onClick={() => saveTracker(tracker.filter((s) => s !== sym))}
-                  className="text-text-tertiary hover:text-red-400"
+                  className="text-text-tertiary hover:text-danger"
                   aria-label={`Stop tracking ${sym}`}
                 >
                   ×

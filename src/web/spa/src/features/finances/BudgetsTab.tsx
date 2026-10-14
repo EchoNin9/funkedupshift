@@ -66,7 +66,7 @@ const BudgetsTab: React.FC<{ ctx: FinancesContext }> = ({ ctx }) => {
             type="button"
             onClick={addBudget}
             disabled={busy || !newCategory || !newLimit}
-            className="rounded-md bg-accent-500 px-3 py-2 text-sm font-medium text-surface-0 hover:bg-orange-500 disabled:opacity-50"
+            className="rounded-md bg-accent-500 px-3 py-2 text-sm font-medium text-ink hover:bg-accent-400 disabled:opacity-50"
           >
             Add budget
           </button>
@@ -82,7 +82,7 @@ const BudgetsTab: React.FC<{ ctx: FinancesContext }> = ({ ctx }) => {
             <div key={b.category} className="rounded-xl border border-border-default bg-surface-1 p-4">
               <div className="flex flex-wrap items-center gap-3">
                 <p className="text-sm font-medium text-text-primary">{b.category}</p>
-                <p className={`text-sm ${over ? "text-red-400 font-semibold" : "text-text-secondary"}`}>
+                <p className={`text-sm ${over ? "text-danger font-semibold" : "text-text-secondary"}`}>
                   {fmtMoney(actual)} / {fmtMoney(b.monthlyLimit)}
                   {over && " — over budget"}
                 </p>
@@ -90,7 +90,7 @@ const BudgetsTab: React.FC<{ ctx: FinancesContext }> = ({ ctx }) => {
                   <button
                     type="button"
                     onClick={() => save(budgets.filter((x) => x.category !== b.category))}
-                    className="ml-auto text-xs text-text-tertiary hover:text-red-400"
+                    className="ml-auto text-xs text-text-tertiary hover:text-danger"
                   >
                     Remove
                   </button>
@@ -98,7 +98,7 @@ const BudgetsTab: React.FC<{ ctx: FinancesContext }> = ({ ctx }) => {
               </div>
               <div className="mt-2 h-2 w-full rounded-full bg-surface-3">
                 <div
-                  className={`h-2 rounded-full ${over ? "bg-red-400" : "bg-accent-500"}`}
+                  className={`h-2 rounded-full ${over ? "bg-danger" : "bg-accent-500"}`}
                   style={{ width: `${pct}%` }}
                 />
               </div>

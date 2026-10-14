@@ -69,7 +69,7 @@ const TABS: TabConfig[] = [
     emptyMessage: "No highlights yet. Generate from the highlight category or add a URL above.",
     generateSuccessMessage: "Cache generated from sites in the highlight category.",
     saveSuccessMessage: "Highlights list saved.",
-    buttonClass: "bg-violet-600 hover:bg-violet-500",
+    buttonClass: "bg-n3 hover:bg-n3/80 !text-ink",
     viewPath: "/recommended/highlights",
   },
   {
@@ -83,7 +83,7 @@ const TABS: TabConfig[] = [
     emptyMessage: "No items yet. Generate from top 12 by star rating or add a URL above.",
     generateSuccessMessage: "Cache generated from top 12 sites and media by star rating.",
     saveSuccessMessage: "Highest rated list saved.",
-    buttonClass: "bg-amber-600 hover:bg-amber-500",
+    buttonClass: "bg-warning hover:bg-warning/90 !text-on-warning",
     viewPath: "/recommended/highest-rated",
   },
 ];
@@ -412,7 +412,7 @@ const ListTab: React.FC<ListTabProps> = ({ config }) => {
         <button
           type="submit"
           disabled={isSaving || !newUrl.trim()}
-          className="rounded-md bg-accent-500 px-4 py-2 text-sm font-medium text-surface-0 hover:bg-orange-500 disabled:opacity-50"
+          className="rounded-md bg-accent-500 px-4 py-2 text-sm font-medium text-ink hover:bg-accent-400 disabled:opacity-50"
         >
           Add
         </button>
@@ -440,7 +440,7 @@ const ListTab: React.FC<ListTabProps> = ({ config }) => {
                 <Bars3Icon className="h-4 w-4 flex-shrink-0 text-text-tertiary" aria-hidden />
               )}
               {editingIndex === index ? (
-                <input
+                <input aria-label="Edit value"
                   type="text"
                   value={editingValue}
                   onChange={(e) => setEditingValue(e.target.value)}
@@ -461,14 +461,14 @@ const ListTab: React.FC<ListTabProps> = ({ config }) => {
                   <button
                     type="button"
                     onClick={() => startEdit(index)}
-                    className="font-medium text-text-primary break-all flex-1 text-left hover:text-accent-500 hover:underline"
+                    className="font-medium text-text-primary break-all flex-1 text-left hover:text-accent-text hover:underline"
                   >
                     {domainFromUrl(entry.url || "")}
                   </button>
                 )
               )}
               {config.id === "highestRated" && entry.averageRating != null && (
-                <span className="flex items-center gap-0.5 text-amber-400 text-xs">
+                <span className="flex items-center gap-0.5 text-warning text-xs">
                   <StarIcon className="h-3.5 w-3.5" />
                   {entry.averageRating}
                 </span>
@@ -477,7 +477,7 @@ const ListTab: React.FC<ListTabProps> = ({ config }) => {
                   type="button"
                   onClick={() => handleRemove(entry)}
                   disabled={isSaving || editingIndex !== null}
-                className="flex-shrink-0 rounded-md border border-red-500/60 bg-red-500/10 px-2 py-1 text-xs font-medium text-red-300 hover:bg-red-500/20 disabled:opacity-50"
+                className="flex-shrink-0 rounded-md border border-danger/60 bg-danger/10 px-2 py-1 text-xs font-medium text-danger hover:bg-danger/20 disabled:opacity-50"
               >
                 Remove
               </button>

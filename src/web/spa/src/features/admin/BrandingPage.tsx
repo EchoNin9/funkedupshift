@@ -370,7 +370,7 @@ const BrandingPage: React.FC = () => {
               </div>
             </div>
           )}
-          <input
+          <input aria-label="Logo image file"
             type="file"
             accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
             onChange={onFileChange}
@@ -383,7 +383,7 @@ const BrandingPage: React.FC = () => {
 
         <div className="space-y-1 text-sm">
           <label className="block text-text-primary">Alt text</label>
-          <input
+          <input aria-label="Alt text"
             type="text"
             value={alt}
             onChange={(e) => setAlt(e.target.value)}
@@ -441,7 +441,7 @@ const BrandingPage: React.FC = () => {
 
         <div className="space-y-1 text-sm">
           <label className="block text-text-primary">Tagline</label>
-          <input
+          <input aria-label="Tagline"
             type="text"
             value={heroTagline}
             onChange={(e) => setHeroTagline(e.target.value)}
@@ -451,7 +451,7 @@ const BrandingPage: React.FC = () => {
         </div>
         <div className="space-y-1 text-sm">
           <label className="block text-text-primary">Headline</label>
-          <input
+          <input aria-label="Headline"
             type="text"
             value={heroHeadline}
             onChange={(e) => setHeroHeadline(e.target.value)}
@@ -461,7 +461,7 @@ const BrandingPage: React.FC = () => {
         </div>
         <div className="space-y-1 text-sm">
           <label className="block text-text-primary">Subtext</label>
-          <textarea
+          <textarea aria-label="Subtext"
             value={heroSubtext}
             onChange={(e) => setHeroSubtext(e.target.value)}
             placeholder={DEFAULT_HERO_SUBTEXT}
@@ -471,7 +471,7 @@ const BrandingPage: React.FC = () => {
         </div>
         <div className="space-y-1 text-sm">
           <label className="block text-text-primary">Background image opacity ({heroOpacity}%)</label>
-          <input
+          <input aria-label="Background image opacity (%)"
             type="range"
             min={0}
             max={100}
@@ -496,7 +496,7 @@ const BrandingPage: React.FC = () => {
               <div className="inline-flex items-center gap-3 rounded-lg border border-border-default bg-surface-1 p-2">
                 <img
                   src={hero.imageUrl}
-                  alt=""
+                  alt="Current hero image"
                   className="h-24 w-auto max-w-[12rem] rounded-md object-cover"
                 />
                 <button
@@ -510,7 +510,7 @@ const BrandingPage: React.FC = () => {
               </div>
             </div>
           )}
-          <input
+          <input aria-label="Hero image file"
             type="file"
             accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
             onChange={onHeroFileChange}
@@ -554,7 +554,7 @@ const BrandingPage: React.FC = () => {
             </p>
           </div>
 
-          <textarea
+          <textarea aria-label="Banner text"
             value={bannerDraft}
             onChange={(e) => setBannerDraft(e.target.value)}
             rows={3}

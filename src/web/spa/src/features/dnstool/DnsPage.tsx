@@ -88,7 +88,7 @@ const DnsPage: React.FC = () => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
       >
-        <ServerIcon className="h-6 w-6 text-accent" />
+        <ServerIcon className="h-6 w-6 text-accent-text" />
         DNS Lookup
       </motion.h1>
       <p className="text-sm text-text-secondary">
@@ -98,7 +98,7 @@ const DnsPage: React.FC = () => {
       {formError && <Alert variant="error">{formError}</Alert>}
 
       <form onSubmit={handleSubmit} className="rounded-xl border border-border-default bg-surface-2/80 p-4 flex flex-wrap gap-2">
-        <input
+        <input aria-label="example.com (or an IP for PTR)"
           type="text"
           placeholder="example.com (or an IP for PTR)"
           value={name}
@@ -106,7 +106,7 @@ const DnsPage: React.FC = () => {
           required
           className="flex-1 min-w-[220px] rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary"
         />
-        <select
+        <select aria-label="Record type"
           value={type}
           onChange={(e) => setType(e.target.value as TypeChoice)}
           className="rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary"
@@ -130,7 +130,7 @@ const DnsPage: React.FC = () => {
       <div className="space-y-4">
         {sections.map((section) => (
           <div key={section.type} className="rounded-xl border border-border-default bg-surface-2/80 p-4">
-            <h2 className="text-sm font-semibold text-accent mb-2">{section.type}</h2>
+            <h2 className="text-sm font-semibold text-accent-text mb-2">{section.type}</h2>
             {section.loading && <p className="text-sm text-text-tertiary">Looking up…</p>}
             {!section.loading && section.error && <Alert variant="error">{section.error}</Alert>}
             {!section.loading && section.result && section.result.status !== "ok" && (

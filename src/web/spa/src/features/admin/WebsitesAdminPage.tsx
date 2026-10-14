@@ -444,14 +444,14 @@ const WebsitesAdminPage: React.FC = () => {
           </FormField>
           <div>
             <label className="block text-sm font-medium text-text-primary mb-1">Logo (optional, min 100×100, max 5 MB)</label>
-            <input
+            <input aria-label="Logo file"
               type="file"
               accept="image/png,image/jpeg,image/gif,image/webp"
               onChange={onLogoChange}
               className="block w-full text-xs text-text-secondary file:mr-3 file:rounded-md file:border-0 file:bg-surface-3 file:px-3 file:py-1.5 file:text-text-primary"
             />
             <p className="mt-2 text-xs text-text-tertiary">Or paste image URL (image will be copied to S3 on save):</p>
-            <input
+            <input aria-label="Logo image URL"
               type="url"
               value={logoImageUrl}
               onChange={(e) => {
@@ -466,7 +466,7 @@ const WebsitesAdminPage: React.FC = () => {
                 <img src={logoPreview} alt="Preview" className="h-16 w-16 rounded-lg border border-border-hover object-cover" />
               </div>
             )}
-            {logoError && <p className="mt-1 text-xs text-red-400">{logoError}</p>}
+            {logoError && <p className="mt-1 text-xs text-danger">{logoError}</p>}
           </div>
           <FormField label="Categories (optional)">
             <SearchableSelect
@@ -477,7 +477,7 @@ const WebsitesAdminPage: React.FC = () => {
             {categories.length === 0 && (
               <p className="mt-1 text-xs text-text-tertiary">
                 No categories.{" "}
-                <button type="button" onClick={() => setTab("categories")} className="text-accent-500 hover:underline">
+                <button type="button" onClick={() => setTab("categories")} className="text-accent-text hover:underline">
                   Create categories
                 </button>
               </p>
@@ -539,7 +539,7 @@ const WebsitesAdminPage: React.FC = () => {
                   <li key={c.id} className="rounded-lg border border-border-default bg-surface-1 px-3 py-2 text-sm">
                     {editingId === c.id ? (
                       <form onSubmit={handleUpdateCategory} className="space-y-2">
-                        <input
+                        <input aria-label="Name"
                           type="text"
                           value={editName}
                           onChange={(e) => setEditName(e.target.value)}
@@ -548,7 +548,7 @@ const WebsitesAdminPage: React.FC = () => {
                           className="input-field w-full"
                           autoFocus
                         />
-                        <input
+                        <input aria-label="Description (optional)"
                           type="text"
                           value={editDescription}
                           onChange={(e) => setEditDescription(e.target.value)}
@@ -574,12 +574,12 @@ const WebsitesAdminPage: React.FC = () => {
                             type="button"
                             onClick={() => handleDeleteCategory(c.id)}
                             disabled={deletingId === c.id}
-                            className="rounded-md border border-red-500/60 px-3 py-1.5 text-xs font-medium text-red-400 hover:bg-red-500/20 disabled:opacity-50"
+                            className="rounded-md border border-danger/60 px-3 py-1.5 text-xs font-medium text-danger hover:bg-danger/20 disabled:opacity-50"
                           >
                             {deletingId === c.id ? "Deleting…" : "Delete"}
                           </button>
                         </div>
-                        {updateError && <p className="text-xs text-red-400">{updateError}</p>}
+                        {updateError && <p className="text-xs text-danger">{updateError}</p>}
                       </form>
                     ) : (
                       <div className="flex items-center justify-between gap-2">
@@ -595,7 +595,7 @@ const WebsitesAdminPage: React.FC = () => {
                           type="button"
                           onClick={() => handleDeleteCategory(c.id)}
                           disabled={deletingId === c.id}
-                          className="rounded px-2 py-1 text-xs font-medium text-red-400 hover:bg-red-500/20 disabled:opacity-50 shrink-0"
+                          className="rounded px-2 py-1 text-xs font-medium text-danger hover:bg-danger/20 disabled:opacity-50 shrink-0"
                           aria-label="Delete category"
                         >
                           {deletingId === c.id ? "…" : "Delete"}

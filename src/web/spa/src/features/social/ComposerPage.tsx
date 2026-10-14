@@ -330,7 +330,7 @@ export default function ComposerPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
       >
-        <PencilSquareIcon className="h-6 w-6 text-accent" />
+        <PencilSquareIcon className="h-6 w-6 text-accent-text" />
         New Social Post
       </motion.h1>
 
@@ -384,7 +384,7 @@ export default function ComposerPage() {
                 const count = countGraphemes(resolved);
                 const max = rules?.maxGraphemes ?? Infinity;
                 const ratio = max === Infinity ? 0 : count / max;
-                const color = count > max ? "text-red-400" : ratio > 0.9 ? "text-amber-400" : "text-text-tertiary";
+                const color = count > max ? "text-danger" : ratio > 0.9 ? "text-warning" : "text-text-tertiary";
                 return (
                   <li key={key} className="flex items-center justify-between text-xs">
                     <span className="text-text-secondary truncate">
@@ -499,8 +499,8 @@ export default function ComposerPage() {
                         />
                       </div>
                     )}
-                    {m.status === "uploaded" && <p className="text-xs text-emerald-400">Uploaded</p>}
-                    {m.status === "error" && <p className="text-xs text-red-400 break-words">{m.error}</p>}
+                    {m.status === "uploaded" && <p className="text-xs text-success">Uploaded</p>}
+                    {m.status === "error" && <p className="text-xs text-danger break-words">{m.error}</p>}
                   </div>
                   {m.status === "error" && (
                     <button
@@ -516,7 +516,7 @@ export default function ComposerPage() {
                     type="button"
                     onClick={() => removeMedia(m.id)}
                     aria-label="Remove image"
-                    className="shrink-0 rounded-md p-1 text-text-tertiary hover:bg-surface-3 hover:text-red-400 transition-colors"
+                    className="shrink-0 rounded-md p-1 text-text-tertiary hover:bg-surface-3 hover:text-danger transition-colors"
                   >
                     <XCircleIcon className="h-4 w-4" />
                   </button>

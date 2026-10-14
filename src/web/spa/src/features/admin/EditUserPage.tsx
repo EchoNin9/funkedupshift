@@ -48,10 +48,10 @@ function formatLastLogin(isoString: string, offsetHours: number, ip?: string): s
 }
 
 const chipClass = (name: string) => {
-  if (name === "admin") return "bg-amber-500/20 text-amber-200";
+  if (name === "admin") return "bg-warning/20 text-warning";
   if (name === "manager") return "bg-blue-500/20 text-blue-200";
   if (name === "user") return "bg-surface-3/30 text-text-secondary";
-  return "bg-emerald-500/20 text-emerald-200";
+  return "bg-success/20 text-success";
 };
 
 const EditUserPage: React.FC = () => {
@@ -337,7 +337,7 @@ const EditUserPage: React.FC = () => {
       <form onSubmit={handleSave} className="card p-6 space-y-6 max-w-2xl">
         <div className="rounded-lg border border-border-default bg-surface-1 p-4">
           <h2 className="text-sm font-medium text-text-secondary mb-3">User info</h2>
-          <table className="text-sm">
+          <div className="overflow-x-auto"><table className="text-sm">
             <tbody>
               <tr>
                 <td className="py-1 pr-4 font-medium text-text-secondary w-28">Email</td>
@@ -354,7 +354,7 @@ const EditUserPage: React.FC = () => {
                 </td>
               </tr>
             </tbody>
-          </table>
+          </table></div>
         </div>
 
         <FormField label="System roles">
@@ -388,7 +388,7 @@ const EditUserPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => removeSystemRole(name)}
-                      className="ml-0.5 hover:text-red-300"
+                      className="ml-0.5 hover:text-danger"
                       aria-label="Remove"
                     >
                       ×
@@ -403,12 +403,12 @@ const EditUserPage: React.FC = () => {
         <FormField label="Custom groups">
           {allCustomGroups.length === 0 ? (
             <p className="text-sm text-text-tertiary">
-              No custom groups. <Link to="/admin/membership?tab=groups" className="text-accent-500 hover:underline">Create groups</Link>.
+              No custom groups. <Link to="/admin/membership?tab=groups" className="text-accent-text hover:underline">Create groups</Link>.
             </p>
           ) : (
             <>
               <div className="relative max-w-xs">
-                <input
+                <input aria-label="Custom groups"
                   type="text"
                   value={customGroupSearch}
                   onChange={(e) => {
@@ -449,13 +449,13 @@ const EditUserPage: React.FC = () => {
                 {selectedCustomGroups.map((name) => (
                   <span
                     key={name}
-                    className="inline-flex items-center gap-1 px-2 py-1 rounded text-sm bg-emerald-500/20 text-emerald-200"
+                    className="inline-flex items-center gap-1 px-2 py-1 rounded text-sm bg-success/20 text-success"
                   >
                     {name}
                     <button
                       type="button"
                       onClick={() => removeCustomGroup(name)}
-                      className="ml-0.5 hover:text-red-300"
+                      className="ml-0.5 hover:text-danger"
                       aria-label="Remove"
                     >
                       ×
@@ -471,7 +471,7 @@ const EditUserPage: React.FC = () => {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="rounded-md bg-accent-500 px-4 py-2 text-sm font-semibold text-surface-0 hover:bg-orange-500 disabled:opacity-50"
+            className="rounded-md bg-accent-500 px-4 py-2 text-sm font-semibold text-ink hover:bg-accent-400 disabled:opacity-50"
           >
             {isSubmitting ? "Saving…" : "Save"}
           </button>
@@ -486,14 +486,14 @@ const EditUserPage: React.FC = () => {
               type="button"
               onClick={handleDelete}
               disabled={deleteInProgress || isSubmitting}
-              className="rounded-md border border-red-500/60 bg-red-500/10 px-4 py-2 text-sm font-medium text-red-200 hover:bg-red-500/20 disabled:opacity-50"
+              className="rounded-md border border-danger/60 bg-danger/10 px-4 py-2 text-sm font-medium text-danger hover:bg-danger/20 disabled:opacity-50"
             >
               {deleteInProgress ? "Deleting…" : "Delete user"}
             </button>
           )}
         </div>
         {saveError && (
-          <p className="text-sm text-red-400">{saveError}</p>
+          <p className="text-sm text-danger">{saveError}</p>
         )}
       </form>
     </div>

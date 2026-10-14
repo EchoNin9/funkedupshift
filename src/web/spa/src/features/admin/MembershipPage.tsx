@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { Dialog } from "@headlessui/react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Bars3Icon, UserGroupIcon, Squares2X2Icon, KeyIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { useAuth, hasRole } from "../../shell/AuthContext";
@@ -278,7 +279,7 @@ const MembershipPage: React.FC = () => {
     (cognitoGroups || []).forEach((g) => {
       const display = ROLE_DISPLAY[g] || g;
       const cls =
-        g === "admin" ? "bg-amber-500/20 text-amber-200" : g === "manager" ? "bg-blue-500/20 text-blue-200" : "bg-surface-3/30 text-text-secondary";
+        g === "admin" ? "bg-warning/20 text-warning" : g === "manager" ? "bg-blue-500/20 text-blue-200" : "bg-surface-3/30 text-text-secondary";
       items.push(
         <span key={`c-${g}`} className={`inline-block px-2 py-0.5 rounded text-xs mr-1 ${cls}`}>
           {display}
@@ -287,7 +288,7 @@ const MembershipPage: React.FC = () => {
     });
     (customGroups || []).forEach((g) => {
       items.push(
-        <span key={`x-${g}`} className="inline-block px-2 py-0.5 rounded text-xs mr-1 bg-emerald-500/20 text-emerald-200">
+        <span key={`x-${g}`} className="inline-block px-2 py-0.5 rounded text-xs mr-1 bg-success/20 text-success">
           {g}
         </span>
       );
@@ -585,29 +586,27 @@ const MembershipPage: React.FC = () => {
               {membershipNavItems.find((i) => i.id === activeTab)?.label ?? "Menu"}
             </span>
           </div>
-          {membershipSidebarOpen && (
-            <>
-              <div
-                className="fixed inset-0 z-40 bg-surface-1/80 backdrop-blur-sm md:hidden"
-                aria-hidden
+          <Dialog open={membershipSidebarOpen} onClose={() => setMembershipSidebarOpen(false)} className="relative z-50 md:hidden">
+            <div
+              className="fixed inset-0 z-40 bg-surface-1/80 backdrop-blur-sm md:hidden"
+              aria-hidden
+            />
+            <Dialog.Panel
+              as="aside"
+              className="fixed top-0 left-0 z-50 w-64 h-full bg-surface-1 border-r border-border-default md:hidden overflow-y-auto pt-16"
+              aria-label="Membership navigation"
+            >
+              <button
+                type="button"
                 onClick={() => setMembershipSidebarOpen(false)}
-              />
-              <aside
-                className="fixed top-0 left-0 z-50 w-64 h-full bg-surface-1 border-r border-border-default md:hidden overflow-y-auto pt-16"
-                aria-label="Membership navigation"
+                className="absolute top-4 right-4 p-2 text-text-secondary hover:text-white"
+                aria-label="Close menu"
               >
-                <button
-                  type="button"
-                  onClick={() => setMembershipSidebarOpen(false)}
-                  className="absolute top-4 right-4 p-2 text-text-secondary hover:text-white"
-                  aria-label="Close menu"
-                >
-                  <XMarkIcon className="w-6 h-6" />
-                </button>
-                {sidebarContent}
-              </aside>
-            </>
-          )}
+                <XMarkIcon className="w-6 h-6" />
+              </button>
+              {sidebarContent}
+            </Dialog.Panel>
+          </Dialog>
 
           {/* Main content */}
           <div className="space-y-6">
@@ -695,7 +694,7 @@ const MembershipPage: React.FC = () => {
         <>
           <form className="space-y-3 max-w-md" onSubmit={handleCreateGroup}>
             <h2 className="text-sm font-medium text-text-secondary">Create group</h2>
-            <input
+            <input aria-label="Name (alphanumeric, underscore, hyphen)"
               type="text"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
@@ -703,14 +702,14 @@ const MembershipPage: React.FC = () => {
               required
               className="w-full rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
             />
-            <input
+            <input aria-label="Description (optional)"
               type="text"
               value={newDescription}
               onChange={(e) => setNewDescription(e.target.value)}
               placeholder="Description (optional)"
               className="w-full rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
             />
-            <input
+            <input aria-label="Permissions (comma-separated, e.g. media:edit, sites:add)"
               type="text"
               value={newPermissions}
               onChange={(e) => setNewPermissions(e.target.value)}
@@ -720,7 +719,7 @@ const MembershipPage: React.FC = () => {
             <button
               type="submit"
               disabled={isSubmitting || !newName.trim()}
-              className="inline-flex items-center justify-center rounded-md bg-accent-500 px-4 py-2 text-sm font-semibold text-surface-0 hover:bg-orange-500 disabled:opacity-50"
+              className="inline-flex items-center justify-center rounded-md bg-accent-500 px-4 py-2 text-sm font-semibold text-ink hover:bg-accent-400 disabled:opacity-50"
             >
               {isSubmitting ? "Creating…" : "Create"}
             </button>
@@ -745,14 +744,14 @@ const MembershipPage: React.FC = () => {
                     {editingName === g.name ? (
                       <form onSubmit={handleUpdateGroup} className="space-y-2">
                         <span className="font-medium text-text-primary">{g.name}</span>
-                        <input
+                        <input aria-label="Description (optional)"
                           type="text"
                           value={editDescription}
                           onChange={(e) => setEditDescription(e.target.value)}
                           placeholder="Description (optional)"
                           className="w-full rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
                         />
-                        <input
+                        <input aria-label="Permissions (comma-separated)"
                           type="text"
                           value={editPermissions}
                           onChange={(e) => setEditPermissions(e.target.value)}
@@ -763,7 +762,7 @@ const MembershipPage: React.FC = () => {
                           <button
                             type="submit"
                             disabled={isUpdating}
-                            className="rounded-md bg-accent-500 px-3 py-1.5 text-xs font-medium text-surface-0 hover:bg-orange-500 disabled:opacity-50"
+                            className="rounded-md bg-accent-500 px-3 py-1.5 text-xs font-medium text-ink hover:bg-accent-400 disabled:opacity-50"
                           >
                             {isUpdating ? "Saving…" : "Save"}
                           </button>
@@ -778,12 +777,12 @@ const MembershipPage: React.FC = () => {
                             type="button"
                             onClick={() => handleDeleteGroup(g.name)}
                             disabled={deletingName === g.name}
-                            className="rounded-md border border-red-500/60 px-3 py-1.5 text-xs font-medium text-red-400 hover:bg-red-500/20 disabled:opacity-50"
+                            className="rounded-md border border-danger/60 px-3 py-1.5 text-xs font-medium text-danger hover:bg-danger/20 disabled:opacity-50"
                           >
                             {deletingName === g.name ? "Deleting…" : "Delete"}
                           </button>
                         </div>
-                        {updateError && <p className="text-xs text-red-400">{updateError}</p>}
+                        {updateError && <p className="text-xs text-danger">{updateError}</p>}
                       </form>
                     ) : (
                       <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -806,7 +805,7 @@ const MembershipPage: React.FC = () => {
                             type="button"
                             onClick={() => handleDeleteGroup(g.name)}
                             disabled={deletingName === g.name}
-                            className="rounded-md border border-red-500/60 px-2 py-1 text-xs font-medium text-red-400 hover:bg-red-500/20 disabled:opacity-50"
+                            className="rounded-md border border-danger/60 px-2 py-1 text-xs font-medium text-danger hover:bg-danger/20 disabled:opacity-50"
                           >
                             {deletingName === g.name ? "Deleting…" : "Delete"}
                           </button>
@@ -826,7 +825,7 @@ const MembershipPage: React.FC = () => {
           <form className="space-y-3 max-w-md" onSubmit={handleCreateRole}>
             <h2 className="text-sm font-medium text-text-secondary">Create role</h2>
             <p className="text-xs text-text-tertiary">Define a named role by selecting Cognito groups and custom groups. Use for impersonation.</p>
-            <input
+            <input aria-label="Role name (e.g. Squash Manager)"
               type="text"
               value={newRoleName}
               onChange={(e) => setNewRoleName(e.target.value)}
@@ -860,7 +859,7 @@ const MembershipPage: React.FC = () => {
                     type="button"
                     onClick={() => toggleCustom(g.name, newRoleCustom, setNewRoleCustom)}
                     className={`rounded-md px-2 py-1 text-xs font-medium ${
-                      newRoleCustom.includes(g.name) ? "bg-emerald-500/30 text-emerald-200" : "border border-border-hover text-text-secondary hover:bg-surface-3"
+                      newRoleCustom.includes(g.name) ? "bg-success/30 text-success" : "border border-border-hover text-text-secondary hover:bg-surface-3"
                     }`}
                   >
                     {g.name}
@@ -872,7 +871,7 @@ const MembershipPage: React.FC = () => {
             <button
               type="submit"
               disabled={isRoleSubmitting || !newRoleName.trim()}
-              className="inline-flex items-center justify-center rounded-md bg-accent-500 px-4 py-2 text-sm font-semibold text-surface-0 hover:bg-orange-500 disabled:opacity-50"
+              className="inline-flex items-center justify-center rounded-md bg-accent-500 px-4 py-2 text-sm font-semibold text-ink hover:bg-accent-400 disabled:opacity-50"
             >
               {isRoleSubmitting ? "Creating…" : "Create"}
             </button>
@@ -920,7 +919,7 @@ const MembershipPage: React.FC = () => {
                                 key={g.name}
                                 type="button"
                                 onClick={() => toggleCustom(g.name, editRoleCustom, setEditRoleCustom)}
-                                className={`rounded-md px-2 py-1 text-xs ${editRoleCustom.includes(g.name) ? "bg-emerald-500/30 text-emerald-200" : "border border-border-hover text-text-secondary"}`}
+                                className={`rounded-md px-2 py-1 text-xs ${editRoleCustom.includes(g.name) ? "bg-success/30 text-success" : "border border-border-hover text-text-secondary"}`}
                               >
                                 {g.name}
                               </button>
@@ -931,7 +930,7 @@ const MembershipPage: React.FC = () => {
                           <button
                             type="submit"
                             disabled={isRoleUpdating}
-                            className="rounded-md bg-accent-500 px-3 py-1.5 text-xs font-medium text-surface-0 hover:bg-orange-500 disabled:opacity-50"
+                            className="rounded-md bg-accent-500 px-3 py-1.5 text-xs font-medium text-ink hover:bg-accent-400 disabled:opacity-50"
                           >
                             {isRoleUpdating ? "Saving…" : "Save"}
                           </button>
@@ -942,12 +941,12 @@ const MembershipPage: React.FC = () => {
                             type="button"
                             onClick={() => handleDeleteRole(r.name)}
                             disabled={deletingRole === r.name}
-                            className="rounded-md border border-red-500/60 px-3 py-1.5 text-xs text-red-400 hover:bg-red-500/20 disabled:opacity-50"
+                            className="rounded-md border border-danger/60 px-3 py-1.5 text-xs text-danger hover:bg-danger/20 disabled:opacity-50"
                           >
                             {deletingRole === r.name ? "Deleting…" : "Delete"}
                           </button>
                         </div>
-                        {roleUpdateError && <p className="text-xs text-red-400">{roleUpdateError}</p>}
+                        {roleUpdateError && <p className="text-xs text-danger">{roleUpdateError}</p>}
                       </form>
                     ) : (
                       <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -960,7 +959,7 @@ const MembershipPage: React.FC = () => {
                               </span>
                             ))}
                             {(r.customGroups ?? []).map((g) => (
-                              <span key={`x-${g}`} className="inline-block px-2 py-0.5 rounded text-xs bg-emerald-500/20 text-emerald-200">
+                              <span key={`x-${g}`} className="inline-block px-2 py-0.5 rounded text-xs bg-success/20 text-success">
                                 {g}
                               </span>
                             ))}
@@ -974,7 +973,7 @@ const MembershipPage: React.FC = () => {
                             type="button"
                             onClick={() => handleDeleteRole(r.name)}
                             disabled={deletingRole === r.name}
-                            className="rounded-md border border-red-500/60 px-2 py-1 text-xs text-red-400 hover:bg-red-500/20 disabled:opacity-50"
+                            className="rounded-md border border-danger/60 px-2 py-1 text-xs text-danger hover:bg-danger/20 disabled:opacity-50"
                           >
                             {deletingRole === r.name ? "Deleting…" : "Delete"}
                           </button>
@@ -1019,7 +1018,11 @@ const UserRow: React.FC<UserRowProps> = ({ user, tzOffset, formatLastLogin, rend
 
   return (
     <tr className="cursor-pointer hover:bg-surface-3 transition-colors" onClick={onClick}>
-      <td className="px-4 py-3 text-sm text-text-primary">{user.email || user.username || "—"}</td>
+      <td className="px-4 py-3 text-sm text-text-primary">
+        <button type="button" onClick={(e) => { e.stopPropagation(); onClick(); }} className="text-left hover:underline">
+          {user.email || user.username || "—"}
+        </button>
+      </td>
       <td className="px-4 py-3 text-sm text-text-secondary">{user.status || "—"}</td>
       <td className="px-4 py-3 text-sm text-text-secondary">{formatLastLogin(user.lastLoginAt ?? "", tzOffset, user.lastLoginIp)}</td>
       <td className="px-4 py-3 text-sm">{groups ? renderGroupBadges(groups.cognitoGroups, []) : <span className="text-text-tertiary">…</span>}</td>

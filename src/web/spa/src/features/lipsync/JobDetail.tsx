@@ -7,7 +7,8 @@ import {
   TrashIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
-import { Alert, useClickOutside } from "../../components";
+import { Dialog } from "@headlessui/react";
+import { Alert } from "../../components";
 import { cancelJob, getJob, getJobOutputUrl, isTerminalStatus, type LipsyncJob } from "./api";
 import { MODE_META, modelLabel, statusMeta } from "./statusStyles";
 import { formatDateTime, formatExpiry, isExpiringSoon } from "./dateUtils";
@@ -35,9 +36,6 @@ export function JobDetail({ jobId, onClose, onChanged }: JobDetailProps) {
   const [outputError, setOutputError] = useState<string | null>(null);
   const [outputLoading, setOutputLoading] = useState(false);
 
-  const dialogRef = useRef<HTMLDivElement>(null);
-  useClickOutside(dialogRef, onClose, true);
-
   const fetchJob = useCallback(
     async (opts?: { silent?: boolean }) => {
       if (!opts?.silent) setLoading(true);
@@ -58,14 +56,6 @@ export function JobDetail({ jobId, onClose, onChanged }: JobDetailProps) {
   useEffect(() => {
     fetchJob();
   }, [fetchJob]);
-
-  useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [onClose]);
 
   const isTerminal = job ? isTerminalStatus(job.status) : false;
 
@@ -133,23 +123,19 @@ export function JobDetail({ jobId, onClose, onChanged }: JobDetailProps) {
   const expiring = job ? isExpiringSoon(job.expiresAt) : false;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="lipsync-job-detail-title"
-    >
-      <div
-        ref={dialogRef}
+    <Dialog open onClose={onClose} className="relative z-50">
+      <div className="fixed inset-0 bg-black/60" aria-hidden="true" />
+      <div className="fixed inset-0 flex items-center justify-center p-4">
+      <Dialog.Panel
         className="w-full max-w-lg rounded-xl border border-border-hover bg-surface-2 shadow-xl max-h-[85vh] overflow-y-auto scrollbar-thin"
       >
         <div className="flex items-start justify-between gap-3 border-b border-border-default p-4">
-          <h2
-            id="lipsync-job-detail-title"
+          <Dialog.Title as="h2"
+            
             className="text-lg font-display font-extrabold uppercase tracking-tight text-text-primary"
           >
             Clip detail
-          </h2>
+          </Dialog.Title>
           <button
             type="button"
             onClick={onClose}
@@ -182,7 +168,7 @@ export function JobDetail({ jobId, onClose, onChanged }: JobDetailProps) {
                 >
                   {statusMeta(job.status).label}
                 </span>
-                <span className="inline-flex items-center gap-1 rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">
+                <span className="inline-flex items-center gap-1 rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent-text">
                   <SparklesIcon className="h-3 w-3" />
                   AI-generated
                 </span>
@@ -196,7 +182,7 @@ export function JobDetail({ jobId, onClose, onChanged }: JobDetailProps) {
                 <dt className="text-text-tertiary">Updated</dt>
                 <dd className="text-text-primary">{formatDateTime(job.updatedAt)}</dd>
                 <dt className="text-text-tertiary">Expires</dt>
-                <dd className={expiring ? "text-amber-400" : "text-text-primary"}>{formatExpiry(job.expiresAt)}</dd>
+                <dd className={expiring ? "text-warning" : "text-text-primary"}>{formatExpiry(job.expiresAt)}</dd>
                 {typeof job.durationSec === "number" && (
                   <>
                     <dt className="text-text-tertiary">Duration</dt>
@@ -213,7 +199,7 @@ export function JobDetail({ jobId, onClose, onChanged }: JobDetailProps) {
 
               {!isTerminal && (
                 <div className="flex items-center gap-2 rounded-lg border border-border-default bg-surface-1 p-3 text-sm text-text-secondary">
-                  <ArrowPathIcon className="h-4 w-4 shrink-0 animate-spin text-accent" />
+                  <ArrowPathIcon className="h-4 w-4 shrink-0 animate-spin text-accent-text" />
                   Generating your clip — this can take a few minutes. This panel updates automatically.
                 </div>
               )}
@@ -278,7 +264,7 @@ export function JobDetail({ jobId, onClose, onChanged }: JobDetailProps) {
                     type="button"
                     onClick={handleCancel}
                     disabled={cancelling}
-                    className="inline-flex items-center gap-1.5 rounded-md border border-red-500/60 bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="inline-flex items-center gap-1.5 rounded-md border border-danger/60 bg-danger/10 px-3 py-1.5 text-xs font-medium text-danger hover:bg-danger/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <TrashIcon className="h-3.5 w-3.5" />
                     {cancelling ? "Cancelling…" : "Cancel clip"}
@@ -288,7 +274,8 @@ export function JobDetail({ jobId, onClose, onChanged }: JobDetailProps) {
             </>
           )}
         </div>
+      </Dialog.Panel>
       </div>
-    </div>
+    </Dialog>
   );
 }

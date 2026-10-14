@@ -375,14 +375,14 @@ const EditSitePage: React.FC = () => {
               </label>
             </div>
           )}
-          <input
+          <input aria-label="Logo file"
             type="file"
             accept="image/png,image/jpeg,image/gif,image/webp"
             onChange={onLogoChange}
             className="block w-full text-xs text-text-secondary file:mr-3 file:rounded-md file:border-0 file:bg-surface-3 file:px-3 file:py-1.5 file:text-text-primary"
           />
           <p className="mt-2 text-xs text-text-tertiary">Or paste image URL (image will be copied to S3 on save):</p>
-          <input
+          <input aria-label="Logo image URL"
             type="url"
             value={logoImageUrl}
             onChange={(e) => {
@@ -397,7 +397,7 @@ const EditSitePage: React.FC = () => {
               <img src={logoPreview} alt="New logo" className="h-16 w-16 rounded-lg border border-border-hover object-cover" />
             </div>
           )}
-          {logoError && <p className="mt-1 text-xs text-red-400">{logoError}</p>}
+          {logoError && <p className="mt-1 text-xs text-danger">{logoError}</p>}
         </FormField>
         <FormField label="Categories">
           <SearchableSelect options={categoryOptions} selected={selectedCategoryIds} onChange={setSelectedCategoryIds} />
@@ -410,14 +410,14 @@ const EditSitePage: React.FC = () => {
                 className="inline-flex items-center gap-1 rounded-full bg-surface-3 px-2 py-0.5 text-xs text-text-primary"
               >
                 {t}
-                <button type="button" onClick={() => removeTag(t)} className="hover:text-red-400" aria-label="Remove">
+                <button type="button" onClick={() => removeTag(t)} className="hover:text-danger" aria-label="Remove">
                   ×
                 </button>
               </span>
             ))}
           </div>
           <div className="flex gap-2">
-            <input
+            <input aria-label="Add tag"
               type="text"
               value={tagsInput}
               onChange={(e) => setTagsInput(e.target.value)}
@@ -459,7 +459,7 @@ const EditSitePage: React.FC = () => {
             type="button"
             onClick={handleDelete}
             disabled={isDeleting || isSubmitting}
-            className="btn-secondary border-red-500/60 text-red-400 hover:bg-red-500/20 disabled:opacity-50 ml-auto"
+            className="btn-secondary border-danger/60 text-danger hover:bg-danger/20 disabled:opacity-50 ml-auto"
           >
             {isDeleting ? "Deleting…" : "Delete entry"}
           </button>

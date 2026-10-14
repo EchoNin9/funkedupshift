@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from "react";
+import { useThemeName } from "../../shell/theme";
 import { createChart, CandlestickSeries, type IChartApi, type UTCTimestamp } from "lightweight-charts";
 
 export interface Candle {
@@ -12,12 +13,13 @@ export interface Candle {
 
 function themeColor(varName: string, fallback: string): string {
   const raw = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
-  return raw ? `rgb(${raw})` : fallback;
+  return raw ? `rgb(${raw.split(/\s+/).join(", ")})` : fallback;
 }
 
 const CandleChart: React.FC<{ candles: Candle[] }> = ({ candles }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
+  const themeName = useThemeName();
 
   useEffect(() => {
     const el = containerRef.current;
@@ -38,10 +40,10 @@ const CandleChart: React.FC<{ candles: Candle[] }> = ({ candles }) => {
     });
     // Up/down pair validated for CVD separation + dark-surface contrast (dataviz)
     const series = chart.addSeries(CandlestickSeries, {
-      upColor: "#10b981",
-      downColor: "#ef4444",
-      wickUpColor: "#10b981",
-      wickDownColor: "#ef4444",
+      upColor: themeColor("--color-success", "#10b981"),
+      downColor: themeColor("--color-danger", "#ef4444"),
+      wickUpColor: themeColor("--color-success", "#10b981"),
+      wickDownColor: themeColor("--color-danger", "#ef4444"),
       borderVisible: false,
     });
     series.setData(
@@ -53,7 +55,7 @@ const CandleChart: React.FC<{ candles: Candle[] }> = ({ candles }) => {
       chart.remove();
       chartRef.current = null;
     };
-  }, [candles]);
+  }, [candles, themeName]);
 
   return <div ref={containerRef} className="h-72 w-full" />;
 };

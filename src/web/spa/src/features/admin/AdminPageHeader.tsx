@@ -16,7 +16,7 @@ export function AdminPageHeader({ title, description, actions }: AdminPageHeader
     <header className="space-y-4">
       <Link
         to="/admin"
-        className="inline-flex items-center gap-1.5 text-sm text-text-secondary hover:text-accent transition-colors"
+        className="inline-flex items-center gap-1.5 text-sm text-text-secondary hover:text-accent-text transition-colors"
       >
         <ArrowLeftIcon className="h-4 w-4" />
         Back to Admin

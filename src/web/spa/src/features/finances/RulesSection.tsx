@@ -145,7 +145,7 @@ const RulesSection: React.FC<{ categories: string[] }> = ({ categories }) => {
             <button
               type="button"
               onClick={() => removeRule(idx)}
-              className="text-xs text-text-tertiary hover:text-red-400"
+              className="text-xs text-text-tertiary hover:text-danger"
             >
               Remove
             </button>
@@ -161,7 +161,7 @@ const RulesSection: React.FC<{ categories: string[] }> = ({ categories }) => {
           type="button"
           onClick={addRule}
           disabled={busy}
-          className="rounded-md border border-accent-500 px-3 py-2 text-sm font-medium text-accent-500 disabled:opacity-50"
+          className="rounded-md border border-accent-500 px-3 py-2 text-sm font-medium text-accent-text disabled:opacity-50"
         >
           Add rule
         </button>
@@ -169,7 +169,7 @@ const RulesSection: React.FC<{ categories: string[] }> = ({ categories }) => {
           type="button"
           onClick={saveRules}
           disabled={busy}
-          className="rounded-md bg-accent-500 px-3 py-2 text-sm font-medium text-surface-0 hover:bg-orange-500 disabled:opacity-50"
+          className="rounded-md bg-accent-500 px-3 py-2 text-sm font-medium text-ink hover:bg-accent-400 disabled:opacity-50"
         >
           {busy ? "Saving…" : "Save rules"}
         </button>
@@ -177,7 +177,7 @@ const RulesSection: React.FC<{ categories: string[] }> = ({ categories }) => {
           type="button"
           onClick={applyRules}
           disabled={applying}
-          className="rounded-md border border-accent-500 px-3 py-2 text-sm font-medium text-accent-500 disabled:opacity-50"
+          className="rounded-md border border-accent-500 px-3 py-2 text-sm font-medium text-accent-text disabled:opacity-50"
         >
           {applying ? "Applying…" : "Apply to uncategorized"}
         </button>

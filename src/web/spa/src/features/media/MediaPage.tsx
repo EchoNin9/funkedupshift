@@ -326,7 +326,7 @@ const MediaPage: React.FC = () => {
         }}
       >
         <MagnifyingGlassIcon className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-text-tertiary" />
-        <input
+        <input aria-label="Search the library by title or description..."
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -339,7 +339,7 @@ const MediaPage: React.FC = () => {
       <div className="flex flex-wrap items-center gap-3 text-xs">
         <div className="flex items-center gap-2">
           <span className="font-medium text-text-primary">Sort:</span>
-          <select
+          <select aria-label="Sort order"
             value={sort}
             onChange={(e) => setSort(e.target.value as SortKey)}
             className="input-field w-auto text-xs"
@@ -504,6 +504,8 @@ const MediaPage: React.FC = () => {
                       <img
                         src={thumb}
                         alt={title}
+                        loading="lazy"
+                        decoding="async"
                         className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                         onError={(e) => {
                           (e.currentTarget as HTMLImageElement).style.display = "none";
@@ -554,7 +556,7 @@ const MediaPage: React.FC = () => {
                     {canEdit && (
                       <Link
                         to={`/admin/media/edit/${encodeURIComponent(m.PK)}`}
-                        className="inline-flex items-center gap-1 text-[11px] text-text-secondary hover:text-accent-400 transition-colors"
+                        className="inline-flex items-center gap-1 text-[11px] text-text-secondary hover:text-accent-text transition-colors"
                       >
                         <PencilSquareIcon className="h-3.5 w-3.5" />
                         Edit

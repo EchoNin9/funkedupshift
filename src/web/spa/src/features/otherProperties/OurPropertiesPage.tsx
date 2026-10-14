@@ -81,21 +81,21 @@ const OurPropertiesPage: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold tracking-tight text-violet-200">
+      <h1 className="text-2xl font-semibold tracking-tight text-n3-text">
         Highlights and faves
       </h1>
-      <div className="rounded-xl border border-violet-800/60 bg-gradient-to-br from-violet-900/40 to-violet-950/60 p-4 shadow-lg">
-        <p className="text-sm font-medium text-violet-100">
+      <div className="rounded-xl border border-n3/40 bg-gradient-to-br from-n3/10 to-surface-1/90 p-4 shadow-lg">
+        <p className="text-sm font-medium text-text-primary">
           Our curated list of exceptional sites
         </p>
-        <p className="mt-1 text-xs text-violet-200/80">
+        <p className="mt-1 text-xs text-text-secondary">
           Click a card below for more detail
         </p>
         {canEdit && (
           <p className="mt-2">
             <Link
               to="/admin/recommended?tab=highlights"
-              className="text-violet-300 hover:text-violet-200 font-semibold text-sm"
+              className="text-n3-text hover:underline font-semibold text-sm"
             >
               Edit sites list
             </Link>
@@ -117,7 +117,7 @@ const OurPropertiesPage: React.FC = () => {
           {canEdit && (
             <Link
               to="/admin/recommended?tab=highlights"
-              className="text-violet-400 hover:text-violet-300"
+              className="text-n3-text hover:underline"
             >
               Add sites
             </Link>
@@ -131,10 +131,10 @@ const OurPropertiesPage: React.FC = () => {
             const status = (s.status || "up").toLowerCase();
             const statusClass =
               status === "up"
-                ? "border-violet-400/50 bg-violet-400/20 text-violet-200"
+                ? "border-n3/60 bg-n3/25 text-n3-text"
                 : status === "degraded"
-                ? "border-violet-500/50 bg-violet-500/15 text-violet-200"
-                : "border-violet-600/50 bg-violet-600/15 text-violet-200";
+                ? "border-n3/45 bg-n3/15 text-n3-text"
+                : "border-n3/30 bg-n3/10 text-n3-text";
             const hasDescription = (s.description || "").trim().length > 0;
             const displayTitle = s.title || s.domain;
             const fullUrl = s.url || `https://${s.domain}`;
@@ -163,14 +163,14 @@ const OurPropertiesPage: React.FC = () => {
                     {displayTitle}
                   </a>
                   <span
-                    className="absolute left-0 top-full mt-1 px-2 py-1.5 rounded bg-surface-2 border border-violet-700/60 text-xs text-violet-200 break-all max-w-[280px] shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-10 pointer-events-none"
+                    className="absolute left-0 top-full mt-1 px-2 py-1.5 rounded bg-surface-2 border border-n3/40 text-xs text-n3-text break-all max-w-[280px] shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-10 pointer-events-none"
                     role="tooltip"
                   >
                     {fullUrl}
                   </span>
                 </span>
                 {hasDescription && (
-                  <div className="mt-2 text-xs text-violet-200/90 leading-relaxed break-words">
+                  <div className="mt-2 text-xs text-text-secondary leading-relaxed break-words">
                     {s.description}
                   </div>
                 )}
@@ -183,13 +183,13 @@ const OurPropertiesPage: React.FC = () => {
       <Dialog open={!!selectedSite} onClose={() => setSelectedSite(null)} className="relative z-50">
         <div className="fixed inset-0 bg-black/50" aria-hidden="true" />
         <div className="fixed inset-0 flex items-center justify-center p-4">
-          <Dialog.Panel className="mx-auto w-full max-w-xl rounded-xl border border-violet-800/60 bg-gradient-to-br from-violet-900/40 to-violet-950/60 p-6 shadow-xl">
+          <Dialog.Panel className="mx-auto w-full max-w-xl rounded-xl border border-n3/40 bg-gradient-to-br from-n3/10 to-surface-1/90 p-6 shadow-xl">
             {selectedSite && (
               <div className="relative flex min-h-[12rem] items-center justify-center">
                 <button
                   type="button"
                   onClick={() => setSelectedSite(null)}
-                  className="absolute right-0 top-0 rounded p-1 text-violet-400 hover:bg-violet-800/40 hover:text-violet-200"
+                  className="absolute right-0 top-0 rounded p-1 text-n3-text hover:bg-n3/15 hover:text-text-primary"
                   aria-label="Close modal"
                 >
                   <XMarkIcon className="h-6 w-6" />
@@ -197,14 +197,14 @@ const OurPropertiesPage: React.FC = () => {
                 {selectedSite.logoUrl ? (
                   <img
                     src={selectedSite.logoUrl}
-                    alt=""
+                    alt={selectedSite.title || selectedSite.domain}
                     className="max-h-48 max-w-full object-contain"
                     onError={(e) => {
                       (e.currentTarget as HTMLImageElement).style.visibility = "hidden";
                     }}
                   />
                 ) : (
-                  <div className="h-24 w-24 rounded-lg border border-violet-700/60 bg-violet-900/40" />
+                  <div className="h-24 w-24 rounded-lg border border-n3/40 bg-n3/10" />
                 )}
               </div>
             )}

@@ -333,7 +333,7 @@ const MemeBrowsePage: React.FC = () => {
             setSearch(search.trim());
           }}
         >
-          <input
+          <input aria-label="Search memes (title, description)…"
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -342,7 +342,7 @@ const MemeBrowsePage: React.FC = () => {
           />
           <button
             type="submit"
-            className="inline-flex items-center justify-center rounded-md bg-accent-500 px-4 py-2 text-sm font-semibold text-surface-0 hover:bg-orange-500"
+            className="inline-flex items-center justify-center rounded-md bg-accent-500 px-4 py-2 text-sm font-semibold text-ink hover:bg-accent-400"
           >
             Search
           </button>
@@ -406,7 +406,7 @@ const MemeBrowsePage: React.FC = () => {
                     </button>
                   </span>
                 ))}
-                <select
+                <select aria-label="Tag match mode"
                   value={tagMode}
                   onChange={(e) => setTagMode(e.target.value as "and" | "or")}
                   className="rounded border border-border-hover bg-surface-1 px-2 py-0.5 text-[11px] text-text-secondary"
@@ -419,7 +419,7 @@ const MemeBrowsePage: React.FC = () => {
           </div>
           <div className="flex items-end gap-2">
             <label className="text-xs font-medium text-text-secondary">Sort</label>
-            <select
+            <select aria-label="Sort"
               value={sort}
               onChange={(e) => setSort(e.target.value as SortKey)}
               className="rounded-md border border-border-hover bg-surface-1 px-2 py-1 text-xs text-text-primary focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
@@ -471,7 +471,9 @@ const MemeBrowsePage: React.FC = () => {
                     {thumb ? (
                       <img
                         src={thumb}
-                        alt=""
+                        alt={title}
+                        loading="lazy"
+                        decoding="async"
                         className="w-full object-cover"
                         onError={(e) => {
                           (e.currentTarget as HTMLImageElement).style.visibility = "hidden";
@@ -484,7 +486,7 @@ const MemeBrowsePage: React.FC = () => {
                   <div className="p-3 space-y-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <h2 className="truncate text-sm font-semibold text-text-primary">
-                        <Link to={detailLink} className="transition-colors hover:text-accent-400">
+                        <Link to={detailLink} className="transition-colors hover:text-accent-text">
                           {title}
                         </Link>
                       </h2>
@@ -494,7 +496,7 @@ const MemeBrowsePage: React.FC = () => {
                         </span>
                       )}
                       {typeof m.averageRating === "number" && (
-                        <span className="inline-flex rounded-full bg-surface-2 px-2 py-0.5 text-[11px] text-amber-300">
+                        <span className="inline-flex rounded-full bg-surface-2 px-2 py-0.5 text-[11px] text-warning">
                           {m.averageRating.toFixed(1)}★
                         </span>
                       )}

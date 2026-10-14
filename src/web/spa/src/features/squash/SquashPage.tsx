@@ -276,8 +276,8 @@ const SquashPage: React.FC = () => {
     return (
       <div className="space-y-4">
         <h1 className="text-xl font-semibold text-text-primary">Squash Doubles</h1>
-        <div className="rounded-md bg-red-900/30 border border-red-800/50 px-4 py-3 text-sm text-red-200">
-          Sign in required. <Link to="/auth" className="underline hover:text-red-100">Sign in</Link>
+        <div className="rounded-md bg-danger/20 border border-danger/20 px-4 py-3 text-sm text-danger">
+          Sign in required. <Link to="/auth" className="underline hover:text-danger">Sign in</Link>
         </div>
       </div>
     );
@@ -287,7 +287,7 @@ const SquashPage: React.FC = () => {
     return (
       <div className="space-y-4">
         <h1 className="text-xl font-semibold text-text-primary">Squash Doubles</h1>
-        <div className="rounded-md bg-amber-900/30 border border-amber-800/50 px-4 py-3 text-sm text-amber-200">
+        <div className="rounded-md bg-warning/30 border border-warning/50 px-4 py-3 text-sm text-warning">
           You do not have access to the Squash section. Join the Squash group or contact an admin.
         </div>
       </div>
@@ -300,7 +300,7 @@ const SquashPage: React.FC = () => {
 
       {canModify && (
         <p className="text-sm text-text-secondary">
-          <Link to="/squash-admin" className="text-accent-500 hover:text-orange-400">
+          <Link to="/squash-admin" className="text-accent-text hover:text-accent-text">
             Squash Admin
           </Link>
         </p>
@@ -308,7 +308,7 @@ const SquashPage: React.FC = () => {
 
       {(message || error) && (
         <div
-          className={`rounded-md px-4 py-3 text-sm ${error ? "bg-red-900/30 border border-red-800/50 text-red-200" : "bg-emerald-900/30 border border-emerald-800/50 text-emerald-200"}`}
+          className={`rounded-md px-4 py-3 text-sm ${error ? "bg-danger/20 border border-danger/20 text-danger" : "bg-success/30 border border-success/50 text-success"}`}
         >
           {error || message}
         </div>
@@ -340,14 +340,14 @@ const SquashPage: React.FC = () => {
           />
           <div className="relative max-w-[14rem] min-w-[12rem]" ref={playerDropdownRef}>
             <label className="block text-xs font-semibold text-text-secondary mb-1">Filter by players</label>
-            <input
+            <input aria-label="Filter by players"
               type="text"
               value={playerSearch}
               onChange={(e) => setPlayerSearch(e.target.value)}
               onFocus={() => setPlayerDropdownOpen(true)}
               placeholder="Search players..."
               autoComplete="off"
-              className="block w-full rounded-md border border-border-hover bg-surface-2 px-3 py-2 text-sm text-text-primary focus:border-accent-500 focus:outline-none"
+              className="block w-full rounded-md border border-border-hover bg-surface-2 px-3 py-2 text-sm text-text-primary focus:border-accent-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-n3"
             />
             {playerDropdownOpen && (
               <div className="absolute top-full left-0 right-0 mt-1 bg-surface-2 border border-border-hover rounded-md max-h-48 overflow-y-auto scrollbar-thin z-10">
@@ -416,7 +416,7 @@ const SquashPage: React.FC = () => {
               type="button"
               onClick={searchMatches}
               disabled={isLoading}
-              className="rounded-md bg-accent-500 px-4 py-2 text-sm font-medium text-surface-0 hover:bg-orange-500 disabled:opacity-50"
+              className="rounded-md bg-accent-500 px-4 py-2 text-sm font-medium text-ink hover:bg-accent-400 disabled:opacity-50"
             >
               {isLoading ? "Searching…" : "Search"}
             </button>

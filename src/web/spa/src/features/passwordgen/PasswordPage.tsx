@@ -105,9 +105,9 @@ function entropyBits(length: number, poolSize: number): number {
 }
 
 function entropyLabel(bits: number): { label: string; className: string } {
-  if (bits < 40) return { label: "Weak", className: "text-red-400" };
-  if (bits < 70) return { label: "OK", className: "text-amber-400" };
-  return { label: "Strong", className: "text-emerald-400" };
+  if (bits < 40) return { label: "Weak", className: "text-danger" };
+  if (bits < 70) return { label: "OK", className: "text-warning" };
+  return { label: "Strong", className: "text-success" };
 }
 // ---- end shared generator ----
 
@@ -182,7 +182,7 @@ const PasswordPage: React.FC = () => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
       >
-        <KeyIcon className="h-6 w-6 text-accent" />
+        <KeyIcon className="h-6 w-6 text-accent-text" />
         Password Generator
       </motion.h1>
       <p className="text-sm text-text-secondary">Generated locally — nothing ever leaves your browser.</p>
@@ -191,7 +191,7 @@ const PasswordPage: React.FC = () => {
 
       <div className="rounded-xl border border-border-default bg-surface-2/80 p-4 space-y-3">
         <div className="flex flex-wrap items-center gap-2">
-          <code className="flex-1 min-w-0 break-all rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-nav">
+          <code className="flex-1 min-w-0 break-all rounded-md border border-border-hover bg-surface-1 px-3 py-2 text-sm text-nav-text">
             {password || "Click generate to create a password"}
           </code>
           <button

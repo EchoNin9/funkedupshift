@@ -73,7 +73,7 @@ const ShareMemePopover: React.FC<ShareMemePopoverProps> = ({
             >
               <ClipboardDocumentIcon className="h-4 w-4 text-text-tertiary" />
               Copy link
-              {copied && <span className="text-emerald-400 text-xs">✓</span>}
+              {copied && <span className="text-success text-xs">✓</span>}
             </button>
             <a
               href="https://www.instagram.com/"
