@@ -122,6 +122,7 @@ function LineChart({
   formatValue: (v: number) => string;
   color: string;
 }) {
+  const [hover, setHover] = useState<number | null>(null);
   if (data.length === 0) return null;
   const w = 600;
   const h = 180;
@@ -139,10 +140,30 @@ function LineChart({
       return `${xScale(i)},${yScale(v)}`;
     })
     .filter(Boolean) as string[];
+  const yTicks = [0, 1, 2, 3, 4].map((k) => minV + (range * k) / 4);
+  const xStep = Math.max(1, Math.ceil((data.length - 1) / 6));
+  const xTicks = data.map((_, i) => i).filter((i) => i % xStep === 0);
+  const hv = hover != null ? (data[hover]?.[valueKey] as number) : null;
+  const tipText = hover != null && hv != null ? `${formatDate(data[hover].date)}: ${formatValue(hv)}` : "";
+  const tipW = tipText.length * 4.6 + 10;
   return (
     <div className="mb-4">
       <p className="text-xs font-medium text-text-secondary mb-1">{label}</p>
       <svg viewBox={`0 0 ${w} ${h}`} className="w-full max-w-full" preserveAspectRatio="xMidYMid meet">
+        <g fontSize="8" fill="currentColor" fillOpacity={0.45}>
+          {yTicks.map((v, k) => (
+            <g key={`y${k}`}>
+              <line x1={pad.l} y1={yScale(v)} x2={w - pad.r} y2={yScale(v)} stroke="currentColor" strokeOpacity={0.07} />
+              <text x={pad.l - 4} y={yScale(v) + 3} textAnchor="end">{formatValue(v)}</text>
+            </g>
+          ))}
+          {xTicks.map((i) => (
+            <g key={`x${i}`}>
+              <line x1={xScale(i)} y1={pad.t} x2={xScale(i)} y2={h - pad.b} stroke="currentColor" strokeOpacity={0.07} />
+              <text x={xScale(i)} y={h - pad.b + 11} textAnchor="middle">{formatDate(data[i].date)}</text>
+            </g>
+          ))}
+        </g>
         <line x1={pad.l} y1={h - pad.b} x2={w - pad.r} y2={h - pad.b} stroke="currentColor" strokeOpacity={0.2} />
         <line x1={pad.l} y1={pad.t} x2={pad.l} y2={h - pad.b} stroke="currentColor" strokeOpacity={0.2} />
         {pts.length > 1 && (
@@ -159,9 +180,23 @@ function LineChart({
           const v = d[valueKey] as number;
           if (v == null || isNaN(v)) return null;
           return (
-            <circle key={i} cx={xScale(i)} cy={yScale(v)} r="3" fill={color} />
+            <g key={i} onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)}>
+              <circle cx={xScale(i)} cy={yScale(v)} r={hover === i ? 4.5 : 3} fill={color} />
+              {/* ponytail: invisible hit area so the tiny dots are easy to hover */}
+              <circle cx={xScale(i)} cy={yScale(v)} r="8" fill="transparent" />
+            </g>
           );
         })}
+        {hover != null && hv != null && (() => {
+          const x = Math.min(Math.max(xScale(hover) - tipW / 2, 0), w - tipW);
+          const y = Math.max(yScale(hv) - 22, 0);
+          return (
+            <g pointerEvents="none">
+              <rect x={x} y={y} width={tipW} height={15} rx={3} fill="rgb(24 24 27)" stroke={color} strokeWidth={0.75} />
+              <text x={x + tipW / 2} y={y + 10.5} textAnchor="middle" fontSize="8.5" fill="white">{tipText}</text>
+            </g>
+          );
+        })()}
       </svg>
       <p className="text-xs text-text-tertiary mt-1">
         Range: {formatValue(minV)} – {formatValue(maxV)}
