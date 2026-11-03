@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { resolveAppFrame } from "../components/AppPage";
-import { ADMIN_MODULES } from "../config/modules";
+import { ADMIN_MODULES, PUBLIC_MODULES } from "../config/modules";
 import { useAuth } from "../shell/AuthContext";
 
 /** localStorage key prefix for recently visited app routes; stored per user (`funkedupshift_recent:<userId>`) so shared devices don't leak history. */
@@ -26,9 +26,11 @@ export function readRecentRoutes(userId?: string | null): RecentRoute[] {
     const seen = new Set<string>();
     const out: RecentRoute[] = [];
     for (const v of parsed) {
-      const p = (v as RecentRoute | null)?.path;
+      const raw = (v as RecentRoute | null)?.path;
       const at = (v as RecentRoute | null)?.at;
-      if (typeof p !== "string" || typeof at !== "number" || seen.has(p)) continue;
+      if (typeof raw !== "string" || typeof at !== "number") continue;
+      const p = moduleRoot(raw); // older entries may hold sub-pages
+      if (!p || seen.has(p)) continue;
       seen.add(p);
       out.push({ path: p, at });
     }
@@ -38,18 +40,25 @@ export function readRecentRoutes(userId?: string | null): RecentRoute[] {
   }
 }
 
+/** The module's own path for any page inside it (e.g. /websites/abc → /websites), so recents list one row per module.
+ *  Returns null for paths that aren't an app frame. */
+export function moduleRoot(rawPath: string): string | null {
+  const path = rawPath.length > 1 ? rawPath.replace(/\/+$/, "") : rawPath;
+  const frame = resolveAppFrame(path);
+  if (!frame) return null;
+  if (frame.kind === "admin") return frame.adminId ? (ADMIN_MODULES.find((m) => m.id === frame.adminId)?.path ?? "/admin") : "/admin";
+  if (frame.publicId) return PUBLIC_MODULES.find((m) => m.id === frame.publicId)?.path ?? path;
+  return path;
+}
+
 const subscribers = new Set<(userId: string, r: RecentRoute[]) => void>();
 
-/** Record a visit for `userId` (no-op for guests). Ignores paths that don't resolve to an app frame; admin pages are
- *  stored as their parent module path so record ids (e.g. /admin/users/edit/<id>) are never kept; dedupes; keeps the last 6. */
+/** Record a visit for `userId` (no-op for guests). Ignores paths that don't resolve to an app frame; every page is
+ *  stored as its module path (see moduleRoot), so record ids are never kept and each module appears once; keeps the last 6. */
 export function recordRecentRoute(rawPath: string, userId?: string | null): void {
   if (!userId) return;
-  let path = rawPath.length > 1 ? rawPath.replace(/\/+$/, "") : rawPath;
-  const frame = resolveAppFrame(path);
-  if (!frame) return;
-  if (frame.kind === "admin" && frame.adminId) {
-    path = ADMIN_MODULES.find((m) => m.id === frame.adminId)?.path ?? "/admin";
-  }
+  const path = moduleRoot(rawPath);
+  if (!path) return;
   const next = [{ path, at: Date.now() }, ...readRecentRoutes(userId).filter((r) => r.path !== path)].slice(0, MAX_RECENT);
   try {
     localStorage.setItem(keyFor(userId), JSON.stringify(next));
