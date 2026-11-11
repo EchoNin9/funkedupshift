@@ -233,14 +233,17 @@ data "aws_iam_policy_document" "terraformManage" {
       "arn:aws:s3:::${var.mediaBucketName}/*"
     ]
   }
-  # S3 CloudFront logs bucket
+  # Account-suffixed module buckets (cf-logs, social-media, lipsync-media,
+  # tools-qr, ...) in ONE wildcard statement. The managed policy is capped at
+  # 6144 chars (IAM PolicySize) — adding a statement per bucket hit that limit
+  # on FUNK-65. New fus-<name>-<account_id> buckets need no change here.
   statement {
-    sid     = "TerraformManageCloudfrontLogsBucket"
+    sid     = "TerraformManageModuleBuckets"
     effect  = "Allow"
     actions = ["s3:*"]
     resources = [
-      "arn:aws:s3:::fus-cf-logs-${data.aws_caller_identity.current.account_id}",
-      "arn:aws:s3:::fus-cf-logs-${data.aws_caller_identity.current.account_id}/*"
+      "arn:aws:s3:::fus-*-${data.aws_caller_identity.current.account_id}",
+      "arn:aws:s3:::fus-*-${data.aws_caller_identity.current.account_id}/*"
     ]
   }
   # DynamoDB main table – full manage (covers DescribeContinuousBackups and any future provider APIs)
@@ -354,20 +357,12 @@ data "aws_iam_policy_document" "terraformManage" {
     actions   = ["route53:*"]
     resources = ["*"]
   }
-  # --- social scheduling module (infra/social.tf) -----------------------------
+  # --- social scheduling / lipsync modules (infra/social.tf, lipsync.tf) -----
   # The staging deploy role also carries AdministratorAccess (attached outside
-  # Terraform), so it applied social.tf without needing any of the statements
-  # below. The production role only has this policy, so a green staging deploy
-  # is NOT evidence that production has the permissions it needs.
-  statement {
-    sid     = "TerraformManageSocialMediaBucket"
-    effect  = "Allow"
-    actions = ["s3:*"]
-    resources = [
-      "arn:aws:s3:::fus-social-media-${data.aws_caller_identity.current.account_id}",
-      "arn:aws:s3:::fus-social-media-${data.aws_caller_identity.current.account_id}/*"
-    ]
-  }
+  # Terraform), so it applies new modules without needing these statements.
+  # The production role only has this policy, so a green staging deploy is NOT
+  # evidence that production has the permissions it needs. (Their buckets are
+  # covered by TerraformManageModuleBuckets above.)
   statement {
     sid     = "TerraformManageSocialSns"
     effect  = "Allow"
@@ -401,28 +396,6 @@ data "aws_iam_policy_document" "terraformManage" {
     effect    = "Allow"
     actions   = ["kms:ListAliases", "kms:DescribeKey"]
     resources = ["*"]
-  }
-  # --- lipsync module (infra/lipsync.tf) -------------------------------------
-  # Same story as the social block above: staging's AdministratorAccess hid the
-  # gap, production's main-branch apply failed on every lipsync resource.
-  statement {
-    sid     = "TerraformManageLipsyncMediaBucket"
-    effect  = "Allow"
-    actions = ["s3:*"]
-    resources = [
-      "arn:aws:s3:::fus-lipsync-media-${data.aws_caller_identity.current.account_id}",
-      "arn:aws:s3:::fus-lipsync-media-${data.aws_caller_identity.current.account_id}/*"
-    ]
-  }
-  # --- tools QR image bucket (FUNK-65, infra/tools.tf aws_s3_bucket.toolsQr) --
-  statement {
-    sid     = "TerraformManageToolsQrBucket"
-    effect  = "Allow"
-    actions = ["s3:*"]
-    resources = [
-      "arn:aws:s3:::fus-tools-qr-${data.aws_caller_identity.current.account_id}",
-      "arn:aws:s3:::fus-tools-qr-${data.aws_caller_identity.current.account_id}/*"
-    ]
   }
 }
 
