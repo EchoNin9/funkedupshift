@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import AuthView from "./AuthView";
 import ShortenerTool from "./ShortenerTool";
 import PasswordTool from "./PasswordTool";
+import QrTool, { QrLink } from "./QrTool";
 import ImageToolsTool from "./ImageToolsTool";
 import DnsTool from "./DnsTool";
 import TextShareTool from "./TextShareTool";
@@ -12,6 +13,7 @@ type View =
   | "landing"
   | "tool:shortener"
   | "tool:password"
+  | "tool:qr"
   | "tool:imagetools"
   | "tool:dns"
   | "tool:pastebin"
@@ -40,7 +42,7 @@ interface ToolDef {
 const TOOLS: ToolDef[] = [
   { id: "shortener", name: "URL Shortener", description: "Mint short links and manage the ones you've made.", available: true },
   { id: "password", name: "Password Generator", description: "Generate strong passwords, right in your browser.", available: true },
-  { id: "qr", name: "QR Codes", description: "Generate a QR code for any link or block of text.", available: false },
+  { id: "qr", name: "QR Codes", description: "Generate a QR code for any link or block of text.", available: true },
   { id: "pastebin", name: "Text Share", description: "Share text snippets with a link that expires.", available: true },
   { id: "imagetools", name: "Image Tools", description: "Resize, crop, remove backgrounds.", available: true },
   { id: "dns", name: "DNS Lookup", description: "Look up A, MX, TXT and other DNS records for any domain.", available: true },
@@ -52,6 +54,8 @@ const App: React.FC = () => {
   const [view, setView] = useState<View>("landing");
   const [auth, setAuth] = useState<AuthState>({ checked: false, signedIn: false, email: null });
   const [sessionNotice, setSessionNotice] = useState<string | null>(null);
+  // Set when the QR tool is opened from a shortener row; null for standalone use.
+  const [qrLink, setQrLink] = useState<QrLink | null>(null);
 
   const refreshAuth = useCallback(() => {
     const w = window as any;
@@ -78,7 +82,10 @@ const App: React.FC = () => {
     refreshAuth();
   }, [refreshAuth]);
 
-  const goLanding = () => setView("landing");
+  const goLanding = () => {
+    setQrLink(null);
+    setView("landing");
+  };
 
   const handleSignOut = () => {
     const w = window as any;
@@ -108,6 +115,7 @@ const App: React.FC = () => {
       return;
     }
     if (!tool.available) return; // coming-soon cards stay disabled even when authed
+    setQrLink(null);
     setView(`tool:${tool.id}` as View);
   };
 
@@ -173,10 +181,26 @@ const App: React.FC = () => {
         )}
 
         {view === "tool:shortener" && auth.signedIn && (
-          <ShortenerTool onBack={goLanding} onAuthError={handleAuthError} />
+          <ShortenerTool
+            onBack={goLanding}
+            onAuthError={handleAuthError}
+            onOpenQr={(link) => {
+              setQrLink(link);
+              setView("tool:qr");
+            }}
+          />
         )}
 
         {view === "tool:password" && auth.signedIn && <PasswordTool onBack={goLanding} />}
+
+        {view === "tool:qr" && auth.signedIn && (
+          <QrTool
+            key={qrLink?.code ?? "standalone"}
+            link={qrLink}
+            onBack={qrLink ? () => { setQrLink(null); setView("tool:shortener"); } : goLanding}
+            onAuthError={handleAuthError}
+          />
+        )}
 
         {view === "tool:imagetools" && auth.signedIn && <ImageToolsTool onBack={goLanding} />}
 

@@ -305,6 +305,15 @@ resource "aws_iam_role_policy" "lambdaTools" {
           "dynamodb:DeleteItem", "dynamodb:UpdateItem", "dynamodb:Query",
         ]
         Resource = [aws_dynamodb_table.textShare.arn, "${aws_dynamodb_table.textShare.arn}/index/*"]
+      },
+      {
+        # QR images (FUNK-65): object-level only, qr/* prefix. PutObject is
+        # needed because the presigned POST is signed with this role's
+        # credentials (the upload itself is performed by the browser).
+        # GetObject covers the presigned GET and head_object; no ListBucket.
+        Effect   = "Allow"
+        Action   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
+        Resource = "${aws_s3_bucket.toolsQr.arn}/qr/*"
       }
     ]
   })
@@ -328,6 +337,93 @@ resource "aws_lambda_function" "tools" {
       LINK_TTL_DAYS     = tostring(var.linkTtlDays)
       TEXT_TABLE_NAME   = aws_dynamodb_table.textShare.name
       TEXT_TABLE_REGION = "ca-central-1"
+      QR_BUCKET         = aws_s3_bucket.toolsQr.bucket
+    }
+  }
+}
+
+# ------------------------------------------------------------------------------
+# QR images for short links (FUNK-65): qr/<code>.png. Private; the browser
+# uploads via a presigned POST (size-capped by the policy) and reads via a
+# presigned GET, both minted by the tools Lambda.
+# ------------------------------------------------------------------------------
+resource "aws_s3_bucket" "toolsQr" {
+  bucket = "fus-tools-qr-${data.aws_caller_identity.current.account_id}"
+}
+
+resource "aws_s3_bucket_public_access_block" "toolsQr" {
+  bucket = aws_s3_bucket.toolsQr.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "toolsQr" {
+  bucket = aws_s3_bucket.toolsQr.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+# Browser POSTs (upload) and GETs (<img>/download fetch) go straight to S3,
+# so the bucket needs CORS for every origin that hosts a frontend. Explicit
+# list rather than "*" (unlike the social/lipsync buckets) since there is no
+# reason to allow other sites to read these.
+resource "aws_s3_bucket_cors_configuration" "toolsQr" {
+  bucket = aws_s3_bucket.toolsQr.id
+
+  cors_rule {
+    allowed_headers = ["*"]
+    allowed_methods = ["GET", "HEAD", "POST", "PUT"]
+    allowed_origins = [
+      "https://tools.e9.cx",
+      "https://${var.domainCom}",
+      "https://www.${var.domainCom}",
+      "https://${var.stagingSubdomain}.${var.domainCom}",
+      "https://${var.domainCa}",
+      "https://www.${var.domainCa}",
+      "https://${var.stagingSubdomain}.${var.domainCa}",
+      "http://localhost:5173",
+      "http://localhost:4173",
+    ]
+    expose_headers = ["ETag"]
+  }
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "toolsQr" {
+  bucket = aws_s3_bucket.toolsQr.id
+
+  rule {
+    id     = "abort-incomplete-multipart-uploads"
+    status = "Enabled"
+
+    filter {}
+
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 7
+    }
+  }
+
+  # Orphan backstop for links that expire or are TTL-reaped without an
+  # explicit delete. PATCH /s/{code} accepts ANY future expiry (no cap), so
+  # no number is strictly safe; 400 days comfortably exceeds the 30-day mint
+  # TTL (var.linkTtlDays) and any realistic extension. Re-saving a QR
+  # rewrites the object and restarts its clock.
+  rule {
+    id     = "expire-qr-images"
+    status = "Enabled"
+
+    filter {
+      prefix = "qr/"
+    }
+
+    expiration {
+      days = 400
     }
   }
 }
@@ -387,6 +483,34 @@ resource "aws_apigatewayv2_route" "toolsShortenDelete" {
 resource "aws_apigatewayv2_route" "toolsShortenPatch" {
   api_id             = aws_apigatewayv2_api.main.id
   route_key          = "PATCH /s/{code}"
+  target             = "integrations/${aws_apigatewayv2_integration.tools.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+# QR image per short link (FUNK-65, creator only). POST returns a presigned
+# S3 POST, PUT confirms the upload landed, DELETE removes it. The handler
+# dispatches these via a regex (not literal path ==), so
+# tests/test_route_coverage.py cannot check them — keep these in sync by hand.
+resource "aws_apigatewayv2_route" "toolsShortenQrPresign" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /s/{code}/qr"
+  target             = "integrations/${aws_apigatewayv2_integration.tools.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "toolsShortenQrConfirm" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "PUT /s/{code}/qr"
+  target             = "integrations/${aws_apigatewayv2_integration.tools.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "toolsShortenQrDelete" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "DELETE /s/{code}/qr"
   target             = "integrations/${aws_apigatewayv2_integration.tools.id}"
   authorization_type = "JWT"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id

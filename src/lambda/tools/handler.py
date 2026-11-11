@@ -10,7 +10,8 @@ Resolution (the hot path — fus.fyi/<code> -> redirect) happens entirely at
 the CloudFront edge via a CloudFront Function reading the KeyValueStore.
 This Lambda is only invoked for minting (POST /s), metadata (GET /s/{code}),
 listing a caller's own links (GET /s), and creator-only delete/expiry-edit
-(DELETE /s/{code}, PATCH /s/{code}) — all behind the existing Cognito JWT
+(DELETE /s/{code}, PATCH /s/{code}), and the per-link QR image
+(POST/PUT/DELETE /s/{code}/qr, FUNK-65) — all behind the existing Cognito JWT
 authorizer.
 
 Write flow: mint -> DynamoDB PutItem (source of truth, conditional on the
@@ -67,6 +68,14 @@ TOOLS_TABLE_NAME = os.environ.get("TOOLS_TABLE_NAME", "")
 KVS_ARN = os.environ.get("KVS_ARN", "")
 SHORT_DOMAIN = os.environ.get("SHORT_DOMAIN", "fus.fyi")
 LINK_TTL_DAYS = int(os.environ.get("LINK_TTL_DAYS", "30"))
+QR_BUCKET = os.environ.get("QR_BUCKET", "")
+
+# QR images (FUNK-65): one private object per short link at qr/<code>.png.
+QR_MAX_BYTES = 5 * 1024 * 1024
+QR_CONTENT_TYPE = "image/png"
+QR_UPLOAD_EXPIRES_IN = 300       # presigned POST: 5 min
+QR_VIEW_EXPIRES_IN = 3600        # presigned GET in list/get responses: 1 h
+_QR_PATH_RE = re.compile(r"^/s/([^/]+)/qr$")
 
 # Domains that resolve short codes themselves — a short URL that targets one
 # of these would create a redirect loop at the edge. Codes are global and
@@ -84,6 +93,7 @@ MAX_LIST_LIMIT = 100
 
 _dynamodb = None
 _kvs = None
+_s3 = None
 
 
 def _ddb():
@@ -93,6 +103,24 @@ def _ddb():
         import boto3
         _dynamodb = boto3.client("dynamodb")
     return _dynamodb
+
+
+def _s3Client():
+    """Cached S3 client. SigV4 so presigned POST/GET work in any region."""
+    global _s3
+    if _s3 is None:
+        import boto3
+        from botocore.config import Config
+        # Pin the regional endpoint: a global s3.amazonaws.com URL makes the
+        # browser's presigned POST hit a 307 redirect, which CORS rejects.
+        region = os.environ.get("AWS_REGION", "us-east-1")
+        _s3 = boto3.client(
+            "s3",
+            region_name=region,
+            endpoint_url=f"https://s3.{region}.amazonaws.com",
+            config=Config(signature_version="s3v4", s3={"addressing_style": "virtual"}),
+        )
+    return _s3
 
 
 def _kvsClient():
@@ -291,18 +319,17 @@ def getShortLink(event, code):
     if not item:
         return jsonResponse({"error": "Not found"}, 404)
 
-    return jsonResponse(
-        {
-            "code": item.get("code", {}).get("S", code),
-            "url": item.get("url", {}).get("S", ""),
-            "createdBy": item.get("createdBy", {}).get("S", ""),
-            "createdHost": item.get("createdHost", {}).get("S", ""),
-            "createdAt": item.get("createdAt", {}).get("S", ""),
-            "expiresAt": int(item.get("expiresAt", {}).get("N", "0")),
-            "shortUrl": f"https://{SHORT_DOMAIN}/{code}",
-        },
-        200,
-    )
+    body = {
+        "code": item.get("code", {}).get("S", code),
+        "url": item.get("url", {}).get("S", ""),
+        "createdBy": item.get("createdBy", {}).get("S", ""),
+        "createdHost": item.get("createdHost", {}).get("S", ""),
+        "createdAt": item.get("createdAt", {}).get("S", ""),
+        "expiresAt": int(item.get("expiresAt", {}).get("N", "0")),
+        "shortUrl": f"https://{SHORT_DOMAIN}/{code}",
+    }
+    body.update(_qrFields(item))
+    return jsonResponse(body, 200)
 
 
 def listShortLinks(event):
@@ -341,16 +368,17 @@ def listShortLinks(event):
 
     resp = client.query(**kwargs)
 
-    items = [
-        {
+    items = []
+    for item in resp.get("Items", []):
+        row = {
             "code": item.get("code", {}).get("S", ""),
             "url": item.get("url", {}).get("S", ""),
             "shortUrl": f"https://{SHORT_DOMAIN}/{item.get('code', {}).get('S', '')}",
             "createdAt": item.get("createdAt", {}).get("S", ""),
             "expiresAt": int(item.get("expiresAt", {}).get("N", "0")),
         }
-        for item in resp.get("Items", [])
-    ]
+        row.update(_qrFields(item))
+        items.append(row)
 
     lastEvaluatedKey = resp.get("LastEvaluatedKey")
     nextCursor = _encodeCursor(lastEvaluatedKey) if lastEvaluatedKey else None
@@ -379,6 +407,14 @@ def deleteShortLink(event, code):
     except Exception as e:
         logger.error("KVS delete failed for code=%s: %s", code, e)
         return jsonResponse({"error": "Could not delete short link; please retry"}, 500)
+
+    # Best-effort: an orphaned QR object is harmless (private, lifecycle
+    # expires it) and must not block deleting the link itself.
+    if QR_BUCKET:
+        try:
+            _s3Client().delete_object(Bucket=QR_BUCKET, Key=_qrKey(code))
+        except Exception as e:
+            logger.warning("QR delete failed for code=%s: %s", code, e)
 
     client.delete_item(TableName=TOOLS_TABLE_NAME, Key={"code": {"S": code}})
     return jsonResponse({"code": code, "deleted": True}, 200)
@@ -443,6 +479,109 @@ def patchShortLinkExpiry(event, code):
         },
         200,
     )
+
+# --- QR image per short link (FUNK-65) ----------------------------------------
+
+
+def _qrKey(code):
+    return f"qr/{code}.png"
+
+
+def _qrFields(item):
+    """{qrUrl, qrUpdatedAt} for an item that has a saved QR, else {}."""
+    updated = item.get("qrUpdatedAt", {}).get("S")
+    if not updated or not QR_BUCKET:
+        return {}
+    code = item.get("code", {}).get("S", "")
+    try:
+        url = _s3Client().generate_presigned_url(
+            "get_object",
+            Params={"Bucket": QR_BUCKET, "Key": _qrKey(code)},
+            ExpiresIn=QR_VIEW_EXPIRES_IN,
+        )
+    except Exception as e:
+        logger.warning("QR presign GET failed for code=%s: %s", code, e)
+        return {}
+    return {"qrUrl": url, "qrUpdatedAt": updated}
+
+
+def _ownedLinkOr404(event, code):
+    """Returns (item, None) for the caller's own link, else (None, 404 response).
+    Non-owners get the same 404 as a missing code so existence isn't leaked."""
+    resp = _ddb().get_item(TableName=TOOLS_TABLE_NAME, Key={"code": {"S": code}})
+    item = resp.get("Item")
+    if not item or item.get("createdBy", {}).get("S", "") != _getSub(event):
+        return None, jsonResponse({"error": "Not found"}, 404)
+    return item, None
+
+
+def presignQrUpload(event, code):
+    """POST /s/{code}/qr -> {uploadUrl, fields, maxBytes}. Presigned POST (not
+    PUT) because only POST policies can enforce content-length-range. Nothing
+    is recorded on the link until the client confirms with PUT /s/{code}/qr,
+    so a failed upload never leaves a dangling qrUpdatedAt."""
+    if not QR_BUCKET:
+        return jsonResponse({"error": "QR storage is not configured"}, 500)
+    _, err = _ownedLinkOr404(event, code)
+    if err:
+        return err
+    post = _s3Client().generate_presigned_post(
+        Bucket=QR_BUCKET,
+        Key=_qrKey(code),
+        Fields={"Content-Type": QR_CONTENT_TYPE},
+        Conditions=[
+            {"Content-Type": QR_CONTENT_TYPE},
+            ["content-length-range", 1, QR_MAX_BYTES],
+        ],
+        ExpiresIn=QR_UPLOAD_EXPIRES_IN,
+    )
+    return jsonResponse(
+        {"uploadUrl": post["url"], "fields": post["fields"], "maxBytes": QR_MAX_BYTES}, 200
+    )
+
+
+def confirmQrUpload(event, code):
+    """PUT /s/{code}/qr (no body) — verify the object landed, then stamp
+    qrUpdatedAt. Idempotent; re-saving simply overwrites the same key."""
+    if not QR_BUCKET:
+        return jsonResponse({"error": "QR storage is not configured"}, 500)
+    _, err = _ownedLinkOr404(event, code)
+    if err:
+        return err
+    try:
+        head = _s3Client().head_object(Bucket=QR_BUCKET, Key=_qrKey(code))
+    except ClientError as e:
+        if e.response.get("Error", {}).get("Code") in ("404", "NoSuchKey", "NotFound"):
+            return jsonResponse({"error": "No QR image has been uploaded for this link"}, 400)
+        raise
+    if head.get("ContentLength", 0) > QR_MAX_BYTES:
+        return jsonResponse({"error": "QR image too large"}, 400)
+
+    updated = _now()
+    _ddb().update_item(
+        TableName=TOOLS_TABLE_NAME,
+        Key={"code": {"S": code}},
+        UpdateExpression="SET qrUpdatedAt = :u",
+        ExpressionAttributeValues={":u": {"S": updated}},
+    )
+    qr = _qrFields({"code": {"S": code}, "qrUpdatedAt": {"S": updated}})
+    return jsonResponse({"code": code, **qr}, 200)
+
+
+def deleteQr(event, code):
+    """DELETE /s/{code}/qr — remove object, then the attribute (idempotent)."""
+    if not QR_BUCKET:
+        return jsonResponse({"error": "QR storage is not configured"}, 500)
+    _, err = _ownedLinkOr404(event, code)
+    if err:
+        return err
+    _s3Client().delete_object(Bucket=QR_BUCKET, Key=_qrKey(code))  # no error if absent
+    _ddb().update_item(
+        TableName=TOOLS_TABLE_NAME,
+        Key={"code": {"S": code}},
+        UpdateExpression="REMOVE qrUpdatedAt",
+    )
+    return jsonResponse({"code": code, "deleted": True}, 200)
 
 
 DNS_RECORD_TYPES = {"A", "AAAA", "CNAME", "MX", "TXT", "NS", "SOA", "SRV", "CAA", "PTR"}
@@ -782,6 +921,17 @@ def handler(event, context):
         # aws_apigatewayv2_route in infra/tools.tf — a handler route with no
         # gateway route 404s at the gateway without CORS headers.
         # tests/test_route_coverage.py guards this.
+        # QR sub-resource first: the /s/ prefix checks below would otherwise
+        # swallow "/s/<code>/qr" as a code containing a slash.
+        qr_match = _QR_PATH_RE.match(path)
+        if qr_match:
+            qr_code = qr_match.group(1)
+            if method == "POST":
+                return presignQrUpload(event, qr_code)
+            if method == "PUT":
+                return confirmQrUpload(event, qr_code)
+            if method == "DELETE":
+                return deleteQr(event, qr_code)
         if method == "POST" and path == "/s":
             return mintShortLink(event)
         if method == "GET" and path == "/s":
