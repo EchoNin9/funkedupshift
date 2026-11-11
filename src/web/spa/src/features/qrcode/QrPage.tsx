@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { LockSimple } from "@phosphor-icons/react";
 import QRCode from "qrcode";
 import { Alert } from "../../components";
 import { buttonClasses, focusRing } from "../../components/buttonClasses";
 import { useAuth } from "../../shell/AuthContext";
+import { saveQr } from "../tools/api";
 
 // ---- client-side QR code generator ----
 // Duplicated in tools-site's src/QrTool.tsx — the two apps never import from
@@ -168,7 +169,15 @@ const labelCls = "flex items-center gap-2 text-sm font-semibold text-text-primar
 
 const QrPage: React.FC = () => {
   const { user } = useAuth();
-  const [text, setText] = useState("");
+  // Opened from a shortener row as /qr?code=<code>&url=<shortUrl>: prefill the
+  // text and bind "Save to link" to that code. Standalone (no params) is unchanged.
+  const [searchParams] = useSearchParams();
+  const linkCode = searchParams.get("code");
+  const linkUrl = searchParams.get("url");
+  const link = linkCode && linkUrl ? { code: linkCode, shortUrl: linkUrl } : null;
+  const [text, setText] = useState(linkUrl && linkCode ? linkUrl : "");
+  const [saving, setSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState<{ kind: "success" | "error"; text: string } | null>(null);
   const [ec, setEc] = useState<EcLevel>("M");
   const [size, setSize] = useState(256);
   const [margin, setMargin] = useState(4);
@@ -220,6 +229,23 @@ const QrPage: React.FC = () => {
     if (!canvas) return;
     const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
     if (blob) downloadBlob(blob, "qrcode.png");
+  };
+
+  const handleSave = async () => {
+    const canvas = canvasRef.current;
+    if (!canvas || !link) return;
+    setSaving(true);
+    setSaveMsg(null);
+    try {
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
+      if (!blob) throw new Error("Could not render the QR image.");
+      await saveQr(link.code, blob);
+      setSaveMsg({ kind: "success", text: "Saved to link." });
+    } catch (err) {
+      setSaveMsg({ kind: "error", text: err instanceof Error ? err.message : "Could not save the QR code." });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleSvg = async () => {
@@ -299,7 +325,16 @@ const QrPage: React.FC = () => {
   return (
     <div className="space-y-4">
       {srTitle}
-      <p className="text-sm text-text-secondary">Generated locally — nothing ever leaves your browser.</p>
+      <p className="text-sm text-text-secondary">
+        {link
+          ? "Generated locally — the image only leaves your browser if you press Save to link."
+          : "Generated locally — nothing ever leaves your browser."}
+      </p>
+      {link && (
+        <p className="text-sm text-text-primary">
+          Saving for <span className="break-all font-semibold">{link.shortUrl}</span>
+        </p>
+      )}
 
       <div className={card}>
         <textarea
@@ -431,7 +466,18 @@ const QrPage: React.FC = () => {
             {copied ? "Copied!" : "Copy image"}
           </button>
         )}
+        {link && (
+          <button type="button" onClick={handleSave} disabled={!canAct || saving} className={buttonClasses("primary", "lg")}>
+            {saving ? "Saving…" : "Save to link"}
+          </button>
+        )}
       </div>
+      {saveMsg && <Alert variant={saveMsg.kind}>{saveMsg.text}</Alert>}
+      {link && (
+        <Link to="/shortener" className={buttonClasses("ghost", "md")}>
+          Back to your links
+        </Link>
+      )}
     </div>
   );
 };

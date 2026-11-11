@@ -96,9 +96,14 @@ at collection on `test_tools_dns.py`).
   `UserRole` value **`superadmin`** — there is no `"admin"` role literal.
 - **Data:** single-table DynamoDB (`PK`/`SK` + GSIs).
 - **Infra:** Terraform in `infra/`.
-- **Branches/deploy:** work on `development` (auto-deploys staging); `main` is
+- **Branches/deploy:** NEVER commit directly to `development` or `main`. Every
+  piece of work gets its own branch off `development`, named for the ticket:
+  `feature/FUNK-<n>-<slug>` (or `fix/FUNK-<n>-<slug>`). Open a PR
+  branch → `development`, wait for PR Check to pass, then merge. This keeps
+  parallel agents/sessions from colliding. `development` auto-deploys staging
+  (and the env-shared tools platform — i.e. LIVE tools.e9.cx); `main` is
   production. PRs go `development` → `main`. Don't push/merge `main` directly.
-  Antigravity must ALWAYS push ONLY to the `development` branch (or feature branches targeting `development`).
+  This applies to Claude Code and Antigravity alike.
 
 Planning briefs and design docs live in `docs/`.
 
