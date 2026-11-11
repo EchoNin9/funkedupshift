@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
+import { isAuthError, saveQr } from "./api";
 
 // ---- client-side QR code generator ----
 // Duplicated in the SPA's src/features/qrcode/QrPage.tsx — this app
@@ -158,12 +159,23 @@ async function loadImage(file: File): Promise<Source> {
   return canvas;
 }
 
-interface Props {
-  onBack: () => void;
+/** A short link the QR tool is bound to (set when opened from the shortener). */
+export interface QrLink {
+  code: string;
+  shortUrl: string;
 }
 
-const QrTool: React.FC<Props> = ({ onBack }) => {
-  const [text, setText] = useState("");
+interface Props {
+  onBack: () => void;
+  /** When set: text is prefilled with link.shortUrl and a "Save to link" action appears. */
+  link?: QrLink | null;
+  onAuthError?: () => void;
+}
+
+const QrTool: React.FC<Props> = ({ onBack, link = null, onAuthError }) => {
+  const [text, setText] = useState(link?.shortUrl ?? "");
+  const [saving, setSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
   const [ec, setEc] = useState<EcLevel>("M");
   const [size, setSize] = useState(256);
   const [margin, setMargin] = useState(4);
@@ -214,6 +226,27 @@ const QrTool: React.FC<Props> = ({ onBack }) => {
     if (!canvas) return;
     const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
     if (blob) downloadBlob(blob, "qrcode.png");
+  };
+
+  const handleSave = async () => {
+    const canvas = canvasRef.current;
+    if (!canvas || !link) return;
+    setSaving(true);
+    setSaveMsg(null);
+    try {
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
+      if (!blob) throw new Error("Could not render the QR image.");
+      await saveQr(link.code, blob);
+      setSaveMsg({ kind: "ok", text: "Saved to link." });
+    } catch (err) {
+      if (isAuthError(err)) {
+        onAuthError?.();
+        return;
+      }
+      setSaveMsg({ kind: "error", text: err instanceof Error ? err.message : "Failed to save QR code." });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleSvg = async () => {
@@ -276,7 +309,16 @@ const QrTool: React.FC<Props> = ({ onBack }) => {
         &larr; Back
       </button>
       <h1 className="tool-heading">QR Codes</h1>
-      <p className="muted local-notice">Generated locally — nothing ever leaves your browser.</p>
+      <p className="muted local-notice">
+        {link
+          ? "Generated locally — the image only leaves your browser if you press Save to link."
+          : "Generated locally — nothing ever leaves your browser."}
+      </p>
+      {link && (
+        <p className="qr-saving-for">
+          Saving for <code>{link.shortUrl}</code>
+        </p>
+      )}
 
       <div className="textshare-form">
         <textarea
@@ -363,7 +405,17 @@ const QrTool: React.FC<Props> = ({ onBack }) => {
             {copied ? "Copied!" : "Copy image"}
           </button>
         )}
+        {link && (
+          <button type="button" className="btn btn-primary" onClick={handleSave} disabled={!canAct || saving}>
+            {saving ? "Saving…" : "Save to link"}
+          </button>
+        )}
       </div>
+      {saveMsg && (
+        <div className={`banner ${saveMsg.kind === "ok" ? "banner-info" : "banner-error"}`} role="status">
+          {saveMsg.text}
+        </div>
+      )}
     </section>
   );
 };

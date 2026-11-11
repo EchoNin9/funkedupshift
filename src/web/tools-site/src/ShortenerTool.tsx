@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { ShortLink, deleteLink, isAuthError, listLinks, mintShortLink, updateExpiry } from "./api";
+import { ShortLink, deleteLink, deleteQr, isAuthError, listLinks, mintShortLink, updateExpiry } from "./api";
 
 interface Props {
   onBack: () => void;
   onAuthError: () => void;
+  /** Open the QR generator bound to this link (prefilled, with Save to link). */
+  onOpenQr: (link: { code: string; shortUrl: string }) => void;
 }
 
 function formatExpiry(epochSeconds: number): string {
@@ -31,7 +33,7 @@ async function copyToClipboard(text: string): Promise<boolean> {
   return false;
 }
 
-const ShortenerTool: React.FC<Props> = ({ onBack, onAuthError }) => {
+const ShortenerTool: React.FC<Props> = ({ onBack, onAuthError, onOpenQr }) => {
   const [url, setUrl] = useState("");
   const [minting, setMinting] = useState(false);
   const [mintError, setMintError] = useState<string | null>(null);
@@ -47,6 +49,9 @@ const ShortenerTool: React.FC<Props> = ({ onBack, onAuthError }) => {
   const [editingCode, setEditingCode] = useState<string | null>(null);
   const [editDate, setEditDate] = useState("");
   const [editError, setEditError] = useState<string | null>(null);
+
+  const [openShades, setOpenShades] = useState<Set<string>>(new Set()); // closed by default
+  const [qrBusy, setQrBusy] = useState<string | null>(null);
 
   const load = async (reset: boolean) => {
     if (reset) setLoading(true);
@@ -116,6 +121,52 @@ const ShortenerTool: React.FC<Props> = ({ onBack, onAuthError }) => {
     }
   };
 
+  const toggleShade = (code: string) =>
+    setOpenShades((prev) => {
+      const next = new Set(prev);
+      if (next.has(code)) next.delete(code);
+      else next.add(code);
+      return next;
+    });
+
+  const handleDownloadQr = async (link: ShortLink) => {
+    if (!link.qrUrl) return;
+    setQrBusy(link.code);
+    try {
+      const blob = await (await fetch(link.qrUrl)).blob();
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `qr-${link.code}.png`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(a.href);
+    } catch {
+      setListError("Failed to download QR code.");
+    } finally {
+      setQrBusy(null);
+    }
+  };
+
+  const handleDeleteQr = async (link: ShortLink) => {
+    if (!window.confirm(`Delete the saved QR code for ${link.shortUrl}?`)) return;
+    setQrBusy(link.code);
+    try {
+      await deleteQr(link.code);
+      setLinks((prev) =>
+        prev.map((l) => (l.code === link.code ? { ...l, qrUrl: undefined, qrUpdatedAt: undefined } : l))
+      );
+    } catch (err) {
+      if (isAuthError(err)) {
+        onAuthError();
+        return;
+      }
+      setListError(err instanceof Error ? err.message : "Failed to delete QR code.");
+    } finally {
+      setQrBusy(null);
+    }
+  };
+
   const startEdit = (link: ShortLink) => {
     setEditingCode(link.code);
     setEditDate(toDateInputValue(link.expiresAt));
@@ -135,7 +186,8 @@ const ShortenerTool: React.FC<Props> = ({ onBack, onAuthError }) => {
     }
     try {
       const updated = await updateExpiry(code, ts);
-      setLinks((prev) => prev.map((l) => (l.code === code ? updated : l)));
+      // PATCH's response carries no QR fields — merge so the row keeps its QR.
+      setLinks((prev) => prev.map((l) => (l.code === code ? { ...l, ...updated } : l)));
       setEditingCode(null);
     } catch (err) {
       if (isAuthError(err)) {
@@ -173,6 +225,9 @@ const ShortenerTool: React.FC<Props> = ({ onBack, onAuthError }) => {
           <code>{mintResult.shortUrl}</code>
           <button type="button" className="btn btn-ghost" onClick={() => handleCopy(mintResult.shortUrl)}>
             {copied ? "Copied!" : "Copy"}
+          </button>
+          <button type="button" className="btn btn-ghost" onClick={() => onOpenQr(mintResult)}>
+            QR code
           </button>
         </div>
       )}
@@ -218,10 +273,52 @@ const ShortenerTool: React.FC<Props> = ({ onBack, onAuthError }) => {
                 <button type="button" className="btn btn-ghost" onClick={() => handleCopy(link.shortUrl)}>
                   Copy
                 </button>
+                <button type="button" className="btn btn-ghost" onClick={() => onOpenQr(link)}>
+                  QR code
+                </button>
                 <button type="button" className="btn btn-danger" onClick={() => handleDelete(link.code)}>
                   Delete
                 </button>
               </div>
+              {link.qrUrl && (
+                <div className="qr-shade">
+                  <button
+                    type="button"
+                    className="qr-shade-toggle"
+                    aria-expanded={openShades.has(link.code)}
+                    aria-controls={`qr-shade-${link.code}`}
+                    onClick={() => toggleShade(link.code)}
+                  >
+                    <span className={`qr-chevron${openShades.has(link.code) ? " open" : ""}`} aria-hidden="true">
+                      &#9656;
+                    </span>
+                    QR code
+                  </button>
+                  {openShades.has(link.code) && (
+                    <div className="qr-shade-body" id={`qr-shade-${link.code}`}>
+                      <img src={link.qrUrl} alt={`QR code for ${link.shortUrl}`} className="qr-shade-img" />
+                      <div className="qr-shade-actions">
+                        <button
+                          type="button"
+                          className="btn btn-ghost"
+                          disabled={qrBusy === link.code}
+                          onClick={() => handleDownloadQr(link)}
+                        >
+                          Download PNG
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-danger"
+                          disabled={qrBusy === link.code}
+                          onClick={() => handleDeleteQr(link)}
+                        >
+                          Delete QR
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </li>
           ))}
         </ul>

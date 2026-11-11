@@ -915,3 +915,60 @@ body {
 .conv-tz-result {
   margin-top: 1.25rem;
 }
+
+/* QR shade (FUNK-65): collapsible saved-QR panel under a link row. */
+.qr-saving-for {
+  margin: 0.25rem 0 0.75rem;
+}
+
+.qr-shade {
+  flex-basis: 100%;
+  border-top: 1px solid var(--border);
+  padding-top: 0.5rem;
+}
+
+.qr-shade-toggle {
+  background: none;
+  border: 0;
+  color: var(--text-muted);
+  font: inherit;
+  cursor: pointer;
+  padding: 0.15rem 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.qr-shade-toggle:hover {
+  color: var(--text);
+}
+
+.qr-chevron {
+  display: inline-block;
+  transition: transform 0.15s;
+}
+
+.qr-chevron.open {
+  transform: rotate(90deg);
+}
+
+.qr-shade-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 1rem;
+  padding: 0.75rem 0 0.25rem;
+}
+
+.qr-shade-img {
+  width: 160px;
+  height: 160px;
+  object-fit: contain;
+  background: #fff;
+  border-radius: 6px;
+}
+
+.qr-shade-actions {
+  display: flex;
+  gap: 0.5rem;
+}

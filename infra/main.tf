@@ -414,6 +414,16 @@ data "aws_iam_policy_document" "terraformManage" {
       "arn:aws:s3:::fus-lipsync-media-${data.aws_caller_identity.current.account_id}/*"
     ]
   }
+  # --- tools QR image bucket (FUNK-65, infra/tools.tf aws_s3_bucket.toolsQr) --
+  statement {
+    sid     = "TerraformManageToolsQrBucket"
+    effect  = "Allow"
+    actions = ["s3:*"]
+    resources = [
+      "arn:aws:s3:::fus-tools-qr-${data.aws_caller_identity.current.account_id}",
+      "arn:aws:s3:::fus-tools-qr-${data.aws_caller_identity.current.account_id}/*"
+    ]
+  }
 }
 
 resource "aws_iam_policy" "terraformManage" {

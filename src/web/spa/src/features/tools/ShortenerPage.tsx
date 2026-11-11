@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { CalendarDots, CheckCircle, LinkSimple, LockSimple, Trash } from "@phosphor-icons/react";
+import { Link, useNavigate } from "react-router-dom";
+import { CalendarDots, CaretRight, CheckCircle, DownloadSimple, LinkSimple, LockSimple, QrCode, Trash } from "@phosphor-icons/react";
 import { Alert } from "../../components";
 import { buttonClasses, focusRing } from "../../components/buttonClasses";
 import { CopyButton } from "../../components/CopyButton";
@@ -9,7 +9,7 @@ import { IconButton } from "../../components/IconButton";
 import { FieldError, IconTextField } from "../../components/IconTextField";
 import { ListCard, ListEmpty, ListRow } from "../../components/ListCard";
 import { useAuth } from "../../shell/AuthContext";
-import { mintShortLink, listLinks, deleteLink, updateExpiry, type ShortLink } from "./api";
+import { mintShortLink, listLinks, deleteLink, deleteQr, updateExpiry, type ShortLink } from "./api";
 
 const URL_PATTERN = /^https?:\/\/[^\s/]+\.[^\s/]+/i;
 const URL_ERROR = "Enter a full URL starting with http:// or https://";
@@ -52,8 +52,13 @@ const LinkRow: React.FC<{
   link: ShortLink;
   onDelete: (code: string) => void;
   onSaveExpiry: (code: string, expiresAt: number) => Promise<void>;
+  onOpenQr: (link: ShortLink) => void;
+  onDeleteQr: (code: string) => Promise<void>;
   busy: boolean;
-}> = ({ link, onDelete, onSaveExpiry, busy }) => {
+}> = ({ link, onDelete, onSaveExpiry, onOpenQr, onDeleteQr, busy }) => {
+  const [qrOpen, setQrOpen] = useState(false); // shade closed by default
+  const [qrBusy, setQrBusy] = useState(false);
+  const [qrError, setQrError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(() => toDatetimeLocalValue(link.expiresAt));
   const [saving, setSaving] = useState(false);
@@ -83,6 +88,40 @@ const LinkRow: React.FC<{
     }
   }, [draft, link.code, onSaveExpiry]);
 
+  const downloadQr = useCallback(async () => {
+    if (!link.qrUrl) return;
+    setQrBusy(true);
+    setQrError(null);
+    try {
+      const blob = await (await fetch(link.qrUrl)).blob();
+      const href = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = href;
+      a.download = `qr-${link.code}.png`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(href);
+    } catch {
+      setQrError("Could not download the QR code.");
+    } finally {
+      setQrBusy(false);
+    }
+  }, [link.qrUrl, link.code]);
+
+  const removeQr = useCallback(async () => {
+    if (!window.confirm(`Delete the saved QR code for ${link.shortUrl}?`)) return;
+    setQrBusy(true);
+    setQrError(null);
+    try {
+      await onDeleteQr(link.code);
+    } catch (err) {
+      setQrError(err instanceof Error ? err.message : "Could not delete the QR code.");
+    } finally {
+      setQrBusy(false);
+    }
+  }, [link.code, link.shortUrl, onDeleteQr]);
+
   return (
     <ListRow className={busy ? "opacity-60" : ""}>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
@@ -108,6 +147,12 @@ const LinkRow: React.FC<{
         <div className="flex flex-wrap items-center gap-1.5">
           <CopyButton text={link.shortUrl} />
           <IconButton
+            icon={<QrCode size={16} weight="regular" aria-hidden="true" />}
+            label="QR code"
+            onClick={() => onOpenQr(link)}
+            disabled={busy}
+          />
+          <IconButton
             icon={<CalendarDots size={16} weight="regular" aria-hidden="true" />}
             label="Edit expiry"
             onClick={startEdit}
@@ -124,6 +169,49 @@ const LinkRow: React.FC<{
           />
         </div>
       </div>
+
+      {link.qrUrl && (
+        <div className="mt-3 border-t border-dashed border-[color:var(--color-divider)] pt-2">
+          <button
+            type="button"
+            aria-expanded={qrOpen}
+            aria-controls={`qr-shade-${link.code}`}
+            onClick={() => setQrOpen((o) => !o)}
+            className={`inline-flex items-center gap-1.5 rounded-sm text-[13px] font-semibold text-text-secondary hover:text-text-primary ${focusRing}`}
+          >
+            <CaretRight
+              size={14}
+              weight="bold"
+              aria-hidden="true"
+              className={`motion-safe:transition-transform motion-safe:duration-150 ${qrOpen ? "rotate-90" : ""}`}
+            />
+            QR code
+          </button>
+          {qrOpen && (
+            <div id={`qr-shade-${link.code}`} className="flex flex-wrap items-end gap-4 pt-3">
+              <img
+                src={link.qrUrl}
+                alt={`QR code for ${link.shortUrl}`}
+                className="h-40 w-40 rounded-ds-md bg-white object-contain"
+              />
+              <div className="flex flex-wrap gap-2">
+                <button type="button" onClick={downloadQr} disabled={qrBusy} className={buttonClasses("secondary", "sm")}>
+                  <DownloadSimple size={16} weight="regular" aria-hidden="true" />
+                  Download PNG
+                </button>
+                <button type="button" onClick={removeQr} disabled={qrBusy} className={`${buttonClasses("secondary", "sm")} text-danger`}>
+                  Delete QR
+                </button>
+              </div>
+              {qrError && (
+                <span role="alert" className="w-full text-[13px] text-danger">
+                  {qrError}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {editing && (
         <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-dashed border-[color:var(--color-divider)] pt-3">
@@ -171,6 +259,7 @@ const SkeletonRows: React.FC = () => (
 
 const ShortenerPage: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [url, setUrl] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -255,7 +344,20 @@ const ShortenerPage: React.FC = () => {
 
   const handleSaveExpiry = useCallback(async (code: string, expiresAt: number) => {
     const updated = await updateExpiry(code, expiresAt);
-    setLinks((prev) => prev.map((l) => (l.code === code ? updated : l)));
+    // PATCH's response carries no QR fields — merge so the row keeps its QR.
+    setLinks((prev) => prev.map((l) => (l.code === code ? { ...l, ...updated } : l)));
+  }, []);
+
+  const openQr = useCallback(
+    (link: { code: string; shortUrl: string }) => {
+      navigate(`/qr?code=${encodeURIComponent(link.code)}&url=${encodeURIComponent(link.shortUrl)}`);
+    },
+    [navigate]
+  );
+
+  const handleDeleteQr = useCallback(async (code: string) => {
+    await deleteQr(code);
+    setLinks((prev) => prev.map((l) => (l.code === code ? { ...l, qrUrl: undefined, qrUpdatedAt: undefined } : l)));
   }, []);
 
   const srTitle = <h1 className="sr-only">URL Shortener</h1>;
@@ -329,6 +431,10 @@ const ShortenerPage: React.FC = () => {
             </div>
           </div>
           <CopyButton text={minted.shortUrl} size="md" />
+          <button type="button" onClick={() => openQr(minted)} className={buttonClasses("secondary", "md")}>
+            <QrCode size={18} weight="regular" aria-hidden="true" />
+            QR code
+          </button>
         </div>
       )}
 
@@ -357,6 +463,8 @@ const ShortenerPage: React.FC = () => {
                 link={link}
                 onDelete={handleDelete}
                 onSaveExpiry={handleSaveExpiry}
+                onOpenQr={openQr}
+                onDeleteQr={handleDeleteQr}
                 busy={busyCode === link.code}
               />
             ))
