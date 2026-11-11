@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import AuthView from "./AuthView";
 import ShortenerTool from "./ShortenerTool";
 import PasswordTool from "./PasswordTool";
+import QrTool from "./QrTool";
 import ImageToolsTool from "./ImageToolsTool";
 import DnsTool from "./DnsTool";
 import TextShareTool from "./TextShareTool";
@@ -12,6 +13,7 @@ type View =
   | "landing"
   | "tool:shortener"
   | "tool:password"
+  | "tool:qr"
   | "tool:imagetools"
   | "tool:dns"
   | "tool:pastebin"
@@ -40,7 +42,7 @@ interface ToolDef {
 const TOOLS: ToolDef[] = [
   { id: "shortener", name: "URL Shortener", description: "Mint short links and manage the ones you've made.", available: true },
   { id: "password", name: "Password Generator", description: "Generate strong passwords, right in your browser.", available: true },
-  { id: "qr", name: "QR Codes", description: "Generate a QR code for any link or block of text.", available: false },
+  { id: "qr", name: "QR Codes", description: "Generate a QR code for any link or block of text.", available: true },
   { id: "pastebin", name: "Text Share", description: "Share text snippets with a link that expires.", available: true },
   { id: "imagetools", name: "Image Tools", description: "Resize, crop, remove backgrounds.", available: true },
   { id: "dns", name: "DNS Lookup", description: "Look up A, MX, TXT and other DNS records for any domain.", available: true },
@@ -177,6 +179,8 @@ const App: React.FC = () => {
         )}
 
         {view === "tool:password" && auth.signedIn && <PasswordTool onBack={goLanding} />}
+
+        {view === "tool:qr" && auth.signedIn && <QrTool onBack={goLanding} />}
 
         {view === "tool:imagetools" && auth.signedIn && <ImageToolsTool onBack={goLanding} />}
 
