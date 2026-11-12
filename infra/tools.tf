@@ -314,6 +314,18 @@ resource "aws_iam_role_policy" "lambdaTools" {
         Effect   = "Allow"
         Action   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
         Resource = "${aws_s3_bucket.toolsQr.arn}/qr/*"
+      },
+      {
+        # File Drop (FUNK-76): object-level only. PutObject covers
+        # CreateMultipartUpload/UploadPart/Complete (part URLs are presigned
+        # with this role); PutObjectTagging covers the expiry tag set at
+        # create. No ListBucket.
+        Effect = "Allow"
+        Action = [
+          "s3:PutObject", "s3:GetObject", "s3:DeleteObject", "s3:AbortMultipartUpload",
+          "s3:ListMultipartUploadParts", "s3:PutObjectTagging",
+        ]
+        Resource = "${aws_s3_bucket.toolsFiles.arn}/*"
       }
     ]
   })
@@ -331,13 +343,15 @@ resource "aws_lambda_function" "tools" {
 
   environment {
     variables = {
-      TOOLS_TABLE_NAME  = aws_dynamodb_table.tools.name
-      KVS_ARN           = aws_cloudfront_key_value_store.tools.arn
-      SHORT_DOMAIN      = var.shortDomain
-      LINK_TTL_DAYS     = tostring(var.linkTtlDays)
-      TEXT_TABLE_NAME   = aws_dynamodb_table.textShare.name
-      TEXT_TABLE_REGION = "ca-central-1"
-      QR_BUCKET         = aws_s3_bucket.toolsQr.bucket
+      TOOLS_TABLE_NAME    = aws_dynamodb_table.tools.name
+      KVS_ARN             = aws_cloudfront_key_value_store.tools.arn
+      SHORT_DOMAIN        = var.shortDomain
+      LINK_TTL_DAYS       = tostring(var.linkTtlDays)
+      TEXT_TABLE_NAME     = aws_dynamodb_table.textShare.name
+      TEXT_TABLE_REGION   = "ca-central-1"
+      QR_BUCKET           = aws_s3_bucket.toolsQr.bucket
+      FILES_BUCKET        = aws_s3_bucket.toolsFiles.bucket
+      FILES_BUCKET_REGION = "ca-central-1"
     }
   }
 }
@@ -590,6 +604,203 @@ resource "aws_apigatewayv2_route" "toolsTextDelete" {
 resource "aws_apigatewayv2_route" "toolsTextGetPublic" {
   api_id    = aws_apigatewayv2_api.main.id
   route_key = "GET /tools/text/{id}"
+  target    = "integrations/${aws_apigatewayv2_integration.tools.id}"
+}
+
+# ------------------------------------------------------------------------------
+# File Drop (FUNK-76): files/<id>, up to 5 GB, ca-central-1 (Canada data
+# residency, like the text-share table). Private; uploads are S3 multipart via
+# presigned part URLs and downloads are presigned GETs, all minted by the tools
+# Lambda. Metadata lives in the text-share table (kind = "file").
+# ------------------------------------------------------------------------------
+resource "aws_s3_bucket" "toolsFiles" {
+  provider = aws.ca_central
+  bucket   = "fus-tools-files-${data.aws_caller_identity.current.account_id}"
+}
+
+resource "aws_s3_bucket_public_access_block" "toolsFiles" {
+  provider = aws.ca_central
+  bucket   = aws_s3_bucket.toolsFiles.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "toolsFiles" {
+  provider = aws.ca_central
+  bucket   = aws_s3_bucket.toolsFiles.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+# The browser PUTs each part straight to S3 and must read the ETag header back.
+resource "aws_s3_bucket_cors_configuration" "toolsFiles" {
+  provider = aws.ca_central
+  bucket   = aws_s3_bucket.toolsFiles.id
+
+  cors_rule {
+    allowed_headers = ["*"]
+    allowed_methods = ["GET", "HEAD", "PUT"]
+    allowed_origins = [
+      "https://tools.e9.cx",
+      "https://${var.domainCom}",
+      "https://www.${var.domainCom}",
+      "https://${var.stagingSubdomain}.${var.domainCom}",
+      "https://${var.domainCa}",
+      "https://www.${var.domainCa}",
+      "https://${var.stagingSubdomain}.${var.domainCa}",
+      "http://localhost:5173",
+      "http://localhost:4173",
+    ]
+    expose_headers = ["ETag"]
+  }
+}
+
+# Physical cleanup only: the public endpoints refuse a file at its expiresAt
+# immediately. The Lambda tags each object expiry=1d|7d|30d at create (a 1 h
+# file uses 1d, so its bytes live up to a day). The untagged 31-day rule is a
+# backstop for anything that lost its tag.
+resource "aws_s3_bucket_lifecycle_configuration" "toolsFiles" {
+  provider = aws.ca_central
+  bucket   = aws_s3_bucket.toolsFiles.id
+
+  rule {
+    id     = "abort-incomplete-multipart-uploads"
+    status = "Enabled"
+
+    filter {}
+
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 1
+    }
+  }
+
+  rule {
+    id     = "expire-1d"
+    status = "Enabled"
+
+    filter {
+      tag {
+        key   = "expiry"
+        value = "1d"
+      }
+    }
+
+    expiration {
+      days = 1
+    }
+  }
+
+  rule {
+    id     = "expire-7d"
+    status = "Enabled"
+
+    filter {
+      tag {
+        key   = "expiry"
+        value = "7d"
+      }
+    }
+
+    expiration {
+      days = 7
+    }
+  }
+
+  rule {
+    id     = "expire-30d"
+    status = "Enabled"
+
+    filter {
+      tag {
+        key   = "expiry"
+        value = "30d"
+      }
+    }
+
+    expiration {
+      days = 30
+    }
+  }
+
+  rule {
+    id     = "expire-backstop"
+    status = "Enabled"
+
+    filter {}
+
+    expiration {
+      days = 31
+    }
+  }
+}
+
+# ------------------------------------------------------------------------------
+# File Drop (FUNK-76). Owner routes are JWT. The two /tools/f/{id} routes are
+# PUBLIC (no authorization_type/authorizer_id, same reasoning as
+# toolsTextGetPublic): recipients of a share link must be able to fetch
+# metadata and request a download without signing in. They live under /tools/f
+# so they never collide with the JWT /tools/files routes. Path-parameter
+# routes are dispatched by regex in handler.py (_FILES_*_RE) and are not seen
+# by tests/test_route_coverage.py: keep them in sync by hand.
+# ------------------------------------------------------------------------------
+resource "aws_apigatewayv2_route" "toolsFilesInitiate" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /tools/files"
+  target             = "integrations/${aws_apigatewayv2_integration.tools.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "toolsFilesList" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /tools/files"
+  target             = "integrations/${aws_apigatewayv2_integration.tools.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "toolsFilesParts" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /tools/files/{id}/parts"
+  target             = "integrations/${aws_apigatewayv2_integration.tools.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "toolsFilesComplete" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /tools/files/{id}/complete"
+  target             = "integrations/${aws_apigatewayv2_integration.tools.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "toolsFilesDelete" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "DELETE /tools/files/{id}"
+  target             = "integrations/${aws_apigatewayv2_integration.tools.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+# PUBLIC: file metadata for the share page.
+resource "aws_apigatewayv2_route" "toolsFilesGetPublic" {
+  api_id    = aws_apigatewayv2_api.main.id
+  route_key = "GET /tools/f/{id}"
+  target    = "integrations/${aws_apigatewayv2_integration.tools.id}"
+}
+
+# PUBLIC: request a presigned download URL (password-checked in the Lambda).
+resource "aws_apigatewayv2_route" "toolsFilesDownloadPublic" {
+  api_id    = aws_apigatewayv2_api.main.id
+  route_key = "POST /tools/f/{id}/download"
   target    = "integrations/${aws_apigatewayv2_integration.tools.id}"
 }
 
