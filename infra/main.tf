@@ -794,12 +794,14 @@ data "archive_file" "api" {
 }
 
 # Pillow layer for logo-from-url dimension check (min 100x100)
+# Lambdas run python3.12 on x86_64, so wheels are resolved for that target regardless of the
+# machine running terraform (cryptography/cffi ship compiled extensions; Pillow too).
 resource "null_resource" "pillow_layer" {
   triggers = {
     requirements = file("${path.module}/layer_requirements.txt")
   }
   provisioner "local-exec" {
-    command     = "mkdir -p build/layer/python/lib/python3.12/site-packages && python3 -m pip install -r ${path.module}/layer_requirements.txt -t build/layer/python/lib/python3.12/site-packages --quiet && cd build/layer && zip -r ../pillow_layer.zip python"
+    command     = "mkdir -p build/layer/python/lib/python3.12/site-packages && python3 -m pip install -r ${path.module}/layer_requirements.txt -t build/layer/python/lib/python3.12/site-packages --platform manylinux2014_x86_64 --only-binary=:all: --python-version 3.12 --implementation cp --quiet && cd build/layer && zip -r ../pillow_layer.zip python"
     working_dir = path.module
   }
 }
@@ -808,7 +810,34 @@ resource "aws_lambda_layer_version" "pillow" {
   filename            = "${path.module}/build/pillow_layer.zip"
   layer_name          = "fus-pillow-layer"
   compatible_runtimes = ["python3.12"]
-  depends_on          = [null_resource.pillow_layer]
+  # Without this a rebuilt zip is not republished (no diff on the layer version).
+  source_code_hash = base64sha256(file("${path.module}/layer_requirements.txt"))
+  depends_on       = [null_resource.pillow_layer]
+}
+
+# ------------------------------------------------------------------------------
+# Personal Finances field-level encryption (FUNK-78). Per-user data keys are
+# generated/unwrapped under this key (see api/bpf_crypto.py); access is by IAM only.
+# ------------------------------------------------------------------------------
+resource "aws_kms_key" "finances" {
+  description             = "Personal Finances envelope encryption (per-user data keys)"
+  enable_key_rotation     = true
+  deletion_window_in_days = 30
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "Enable IAM policies"
+      Effect    = "Allow"
+      Principal = { AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root" }
+      Action    = "kms:*"
+      Resource  = "*"
+    }]
+  })
+}
+
+resource "aws_kms_alias" "finances" {
+  name          = "alias/fus-finances"
+  target_key_id = aws_kms_key.finances.key_id
 }
 
 resource "aws_iam_role" "lambdaApi" {
@@ -887,6 +916,13 @@ resource "aws_iam_role_policy" "lambdaApi" {
         Effect   = "Allow"
         Action   = ["textract:AnalyzeExpense", "textract:AnalyzeDocument"]
         Resource = "*"
+      },
+      {
+        # Finances data keys: only calls carrying the finances encryption context
+        Effect    = "Allow"
+        Action    = ["kms:GenerateDataKey", "kms:Decrypt"]
+        Resource  = aws_kms_key.finances.arn
+        Condition = { StringEquals = { "kms:EncryptionContext:purpose" = "fus-finances" } }
       }
     ]
   })
@@ -912,6 +948,7 @@ resource "aws_lambda_function" "api" {
       COLLECTOR_FUNCTION_NAME = aws_lambda_function.collector.function_name
       ALPHA_VANTAGE_API_KEY   = var.alphaVantageApiKey
       ERA_API_KEY             = var.eraApiKey
+      FINANCE_KMS_KEY_ID      = aws_kms_key.finances.arn
     }
   }
 }
@@ -2494,13 +2531,15 @@ resource "aws_lambda_function" "mcp" {
   source_code_hash = data.archive_file.api.output_base64sha256
   runtime          = "python3.12"
   timeout          = 30
+  layers           = [aws_lambda_layer_version.pillow.arn] # cryptography (bpf imports it)
 
   environment {
     variables = {
-      TABLE_NAME        = aws_dynamodb_table.main.name
-      ERA_API_KEY       = var.eraApiKey
-      MCP_BEARER_TOKEN  = var.mcpBearerToken
-      MCP_OWNER_USER_ID = var.mcpOwnerUserId
+      TABLE_NAME         = aws_dynamodb_table.main.name
+      ERA_API_KEY        = var.eraApiKey
+      MCP_BEARER_TOKEN   = var.mcpBearerToken
+      MCP_OWNER_USER_ID  = var.mcpOwnerUserId
+      FINANCE_KMS_KEY_ID = aws_kms_key.finances.arn
     }
   }
 }

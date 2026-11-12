@@ -11,6 +11,8 @@ import logging
 import os
 from datetime import datetime, timezone
 
+from api import bpf_crypto
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
@@ -36,16 +38,17 @@ def get_rules(user_id):
     )
     if "Item" not in resp:
         return []
-    rules = []
-    for m in resp["Item"].get("rules", {}).get("L", []):
-        mm = m.get("M", {})
-        rules.append({
-            "match": mm.get("match", {}).get("S", "contains"),
-            "pattern": mm.get("pattern", {}).get("S", ""),
-            "category": mm.get("category", {}).get("S", ""),
-            "source": mm.get("source", {}).get("S", "manual"),
-        })
-    return rules
+    typed = resp["Item"].get("rules")
+    if typed is None:
+        return []
+    # encrypted JSON string (FUNK-78) or legacy typed list of maps
+    stored = bpf_crypto.dec_json(user_id, f"USER#{user_id}", "BPF#RULES", "rules", typed) or []
+    return [{
+        "match": mm.get("match", "contains"),
+        "pattern": mm.get("pattern", ""),
+        "category": mm.get("category", ""),
+        "source": mm.get("source", "manual"),
+    } for mm in stored]
 
 
 def save_rules(user_id, rules):
@@ -73,15 +76,7 @@ def save_rules(user_id, rules):
         Item={
             "PK": {"S": f"USER#{user_id}"},
             "SK": {"S": "BPF#RULES"},
-            "rules": {"L": [
-                {"M": {
-                    "match": {"S": r["match"]},
-                    "pattern": {"S": r["pattern"]},
-                    "category": {"S": r["category"]},
-                    "source": {"S": r["source"]},
-                }}
-                for r in clean
-            ]},
+            "rules": bpf_crypto.enc_attr(user_id, f"USER#{user_id}", "BPF#RULES", "rules", clean),
             "updatedAt": {"S": _now()},
         },
     )

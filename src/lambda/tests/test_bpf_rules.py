@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from api import bpf_rules
+from api import bpf_crypto, bpf_rules
 from api.bpf_rules import apply_rules, get_rules, save_rules
 
 
@@ -104,12 +104,11 @@ def test_save_rules_happy_path_writes_typed_item():
     item = ddb.put_item.call_args.kwargs["Item"]
     assert item["PK"] == {"S": "USER#u1"}
     assert item["SK"] == {"S": "BPF#RULES"}
-    assert item["rules"] == {"L": [
-        {"M": {"match": {"S": "contains"}, "pattern": {"S": "Coffee"},
-               "category": {"S": "Dining"}, "source": {"S": "manual"}}},
-        {"M": {"match": {"S": "equals"}, "pattern": {"S": "netflix"},
-               "category": {"S": "Subscriptions"}, "source": {"S": "ai"}}},
-    ]}
+    # FUNK-78: stored as one encrypted JSON string, no plaintext patterns/categories
+    assert bpf_crypto.is_encrypted(item["rules"])
+    assert "Coffee" not in str(item) and "Dining" not in str(item)
+    stored = bpf_crypto.dec_json("u1", "USER#u1", "BPF#RULES", "rules", item["rules"])
+    assert stored == clean
     assert item["updatedAt"]["S"].endswith("Z")
 
 
