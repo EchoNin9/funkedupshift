@@ -38,13 +38,14 @@ resource "aws_iam_role" "backup" {
 
 resource "aws_iam_role_policy_attachment" "backup" {
   for_each = toset([
-    "AWSBackupServiceRolePolicyForBackup",
-    "AWSBackupServiceRolePolicyForRestores",
+    # The S3 policies live at the root path, not service-role/.
+    "service-role/AWSBackupServiceRolePolicyForBackup",
+    "service-role/AWSBackupServiceRolePolicyForRestores",
     "AWSBackupServiceRolePolicyForS3Backup",
     "AWSBackupServiceRolePolicyForS3Restore",
   ])
   role       = aws_iam_role.backup.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/${each.value}"
+  policy_arn = "arn:aws:iam::aws:policy/${each.value}"
 }
 
 locals {
