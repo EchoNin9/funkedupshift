@@ -7,6 +7,7 @@ import ImageToolsTool from "./ImageToolsTool";
 import DnsTool from "./DnsTool";
 import TextShareTool from "./TextShareTool";
 import ConvertersTool from "./ConvertersTool";
+import EncodeTool from "./EncodeTool";
 import MyInfoTool from "./MyInfoTool";
 
 type View =
@@ -18,6 +19,7 @@ type View =
   | "tool:dns"
   | "tool:pastebin"
   | "tool:converters"
+  | "tool:encode"
   | "tool:myinfo"
   | "auth";
 
@@ -47,6 +49,7 @@ const TOOLS: ToolDef[] = [
   { id: "imagetools", name: "Image Tools", description: "Resize, crop, remove backgrounds.", available: true },
   { id: "dns", name: "DNS Lookup", description: "Look up A, MX, TXT and other DNS records for any domain.", available: true },
   { id: "converters", name: "Converters", description: "Temperature, units, date math, and timezones, right in your browser.", available: true },
+  { id: "encode", name: "Encode / Decode", description: "Decode JWTs and encode or decode Base64 and URL text, right in your browser.", available: true },
   { id: "myinfo", name: "My Info", description: "See what your browser, device, and network reveal about you.", available: true }
 ];
 
@@ -213,6 +216,7 @@ const App: React.FC = () => {
         )}
 
         {view === "tool:converters" && auth.signedIn && <ConvertersTool onBack={goLanding} />}
+        {view === "tool:encode" && auth.signedIn && <EncodeTool onBack={goLanding} />}
 
         {/* Unlocked while signed out — public backend endpoint + client-side reads only. */}
         {view === "tool:myinfo" && <MyInfoTool onBack={goLanding} />}

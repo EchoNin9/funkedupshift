@@ -61,6 +61,7 @@ const ShortenerPage = lazy(() => import("../features/tools/ShortenerPage"));
 const ToolsIndexPage = lazy(() => import("../features/tools/ToolsIndexPage"));
 const PasswordPage = lazy(() => import("../features/passwordgen/PasswordPage"));
 const QrPage = lazy(() => import("../features/qrcode/QrPage"));
+const EncodePage = lazy(() => import("../features/encode/EncodePage"));
 const ImagePage = lazy(() => import("../features/imagetool/ImagePage"));
 const CropPage = lazy(() => import("../features/croptool/CropPage"));
 const RemoveBgPage = lazy(() => import("../features/removebg/RemoveBgPage"));
@@ -144,6 +145,7 @@ const AppLayoutContent: React.FC = () => {
               <Route path="/shortener" element={<ShortenerPage />} />
               <Route path="/password" element={<PasswordPage />} />
               <Route path="/qr" element={<QrPage />} />
+              <Route path="/encode" element={<EncodePage />} />
               <Route path="/images" element={<ImagePage />} />
               <Route path="/crop" element={<CropPage />} />
               <Route path="/removebg" element={<RemoveBgPage />} />
