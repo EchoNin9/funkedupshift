@@ -26,8 +26,7 @@ resource "aws_cloudwatch_log_group" "lambda" {
   retention_in_days = 180
 }
 
-# Adopt the 11 groups Lambda already auto-created (mcp does not exist yet and
-# is created by apply). Import blocks are no-ops once in state; delete them
+# Adopt the 12 groups Lambda already auto-created. Import blocks are no-ops once in state; delete them
 # after the first successful apply. (No for_each: CI runs Terraform 1.6.)
 import {
   to = aws_cloudwatch_log_group.lambda["api"]
@@ -72,4 +71,8 @@ import {
 import {
   to = aws_cloudwatch_log_group.lambda["tools"]
   id = "/aws/lambda/fus-tools"
+}
+import {
+  to = aws_cloudwatch_log_group.lambda["mcp"]
+  id = "/aws/lambda/fus-finances-mcp"
 }
