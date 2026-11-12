@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from api import bpf  # noqa: E402
+from api import bpf, bpf_crypto  # noqa: E402
 
 
 def _account_item(account_id, name="Chequing", bank="RBC", number="12345678",
@@ -225,8 +225,11 @@ def test_import_commit_writes_new_rows_and_reconciles():
         for req in next(iter(c.kwargs["RequestItems"].values())):
             items.append(req["PutRequest"]["Item"])
     assert len(items) == 2
-    assert {i["fitid"]["S"] for i in items} == {"f1", "f2"}
-    cats = {i["payee"]["S"]: i["category"]["S"] for i in items}
+    # FUNK-78: sensitive fields are sealed; decode through the readers
+    assert all(bpf_crypto.is_encrypted(i["fitid"]) for i in items)
+    decoded = [bpf._txn_from_item(i) for i in items]
+    assert {t["fitid"] for t in decoded} == {"f1", "f2"}
+    cats = {t["payee"]: t["category"] for t in decoded}
     assert cats["NETFLIX.COM"] == "Subscriptions"  # rule applied on import
     mock_rec.assert_called_once_with("u1", "acc1", 1500.25, "2026-07-07")
 
@@ -312,7 +315,10 @@ def test_save_categories_validates_and_saves():
     assert err is None and clean == ["Dining", "Pets"]
     item = ddb.put_item.call_args.kwargs["Item"]
     assert item["SK"]["S"] == "BPF#SETTINGS"
-    assert [c["S"] for c in item["categories"]["L"]] == ["Dining", "Pets"]
+    assert bpf_crypto.is_encrypted(item["categories"])
+    assert "Dining" not in str(item)
+    assert bpf_crypto.dec_json("u1", "USER#u1", "BPF#SETTINGS", "categories",
+                               item["categories"]) == ["Dining", "Pets"]
 
 
 # --- handler routes ------------------------------------------------------------
