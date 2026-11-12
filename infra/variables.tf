@@ -102,22 +102,8 @@ variable "stagingSubdomain" {
   default     = "stage"
 }
 
-variable "alphaVantageApiKey" {
-  description = "Alpha Vantage API key for stock quotes (optional; Yahoo used if empty)."
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
 variable "eraApiKey" {
   description = "Era.app API key for read-only finance sync (optional; app runs on local data if empty)."
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
-variable "mcpBearerToken" {
-  description = "Bearer token required by the finances MCP lambda. Leave empty to reject all MCP requests."
   type        = string
   default     = ""
   sensitive   = true

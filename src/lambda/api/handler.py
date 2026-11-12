@@ -228,14 +228,38 @@ def getEffectiveUserInfo(event):
     return user
 
 
+_SECRET_HEADERS = ("authorization", "cookie", "x-api-key")
+
+
+def _redactEventForLog(event):
+    """Copy of the event that is safe to log.
+
+    Credentials are never logged. Finance requests (FUNK-78) carry amounts, payees,
+    account numbers and search terms in the body and query string, so those are
+    replaced by their size. Other bodies are logged unless large (memory, imports).
+    """
+    path = event.get("rawPath") or event.get("requestContext", {}).get("http", {}).get("path", "") or ""
+    body = event.get("body") or ""
+    body_len = len(body) if isinstance(body, str) else 0
+    log_event = dict(event)
+    headers = event.get("headers")
+    if isinstance(headers, dict):
+        log_event["headers"] = {k: ("<redacted>" if k.lower() in _SECRET_HEADERS else v) for k, v in headers.items()}
+    if path.startswith("/finances"):
+        log_event["body"] = f"<{body_len} chars redacted>" if body_len else body
+        if event.get("rawQueryString"):
+            log_event["rawQueryString"] = "<redacted>"
+        if event.get("queryStringParameters"):
+            log_event["queryStringParameters"] = {k: "<redacted>" for k in event["queryStringParameters"]}
+    elif body_len > 2000:
+        log_event["body"] = f"<{body_len} chars>"
+    return log_event
+
+
 def handler(event, context):
     """Route request by path; return JSON with CORS headers."""
     try:
-        # Avoid logging huge bodies (can cause memory/serialization issues with large imports)
-        body = event.get("body") or ""
-        body_len = len(body) if isinstance(body, str) else 0
-        log_event = {**event, "body": f"<{body_len} chars>"} if body_len > 2000 else event
-        logger.info("event=%s", log_event)
+        logger.info("event=%s", _redactEventForLog(event))
         
         # Extract path and method from API Gateway HTTP API v2 event
         path = event.get("rawPath", "")

@@ -14,7 +14,7 @@ import os
 import uuid
 from datetime import date, datetime, timedelta, timezone
 
-from api import era_client
+from api import bpf_crypto, era_client
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -54,6 +54,34 @@ def _now():
     return datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
 
 
+# --- field-level encryption (FUNK-78) -----------------------------------------
+# Sensitive attributes are sealed per (PK, SK, attr); see bpf_crypto. Readers also
+# accept legacy plaintext items so data can be migrated in place.
+
+def _enc(user_id, sk, attr, value):
+    return bpf_crypto.enc_attr(user_id, f"USER#{user_id}", sk, attr, value)
+
+
+def _dec(item, attr, default=""):
+    """Decrypted (or legacy plaintext) value of item[attr]; `default` when absent."""
+    typed = item.get(attr)
+    if typed is None:
+        return default
+    pk = item.get("PK", {}).get("S", "")
+    return bpf_crypto.dec_attr(pk[len("USER#"):], pk, item.get("SK", {}).get("S", ""),
+                               attr, typed)
+
+
+def _dec_json(item, attr):
+    """Decrypted list/map attribute (legacy typed L/M items convert to Python)."""
+    typed = item.get(attr)
+    if typed is None:
+        return None
+    pk = item.get("PK", {}).get("S", "")
+    return bpf_crypto.dec_json(pk[len("USER#"):], pk, item.get("SK", {}).get("S", ""),
+                               attr, typed)
+
+
 def _query_prefix(user_id, sk_prefix):
     """All items under USER#{id} whose SK begins with sk_prefix."""
     items, key = [], None
@@ -82,12 +110,12 @@ def _query_prefix(user_id, sk_prefix):
 def _account_from_item(item):
     """Account dict for API output. Full accountNumber never leaves the API —
     only the masked last 4. Balance is computed by list_accounts."""
-    number = item.get("accountNumber", {}).get("S", "")
+    number = _dec(item, "accountNumber")
     # legacy items stored a static `balance`; treat it as the opening balance
-    opening = item.get("openingBalance", item.get("balance", {})).get("N", "0")
-    name = item.get("name", {}).get("S", "")
-    bank = item.get("bank", {}).get("S", "")
-    nickname = item.get("nickname", {}).get("S", "")
+    opening = _dec(item, "openingBalance" if "openingBalance" in item else "balance", "0")
+    name = _dec(item, "name")
+    bank = _dec(item, "bank")
+    nickname = _dec(item, "nickname")
     masked = f"…{number[-4:]}" if number else ""
     display = nickname or " ".join(p for p in (bank, masked or name) if p) or name
     out = {
@@ -104,12 +132,12 @@ def _account_from_item(item):
         "source": "local",
     }
     if "reconciledBalance" in item:
-        out["reconciledBalance"] = float(item["reconciledBalance"]["N"])
+        out["reconciledBalance"] = float(_dec(item, "reconciledBalance", "0"))
         out["reconciledAt"] = item.get("reconciledAt", {}).get("S", "")
     if "csvMapping" in item:
         try:
-            out["csvMapping"] = json.loads(item["csvMapping"]["S"])
-        except (json.JSONDecodeError, KeyError):
+            out["csvMapping"] = json.loads(_dec(item, "csvMapping"))
+        except (json.JSONDecodeError, TypeError):
             pass
     return out
 
@@ -135,7 +163,7 @@ def find_account_by_number(user_id, number):
     if not number:
         return None
     for item in _query_prefix(user_id, "BPF#ACCOUNT#"):
-        if item.get("accountNumber", {}).get("S", "") == number:
+        if _dec(item, "accountNumber") == number:
             return item["SK"]["S"].split("BPF#ACCOUNT#")[-1]
     return None
 
@@ -178,29 +206,36 @@ def save_account(user_id, data, account_id=None):
             Key={"PK": {"S": f"USER#{user_id}"}, "SK": {"S": f"BPF#ACCOUNT#{account_id}"}},
         )
         old = resp.get("Item") or {}
+        # carried values are decoded and re-sealed (legacy plaintext gets encrypted here)
         if "reconciledBalance" in old:
-            reconciled = {"reconciledBalance": old["reconciledBalance"],
+            reconciled = {"reconciledBalance": _dec(old, "reconciledBalance", "0"),
                           "reconciledAt": old.get("reconciledAt", {"S": ""})}
         if "csvMapping" in old:
-            reconciled["csvMapping"] = old["csvMapping"]
+            reconciled["csvMapping"] = _dec(old, "csvMapping")
         # the full number is never sent to clients, so a blank on edit means "keep"
         if not clean["accountNumber"]:
-            clean["accountNumber"] = old.get("accountNumber", {}).get("S", "")
+            clean["accountNumber"] = _dec(old, "accountNumber")
     account_id = account_id or uuid.uuid4().hex
     now = _now()
+    sk = f"BPF#ACCOUNT#{account_id}"
     item = {
         "PK": {"S": f"USER#{user_id}"},
-        "SK": {"S": f"BPF#ACCOUNT#{account_id}"},
-        "name": {"S": clean["name"]},
+        "SK": {"S": sk},
+        "name": _enc(user_id, sk, "name", clean["name"]),
         "kind": {"S": clean["kind"]},
-        "openingBalance": {"N": str(clean["openingBalance"])},
+        "openingBalance": _enc(user_id, sk, "openingBalance", clean["openingBalance"]),
         "currency": {"S": clean["currency"]},
         "updatedAt": {"S": now},
-        **reconciled,
     }
+    if "reconciledBalance" in reconciled:
+        item["reconciledBalance"] = _enc(user_id, sk, "reconciledBalance",
+                                         reconciled["reconciledBalance"])
+        item["reconciledAt"] = reconciled["reconciledAt"]
+    if "csvMapping" in reconciled:
+        item["csvMapping"] = _enc(user_id, sk, "csvMapping", reconciled["csvMapping"])
     for attr in ("bank", "accountNumber", "nickname"):
         if clean[attr]:
-            item[attr] = {"S": clean[attr]}
+            item[attr] = _enc(user_id, sk, attr, clean[attr])
     _ddb().put_item(TableName=TABLE_NAME, Item=item)
     saved = _account_from_item(item)
     saved["updatedAt"] = now
@@ -221,12 +256,13 @@ def _debt_signed_balance(kind, ledger_balance):
 
 def set_reconciled_balance(user_id, account_id, balance, as_of):
     """Record the bank-stated ledger balance from a statement import."""
+    sk = f"BPF#ACCOUNT#{account_id}"
     _ddb().update_item(
         TableName=TABLE_NAME,
-        Key={"PK": {"S": f"USER#{user_id}"}, "SK": {"S": f"BPF#ACCOUNT#{account_id}"}},
+        Key={"PK": {"S": f"USER#{user_id}"}, "SK": {"S": sk}},
         UpdateExpression="SET reconciledBalance = :b, reconciledAt = :d, updatedAt = :n",
         ExpressionAttributeValues={
-            ":b": {"N": str(float(balance))},
+            ":b": _enc(user_id, sk, "reconciledBalance", float(balance)),
             ":d": {"S": str(as_of or "")},
             ":n": {"S": _now()},
         },
@@ -263,13 +299,13 @@ def _txn_from_item(item):
         "id": f"{parts[2]}_{parts[3]}",
         "date": parts[2],
         "accountId": item.get("accountId", {}).get("S", ""),
-        "amount": float(item.get("amount", {}).get("N", "0")),
-        "payee": item.get("payee", {}).get("S", ""),
-        "category": item.get("category", {}).get("S", "Other"),
-        "notes": item.get("notes", {}).get("S", ""),
+        "amount": float(_dec(item, "amount", "0")),
+        "payee": _dec(item, "payee"),
+        "category": _dec(item, "category", "Other"),
+        "notes": _dec(item, "notes"),
         "business": item.get("business", {}).get("BOOL", False),
         "transferId": item.get("transferId", {}).get("S", ""),
-        "fitid": item.get("fitid", {}).get("S", ""),
+        "fitid": _dec(item, "fitid"),
         "updatedAt": item.get("updatedAt", {}).get("S", ""),
         "source": "local",
     }
@@ -352,17 +388,17 @@ def _txn_item(user_id, sk, clean, transfer_id="", fitid="", now=None):
         "PK": {"S": f"USER#{user_id}"},
         "SK": {"S": sk},
         "accountId": {"S": clean["accountId"]},
-        "amount": {"N": str(clean["amount"])},
-        "payee": {"S": clean["payee"]},
-        "category": {"S": clean["category"]},
-        "notes": {"S": clean["notes"]},
+        "amount": _enc(user_id, sk, "amount", clean["amount"]),
+        "payee": _enc(user_id, sk, "payee", clean["payee"]),
+        "category": _enc(user_id, sk, "category", clean["category"]),
+        "notes": _enc(user_id, sk, "notes", clean["notes"]),
         "business": {"BOOL": False},  # phase-2 hook, always false in P1
         "updatedAt": {"S": now or _now()},
     }
     if transfer_id:
         item["transferId"] = {"S": transfer_id}
     if fitid:
-        item["fitid"] = {"S": fitid}
+        item["fitid"] = _enc(user_id, sk, "fitid", fitid)
     return item
 
 
@@ -415,7 +451,7 @@ def save_transaction(user_id, data, txn_id=None, fitid=""):
         )
         old = resp.get("Item") or {}
         transfer_id = old.get("transferId", {}).get("S", "")
-        fitid = fitid or old.get("fitid", {}).get("S", "")
+        fitid = fitid or _dec(old, "fitid")
         if transfer_id:
             clean["category"] = "Transfer"  # legs stay transfers
         old_uuid = old_sk.split("#")[-1]
@@ -445,8 +481,7 @@ def save_transaction(user_id, data, txn_id=None, fitid=""):
                     TableName=TABLE_NAME,
                     Key={"PK": {"S": f"USER#{user_id}"}, "SK": {"S": sib["SK"]["S"]}},
                 )
-            _put_txn(user_id, new_sib_sk, mirrored, transfer_id,
-                     sib.get("fitid", {}).get("S", ""))
+            _put_txn(user_id, new_sib_sk, mirrored, transfer_id, _dec(sib, "fitid"))
     else:
         _ensure_category(user_id, clean["category"])
     return {**clean, "id": new_id, "business": False, "transferId": transfer_id,
@@ -528,7 +563,8 @@ def get_categories(user_id):
     )
     if "Item" not in resp:
         return list(DEFAULT_CATEGORIES)
-    return [c.get("S", "") for c in resp["Item"].get("categories", {}).get("L", []) if c.get("S")]
+    cats = _dec_json(resp["Item"], "categories") or []
+    return [c for c in cats if c]
 
 
 def _save_categories(user_id, categories):
@@ -537,7 +573,7 @@ def _save_categories(user_id, categories):
         Item={
             "PK": {"S": f"USER#{user_id}"},
             "SK": {"S": "BPF#SETTINGS"},
-            "categories": {"L": [{"S": c} for c in categories]},
+            "categories": _enc(user_id, "BPF#SETTINGS", "categories", list(categories)),
             "updatedAt": {"S": _now()},
         },
     )
@@ -579,11 +615,10 @@ def get_budgets(user_id):
     )
     budgets = []
     if "Item" in resp:
-        for m in resp["Item"].get("budgets", {}).get("L", []):
-            mm = m.get("M", {})
+        for mm in _dec_json(resp["Item"], "budgets") or []:
             budgets.append({
-                "category": mm.get("category", {}).get("S", ""),
-                "monthlyLimit": float(mm.get("monthlyLimit", {}).get("N", "0")),
+                "category": mm.get("category", ""),
+                "monthlyLimit": float(mm.get("monthlyLimit", "0")),
             })
     today = date.today()
     month_start = today.replace(day=1).isoformat()
@@ -615,11 +650,7 @@ def save_budgets(user_id, budgets):
         Item={
             "PK": {"S": f"USER#{user_id}"},
             "SK": {"S": "BPF#BUDGETS"},
-            "budgets": {"L": [
-                {"M": {"category": {"S": b["category"]},
-                       "monthlyLimit": {"N": str(b["monthlyLimit"])}}}
-                for b in clean
-            ]},
+            "budgets": _enc(user_id, "BPF#BUDGETS", "budgets", clean),
             "updatedAt": {"S": _now()},
         },
     )
@@ -853,7 +884,7 @@ def link_transfer_pairs(user_id, from_date=None, to_date=None):
                     UpdateExpression="SET transferId = :t, category = :c, updatedAt = :n",
                     ExpressionAttributeValues={
                         ":t": {"S": transfer_id},
-                        ":c": {"S": "Transfer"},
+                        ":c": _enc(user_id, _txn_sk(leg["id"]), "category", "Transfer"),
                         ":n": {"S": _now()},
                     },
                 )
@@ -962,11 +993,13 @@ def import_statement(user_id, body, commit=False):
             row.get("ledgerBalanceDate") or hi)
     if fmt == "csv" and isinstance(body.get("mapping"), dict):
         # remember the mapping on the target account for next time
+        acct_sk = f"BPF#ACCOUNT#{account_id}"
         _ddb().update_item(
             TableName=TABLE_NAME,
-            Key={"PK": {"S": f"USER#{user_id}"}, "SK": {"S": f"BPF#ACCOUNT#{account_id}"}},
+            Key={"PK": {"S": f"USER#{user_id}"}, "SK": {"S": acct_sk}},
             UpdateExpression="SET csvMapping = :m",
-            ExpressionAttributeValues={":m": {"S": json.dumps(body["mapping"])}},
+            ExpressionAttributeValues={
+                ":m": _enc(user_id, acct_sk, "csvMapping", json.dumps(body["mapping"]))},
         )
     result["committed"] = True
     result["transfersLinked"] = link_transfer_pairs(user_id, from_date=lo, to_date=hi)
@@ -993,7 +1026,8 @@ def bulk_categorize(user_id, txn_ids, category):
                 Key={"PK": {"S": f"USER#{user_id}"}, "SK": {"S": sk}},
                 UpdateExpression="SET category = :c, updatedAt = :n",
                 ConditionExpression="attribute_exists(SK) AND attribute_not_exists(transferId)",
-                ExpressionAttributeValues={":c": {"S": category}, ":n": {"S": now}},
+                ExpressionAttributeValues={":c": _enc(user_id, sk, "category", category),
+                                           ":n": {"S": now}},
             )
             updated += 1
         except Exception:
@@ -1018,11 +1052,13 @@ def apply_rules_to_uncategorized(user_id):
         category = apply_rules(rules, t["payee"])
         if not category:
             continue
+        sk = _txn_sk(t["id"])
         _ddb().update_item(
             TableName=TABLE_NAME,
-            Key={"PK": {"S": f"USER#{user_id}"}, "SK": {"S": _txn_sk(t["id"])}},
+            Key={"PK": {"S": f"USER#{user_id}"}, "SK": {"S": sk}},
             UpdateExpression="SET category = :c, updatedAt = :n",
-            ExpressionAttributeValues={":c": {"S": category}, ":n": {"S": _now()}},
+            ExpressionAttributeValues={":c": _enc(user_id, sk, "category", category),
+                                       ":n": {"S": _now()}},
         )
         updated += 1
     return updated
