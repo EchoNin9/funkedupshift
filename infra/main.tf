@@ -405,6 +405,13 @@ data "aws_iam_policy_document" "terraformManage" {
     ]
     resources = ["*"]
   }
+  # Lambda log groups (infra/logs.tf)
+  statement {
+    sid       = "TerraformManageLogs"
+    effect    = "Allow"
+    actions   = ["logs:*"]
+    resources = ["arn:aws:logs:*:${data.aws_caller_identity.current.account_id}:log-group:*"]
+  }
 }
 
 resource "aws_iam_policy" "terraformManage" {
@@ -923,6 +930,19 @@ resource "aws_iam_role_policy" "lambdaApi" {
         Action    = ["kms:GenerateDataKey", "kms:Decrypt"]
         Resource  = aws_kms_key.finances.arn
         Condition = { StringEquals = { "kms:EncryptionContext:purpose" = "fus-finances" } }
+      },
+      {
+        # MCP bearer token (SecureString, set manually; see mcp/handler.py).
+        Effect   = "Allow"
+        Action   = ["ssm:GetParameter"]
+        Resource = "arn:aws:ssm:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:parameter/funkedupshift/finances/*"
+      },
+      {
+        # Default aws/ssm key; kms:ViaService keeps Decrypt SSM-only.
+        Effect    = "Allow"
+        Action    = ["kms:Decrypt"]
+        Resource  = data.aws_kms_alias.ssm.target_key_arn
+        Condition = { StringEquals = { "kms:ViaService" = "ssm.${var.awsRegion}.amazonaws.com" } }
       }
     ]
   })
@@ -946,7 +966,6 @@ resource "aws_lambda_function" "api" {
       COGNITO_USER_POOL_ID    = aws_cognito_user_pool.main.id
       THUMB_FUNCTION_NAME     = aws_lambda_function.thumb.function_name
       COLLECTOR_FUNCTION_NAME = aws_lambda_function.collector.function_name
-      ALPHA_VANTAGE_API_KEY   = var.alphaVantageApiKey
       ERA_API_KEY             = var.eraApiKey
       FINANCE_KMS_KEY_ID      = aws_kms_key.finances.arn
     }
@@ -2535,11 +2554,11 @@ resource "aws_lambda_function" "mcp" {
 
   environment {
     variables = {
-      TABLE_NAME         = aws_dynamodb_table.main.name
-      ERA_API_KEY        = var.eraApiKey
-      MCP_BEARER_TOKEN   = var.mcpBearerToken
-      MCP_OWNER_USER_ID  = var.mcpOwnerUserId
-      FINANCE_KMS_KEY_ID = aws_kms_key.finances.arn
+      TABLE_NAME             = aws_dynamodb_table.main.name
+      ERA_API_KEY            = var.eraApiKey
+      MCP_BEARER_TOKEN_PARAM = "/funkedupshift/finances/mcp/bearer-token"
+      MCP_OWNER_USER_ID      = var.mcpOwnerUserId
+      FINANCE_KMS_KEY_ID     = aws_kms_key.finances.arn
     }
   }
 }
