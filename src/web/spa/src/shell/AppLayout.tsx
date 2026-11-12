@@ -65,6 +65,7 @@ const EncodePage = lazy(() => import("../features/encode/EncodePage"));
 const HashPage = lazy(() => import("../features/hash/HashPage"));
 const CidrPage = lazy(() => import("../features/cidr/CidrPage"));
 const CronPage = lazy(() => import("../features/cron/CronPage"));
+const JsonPage = lazy(() => import("../features/json/JsonPage"));
 const ImagePage = lazy(() => import("../features/imagetool/ImagePage"));
 const CropPage = lazy(() => import("../features/croptool/CropPage"));
 const RemoveBgPage = lazy(() => import("../features/removebg/RemoveBgPage"));
@@ -152,6 +153,7 @@ const AppLayoutContent: React.FC = () => {
               <Route path="/hash" element={<HashPage />} />
               <Route path="/cidr" element={<CidrPage />} />
               <Route path="/cron" element={<CronPage />} />
+              <Route path="/json" element={<JsonPage />} />
               <Route path="/images" element={<ImagePage />} />
               <Route path="/crop" element={<CropPage />} />
               <Route path="/removebg" element={<RemoveBgPage />} />
