@@ -7,6 +7,7 @@ import ImageToolsTool from "./ImageToolsTool";
 import DnsTool from "./DnsTool";
 import EmailAuthTool from "./EmailAuthTool";
 import SslTool from "./SslTool";
+import HttpTraceTool from "./HttpTraceTool";
 import TextShareTool from "./TextShareTool";
 import ConvertersTool from "./ConvertersTool";
 import EncodeTool from "./EncodeTool";
@@ -32,6 +33,7 @@ type View =
   | "tool:json"
   | "tool:emailauth"
   | "tool:ssl"
+  | "tool:httptrace"
   | "tool:myinfo"
   | "auth";
 
@@ -68,6 +70,7 @@ const TOOLS: ToolDef[] = [
   { id: "json", name: "JSON / YAML", description: "Format, validate, convert and diff JSON and YAML, right in your browser.", available: true },
   { id: "emailauth", name: "Email Auth Checker", description: "Check a domain's SPF, DKIM and DMARC setup and get a prioritised fix list.", available: true },
   { id: "ssl", name: "SSL Certificate Checker", description: "Inspect a site's TLS certificate chain, expiry and trust.", available: true },
+  { id: "httptrace", name: "HTTP Headers & Redirects", description: "Trace a URL's redirect chain and check its security and caching headers.", available: true },
   { id: "myinfo", name: "My Info", description: "See what your browser, device, and network reveal about you.", available: true }
 ];
 
@@ -254,6 +257,9 @@ const App: React.FC = () => {
         )}
         {view === "tool:ssl" && auth.signedIn && (
           <SslTool key={sslHost} onBack={goLanding} onAuthError={handleAuthError} initialHost={sslHost} />
+        )}
+        {view === "tool:httptrace" && auth.signedIn && (
+          <HttpTraceTool onBack={goLanding} onAuthError={handleAuthError} />
         )}
 
         {/* Unlocked while signed out — public backend endpoint + client-side reads only. */}

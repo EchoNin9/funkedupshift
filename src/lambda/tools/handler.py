@@ -61,7 +61,7 @@ except ImportError:
             "body": json.dumps(body) if not isinstance(body, str) else body,
         }
 
-from tools import emailauth, sslcheck  # noqa: E402
+from tools import emailauth, httptrace, sslcheck  # noqa: E402
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -728,6 +728,14 @@ def sslCheck(event):
         return jsonResponse({"error": str(e)}, 400)
 
 
+def httpTrace(event):
+    """GET /tools/http?url=<u> — see tools/httptrace.py for the response shape."""
+    try:
+        return jsonResponse(httptrace.trace((event.get("queryStringParameters") or {}).get("url")), 200)
+    except httptrace.HttpTraceError as e:
+        return jsonResponse({"error": str(e)}, 400)
+
+
 TEXT_TABLE_NAME = os.environ.get("TEXT_TABLE_NAME", "")
 TEXT_TABLE_REGION = os.environ.get("TEXT_TABLE_REGION", "ca-central-1")
 
@@ -981,6 +989,8 @@ def handler(event, context):
             return emailAuthCheck(event)
         if method == "GET" and path == "/tools/ssl":
             return sslCheck(event)
+        if method == "GET" and path == "/tools/http":
+            return httpTrace(event)
 
         # Text-paste sharing (FUNK-40). Literal checks first, then the
         # /tools/text/ prefix — mirrors the /s vs /s/{code} ordering above,

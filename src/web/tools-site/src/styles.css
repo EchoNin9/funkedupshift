@@ -1191,3 +1191,102 @@ body {
   border-radius: 999px;
   font-size: 0.8rem;
 }
+
+.http-hops {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.http-hop {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.6rem 0.8rem;
+  margin-bottom: 0.5rem;
+  overflow-wrap: anywhere;
+}
+
+.http-hop-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.85rem;
+}
+
+.http-badge,
+.http-grade {
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  font-weight: 700;
+}
+
+.http-badge-ok,
+.http-grade-A,
+.http-grade-B {
+  color: var(--accent);
+}
+
+.http-badge-redir,
+.http-grade-C,
+.http-grade-D {
+  color: var(--warn);
+}
+
+.http-badge-err,
+.http-grade-F {
+  color: var(--danger);
+}
+
+.http-url,
+.http-next {
+  margin: 0.35rem 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+
+.http-next {
+  color: var(--text-muted);
+}
+
+.http-hop summary {
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.http-headers {
+  table-layout: fixed;
+  margin-top: 0.5rem;
+}
+
+.http-headers th {
+  width: 35%;
+  text-transform: none;
+  overflow-wrap: anywhere;
+}
+
+.http-grade-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.http-grade {
+  font-size: 1.2rem;
+}
+
+.http-sec {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.http-sec li {
+  overflow-wrap: anywhere;
+}

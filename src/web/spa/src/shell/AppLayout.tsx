@@ -71,6 +71,7 @@ const CropPage = lazy(() => import("../features/croptool/CropPage"));
 const RemoveBgPage = lazy(() => import("../features/removebg/RemoveBgPage"));
 const EmailAuthPage = lazy(() => import("../features/emailauth/EmailAuthPage"));
 const SslPage = lazy(() => import("../features/ssl/SslPage"));
+const HttpTracePage = lazy(() => import("../features/httptrace/HttpTracePage"));
 const DnsPage = lazy(() => import("../features/dnstool/DnsPage"));
 const TextSharePage = lazy(() => import("../features/textshare/TextSharePage"));
 const SquashSharePage = lazy(() => import("../features/squash/SquashSharePage"));
@@ -158,6 +159,7 @@ const AppLayoutContent: React.FC = () => {
               <Route path="/json" element={<JsonPage />} />
               <Route path="/emailauth" element={<EmailAuthPage />} />
               <Route path="/ssl" element={<SslPage />} />
+              <Route path="/http" element={<HttpTracePage />} />
               <Route path="/images" element={<ImagePage />} />
               <Route path="/crop" element={<CropPage />} />
               <Route path="/removebg" element={<RemoveBgPage />} />
