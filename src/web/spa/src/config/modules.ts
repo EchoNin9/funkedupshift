@@ -48,6 +48,7 @@ import {
   UserCircle,
   EnvelopeSimple,
   Certificate,
+  Signpost,
 } from "@phosphor-icons/react";
 
 /** Public nav modules (sidebar/header links). */
@@ -107,6 +108,7 @@ export const PUBLIC_MODULES: PublicModule[] = [
   { id: "json", label: "JSON / YAML", path: "/json", section: "tools", minRole: "user", authOnly: true, group: "tools", icon: BracketsCurly, description: "Format, validate, convert and diff JSON and YAML, right in your browser." },
   { id: "emailauth", label: "Email Auth Checker", path: "/emailauth", section: "tools", minRole: "user", authOnly: true, group: "tools", icon: EnvelopeSimple, description: "Check a domain's SPF, DKIM and DMARC setup and get a prioritised fix list." },
   { id: "ssl", label: "SSL Checker", path: "/ssl", section: "tools", minRole: "user", authOnly: true, group: "tools", icon: Certificate, description: "Inspect a site's TLS certificate chain, expiry and trust." },
+  { id: "httptrace", label: "HTTP Headers", path: "/http", section: "tools", minRole: "user", authOnly: true, group: "tools", icon: Signpost, description: "Trace a URL's redirect chain and check its security and caching headers." },
   { id: "imagetool", label: "Image Resizer", path: "/images", section: "tools", minRole: "user", authOnly: true, group: "tools", icon: Resize, description: "Resize and compress images." },
   { id: "croptool", label: "Crop Image", path: "/crop", section: "tools", minRole: "user", authOnly: true, group: "tools", icon: Crop, description: "Crop images to the size you need." },
   { id: "removebg", label: "Remove Background", path: "/removebg", section: "tools", minRole: "user", authOnly: true, group: "tools", icon: SelectionBackground, description: "Remove the background from a photo." },
@@ -286,6 +288,7 @@ const MODULE_GROUPS: ModuleGroup[] = [
       { path: "/json", label: "JSON / YAML" },
       { path: "/emailauth", label: "Email Auth Checker" },
       { path: "/ssl", label: "SSL Checker" },
+      { path: "/http", label: "HTTP Headers" },
       { path: "/images", label: "Image Resizer" },
       { path: "/crop", label: "Crop Image" },
       { path: "/removebg", label: "Remove Background" },

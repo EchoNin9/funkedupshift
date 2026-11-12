@@ -544,6 +544,14 @@ resource "aws_apigatewayv2_route" "toolsSslGet" {
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
+resource "aws_apigatewayv2_route" "toolsHttpGet" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /tools/http"
+  target             = "integrations/${aws_apigatewayv2_integration.tools.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
 # ------------------------------------------------------------------------------
 # Text-paste sharing (FUNK-40). Mint/list/delete are authenticated, same
 # pattern as the shortener above. GET /tools/text/{id} is PUBLIC — the FIRST
