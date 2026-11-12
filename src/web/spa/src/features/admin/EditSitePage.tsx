@@ -118,7 +118,7 @@ const EditSitePage: React.FC = () => {
     }
     const img = new Image();
     img.onload = () => {
-      if (img.naturalWidth < MIN_LOGO_SIZE || img.naturalHeight < MIN_LOGO_SIZE) {
+      if (file.type !== "image/svg+xml" && (img.naturalWidth < MIN_LOGO_SIZE || img.naturalHeight < MIN_LOGO_SIZE)) {
         setLogoError("Logo must be at least 100×100 pixels.");
         return;
       }
@@ -162,7 +162,12 @@ const EditSitePage: React.FC = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: u })
       });
-      if (!resp.ok) throw new Error(await resp.text());
+      if (!resp.ok) {
+        const t = await resp.text();
+        let msg = t;
+        try { msg = JSON.parse(t).error || t; } catch { /* not JSON */ }
+        throw new Error(msg);
+      }
       const data = (await resp.json()) as { description?: string };
       setDescription(data.description ?? "");
       setDescriptionAiGenerated(true);
@@ -365,7 +370,7 @@ const EditSitePage: React.FC = () => {
             AI-generated summary
           </label>
         </FormField>
-        <FormField label="Logo">
+        <FormField label="Logo (optional, PNG/JPEG/GIF/WebP min 100×100 or SVG, max 5 MB)">
           {logoUrl && !deleteLogo && !logoPreview && (
             <div className="mb-2 flex items-center gap-2">
               <img src={logoUrl} alt="Current logo" className="h-12 w-12 rounded-lg border border-border-hover object-cover" />
@@ -377,7 +382,7 @@ const EditSitePage: React.FC = () => {
           )}
           <input aria-label="Logo file"
             type="file"
-            accept="image/png,image/jpeg,image/gif,image/webp"
+            accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml"
             onChange={onLogoChange}
             className="block w-full text-xs text-text-secondary file:mr-3 file:rounded-md file:border-0 file:bg-surface-3 file:px-3 file:py-1.5 file:text-text-primary"
           />

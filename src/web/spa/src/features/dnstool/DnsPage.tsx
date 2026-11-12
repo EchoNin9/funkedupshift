@@ -33,6 +33,8 @@ const DnsPage: React.FC = () => {
   const [running, setRunning] = useState(false);
   const [sections, setSections] = useState<SectionState[]>([]);
   const [formError, setFormError] = useState<string | null>(null);
+  const [queried, setQueried] = useState<{ name: string; type: TypeChoice } | null>(null);
+  const sslHost = queried && ["A", "AAAA", "CNAME", "ALL"].includes(queried.type) ? queried.name : "";
 
   const runLookup = async (domain: string, t: DnsRecordType): Promise<SectionState> => {
     try {
@@ -53,6 +55,7 @@ const DnsPage: React.FC = () => {
     const domain = name.trim();
     if (!domain) return;
     setFormError(null);
+    setQueried({ name: domain, type });
     setRunning(true);
 
     const types: DnsRecordType[] = type === "ALL" ? DNS_RECORD_TYPES : [type];
@@ -134,6 +137,15 @@ const DnsPage: React.FC = () => {
           {running ? "Looking up…" : "Lookup"}
         </button>
       </FormCard>
+
+      {sslHost && (
+        <p className="mt-4 flex flex-wrap items-center gap-3 text-sm text-text-primary">
+          <span className="break-all font-semibold">{sslHost}</span>
+          <Link to={"/ssl?host=" + encodeURIComponent(sslHost)} className={buttonClasses("secondary", "md")}>
+            Check SSL
+          </Link>
+        </p>
+      )}
 
       <div className="mt-6 space-y-4" aria-live="polite" aria-busy={running}>
         {sections.map((section) => (

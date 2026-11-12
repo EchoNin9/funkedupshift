@@ -2,6 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
 import PublicTextView from "./PublicTextView";
+import PublicFileView from "./PublicFileView";
 import "./styles.css";
 
 const rootEl = document.getElementById("root") as HTMLElement | null;
@@ -13,12 +14,19 @@ const rootEl = document.getElementById("root") as HTMLElement | null;
 // infra/tools.tf aws_cloudfront_distribution.tools_site) is what makes a
 // direct deep link to /t/<id> resolve to this bundle in the first place.
 const textShareMatch = window.location.pathname.match(/^\/t\/([A-Za-z0-9_-]+)\/?$/);
+const fileDropMatch = window.location.pathname.match(/^\/f\/([A-Za-z0-9_-]+)\/?$/);
 
 if (rootEl) {
   const root = ReactDOM.createRoot(rootEl);
   root.render(
     <React.StrictMode>
-      {textShareMatch ? <PublicTextView id={textShareMatch[1]} /> : <App />}
+      {textShareMatch ? (
+        <PublicTextView id={textShareMatch[1]} />
+      ) : fileDropMatch ? (
+        <PublicFileView id={fileDropMatch[1]} />
+      ) : (
+        <App />
+      )}
     </React.StrictMode>
   );
 }

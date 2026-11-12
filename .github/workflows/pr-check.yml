@@ -54,3 +54,18 @@ jobs:
         run: |
           npm ci
           npm run build
+
+  # The apps duplicate pure logic by design: unit-test it once and guard the copies against drift.
+  tools-unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: node --test src/web/tools-site/src/*.test.mjs
+      - name: Guard SPA copies against drift
+        run: |
+          for p in codec:encode/codec hashing:hash/hashing cidr:cidr/cidr crontime:cron/crontime datafmt:json/datafmt filedrop:files/filedrop; do
+            cmp "src/web/tools-site/src/${p%%:*}.ts" "src/web/spa/src/features/${p#*:}.ts" || exit 1
+          done

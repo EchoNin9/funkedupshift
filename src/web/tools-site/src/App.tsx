@@ -5,8 +5,17 @@ import PasswordTool from "./PasswordTool";
 import QrTool, { QrLink } from "./QrTool";
 import ImageToolsTool from "./ImageToolsTool";
 import DnsTool from "./DnsTool";
+import EmailAuthTool from "./EmailAuthTool";
+import SslTool from "./SslTool";
+import HttpTraceTool from "./HttpTraceTool";
+import FileDropTool from "./FileDropTool";
 import TextShareTool from "./TextShareTool";
 import ConvertersTool from "./ConvertersTool";
+import EncodeTool from "./EncodeTool";
+import HashTool from "./HashTool";
+import CidrTool from "./CidrTool";
+import CronTool from "./CronTool";
+import JsonTool from "./JsonTool";
 import MyInfoTool from "./MyInfoTool";
 
 type View =
@@ -18,6 +27,15 @@ type View =
   | "tool:dns"
   | "tool:pastebin"
   | "tool:converters"
+  | "tool:encode"
+  | "tool:hash"
+  | "tool:cidr"
+  | "tool:cron"
+  | "tool:json"
+  | "tool:emailauth"
+  | "tool:ssl"
+  | "tool:httptrace"
+  | "tool:files"
   | "tool:myinfo"
   | "auth";
 
@@ -47,6 +65,15 @@ const TOOLS: ToolDef[] = [
   { id: "imagetools", name: "Image Tools", description: "Resize, crop, remove backgrounds.", available: true },
   { id: "dns", name: "DNS Lookup", description: "Look up A, MX, TXT and other DNS records for any domain.", available: true },
   { id: "converters", name: "Converters", description: "Temperature, units, date math, and timezones, right in your browser.", available: true },
+  { id: "encode", name: "Encode / Decode", description: "Decode JWTs and encode or decode Base64 and URL text, right in your browser.", available: true },
+  { id: "hash", name: "Hash & UUID", description: "Hash text or files, check a download's checksum, and generate UUIDs and ULIDs, right in your browser.", available: true },
+  { id: "cidr", name: "CIDR / Subnet Calculator", description: "IPv4 and IPv6 subnet math: ranges, splits, overlaps and AWS VPC sizing, right in your browser.", available: true },
+  { id: "cron", name: "Cron & Timestamps", description: "Explain cron and EventBridge schedules, preview the next runs, and convert epoch timestamps, right in your browser.", available: true },
+  { id: "json", name: "JSON / YAML", description: "Format, validate, convert and diff JSON and YAML, right in your browser.", available: true },
+  { id: "emailauth", name: "Email Auth Checker", description: "Check a domain's SPF, DKIM and DMARC setup and get a prioritised fix list.", available: true },
+  { id: "ssl", name: "SSL Certificate Checker", description: "Inspect a site's TLS certificate chain, expiry and trust.", available: true },
+  { id: "httptrace", name: "HTTP Headers & Redirects", description: "Trace a URL's redirect chain and check its security and caching headers.", available: true },
+  { id: "files", name: "File Drop", description: "Share files up to 5 GB with an expiring link.", available: true },
   { id: "myinfo", name: "My Info", description: "See what your browser, device, and network reveal about you.", available: true }
 ];
 
@@ -56,6 +83,7 @@ const App: React.FC = () => {
   const [sessionNotice, setSessionNotice] = useState<string | null>(null);
   // Set when the QR tool is opened from a shortener row; null for standalone use.
   const [qrLink, setQrLink] = useState<QrLink | null>(null);
+  const [sslHost, setSslHost] = useState("");
 
   const refreshAuth = useCallback(() => {
     const w = window as any;
@@ -84,6 +112,7 @@ const App: React.FC = () => {
 
   const goLanding = () => {
     setQrLink(null);
+    setSslHost("");
     setView("landing");
   };
 
@@ -116,6 +145,7 @@ const App: React.FC = () => {
     }
     if (!tool.available) return; // coming-soon cards stay disabled even when authed
     setQrLink(null);
+    setSslHost("");
     setView(`tool:${tool.id}` as View);
   };
 
@@ -205,7 +235,14 @@ const App: React.FC = () => {
         {view === "tool:imagetools" && auth.signedIn && <ImageToolsTool onBack={goLanding} />}
 
         {view === "tool:dns" && auth.signedIn && (
-          <DnsTool onBack={goLanding} onAuthError={handleAuthError} />
+          <DnsTool
+            onBack={goLanding}
+            onAuthError={handleAuthError}
+            onCheckSsl={(h) => {
+              setSslHost(h);
+              setView("tool:ssl");
+            }}
+          />
         )}
 
         {view === "tool:pastebin" && auth.signedIn && (
@@ -213,6 +250,21 @@ const App: React.FC = () => {
         )}
 
         {view === "tool:converters" && auth.signedIn && <ConvertersTool onBack={goLanding} />}
+        {view === "tool:encode" && auth.signedIn && <EncodeTool onBack={goLanding} />}
+        {view === "tool:hash" && auth.signedIn && <HashTool onBack={goLanding} />}
+        {view === "tool:cidr" && auth.signedIn && <CidrTool onBack={goLanding} />}
+        {view === "tool:cron" && auth.signedIn && <CronTool onBack={goLanding} />}
+        {view === "tool:json" && auth.signedIn && <JsonTool onBack={goLanding} />}
+        {view === "tool:emailauth" && auth.signedIn && (
+          <EmailAuthTool onBack={goLanding} onAuthError={handleAuthError} />
+        )}
+        {view === "tool:ssl" && auth.signedIn && (
+          <SslTool key={sslHost} onBack={goLanding} onAuthError={handleAuthError} initialHost={sslHost} />
+        )}
+        {view === "tool:httptrace" && auth.signedIn && (
+          <HttpTraceTool onBack={goLanding} onAuthError={handleAuthError} />
+        )}
+        {view === "tool:files" && auth.signedIn && <FileDropTool onBack={goLanding} onAuthError={handleAuthError} />}
 
         {/* Unlocked while signed out — public backend endpoint + client-side reads only. */}
         {view === "tool:myinfo" && <MyInfoTool onBack={goLanding} />}

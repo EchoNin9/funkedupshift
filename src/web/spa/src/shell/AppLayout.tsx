@@ -61,9 +61,19 @@ const ShortenerPage = lazy(() => import("../features/tools/ShortenerPage"));
 const ToolsIndexPage = lazy(() => import("../features/tools/ToolsIndexPage"));
 const PasswordPage = lazy(() => import("../features/passwordgen/PasswordPage"));
 const QrPage = lazy(() => import("../features/qrcode/QrPage"));
+const EncodePage = lazy(() => import("../features/encode/EncodePage"));
+const HashPage = lazy(() => import("../features/hash/HashPage"));
+const CidrPage = lazy(() => import("../features/cidr/CidrPage"));
+const CronPage = lazy(() => import("../features/cron/CronPage"));
+const JsonPage = lazy(() => import("../features/json/JsonPage"));
 const ImagePage = lazy(() => import("../features/imagetool/ImagePage"));
 const CropPage = lazy(() => import("../features/croptool/CropPage"));
 const RemoveBgPage = lazy(() => import("../features/removebg/RemoveBgPage"));
+const EmailAuthPage = lazy(() => import("../features/emailauth/EmailAuthPage"));
+const SslPage = lazy(() => import("../features/ssl/SslPage"));
+const HttpTracePage = lazy(() => import("../features/httptrace/HttpTracePage"));
+const FilesPage = lazy(() => import("../features/files/FilesPage"));
+const FileViewPage = lazy(() => import("../features/files/FileViewPage"));
 const DnsPage = lazy(() => import("../features/dnstool/DnsPage"));
 const TextSharePage = lazy(() => import("../features/textshare/TextSharePage"));
 const SquashSharePage = lazy(() => import("../features/squash/SquashSharePage"));
@@ -144,6 +154,15 @@ const AppLayoutContent: React.FC = () => {
               <Route path="/shortener" element={<ShortenerPage />} />
               <Route path="/password" element={<PasswordPage />} />
               <Route path="/qr" element={<QrPage />} />
+              <Route path="/encode" element={<EncodePage />} />
+              <Route path="/hash" element={<HashPage />} />
+              <Route path="/cidr" element={<CidrPage />} />
+              <Route path="/cron" element={<CronPage />} />
+              <Route path="/json" element={<JsonPage />} />
+              <Route path="/emailauth" element={<EmailAuthPage />} />
+              <Route path="/ssl" element={<SslPage />} />
+              <Route path="/http" element={<HttpTracePage />} />
+              <Route path="/files" element={<FilesPage />} />
               <Route path="/images" element={<ImagePage />} />
               <Route path="/crop" element={<CropPage />} />
               <Route path="/removebg" element={<RemoveBgPage />} />
@@ -154,6 +173,7 @@ const AppLayoutContent: React.FC = () => {
               {/* Public — no auth gate. Recipients of a shared paste link
                   must be able to open it signed-out (see TextViewPage). */}
               <Route path="/t/:id" element={<TextViewPage />} />
+              <Route path="/f/:id" element={<FileViewPage />} />
               <Route path="/squash/s/:id" element={<SquashSharePage />} />
               <Route path="/admin" element={<AdminLayout />}>
                 <Route element={<AppPageLayout />}>

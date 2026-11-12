@@ -61,6 +61,8 @@ except ImportError:
             "body": json.dumps(body) if not isinstance(body, str) else body,
         }
 
+from tools import emailauth, filedrop, httptrace, sslcheck  # noqa: E402
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
@@ -76,6 +78,14 @@ QR_CONTENT_TYPE = "image/png"
 QR_UPLOAD_EXPIRES_IN = 300       # presigned POST: 5 min
 QR_VIEW_EXPIRES_IN = 3600        # presigned GET in list/get responses: 1 h
 _QR_PATH_RE = re.compile(r"^/s/([^/]+)/qr$")
+# File Drop (FUNK-76) path-parameter routes. Like the QR route these are
+# invisible to test_route_coverage, so each needs a hand-synced tf route:
+#   POST /tools/files/{id}/parts, POST /tools/files/{id}/complete,
+#   DELETE /tools/files/{id}, GET /tools/f/{id} (public),
+#   POST /tools/f/{id}/download (public)
+_FILES_SUB_RE = re.compile(r"^/tools/files/([^/]+)/(parts|complete)$")
+_FILES_ID_RE = re.compile(r"^/tools/files/([^/]+)$")
+_FILES_PUBLIC_RE = re.compile(r"^/tools/f/([^/]+)(/download)?$")
 
 # Domains that resolve short codes themselves — a short URL that targets one
 # of these would create a redirect loop at the edge. Codes are global and
@@ -355,10 +365,11 @@ def listShortLinks(event):
         # Filtered (expired-but-not-yet-TTL-deleted) rows still consume the
         # page's Limit — acceptable per the brief; a page can come back
         # short even when more live links exist beyond the cursor.
-        "FilterExpression": "expiresAt > :now",
+        "FilterExpression": "expiresAt > :now AND (attribute_not_exists(kind) OR kind <> :file)",
         "ExpressionAttributeValues": {
             ":sub": {"S": sub},
             ":now": {"N": str(_nowEpoch())},
+            ":file": {"S": "file"},  # File Drop items share this table
         },
         "ScanIndexForward": False,
         "Limit": limit,
@@ -698,6 +709,42 @@ def dnsLookup(event):
     )
 
 
+def emailAuthCheck(event):
+    """GET /tools/emailauth?domain=<d>&selectors=<a,b> — see tools/emailauth.py
+    for the response shape."""
+    qs = event.get("queryStringParameters") or {}
+    domain, err = _validateDnsName(qs.get("domain"))
+    if err:
+        return jsonResponse({"error": err}, 400)
+    selectors, err = emailauth.parseSelectors(qs.get("selectors"))
+    if err:
+        return jsonResponse({"error": err}, 400)
+    return jsonResponse(emailauth.lookup(domain, selectors), 200)
+
+
+def sslCheck(event):
+    """GET /tools/ssl?host=<h>&port=<p> — see tools/sslcheck.py for the response shape."""
+    qs = event.get("queryStringParameters") or {}
+    host, err = _validateDnsName(qs.get("host"))
+    if err:
+        return jsonResponse({"error": err}, 400)
+    port, err = sslcheck.parsePort(qs.get("port"))
+    if err:
+        return jsonResponse({"error": err}, 400)
+    try:
+        return jsonResponse(sslcheck.check(host, port), 200)
+    except sslcheck.SslCheckError as e:
+        return jsonResponse({"error": str(e)}, 400)
+
+
+def httpTrace(event):
+    """GET /tools/http?url=<u> — see tools/httptrace.py for the response shape."""
+    try:
+        return jsonResponse(httptrace.trace((event.get("queryStringParameters") or {}).get("url")), 200)
+    except httptrace.HttpTraceError as e:
+        return jsonResponse({"error": str(e)}, 400)
+
+
 TEXT_TABLE_NAME = os.environ.get("TEXT_TABLE_NAME", "")
 TEXT_TABLE_REGION = os.environ.get("TEXT_TABLE_REGION", "ca-central-1")
 
@@ -821,10 +868,11 @@ def listTextPastes(event):
         "TableName": TEXT_TABLE_NAME,
         "IndexName": "byCreator",
         "KeyConditionExpression": "createdBy = :sub",
-        "FilterExpression": "expiresAt > :now",
+        "FilterExpression": "expiresAt > :now AND (attribute_not_exists(kind) OR kind <> :file)",
         "ExpressionAttributeValues": {
             ":sub": {"S": sub},
             ":now": {"N": str(_nowEpoch())},
+            ":file": {"S": "file"},  # File Drop items share this table
         },
         "ScanIndexForward": False,
         "Limit": limit,
@@ -863,6 +911,9 @@ def deleteTextPaste(event, text_id):
     if not item:
         return jsonResponse({"error": "Not found"}, 404)
 
+    if item.get("kind", {}).get("S") == "file":  # File Drop item: use /tools/files
+        return jsonResponse({"error": "Not found"}, 404)
+
     if item.get("createdBy", {}).get("S", "") != _getSub(event):
         return jsonResponse({"error": "Forbidden"}, 403)
 
@@ -892,6 +943,9 @@ def getTextPastePublic(event, text_id):
     if not item:
         return jsonResponse({"error": "Not found"}, 404)
 
+    if item.get("kind", {}).get("S") == "file":  # File Drop item, not a paste
+        return jsonResponse({"error": "Not found"}, 404)
+
     expires_at = int(item.get("expiresAt", {}).get("N", "0"))
     if expires_at <= _nowEpoch():
         return jsonResponse({"error": "Not found"}, 404)
@@ -905,6 +959,11 @@ def getTextPastePublic(event, text_id):
         },
         200,
     )
+
+
+def _fd(result):
+    status, body = result
+    return jsonResponse(body, status)
 
 
 def handler(event, context):
@@ -947,6 +1006,12 @@ def handler(event, context):
             return patchShortLinkExpiry(event, code)
         if method == "GET" and path == "/tools/dns":
             return dnsLookup(event)
+        if method == "GET" and path == "/tools/emailauth":
+            return emailAuthCheck(event)
+        if method == "GET" and path == "/tools/ssl":
+            return sslCheck(event)
+        if method == "GET" and path == "/tools/http":
+            return httpTrace(event)
 
         # Text-paste sharing (FUNK-40). Literal checks first, then the
         # /tools/text/ prefix — mirrors the /s vs /s/{code} ordering above,
@@ -962,6 +1027,25 @@ def handler(event, context):
         if method == "DELETE" and path.startswith("/tools/text/"):
             text_id = path[len("/tools/text/"):]
             return deleteTextPaste(event, text_id)
+
+        # File Drop (FUNK-76). /tools/f/... is public (no claims read);
+        # /tools/files/... is JWT. Logic lives in tools/filedrop.py.
+        if method == "POST" and path == "/tools/files":
+            return _fd(filedrop.initiate(event))
+        if method == "GET" and path == "/tools/files":
+            return _fd(filedrop.listFiles(event))
+        m = _FILES_SUB_RE.match(path)
+        if m and method == "POST":
+            fn = filedrop.partUrls if m.group(2) == "parts" else filedrop.complete
+            return _fd(fn(event, m.group(1)))
+        m = _FILES_ID_RE.match(path)
+        if m and method == "DELETE":
+            return _fd(filedrop.delete(event, m.group(1)))
+        m = _FILES_PUBLIC_RE.match(path)
+        if m and method == "GET" and not m.group(2):
+            return _fd(filedrop.publicGet(event, m.group(1)))
+        if m and method == "POST" and m.group(2):
+            return _fd(filedrop.publicDownload(event, m.group(1)))
 
         return jsonResponse({"error": "Not found"}, 404)
     except Exception as e:

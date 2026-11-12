@@ -972,3 +972,389 @@ body {
   display: flex;
   gap: 0.5rem;
 }
+
+/* JSON / YAML tool */
+.diff-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.diff-item {
+  border: 1px solid var(--border);
+  border-left-width: 4px;
+  border-radius: 6px;
+  padding: 0.5rem 0.7rem;
+  background: var(--surface);
+  overflow-wrap: anywhere;
+}
+
+.diff-added {
+  border-left-color: var(--accent);
+}
+
+.diff-removed {
+  border-left-color: var(--danger);
+}
+
+.diff-changed {
+  border-left-color: var(--warn);
+}
+
+.diff-kind {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.diff-val {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.85rem;
+}
+
+/* Email Auth Checker (FUNK-75) */
+.ea-summary {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.ea-grade {
+  flex: none;
+  width: 3.5rem;
+  height: 3.5rem;
+  display: grid;
+  place-items: center;
+  font-size: 1.9rem;
+  font-weight: 700;
+  border-radius: 10px;
+  border: 2px solid currentColor;
+}
+
+.ea-grade-A,
+.ea-grade-B {
+  color: var(--accent);
+}
+
+.ea-grade-C,
+.ea-grade-D {
+  color: var(--warn);
+}
+
+.ea-grade-F {
+  color: var(--danger);
+}
+
+.ea-fixes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+}
+
+.ea-sev {
+  display: inline-block;
+  min-width: 4.2rem;
+  text-align: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  border-radius: 4px;
+  padding: 0.1rem 0.4rem;
+  border: 1px solid currentColor;
+}
+
+.ea-sev-high {
+  color: var(--danger);
+}
+
+.ea-sev-medium {
+  color: var(--warn);
+}
+
+.ea-sev-low {
+  color: var(--text-muted);
+}
+
+.ea-record {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+  margin-bottom: 0.5rem;
+}
+
+.ea-record code {
+  flex: 1;
+  word-break: break-all;
+}
+
+.ea-tree {
+  list-style: none;
+  margin: 0.25rem 0 0;
+  padding-left: 1.1rem;
+  border-left: 1px solid var(--border);
+  font-size: 0.85rem;
+}
+
+.ea-tree-root {
+  padding-left: 0;
+  border-left: none;
+}
+
+.ea-tree li {
+  margin-bottom: 0.4rem;
+  word-break: break-all;
+}
+
+.ea-presence {
+  margin: 0 0 0.4rem;
+  font-size: 0.9rem;
+}
+
+.ea-scroll {
+  overflow-x: auto;
+}
+
+.ssl-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.ssl-badge {
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.ssl-badge-ok {
+  color: var(--accent);
+}
+
+.ssl-badge-warning {
+  color: var(--warn);
+}
+
+.ssl-badge-error {
+  color: var(--danger);
+}
+
+.ssl-fields {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.35rem 1rem;
+  margin: 0.6rem 0;
+  font-size: 0.9rem;
+}
+
+.ssl-fields dt {
+  color: var(--text-muted);
+}
+
+.ssl-fields dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.ssl-cert {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.5rem 0.8rem;
+  margin-bottom: 0.5rem;
+  overflow-wrap: anywhere;
+}
+
+.ssl-cert summary {
+  cursor: pointer;
+}
+
+.ssl-sans {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ssl-sans li {
+  padding: 0.1rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.8rem;
+}
+
+.http-hops {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.http-hop {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.6rem 0.8rem;
+  margin-bottom: 0.5rem;
+  overflow-wrap: anywhere;
+}
+
+.http-hop-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.85rem;
+}
+
+.http-badge,
+.http-grade {
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  font-weight: 700;
+}
+
+.http-badge-ok,
+.http-grade-A,
+.http-grade-B {
+  color: var(--accent);
+}
+
+.http-badge-redir,
+.http-grade-C,
+.http-grade-D {
+  color: var(--warn);
+}
+
+.http-badge-err,
+.http-grade-F {
+  color: var(--danger);
+}
+
+.http-url,
+.http-next {
+  margin: 0.35rem 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+
+.http-next {
+  color: var(--text-muted);
+}
+
+.http-hop summary {
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.http-headers {
+  table-layout: fixed;
+  margin-top: 0.5rem;
+}
+
+.http-headers th {
+  width: 35%;
+  text-transform: none;
+  overflow-wrap: anywhere;
+}
+
+.http-grade-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.http-grade {
+  font-size: 1.2rem;
+}
+
+.http-sec {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.http-sec li {
+  overflow-wrap: anywhere;
+}
+
+/* File Drop tool */
+.filedrop-zone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 110px;
+  padding: 1rem;
+  text-align: center;
+  border: 2px dashed var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+.filedrop-zone input[type="file"] {
+  display: none;
+}
+
+.filedrop-zone-active {
+  border-color: var(--accent);
+}
+
+.filedrop-password {
+  font: inherit;
+  padding: 0.55rem 0.7rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.filedrop-check {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+}
+
+.filedrop-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+}
+
+.filedrop-progress progress {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.filedrop-name {
+  overflow-wrap: anywhere;
+}
+
+.filedrop-badges {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.filedrop-badge {
+  font-size: 0.7rem;
+  padding: 0.05rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}

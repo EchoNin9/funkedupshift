@@ -141,21 +141,13 @@ def _validate_image_url(url):
     if not any(path_lower.endswith(ext) for ext in VALID_IMAGE_EXTENSIONS):
         return False, "URL must point to a direct image (jpg, png, gif, webp, bmp)"
     try:
-        req = urllib.request.Request(
-            url,
-            headers={"User-Agent": "Mozilla/5.0 (compatible; Funkedupshift/1.0)"},
-            method="GET",
-        )
-        with urllib.request.urlopen(req, timeout=FETCH_TIMEOUT_SEC) as resp:
-            if resp.status != 200:
-                return False, f"HTTP {resp.status}"
-            content_type = resp.headers.get("Content-Type", "").lower()
-            if "image" not in content_type:
-                return False, "URL does not return an image"
-            content_length = resp.headers.get("Content-Length")
-            if content_length and int(content_length) > MAX_IMAGE_SIZE_BYTES:
-                return False, f"Image too large (max {MAX_IMAGE_SIZE_BYTES // (1024*1024)}MB)"
-            return True, None
+        from api.generate_description import safe_fetch
+        _, content_type, _ = safe_fetch(url, MAX_IMAGE_SIZE_BYTES, FETCH_TIMEOUT_SEC, "Mozilla/5.0 (compatible; Funkedupshift/1.0)")
+        if "image" not in content_type:
+            return False, "URL does not return an image"
+        return True, None
+    except ValueError as e:  # refused host, bad scheme, or over MAX_IMAGE_SIZE_BYTES
+        return False, str(e)
     except urllib.error.HTTPError as e:
         return False, f"HTTP {e.code}: {e.reason}"
     except urllib.error.URLError as e:
@@ -595,14 +587,9 @@ def import_meme_from_url(event, user, json_response):
         ok, err = _validate_image_url(url)
         if not ok:
             return json_response({"valid": False, "error": err}, 400)
-        req = urllib.request.Request(
-            url,
-            headers={"User-Agent": "Mozilla/5.0 (compatible; Funkedupshift/1.0)"},
-            method="GET",
-        )
-        with urllib.request.urlopen(req, timeout=FETCH_TIMEOUT_SEC) as resp:
-            data = resp.read()
-        content_type = resp.headers.get("Content-Type", "image/png").split(";")[0].strip().lower()
+        from api.generate_description import safe_fetch
+        data, content_type, _ = safe_fetch(url, MAX_IMAGE_SIZE_BYTES, FETCH_TIMEOUT_SEC, "Mozilla/5.0 (compatible; Funkedupshift/1.0)")
+        content_type = content_type or "image/png"
         ext = "png"
         if "jpeg" in content_type or "jpg" in content_type:
             ext = "jpg"
