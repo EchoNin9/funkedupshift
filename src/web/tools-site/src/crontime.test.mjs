@@ -127,14 +127,16 @@ test("rate()", () => {
   assert.match(err("rate(5 weeks)"), /unit/);
 });
 
-test("DST spring-forward: nonexistent wall time is skipped (America/Vancouver)", () => {
-  assert.deepEqual(runs("30 2 * * *", "2026-03-07T00:00:00-08:00", "America/Vancouver", 2), ["2026-03-07T10:30:00.000Z", "2026-03-09T09:30:00.000Z"]);
+// Uses America/New_York: tzdata for America/Vancouver differs between Node releases for late 2026
+// (Node 22 in CI has no November fall-back there), so a zone with settled rules keeps this deterministic.
+test("DST spring-forward: nonexistent wall time is skipped (America/New_York)", () => {
+  assert.deepEqual(runs("30 2 * * *", "2026-03-07T00:00:00-05:00", "America/New_York", 2), ["2026-03-07T07:30:00.000Z", "2026-03-09T06:30:00.000Z"]);
 });
 
 test("DST fall-back: ambiguous wall time runs once, at the first occurrence", () => {
-  const r = runs("30 1 * * *", "2026-10-31T12:00:00Z", "America/Vancouver", 3);
-  // Oct 31 01:30 PDT already past; Nov 1 01:30 PDT = 08:30Z (first), then Nov 2 01:30 PST = 09:30Z.
-  assert.deepEqual(r, ["2026-11-01T08:30:00.000Z", "2026-11-02T09:30:00.000Z", "2026-11-03T09:30:00.000Z"]);
+  const r = runs("30 1 * * *", "2026-10-31T12:00:00Z", "America/New_York", 3);
+  // Oct 31 01:30 EDT already past; Nov 1 01:30 EDT = 05:30Z (first), then Nov 2 01:30 EST = 06:30Z.
+  assert.deepEqual(r, ["2026-11-01T05:30:00.000Z", "2026-11-02T06:30:00.000Z", "2026-11-03T06:30:00.000Z"]);
 });
 
 test("zone changes the instant, not the wall time", () => {
