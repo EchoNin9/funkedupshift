@@ -61,6 +61,8 @@ except ImportError:
             "body": json.dumps(body) if not isinstance(body, str) else body,
         }
 
+from tools import emailauth  # noqa: E402
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
@@ -698,6 +700,19 @@ def dnsLookup(event):
     )
 
 
+def emailAuthCheck(event):
+    """GET /tools/emailauth?domain=<d>&selectors=<a,b> — see tools/emailauth.py
+    for the response shape."""
+    qs = event.get("queryStringParameters") or {}
+    domain, err = _validateDnsName(qs.get("domain"))
+    if err:
+        return jsonResponse({"error": err}, 400)
+    selectors, err = emailauth.parseSelectors(qs.get("selectors"))
+    if err:
+        return jsonResponse({"error": err}, 400)
+    return jsonResponse(emailauth.lookup(domain, selectors), 200)
+
+
 TEXT_TABLE_NAME = os.environ.get("TEXT_TABLE_NAME", "")
 TEXT_TABLE_REGION = os.environ.get("TEXT_TABLE_REGION", "ca-central-1")
 
@@ -947,6 +962,8 @@ def handler(event, context):
             return patchShortLinkExpiry(event, code)
         if method == "GET" and path == "/tools/dns":
             return dnsLookup(event)
+        if method == "GET" and path == "/tools/emailauth":
+            return emailAuthCheck(event)
 
         # Text-paste sharing (FUNK-40). Literal checks first, then the
         # /tools/text/ prefix — mirrors the /s vs /s/{code} ordering above,

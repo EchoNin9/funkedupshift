@@ -526,6 +526,16 @@ resource "aws_apigatewayv2_route" "toolsDnsGet" {
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
+# Email Auth Checker (FUNK-75): SPF/DKIM/DMARC/MX/MTA-STS/TLS-RPT/BIMI report
+# for a domain (authenticated users only).
+resource "aws_apigatewayv2_route" "toolsEmailAuthGet" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /tools/emailauth"
+  target             = "integrations/${aws_apigatewayv2_integration.tools.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
 # ------------------------------------------------------------------------------
 # Text-paste sharing (FUNK-40). Mint/list/delete are authenticated, same
 # pattern as the shortener above. GET /tools/text/{id} is PUBLIC — the FIRST
