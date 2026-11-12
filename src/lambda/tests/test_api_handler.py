@@ -454,18 +454,13 @@ def test_avatar_from_url_400_missing_image_url():
 
 @patch("api.handler.MEDIA_BUCKET", "test-media-bucket")
 @patch("boto3.client")
-@patch("urllib.request.urlopen")
-def test_avatar_from_url_200_returns_key(mock_urlopen, mock_boto_client):
+@patch(SAFE_FETCH)
+def test_avatar_from_url_200_returns_key(mock_fetch, mock_boto_client):
     """POST /profile/avatar-from-url as user downloads, validates, uploads to S3 and returns key."""
     pytest.importorskip("PIL")
     from api.handler import handler
     image_bytes = b"\x89PNG\r\n\x1a\n" + b"\x00" * 200
-    mock_resp = MagicMock()
-    mock_resp.read.return_value = image_bytes
-    mock_resp.headers = {"Content-Length": str(len(image_bytes)), "Content-Type": "image/png"}
-    mock_resp.__enter__ = lambda self: self
-    mock_resp.__exit__ = lambda self, *a: None
-    mock_urlopen.return_value = mock_resp
+    mock_fetch.return_value = (image_bytes, "image/png", "https://example.com/avatar.png")
     mock_img = MagicMock()
     mock_img.size = (48, 48)
     mock_s3 = MagicMock()
@@ -482,6 +477,31 @@ def test_avatar_from_url_200_returns_key(mock_urlopen, mock_boto_client):
     call_kw = mock_s3.put_object.call_args.kwargs
     assert call_kw["Bucket"] == "test-media-bucket"
     assert call_kw["Key"] == body["key"]
+    assert mock_fetch.call_args.args[:2] == ("https://example.com/avatar.png", 5 * 1024 * 1024)
+
+
+@patch("api.handler.MEDIA_BUCKET", "test-media-bucket")
+@patch("boto3.client")
+@patch(SAFE_FETCH)
+def test_avatar_from_url_refused_host_is_400_and_no_s3_write(mock_fetch, mock_boto_client):
+    from api.handler import handler
+    mock_fetch.side_effect = ValueError("URL points to a non-public address")
+    event = _profile_user_event("/profile/avatar-from-url", body={"imageUrl": "http://169.254.169.254/a.png"})
+    result = handler(event, None)
+    assert result["statusCode"] == 400
+    assert "non-public" in json.loads(result["body"])["error"]
+    mock_boto_client.return_value.put_object.assert_not_called()
+
+
+@patch("api.handler.MEDIA_BUCKET", "test-media-bucket")
+@patch(SAFE_FETCH)
+def test_avatar_from_url_network_error_is_400(mock_fetch):
+    import urllib.error
+    from api.handler import handler
+    mock_fetch.side_effect = urllib.error.URLError("down")
+    result = handler(_profile_user_event("/profile/avatar-from-url", body={"imageUrl": "https://example.com/a.png"}), None)
+    assert result["statusCode"] == 400
+    assert "download" in json.loads(result["body"])["error"].lower()
 
 
 # ------------------------------------------------------------------------------

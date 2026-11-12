@@ -3264,8 +3264,6 @@ def importProfileAvatarFromUrl(event):
     try:
         import io
         import uuid as uuid_mod
-        import urllib.request
-        import urllib.error
         body = json.loads(event.get("body", "{}"))
         image_url = (body.get("imageUrl") or "").strip()
         if not image_url:
@@ -3273,21 +3271,13 @@ def importProfileAvatarFromUrl(event):
         MAX_AVATAR_BYTES = 5 * 1024 * 1024
         MIN_AVATAR_SIZE = 48
         FETCH_TIMEOUT_SEC = 10
-        req = urllib.request.Request(image_url, headers={"User-Agent": "FunkedupshiftAvatarImport/1.0"})
+        from api.generate_description import safe_fetch
         try:
-            with urllib.request.urlopen(req, timeout=FETCH_TIMEOUT_SEC) as resp:
-                content_length = resp.headers.get("Content-Length")
-                if content_length and int(content_length) > MAX_AVATAR_BYTES:
-                    return jsonResponse({"error": "Image too large (max 5 MB)"}, 400)
-                data = resp.read(MAX_AVATAR_BYTES + 1)
-                if len(data) > MAX_AVATAR_BYTES:
-                    return jsonResponse({"error": "Image too large (max 5 MB)"}, 400)
-                content_type = (resp.headers.get("Content-Type") or "").split(";")[0].strip().lower()
-        except urllib.error.HTTPError as e:
-            logger.warning("avatar-from-url HTTP error: %s", e)
-            return jsonResponse({"error": "Could not download image"}, 400)
-        except urllib.error.URLError as e:
-            logger.warning("avatar-from-url URL error: %s", e)
+            data, content_type, _ = safe_fetch(image_url, MAX_AVATAR_BYTES, FETCH_TIMEOUT_SEC, "FunkedupshiftAvatarImport/1.0")
+        except ValueError as e:
+            return jsonResponse({"error": str(e)}, 400)
+        except OSError as e:  # URLError/HTTPError/timeouts
+            logger.warning("avatar-from-url download error: %s", e)
             return jsonResponse({"error": "Could not download image"}, 400)
         allowed_types = ("image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp")
         if content_type not in allowed_types:
