@@ -75,6 +75,7 @@ const WebsitesAdminPage: React.FC = () => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [catSearch, setCatSearch] = useState("");
 
   const canAccess = hasRole(user ?? null, "manager");
 
@@ -99,6 +100,10 @@ const WebsitesAdminPage: React.FC = () => {
   }, [canAccess]);
 
   const categoryOptions = categories.map((c) => ({ id: c.id, label: c.name }));
+  // The row being edited stays visible so a rename doesn't drop it out of the list mid-edit.
+  const visibleCategories = categories.filter(
+    (c) => c.id === editingId || c.name.toLowerCase().includes(catSearch.trim().toLowerCase())
+  );
 
   const onLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -596,8 +601,18 @@ const WebsitesAdminPage: React.FC = () => {
             ) : categories.length === 0 ? (
               <p className="text-sm text-text-tertiary">No categories yet. Create one above.</p>
             ) : (
+              <>
+              <input
+                aria-label="Search categories"
+                type="search"
+                value={catSearch}
+                onChange={(e) => setCatSearch(e.target.value)}
+                placeholder="Search categories…"
+                className="input-field w-full mb-3"
+              />
+              {visibleCategories.length === 0 && <p className="text-sm text-text-tertiary">No matches</p>}
               <ul className="space-y-2">
-                {categories.map((c) => (
+                {visibleCategories.map((c) => (
                   <li key={c.id} className="rounded-lg border border-border-default bg-surface-1 px-3 py-2 text-sm">
                     {editingId === c.id ? (
                       <form onSubmit={handleUpdateCategory} className="space-y-2">
@@ -667,6 +682,7 @@ const WebsitesAdminPage: React.FC = () => {
                   </li>
                 ))}
               </ul>
+              </>
             )}
           </section>
         </>
