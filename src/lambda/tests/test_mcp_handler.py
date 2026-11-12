@@ -2,7 +2,7 @@
 import json
 import sys
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -13,8 +13,13 @@ TOKEN = "test-mcp-token"
 
 @pytest.fixture(autouse=True)
 def _env(monkeypatch):
-    monkeypatch.setenv("MCP_BEARER_TOKEN", TOKEN)
+    from mcp import handler as mcp_handler
+    monkeypatch.setattr(mcp_handler, "_token", None)
+    ssm = MagicMock()
+    ssm.get_parameter.return_value = {"Parameter": {"Value": TOKEN}}
+    monkeypatch.setattr(mcp_handler, "_ssm", ssm)
     monkeypatch.setenv("MCP_OWNER_USER_ID", "owner-sub-1")
+    return ssm
 
 
 def _event(payload, token=TOKEN):
@@ -46,10 +51,30 @@ def test_bad_token_401():
     assert handler(_event(_rpc("tools/list"), token="wrong"), None)["statusCode"] == 401
 
 
-def test_unconfigured_token_rejects_everything(monkeypatch):
-    monkeypatch.setenv("MCP_BEARER_TOKEN", "")
+def test_blank_param_rejects_everything(_env):
     from mcp.handler import handler
-    assert handler(_event(_rpc("tools/list"), token=""), None)["statusCode"] == 401
+    _env.get_parameter.return_value = {"Parameter": {"Value": ""}}
+    assert handler(_event(_rpc("tools/list"), token="anything"), None)["statusCode"] == 401
+
+
+def test_missing_param_rejects_everything(_env):
+    from mcp.handler import handler
+    _env.get_parameter.side_effect = Exception("ParameterNotFound")
+    assert handler(_event(_rpc("tools/list"), token="anything"), None)["statusCode"] == 401
+
+
+def test_no_header_does_not_call_ssm(_env):
+    from mcp.handler import handler
+    assert handler(_event(_rpc("tools/list"), token=None), None)["statusCode"] == 401
+    _env.get_parameter.assert_not_called()
+
+
+def test_token_cached_across_requests(_env):
+    from mcp.handler import handler
+    for _ in range(2):
+        assert handler(_event(_rpc("tools/list")), None)["statusCode"] == 200
+    _env.get_parameter.assert_called_once_with(
+        Name="/funkedupshift/finances/mcp/bearer-token", WithDecryption=True)
 
 
 def test_initialize_handshake():

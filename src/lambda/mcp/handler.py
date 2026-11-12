@@ -7,8 +7,13 @@ ponytail: no MCP SDK dependency — lambdas are stdlib-only and this protocol
 subset is small; upgrade path is packaging the `mcp` pip package if the
 subset falls short with real clients.
 
-Auth: bearer token (MCP_BEARER_TOKEN) checked with hmac.compare_digest on
-every request; the API Gateway route has no Cognito authorizer. Single-owner
+Auth: bearer token stored in SSM SecureString
+/funkedupshift/finances/mcp/bearer-token (override name via env
+MCP_BEARER_TOKEN_PARAM), checked with hmac.compare_digest on every request.
+Set it manually (NOT in Terraform):
+  aws ssm put-parameter --type SecureString \
+    --name /funkedupshift/finances/mcp/bearer-token --value <long-random> [--overwrite]
+Missing/blank/unreadable parameter => every request is 401; the API Gateway route has no Cognito authorizer. Single-owner
 by design: all reads are scoped to MCP_OWNER_USER_ID (Adam's Cognito sub).
 ponytail: single-owner token; per-user tokens if anyone else ever needs MCP.
 """
@@ -25,6 +30,28 @@ from api import bpf, era_client  # noqa: E402
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+
+DEFAULT_TOKEN_PARAM = "/funkedupshift/finances/mcp/bearer-token"
+_ssm = None
+_token = None  # ponytail: cached per container; rotation takes effect on cold start
+
+
+def _expected_token():
+    """Bearer token from SSM, fetched lazily and cached. "" on any failure."""
+    global _ssm, _token
+    if _token is not None:
+        return _token
+    name = os.environ.get("MCP_BEARER_TOKEN_PARAM") or DEFAULT_TOKEN_PARAM
+    try:
+        if _ssm is None:
+            import boto3
+            _ssm = boto3.client("ssm")
+        _token = _ssm.get_parameter(Name=name, WithDecryption=True)["Parameter"]["Value"] or None
+    except Exception as e:
+        # Never log the value; ParameterNotFound is the normal "not set yet" case.
+        # Failures aren't cached, so a transient error or a later put-parameter recovers without a cold start.
+        logger.warning("MCP bearer token fetch failed for %s: %s", name, e)
+    return _token or ""
 
 SERVER_INFO = {"name": "funkedupshift-finances", "version": "1.0.0"}
 DEFAULT_PROTOCOL_VERSION = "2025-03-26"
@@ -119,8 +146,10 @@ def handler(event, context):
     headers = {k.lower(): v for k, v in (event.get("headers") or {}).items()}
     auth = headers.get("authorization", "")
     supplied = auth[7:] if auth.startswith("Bearer ") else ""
-    expected = os.environ.get("MCP_BEARER_TOKEN", "")
-    if not expected or not supplied or not hmac.compare_digest(supplied, expected):
+    if not supplied:
+        return _http(401, {"error": "Unauthorized"})
+    expected = _expected_token()
+    if not expected or not hmac.compare_digest(supplied, expected):
         return _http(401, {"error": "Unauthorized"})
 
     try:
