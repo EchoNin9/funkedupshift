@@ -78,7 +78,10 @@ resource "aws_dynamodb_table" "lipsyncJobs" {
     enabled        = true
   }
 
-  # FUNK-80: ephemeral job rows; no PITR.
+  # FUNK-80: ephemeral job rows; no PITR (explicit false; omitting the block leaves it on).
+  point_in_time_recovery {
+    enabled = false
+  }
 }
 
 # ------------------------------------------------------------------------------
