@@ -6,6 +6,7 @@ import QrTool, { QrLink } from "./QrTool";
 import ImageToolsTool from "./ImageToolsTool";
 import DnsTool from "./DnsTool";
 import EmailAuthTool from "./EmailAuthTool";
+import SslTool from "./SslTool";
 import TextShareTool from "./TextShareTool";
 import ConvertersTool from "./ConvertersTool";
 import EncodeTool from "./EncodeTool";
@@ -30,6 +31,7 @@ type View =
   | "tool:cron"
   | "tool:json"
   | "tool:emailauth"
+  | "tool:ssl"
   | "tool:myinfo"
   | "auth";
 
@@ -65,6 +67,7 @@ const TOOLS: ToolDef[] = [
   { id: "cron", name: "Cron & Timestamps", description: "Explain cron and EventBridge schedules, preview the next runs, and convert epoch timestamps, right in your browser.", available: true },
   { id: "json", name: "JSON / YAML", description: "Format, validate, convert and diff JSON and YAML, right in your browser.", available: true },
   { id: "emailauth", name: "Email Auth Checker", description: "Check a domain's SPF, DKIM and DMARC setup and get a prioritised fix list.", available: true },
+  { id: "ssl", name: "SSL Certificate Checker", description: "Inspect a site's TLS certificate chain, expiry and trust.", available: true },
   { id: "myinfo", name: "My Info", description: "See what your browser, device, and network reveal about you.", available: true }
 ];
 
@@ -74,6 +77,7 @@ const App: React.FC = () => {
   const [sessionNotice, setSessionNotice] = useState<string | null>(null);
   // Set when the QR tool is opened from a shortener row; null for standalone use.
   const [qrLink, setQrLink] = useState<QrLink | null>(null);
+  const [sslHost, setSslHost] = useState("");
 
   const refreshAuth = useCallback(() => {
     const w = window as any;
@@ -102,6 +106,7 @@ const App: React.FC = () => {
 
   const goLanding = () => {
     setQrLink(null);
+    setSslHost("");
     setView("landing");
   };
 
@@ -134,6 +139,7 @@ const App: React.FC = () => {
     }
     if (!tool.available) return; // coming-soon cards stay disabled even when authed
     setQrLink(null);
+    setSslHost("");
     setView(`tool:${tool.id}` as View);
   };
 
@@ -223,7 +229,14 @@ const App: React.FC = () => {
         {view === "tool:imagetools" && auth.signedIn && <ImageToolsTool onBack={goLanding} />}
 
         {view === "tool:dns" && auth.signedIn && (
-          <DnsTool onBack={goLanding} onAuthError={handleAuthError} />
+          <DnsTool
+            onBack={goLanding}
+            onAuthError={handleAuthError}
+            onCheckSsl={(h) => {
+              setSslHost(h);
+              setView("tool:ssl");
+            }}
+          />
         )}
 
         {view === "tool:pastebin" && auth.signedIn && (
@@ -238,6 +251,9 @@ const App: React.FC = () => {
         {view === "tool:json" && auth.signedIn && <JsonTool onBack={goLanding} />}
         {view === "tool:emailauth" && auth.signedIn && (
           <EmailAuthTool onBack={goLanding} onAuthError={handleAuthError} />
+        )}
+        {view === "tool:ssl" && auth.signedIn && (
+          <SslTool key={sslHost} onBack={goLanding} onAuthError={handleAuthError} initialHost={sslHost} />
         )}
 
         {/* Unlocked while signed out — public backend endpoint + client-side reads only. */}

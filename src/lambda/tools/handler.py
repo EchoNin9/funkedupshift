@@ -61,7 +61,7 @@ except ImportError:
             "body": json.dumps(body) if not isinstance(body, str) else body,
         }
 
-from tools import emailauth  # noqa: E402
+from tools import emailauth, sslcheck  # noqa: E402
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -713,6 +713,21 @@ def emailAuthCheck(event):
     return jsonResponse(emailauth.lookup(domain, selectors), 200)
 
 
+def sslCheck(event):
+    """GET /tools/ssl?host=<h>&port=<p> — see tools/sslcheck.py for the response shape."""
+    qs = event.get("queryStringParameters") or {}
+    host, err = _validateDnsName(qs.get("host"))
+    if err:
+        return jsonResponse({"error": err}, 400)
+    port, err = sslcheck.parsePort(qs.get("port"))
+    if err:
+        return jsonResponse({"error": err}, 400)
+    try:
+        return jsonResponse(sslcheck.check(host, port), 200)
+    except sslcheck.SslCheckError as e:
+        return jsonResponse({"error": str(e)}, 400)
+
+
 TEXT_TABLE_NAME = os.environ.get("TEXT_TABLE_NAME", "")
 TEXT_TABLE_REGION = os.environ.get("TEXT_TABLE_REGION", "ca-central-1")
 
@@ -964,6 +979,8 @@ def handler(event, context):
             return dnsLookup(event)
         if method == "GET" and path == "/tools/emailauth":
             return emailAuthCheck(event)
+        if method == "GET" and path == "/tools/ssl":
+            return sslCheck(event)
 
         # Text-paste sharing (FUNK-40). Literal checks first, then the
         # /tools/text/ prefix — mirrors the /s vs /s/{code} ordering above,

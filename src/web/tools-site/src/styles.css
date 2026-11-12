@@ -1120,3 +1120,74 @@ body {
 .ea-scroll {
   overflow-x: auto;
 }
+
+.ssl-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.ssl-badge {
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.ssl-badge-ok {
+  color: var(--accent);
+}
+
+.ssl-badge-warning {
+  color: var(--warn);
+}
+
+.ssl-badge-error {
+  color: var(--danger);
+}
+
+.ssl-fields {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.35rem 1rem;
+  margin: 0.6rem 0;
+  font-size: 0.9rem;
+}
+
+.ssl-fields dt {
+  color: var(--text-muted);
+}
+
+.ssl-fields dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.ssl-cert {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.5rem 0.8rem;
+  margin-bottom: 0.5rem;
+  overflow-wrap: anywhere;
+}
+
+.ssl-cert summary {
+  cursor: pointer;
+}
+
+.ssl-sans {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ssl-sans li {
+  padding: 0.1rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.8rem;
+}
