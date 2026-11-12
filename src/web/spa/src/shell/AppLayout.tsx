@@ -63,6 +63,7 @@ const PasswordPage = lazy(() => import("../features/passwordgen/PasswordPage"));
 const QrPage = lazy(() => import("../features/qrcode/QrPage"));
 const EncodePage = lazy(() => import("../features/encode/EncodePage"));
 const HashPage = lazy(() => import("../features/hash/HashPage"));
+const CidrPage = lazy(() => import("../features/cidr/CidrPage"));
 const ImagePage = lazy(() => import("../features/imagetool/ImagePage"));
 const CropPage = lazy(() => import("../features/croptool/CropPage"));
 const RemoveBgPage = lazy(() => import("../features/removebg/RemoveBgPage"));
@@ -148,6 +149,7 @@ const AppLayoutContent: React.FC = () => {
               <Route path="/qr" element={<QrPage />} />
               <Route path="/encode" element={<EncodePage />} />
               <Route path="/hash" element={<HashPage />} />
+              <Route path="/cidr" element={<CidrPage />} />
               <Route path="/images" element={<ImagePage />} />
               <Route path="/crop" element={<CropPage />} />
               <Route path="/removebg" element={<RemoveBgPage />} />
