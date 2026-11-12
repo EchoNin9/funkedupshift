@@ -66,6 +66,6 @@ jobs:
       - run: node --test src/web/tools-site/src/*.test.mjs
       - name: Guard SPA copies against drift
         run: |
-          for p in codec:encode/codec hashing:hash/hashing cidr:cidr/cidr; do
+          for p in codec:encode/codec hashing:hash/hashing cidr:cidr/cidr crontime:cron/crontime; do
             cmp "src/web/tools-site/src/${p%%:*}.ts" "src/web/spa/src/features/${p#*:}.ts" || exit 1
           done
