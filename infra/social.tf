@@ -66,8 +66,10 @@ resource "aws_dynamodb_table" "socialPosts" {
   }
 
   point_in_time_recovery {
-    enabled = true
+    enabled                 = true
+    recovery_period_in_days = 3
   }
+  deletion_protection_enabled = true
 }
 
 # ------------------------------------------------------------------------------

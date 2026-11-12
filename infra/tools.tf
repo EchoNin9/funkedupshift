@@ -77,6 +77,13 @@ resource "aws_dynamodb_table" "tools" {
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "code"
 
+  # FUNK-80: 3-day PITR + delete guard; AWS Backup (backup.tf) covers the rest.
+  point_in_time_recovery {
+    enabled                 = true
+    recovery_period_in_days = 3
+  }
+  deletion_protection_enabled = true
+
   attribute {
     name = "code"
     type = "S"
