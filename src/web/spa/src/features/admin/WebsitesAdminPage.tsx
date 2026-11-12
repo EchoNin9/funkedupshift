@@ -55,6 +55,8 @@ const WebsitesAdminPage: React.FC = () => {
   const [logoError, setLogoError] = useState<string | null>(null);
   const [logoImageUrl, setLogoImageUrl] = useState("");
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
+  const [aiLogoUrl, setAiLogoUrl] = useState("");
+  const [suggestedCategories, setSuggestedCategories] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -114,7 +116,7 @@ const WebsitesAdminPage: React.FC = () => {
     }
     const img = new Image();
     img.onload = () => {
-      if (img.naturalWidth < MIN_LOGO_SIZE || img.naturalHeight < MIN_LOGO_SIZE) {
+      if (file.type !== "image/svg+xml" && (img.naturalWidth < MIN_LOGO_SIZE || img.naturalHeight < MIN_LOGO_SIZE)) {
         setLogoError("Logo must be at least 100×100 pixels.");
         return;
       }
@@ -179,20 +181,61 @@ const WebsitesAdminPage: React.FC = () => {
     }
     setIsGeneratingDesc(true);
     setError(null);
+    setSuggestedCategories([]);
     try {
       const resp = await fetchWithAuth(`${apiBase}/sites/generate-description`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: u })
       });
-      if (!resp.ok) throw new Error(await resp.text());
-      const data = (await resp.json()) as { description?: string };
+      if (!resp.ok) {
+        const t = await resp.text();
+        let msg = t;
+        try { msg = JSON.parse(t).error || t; } catch { /* not JSON */ }
+        throw new Error(msg);
+      }
+      const data = (await resp.json()) as {
+        title?: string;
+        description?: string;
+        logoUrl?: string | null;
+        logoError?: string | null;
+        categoryIds?: string[];
+        suggestedCategories?: string[];
+      };
+      if (!title.trim() && data.title) setTitle(data.title);
       setDescription(data.description ?? "");
       setDescriptionAiGenerated(true);
+      if (!logoFile && (!logoImageUrl.trim() || logoImageUrl === aiLogoUrl)) {
+        setLogoImageUrl(data.logoUrl ?? "");
+        setAiLogoUrl(data.logoUrl ?? "");
+        setLogoError(data.logoError ?? null);
+      }
+      const known = new Set(categories.map((c) => c.id));
+      setSelectedCategoryIds((prev) => [...new Set([...prev, ...(data.categoryIds ?? []).filter((id) => known.has(id))])]);
+      setSuggestedCategories(data.suggestedCategories ?? []);
     } catch (e: any) {
       setError(e?.message ?? "Failed to generate description.");
     } finally {
       setIsGeneratingDesc(false);
+    }
+  };
+
+  const addSuggestedCategory = async (name: string) => {
+    const apiBase = getApiBaseUrl();
+    if (!apiBase) return;
+    try {
+      const resp = await fetchWithAuth(`${apiBase}/categories`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name })
+      });
+      if (!resp.ok) throw new Error(await resp.text());
+      const created = (await resp.json()) as { id: string; name: string };
+      setCategories((prev) => [...prev, { id: created.id, name: created.name }]);
+      setSelectedCategoryIds((prev) => [...prev, created.id]);
+      setSuggestedCategories((prev) => prev.filter((n) => n !== name));
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to create category.");
     }
   };
 
@@ -271,6 +314,7 @@ const WebsitesAdminPage: React.FC = () => {
       if (logoPreview) URL.revokeObjectURL(logoPreview);
       setLogoPreview(null);
       setSelectedCategoryIds([]);
+      setSuggestedCategories([]);
       setTimeout(() => navigate("/websites"), 1500);
     } catch (e: any) {
       setError(e?.message ?? "Failed to add site.");
@@ -405,7 +449,10 @@ const WebsitesAdminPage: React.FC = () => {
             <input
               type="url"
               value={url}
-              onChange={(e) => setUrl(e.target.value)}
+              onChange={(e) => {
+                setUrl(e.target.value);
+                setSuggestedCategories([]);
+              }}
               placeholder="https://example.com"
               required
               className="input-field"
@@ -437,15 +484,15 @@ const WebsitesAdminPage: React.FC = () => {
               disabled={isGeneratingDesc || !url.trim()}
               className="mt-2 btn-secondary text-sm !px-3 !py-1.5 disabled:opacity-50"
             >
-              {isGeneratingDesc ? "Generating…" : "Generate AI description"}
+              {isGeneratingDesc ? "Generating…" : "Generate with AI"}
             </button>
             {descriptionAiGenerated && <span className="ml-2 text-xs uppercase tracking-wide text-text-tertiary">AI summary</span>}
           </FormField>
           <div>
-            <label className="block text-sm font-medium text-text-primary mb-1">Logo (optional, min 100×100, max 5 MB)</label>
+            <label className="block text-sm font-medium text-text-primary mb-1">Logo (optional, PNG/JPEG/GIF/WebP min 100×100 or SVG, max 5 MB)</label>
             <input aria-label="Logo file"
               type="file"
-              accept="image/png,image/jpeg,image/gif,image/webp"
+              accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml"
               onChange={onLogoChange}
               className="block w-full text-xs text-text-secondary file:mr-3 file:rounded-md file:border-0 file:bg-surface-3 file:px-3 file:py-1.5 file:text-text-primary"
             />
@@ -456,10 +503,16 @@ const WebsitesAdminPage: React.FC = () => {
               onChange={(e) => {
                 setLogoImageUrl(e.target.value);
                 if (e.target.value.trim()) setLogoFile(null);
+                setLogoError(null);
               }}
               placeholder="https://example.com/logo.png"
               className="input-field mt-1"
             />
+            {aiLogoUrl && logoImageUrl === aiLogoUrl && (
+              <div className="mt-2">
+                <img src={aiLogoUrl} alt="Suggested logo" className="h-16 w-16 rounded-lg border border-border-hover object-cover" />
+              </div>
+            )}
             {logoPreview && (
               <div className="mt-2">
                 <img src={logoPreview} alt="Preview" className="h-16 w-16 rounded-lg border border-border-hover object-cover" />
@@ -473,6 +526,16 @@ const WebsitesAdminPage: React.FC = () => {
               selected={selectedCategoryIds}
               onChange={setSelectedCategoryIds}
             />
+            {suggestedCategories.length > 0 && (
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-text-tertiary">
+                <span>Suggested new categories:</span>
+                {suggestedCategories.map((n) => (
+                  <button key={n} type="button" onClick={() => addSuggestedCategory(n)} className="btn-secondary text-xs !px-2 !py-1">
+                    + {n}
+                  </button>
+                ))}
+              </div>
+            )}
             {categories.length === 0 && (
               <p className="mt-1 text-xs text-text-tertiary">
                 No categories.{" "}

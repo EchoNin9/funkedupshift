@@ -2352,9 +2352,15 @@ def _addLogoUrls(sites, region=None):
                     import boto3
                     region = region or os.environ.get("AWS_REGION", "us-east-1")
                     s3 = boto3.client("s3", region_name=region)
+                params = {"Bucket": MEDIA_BUCKET, "Key": key}
+                if key.endswith(".svg"):
+                    # SVG can carry script. <img> ignores Content-Disposition so logos still render,
+                    # but opening the URL directly downloads instead of executing. Serve-time boundary; no sanitizer.
+                    params["ResponseContentDisposition"] = "attachment"
+                    params["ResponseContentType"] = "image/svg+xml"
                 url = s3.generate_presigned_url(
                     "get_object",
-                    Params={"Bucket": MEDIA_BUCKET, "Key": key},
+                    Params=params,
                     ExpiresIn=3600,
                 )
                 s["logoUrl"] = url
@@ -2777,13 +2783,10 @@ def getPresignedLogoUpload(event):
         body = json.loads(event.get("body", "{}"))
         site_id = (body.get("siteId") or body.get("id") or "").strip() or "new"
         contentType = (body.get("contentType") or "image/png").strip()
-        ext = "png"
-        if "jpeg" in contentType or "jpg" in contentType:
-            ext = "jpg"
-        elif "gif" in contentType:
-            ext = "gif"
-        elif "webp" in contentType:
-            ext = "webp"
+        ext = {"image/png": "png", "image/jpeg": "jpg", "image/jpg": "jpg", "image/gif": "gif",
+               "image/webp": "webp", "image/svg+xml": "svg"}.get(contentType)
+        if not ext:
+            return jsonResponse({"error": "Unsupported image type (use PNG, JPEG, GIF, WebP, or SVG)"}, 400)
         unique = str(uuid_mod.uuid4())
         key = f"logos/{site_id}/{unique}.{ext}"
         region = os.environ.get("AWS_REGION", "us-east-1")
@@ -2809,8 +2812,6 @@ def importLogoFromUrl(event):
     try:
         import io
         import uuid as uuid_mod
-        import urllib.request
-        import urllib.error
         body = json.loads(event.get("body", "{}"))
         site_id = (body.get("siteId") or body.get("id") or "").strip()
         image_url = (body.get("imageUrl") or "").strip()
@@ -2820,43 +2821,39 @@ def importLogoFromUrl(event):
             return jsonResponse({"error": "imageUrl is required"}, 400)
         MAX_LOGO_BYTES = 5 * 1024 * 1024
         MIN_LOGO_SIZE = 100
-        FETCH_TIMEOUT_SEC = 10
-        req = urllib.request.Request(image_url, headers={"User-Agent": "FunkedupshiftLogoImport/1.0"})
+        from api.generate_description import safe_fetch
         try:
-            with urllib.request.urlopen(req, timeout=FETCH_TIMEOUT_SEC) as resp:
-                content_length = resp.headers.get("Content-Length")
-                if content_length and int(content_length) > MAX_LOGO_BYTES:
-                    return jsonResponse({"error": "Image too large (max 5 MB)"}, 400)
-                data = resp.read(MAX_LOGO_BYTES + 1)
-                if len(data) > MAX_LOGO_BYTES:
-                    return jsonResponse({"error": "Image too large (max 5 MB)"}, 400)
-                content_type = (resp.headers.get("Content-Type") or "").split(";")[0].strip().lower()
-        except urllib.error.HTTPError as e:
-            logger.warning("logo-from-url HTTP error: %s", e)
+            data, content_type, _ = safe_fetch(image_url, MAX_LOGO_BYTES, 10, "FunkedupshiftLogoImport/1.0")
+        except ValueError as e:
+            return jsonResponse({"error": str(e)}, 400)
+        except OSError as e:  # URLError/HTTPError/timeouts
+            logger.warning("logo-from-url download error: %s", e)
             return jsonResponse({"error": "Could not download image"}, 400)
-        except urllib.error.URLError as e:
-            logger.warning("logo-from-url URL error: %s", e)
-            return jsonResponse({"error": "Could not download image"}, 400)
-        allowed_types = ("image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp")
+        allowed_types = ("image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp", "image/svg+xml")
         if content_type not in allowed_types:
-            return jsonResponse({"error": "Unsupported image type (use PNG, JPEG, GIF, or WebP)"}, 400)
-        try:
-            from PIL import Image
-            img = Image.open(io.BytesIO(data))
-            img.load()
-            w, h = img.size
-            if w < MIN_LOGO_SIZE or h < MIN_LOGO_SIZE:
-                return jsonResponse({"error": "Logo must be at least 100×100 pixels."}, 400)
-        except Exception as e:
-            logger.warning("logo-from-url PIL/open error: %s", e)
-            return jsonResponse({"error": "Invalid or unsupported image"}, 400)
-        ext = "png"
-        if "jpeg" in content_type or "jpg" in content_type:
-            ext = "jpg"
-        elif "gif" in content_type:
-            ext = "gif"
-        elif "webp" in content_type:
-            ext = "webp"
+            return jsonResponse({"error": "Unsupported image type (use PNG, JPEG, GIF, WebP, or SVG)"}, 400)
+        if content_type == "image/svg+xml":
+            if b"<svg" not in data.lower():
+                return jsonResponse({"error": "Invalid or unsupported image"}, 400)
+            ext = "svg"
+        else:
+            try:
+                from PIL import Image
+                img = Image.open(io.BytesIO(data))
+                img.load()
+                w, h = img.size
+                if w < MIN_LOGO_SIZE or h < MIN_LOGO_SIZE:
+                    return jsonResponse({"error": "Logo must be at least 100×100 pixels."}, 400)
+            except Exception as e:
+                logger.warning("logo-from-url PIL/open error: %s", e)
+                return jsonResponse({"error": "Invalid or unsupported image"}, 400)
+            ext = "png"
+            if "jpeg" in content_type or "jpg" in content_type:
+                ext = "jpg"
+            elif "gif" in content_type:
+                ext = "gif"
+            elif "webp" in content_type:
+                ext = "webp"
         unique = str(uuid_mod.uuid4())
         key = f"logos/{site_id}/{unique}.{ext}"
         region = os.environ.get("AWS_REGION", "us-east-1")
