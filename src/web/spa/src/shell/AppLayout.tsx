@@ -72,6 +72,8 @@ const RemoveBgPage = lazy(() => import("../features/removebg/RemoveBgPage"));
 const EmailAuthPage = lazy(() => import("../features/emailauth/EmailAuthPage"));
 const SslPage = lazy(() => import("../features/ssl/SslPage"));
 const HttpTracePage = lazy(() => import("../features/httptrace/HttpTracePage"));
+const FilesPage = lazy(() => import("../features/files/FilesPage"));
+const FileViewPage = lazy(() => import("../features/files/FileViewPage"));
 const DnsPage = lazy(() => import("../features/dnstool/DnsPage"));
 const TextSharePage = lazy(() => import("../features/textshare/TextSharePage"));
 const SquashSharePage = lazy(() => import("../features/squash/SquashSharePage"));
@@ -160,6 +162,7 @@ const AppLayoutContent: React.FC = () => {
               <Route path="/emailauth" element={<EmailAuthPage />} />
               <Route path="/ssl" element={<SslPage />} />
               <Route path="/http" element={<HttpTracePage />} />
+              <Route path="/files" element={<FilesPage />} />
               <Route path="/images" element={<ImagePage />} />
               <Route path="/crop" element={<CropPage />} />
               <Route path="/removebg" element={<RemoveBgPage />} />
@@ -170,6 +173,7 @@ const AppLayoutContent: React.FC = () => {
               {/* Public — no auth gate. Recipients of a shared paste link
                   must be able to open it signed-out (see TextViewPage). */}
               <Route path="/t/:id" element={<TextViewPage />} />
+              <Route path="/f/:id" element={<FileViewPage />} />
               <Route path="/squash/s/:id" element={<SquashSharePage />} />
               <Route path="/admin" element={<AdminLayout />}>
                 <Route element={<AppPageLayout />}>
