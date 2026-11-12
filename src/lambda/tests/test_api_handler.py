@@ -273,114 +273,148 @@ def test_logo_from_url_400_missing_image_url():
     assert "imageUrl" in body.get("error", "").lower() or "required" in body.get("error", "").lower()
 
 
+SAFE_FETCH = "api.generate_description.safe_fetch"
+
+
+def _logo_event(url="https://example.com/logo.png", site="SITE#abc"):
+    return _admin_event("/sites/logo-from-url", body={"siteId": site, "imageUrl": url})
+
+
 @patch("api.handler.MEDIA_BUCKET", "test-media-bucket")
-@patch("urllib.request.urlopen")
-def test_logo_from_url_400_download_failure(mock_urlopen):
+@patch(SAFE_FETCH)
+def test_logo_from_url_400_download_failure(mock_fetch):
     """POST /sites/logo-from-url when download fails returns 400."""
     import urllib.error
     from api.handler import handler
-    mock_urlopen.side_effect = urllib.error.URLError("connection refused")
-    event = _admin_event("/sites/logo-from-url", body={"siteId": "SITE#abc", "imageUrl": "https://example.com/logo.png"})
-    result = handler(event, None)
+    mock_fetch.side_effect = urllib.error.URLError("connection refused")
+    result = handler(_logo_event(), None)
     assert result["statusCode"] == 400
     body = json.loads(result["body"])
-    assert "error" in body
     assert "download" in body["error"].lower() or "could not" in body["error"].lower()
 
 
 @patch("api.handler.MEDIA_BUCKET", "test-media-bucket")
-@patch("urllib.request.urlopen")
-def test_logo_from_url_400_image_too_large(mock_urlopen):
-    """POST /sites/logo-from-url when image exceeds 5 MB returns 400."""
+@patch(SAFE_FETCH)
+def test_logo_from_url_400_refused_host(mock_fetch):
+    """A host safe_fetch refuses (private address) surfaces its message as a 400."""
     from api.handler import handler
-    mock_resp = MagicMock()
-    mock_resp.read.side_effect = [b"x" * (5 * 1024 * 1024 + 1)]
-    mock_resp.headers = {"Content-Length": str(5 * 1024 * 1024 + 1), "Content-Type": "image/png"}
-    mock_resp.__enter__ = lambda self: self
-    mock_resp.__exit__ = lambda self, *a: None
-    mock_urlopen.return_value = mock_resp
-    event = _admin_event("/sites/logo-from-url", body={"siteId": "SITE#abc", "imageUrl": "https://example.com/logo.png"})
-    result = handler(event, None)
+    mock_fetch.side_effect = ValueError("URL points to a non-public address")
+    result = handler(_logo_event("http://169.254.169.254/x.png"), None)
     assert result["statusCode"] == 400
-    body = json.loads(result["body"])
-    assert "error" in body
-    assert "large" in body["error"].lower() or "5" in body["error"]
+    assert "non-public" in json.loads(result["body"])["error"]
 
 
 @patch("api.handler.MEDIA_BUCKET", "test-media-bucket")
-@patch("urllib.request.urlopen")
-def test_logo_from_url_400_unsupported_type(mock_urlopen):
+@patch(SAFE_FETCH)
+def test_logo_from_url_400_image_too_large(mock_fetch):
+    """POST /sites/logo-from-url when image exceeds 5 MB returns 400."""
+    from api.handler import handler
+    mock_fetch.side_effect = ValueError("Response too large (max 5242880 bytes)")
+    result = handler(_logo_event(), None)
+    assert result["statusCode"] == 400
+    assert "large" in json.loads(result["body"])["error"].lower()
+    assert mock_fetch.call_args.args[1] == 5 * 1024 * 1024
+
+
+@patch("api.handler.MEDIA_BUCKET", "test-media-bucket")
+@patch(SAFE_FETCH)
+def test_logo_from_url_400_unsupported_type(mock_fetch):
     """POST /sites/logo-from-url when Content-Type is not image returns 400."""
     from api.handler import handler
-    mock_resp = MagicMock()
-    mock_resp.read.return_value = b"\x89PNG\r\n\x1a\n"[:100]
-    mock_resp.headers = {"Content-Length": "100", "Content-Type": "text/html"}
-    mock_resp.__enter__ = lambda self: self
-    mock_resp.__exit__ = lambda self, *a: None
-    mock_urlopen.return_value = mock_resp
-    event = _admin_event("/sites/logo-from-url", body={"siteId": "SITE#abc", "imageUrl": "https://example.com/logo.png"})
-    result = handler(event, None)
+    mock_fetch.return_value = (b"<html></html>", "text/html", "https://example.com/logo.png")
+    result = handler(_logo_event(), None)
     assert result["statusCode"] == 400
-    body = json.loads(result["body"])
-    assert "error" in body
-    assert "unsupported" in body["error"].lower() or "type" in body["error"].lower()
+    err = json.loads(result["body"])["error"]
+    assert "unsupported" in err.lower() and "SVG" in err
 
 
 @patch("api.handler.MEDIA_BUCKET", "test-media-bucket")
 @patch("PIL.Image.open")
-@patch("urllib.request.urlopen")
-def test_logo_from_url_400_dimensions_too_small(mock_urlopen, mock_pil_open):
+@patch(SAFE_FETCH)
+def test_logo_from_url_400_dimensions_too_small(mock_fetch, mock_pil_open):
     """POST /sites/logo-from-url when image is smaller than 100x100 returns 400."""
     from api.handler import handler
-    mock_resp = MagicMock()
-    mock_resp.read.return_value = b"\x89PNG\r\n\x1a\n"
-    mock_resp.headers = {"Content-Length": "100", "Content-Type": "image/png"}
-    mock_resp.__enter__ = lambda self: self
-    mock_resp.__exit__ = lambda self, *a: None
-    mock_urlopen.return_value = mock_resp
-    mock_img = MagicMock()
-    mock_img.size = (50, 50)
-    mock_pil_open.return_value = mock_img
-    event = _admin_event("/sites/logo-from-url", body={"siteId": "SITE#abc", "imageUrl": "https://example.com/logo.png"})
-    result = handler(event, None)
+    mock_fetch.return_value = (b"\x89PNG\r\n\x1a\n", "image/png", "https://example.com/logo.png")
+    mock_pil_open.return_value = MagicMock(size=(50, 50))
+    result = handler(_logo_event(), None)
     assert result["statusCode"] == 400
-    body = json.loads(result["body"])
-    assert "error" in body
-    assert "100" in body["error"] and "pixel" in body["error"].lower()
+    err = json.loads(result["body"])["error"]
+    assert "100" in err and "pixel" in err.lower()
 
 
 @patch("api.handler.MEDIA_BUCKET", "test-media-bucket")
 @patch("boto3.client")
 @patch("PIL.Image.open")
-@patch("urllib.request.urlopen")
-def test_logo_from_url_200_returns_key(mock_urlopen, mock_pil_open, mock_boto_client):
+@patch(SAFE_FETCH)
+def test_logo_from_url_200_returns_key(mock_fetch, mock_pil_open, mock_boto_client):
     """POST /sites/logo-from-url as admin downloads, validates, uploads to S3 and returns key."""
     from api.handler import handler
-    image_bytes = b"\x89PNG\r\n\x1a\n" + b"\x00" * 200
-    mock_resp = MagicMock()
-    mock_resp.read.return_value = image_bytes
-    mock_resp.headers = {"Content-Length": str(len(image_bytes)), "Content-Type": "image/png"}
-    mock_resp.__enter__ = lambda self: self
-    mock_resp.__exit__ = lambda self, *a: None
-    mock_urlopen.return_value = mock_resp
-    mock_img = MagicMock()
-    mock_img.size = (100, 100)
-    mock_pil_open.return_value = mock_img
+    mock_fetch.return_value = (b"\x89PNG" + b"\x00" * 200, "image/png", "https://example.com/logo.png")
+    mock_pil_open.return_value = MagicMock(size=(100, 100))
     mock_s3 = MagicMock()
     mock_boto_client.return_value = mock_s3
-    event = _admin_event("/sites/logo-from-url", body={"siteId": "SITE#xyz", "imageUrl": "https://example.com/logo.png"})
-    result = handler(event, None)
+    result = handler(_logo_event(site="SITE#xyz"), None)
     assert result["statusCode"] == 200
     body = json.loads(result["body"])
-    assert "key" in body
-    assert body["key"].startswith("logos/SITE#xyz/")
-    assert body["key"].endswith(".png")
-    mock_s3.put_object.assert_called_once()
+    assert body["key"].startswith("logos/SITE#xyz/") and body["key"].endswith(".png")
     call_kw = mock_s3.put_object.call_args.kwargs
     assert call_kw["Bucket"] == "test-media-bucket"
-    assert call_kw["Key"] == body["key"]
-    assert call_kw["Body"] == image_bytes
     assert call_kw["ContentType"] == "image/png"
+    assert call_kw["Key"] == body["key"]
+    assert call_kw["Body"] == b"\x89PNG" + b"\x00" * 200
+
+
+@patch("api.handler.MEDIA_BUCKET", "test-media-bucket")
+@patch("boto3.client")
+@patch("PIL.Image.open")
+@patch(SAFE_FETCH)
+def test_logo_from_url_accepts_svg_without_pillow(mock_fetch, mock_pil_open, mock_boto_client):
+    """SVG skips Pillow and the 100x100 rule; stored as .svg with image/svg+xml."""
+    from api.handler import handler
+    mock_fetch.return_value = (b'<svg xmlns="http://www.w3.org/2000/svg"/>', "image/svg+xml", "https://example.com/l.svg")
+    mock_s3 = MagicMock()
+    mock_boto_client.return_value = mock_s3
+    result = handler(_logo_event("https://example.com/l.svg"), None)
+    assert result["statusCode"] == 200
+    assert json.loads(result["body"])["key"].endswith(".svg")
+    mock_pil_open.assert_not_called()
+    assert mock_s3.put_object.call_args.kwargs["ContentType"] == "image/svg+xml"
+
+
+@patch("api.handler.MEDIA_BUCKET", "test-media-bucket")
+@patch("boto3.client")
+@patch(SAFE_FETCH)
+def test_logo_from_url_rejects_svg_content_type_without_svg_body(mock_fetch, mock_boto_client):
+    from api.handler import handler
+    mock_fetch.return_value = (b"<html>not an svg</html>", "image/svg+xml", "https://example.com/l.svg")
+    result = handler(_logo_event("https://example.com/l.svg"), None)
+    assert result["statusCode"] == 400
+    mock_boto_client.return_value.put_object.assert_not_called()
+
+
+@patch("api.handler.MEDIA_BUCKET", "test-media-bucket")
+@patch("boto3.client")
+def test_logo_upload_maps_svg_and_rejects_unlisted_type(mock_boto_client):
+    from api.handler import handler
+    mock_boto_client.return_value.generate_presigned_url.return_value = "https://presigned.example/put"
+    ok = handler(_admin_event("/sites/logo-upload", body={"siteId": "SITE#x", "contentType": "image/svg+xml"}), None)
+    assert ok["statusCode"] == 200 and json.loads(ok["body"])["key"].endswith(".svg")
+    bad = handler(_admin_event("/sites/logo-upload", body={"siteId": "SITE#x", "contentType": "text/html"}), None)
+    assert bad["statusCode"] == 400
+
+
+@patch("api.handler.MEDIA_BUCKET", "test-media-bucket")
+@patch("boto3.client")
+def test_addLogoUrls_svg_forces_attachment_png_does_not(mock_boto_client):
+    from api.handler import _addLogoUrls
+    mock_s3 = MagicMock()
+    mock_s3.generate_presigned_url.return_value = "https://signed"
+    mock_boto_client.return_value = mock_s3
+    _addLogoUrls([{"logoKey": "logos/a/1.svg"}, {"logoKey": "logos/a/2.png"}])
+    svg_params, png_params = [c.kwargs["Params"] for c in mock_s3.generate_presigned_url.call_args_list]
+    assert svg_params["ResponseContentDisposition"] == "attachment"
+    assert svg_params["ResponseContentType"] == "image/svg+xml"
+    assert "ResponseContentDisposition" not in png_params
 
 
 # ------------------------------------------------------------------------------
