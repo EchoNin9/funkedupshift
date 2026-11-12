@@ -389,12 +389,20 @@ data "aws_iam_policy_document" "terraformManage" {
     ]
   }
   statement {
-    # data.aws_kms_alias.ssm resolves alias/aws/ssm to its real key ARN, which
-    # the social Lambda policy needs for SecureString decryption. ListAliases
-    # does not support resource-level permissions, hence "*".
-    sid       = "TerraformManageSocialKmsLookup"
-    effect    = "Allow"
-    actions   = ["kms:ListAliases", "kms:DescribeKey"]
+    # Lookup: data.aws_kms_alias.ssm resolves alias/aws/ssm for the social
+    # Lambda's SecureString decryption. Manage: the finances field-encryption
+    # key (FUNK-78). CreateKey/ListAliases have no resource-level permissions,
+    # hence "*". Deliberately no Encrypt/Decrypt/GenerateDataKey: the deployer
+    # can manage the key but never use it on data. One statement because this
+    # policy is close to IAM's 6,144-character managed-policy limit.
+    sid    = "TerraformManageKms"
+    effect = "Allow"
+    actions = [
+      "kms:CreateKey", "kms:CreateAlias", "kms:DeleteAlias", "kms:UpdateAlias",
+      "kms:Describe*", "kms:Get*", "kms:List*", "kms:EnableKeyRotation",
+      "kms:PutKeyPolicy", "kms:ScheduleKeyDeletion", "kms:TagResource",
+      "kms:UntagResource", "kms:UpdateKeyDescription",
+    ]
     resources = ["*"]
   }
 }
