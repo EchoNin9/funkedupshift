@@ -1290,3 +1290,71 @@ body {
 .http-sec li {
   overflow-wrap: anywhere;
 }
+
+/* File Drop tool */
+.filedrop-zone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 110px;
+  padding: 1rem;
+  text-align: center;
+  border: 2px dashed var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+.filedrop-zone input[type="file"] {
+  display: none;
+}
+
+.filedrop-zone-active {
+  border-color: var(--accent);
+}
+
+.filedrop-password {
+  font: inherit;
+  padding: 0.55rem 0.7rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.filedrop-check {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+}
+
+.filedrop-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+}
+
+.filedrop-progress progress {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.filedrop-name {
+  overflow-wrap: anywhere;
+}
+
+.filedrop-badges {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.filedrop-badge {
+  font-size: 0.7rem;
+  padding: 0.05rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
