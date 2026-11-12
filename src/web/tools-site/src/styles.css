@@ -972,3 +972,45 @@ body {
   display: flex;
   gap: 0.5rem;
 }
+
+/* JSON / YAML tool */
+.diff-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.diff-item {
+  border: 1px solid var(--border);
+  border-left-width: 4px;
+  border-radius: 6px;
+  padding: 0.5rem 0.7rem;
+  background: var(--surface);
+  overflow-wrap: anywhere;
+}
+
+.diff-added {
+  border-left-color: var(--accent);
+}
+
+.diff-removed {
+  border-left-color: var(--danger);
+}
+
+.diff-changed {
+  border-left-color: var(--warn);
+}
+
+.diff-kind {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.diff-val {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.85rem;
+}

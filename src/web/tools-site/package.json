@@ -13,7 +13,8 @@
     "@imgly/background-removal": "^1.7.0",
     "qrcode": "^1.5.4",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "yaml": "^2.9.1"
   },
   "devDependencies": {
     "@types/qrcode": "^1.5.6",

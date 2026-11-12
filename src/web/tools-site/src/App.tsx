@@ -11,6 +11,7 @@ import EncodeTool from "./EncodeTool";
 import HashTool from "./HashTool";
 import CidrTool from "./CidrTool";
 import CronTool from "./CronTool";
+import JsonTool from "./JsonTool";
 import MyInfoTool from "./MyInfoTool";
 
 type View =
@@ -26,6 +27,7 @@ type View =
   | "tool:hash"
   | "tool:cidr"
   | "tool:cron"
+  | "tool:json"
   | "tool:myinfo"
   | "auth";
 
@@ -59,6 +61,7 @@ const TOOLS: ToolDef[] = [
   { id: "hash", name: "Hash & UUID", description: "Hash text or files, check a download's checksum, and generate UUIDs and ULIDs, right in your browser.", available: true },
   { id: "cidr", name: "CIDR / Subnet Calculator", description: "IPv4 and IPv6 subnet math: ranges, splits, overlaps and AWS VPC sizing, right in your browser.", available: true },
   { id: "cron", name: "Cron & Timestamps", description: "Explain cron and EventBridge schedules, preview the next runs, and convert epoch timestamps, right in your browser.", available: true },
+  { id: "json", name: "JSON / YAML", description: "Format, validate, convert and diff JSON and YAML, right in your browser.", available: true },
   { id: "myinfo", name: "My Info", description: "See what your browser, device, and network reveal about you.", available: true }
 ];
 
@@ -229,6 +232,7 @@ const App: React.FC = () => {
         {view === "tool:hash" && auth.signedIn && <HashTool onBack={goLanding} />}
         {view === "tool:cidr" && auth.signedIn && <CidrTool onBack={goLanding} />}
         {view === "tool:cron" && auth.signedIn && <CronTool onBack={goLanding} />}
+        {view === "tool:json" && auth.signedIn && <JsonTool onBack={goLanding} />}
 
         {/* Unlocked while signed out — public backend endpoint + client-side reads only. */}
         {view === "tool:myinfo" && <MyInfoTool onBack={goLanding} />}
