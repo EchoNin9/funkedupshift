@@ -217,7 +217,7 @@ data "archive_file" "tools" {
 # the base Lambda runtime.
 resource "null_resource" "tools_crt_layer" {
   triggers = {
-    requirements = "awscrt dnspython"
+    requirements = "awscrt dnspython cryptography"
     # Rebuild the zip on EVERY apply (FUNK-41): CI runners are fresh, so a
     # skipped provisioner means no zip on disk — and the layer version only
     # actually republishes when `requirements` changes (source_code_hash
@@ -225,7 +225,7 @@ resource "null_resource" "tools_crt_layer" {
     always_run = timestamp()
   }
   provisioner "local-exec" {
-    command     = "mkdir -p build/tools_layer/python && python3 -m pip install awscrt dnspython -t build/tools_layer/python --quiet && cd build/tools_layer && zip -qr ../tools_crt_layer.zip python"
+    command     = "mkdir -p build/tools_layer/python && python3 -m pip install awscrt dnspython cryptography --platform manylinux2014_x86_64 --only-binary=:all: --python-version 3.13 --implementation cp -t build/tools_layer/python --quiet && cd build/tools_layer && zip -qr ../tools_crt_layer.zip python"
     working_dir = path.module
   }
 }
@@ -531,6 +531,14 @@ resource "aws_apigatewayv2_route" "toolsDnsGet" {
 resource "aws_apigatewayv2_route" "toolsEmailAuthGet" {
   api_id             = aws_apigatewayv2_api.main.id
   route_key          = "GET /tools/emailauth"
+  target             = "integrations/${aws_apigatewayv2_integration.tools.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "toolsSslGet" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /tools/ssl"
   target             = "integrations/${aws_apigatewayv2_integration.tools.id}"
   authorization_type = "JWT"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id

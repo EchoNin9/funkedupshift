@@ -4,6 +4,8 @@ import { DNS_RECORD_TYPES, DnsRecordType, DnsResult, dnsLookup, isAuthError } fr
 interface Props {
   onBack: () => void;
   onAuthError: () => void;
+  /** Opens the SSL checker with this host prefilled. */
+  onCheckSsl?: (host: string) => void;
 }
 
 type TypeChoice = DnsRecordType | "ALL";
@@ -21,12 +23,14 @@ interface SectionState {
   error: string | null;
 }
 
-const DnsTool: React.FC<Props> = ({ onBack, onAuthError }) => {
+const DnsTool: React.FC<Props> = ({ onBack, onAuthError, onCheckSsl }) => {
   const [name, setName] = useState("");
   const [type, setType] = useState<TypeChoice>("ALL");
   const [running, setRunning] = useState(false);
   const [sections, setSections] = useState<SectionState[]>([]);
   const [formError, setFormError] = useState<string | null>(null);
+  const [queried, setQueried] = useState<{ name: string; type: TypeChoice } | null>(null);
+  const sslHost = queried && ["A", "AAAA", "CNAME", "ALL"].includes(queried.type) ? queried.name : "";
 
   const runLookup = async (domain: string, t: DnsRecordType): Promise<SectionState> => {
     try {
@@ -48,6 +52,7 @@ const DnsTool: React.FC<Props> = ({ onBack, onAuthError }) => {
     const domain = name.trim();
     if (!domain) return;
     setFormError(null);
+    setQueried({ name: domain, type });
     setRunning(true);
 
     const types: DnsRecordType[] = type === "ALL" ? DNS_RECORD_TYPES : [type];
@@ -100,6 +105,15 @@ const DnsTool: React.FC<Props> = ({ onBack, onAuthError }) => {
           {running ? "Looking up…" : "Lookup"}
         </button>
       </form>
+
+      {onCheckSsl && sslHost && (
+        <p className="dns-status-line">
+          <strong>{sslHost}</strong>{" "}
+          <button type="button" className="btn btn-ghost" onClick={() => onCheckSsl(sslHost)}>
+            Check SSL
+          </button>
+        </p>
+      )}
 
       {formError && <div className="banner banner-error">{formError}</div>}
 

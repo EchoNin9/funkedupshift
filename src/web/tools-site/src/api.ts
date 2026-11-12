@@ -233,6 +233,45 @@ export async function emailAuthCheck(domain: string, selectors: string): Promise
   return parseJsonOrThrow<EmailAuthResult>(resp);
 }
 
+export interface SslCert {
+  subject: string;
+  issuer: string;
+  sans: { dns: string[]; ip: string[] };
+  serial: string;
+  signatureHash: string | null;
+  keyType: string;
+  keySize: number | null;
+  notBefore: string;
+  notAfter: string;
+  selfSigned: boolean;
+}
+
+export interface SslResult {
+  host: string;
+  port: number;
+  ip: string;
+  status: "ok" | "warning" | "error";
+  trusted: boolean;
+  trustError: string | null;
+  hostnameMatch: boolean;
+  tlsVersion: string;
+  cipher: string;
+  daysLeft: number;
+  /** Leaf first. */
+  chain: SslCert[];
+}
+
+export const SSL_PORTS = [443, 465, 636, 853, 990, 993, 995, 5061, 8443];
+
+/** GET /tools/ssl?host=&port= — TLS certificate report (see tools/sslcheck.py). */
+export async function sslCheck(host: string, port: number): Promise<SslResult> {
+  const base = getApiBaseUrl();
+  if (!base) throw new Error("API not configured");
+  const params = new URLSearchParams({ host, port: String(port) });
+  const resp = await fetchWithAuth(`${base}/tools/ssl?${params.toString()}`);
+  return parseJsonOrThrow<SslResult>(resp);
+}
+
 // --- text-paste sharing (FUNK-40) -------------------------------------------
 
 // The public-facing host for share links. Both frontends brand text-share
