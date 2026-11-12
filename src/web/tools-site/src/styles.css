@@ -1014,3 +1014,109 @@ body {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.85rem;
 }
+
+/* Email Auth Checker (FUNK-75) */
+.ea-summary {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.ea-grade {
+  flex: none;
+  width: 3.5rem;
+  height: 3.5rem;
+  display: grid;
+  place-items: center;
+  font-size: 1.9rem;
+  font-weight: 700;
+  border-radius: 10px;
+  border: 2px solid currentColor;
+}
+
+.ea-grade-A,
+.ea-grade-B {
+  color: var(--accent);
+}
+
+.ea-grade-C,
+.ea-grade-D {
+  color: var(--warn);
+}
+
+.ea-grade-F {
+  color: var(--danger);
+}
+
+.ea-fixes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+}
+
+.ea-sev {
+  display: inline-block;
+  min-width: 4.2rem;
+  text-align: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  border-radius: 4px;
+  padding: 0.1rem 0.4rem;
+  border: 1px solid currentColor;
+}
+
+.ea-sev-high {
+  color: var(--danger);
+}
+
+.ea-sev-medium {
+  color: var(--warn);
+}
+
+.ea-sev-low {
+  color: var(--text-muted);
+}
+
+.ea-record {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+  margin-bottom: 0.5rem;
+}
+
+.ea-record code {
+  flex: 1;
+  word-break: break-all;
+}
+
+.ea-tree {
+  list-style: none;
+  margin: 0.25rem 0 0;
+  padding-left: 1.1rem;
+  border-left: 1px solid var(--border);
+  font-size: 0.85rem;
+}
+
+.ea-tree-root {
+  padding-left: 0;
+  border-left: none;
+}
+
+.ea-tree li {
+  margin-bottom: 0.4rem;
+  word-break: break-all;
+}
+
+.ea-presence {
+  margin: 0 0 0.4rem;
+  font-size: 0.9rem;
+}
+
+.ea-scroll {
+  overflow-x: auto;
+}
