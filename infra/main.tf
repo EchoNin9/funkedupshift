@@ -206,7 +206,8 @@ data "aws_iam_policy_document" "terraformManage" {
       "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/fus-social-lambda-role",
       "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/fus-social-scheduler-role",
       "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/fus-lipsync-lambda-role",
-      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/fus-lipsync-scheduler-role"
+      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/fus-lipsync-scheduler-role",
+      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/fus-backup-role"
     ]
   }
   # S3 website buckets – full manage for Terraform (s3:* avoids provider refresh whack-a-mole)
@@ -316,11 +317,13 @@ data "aws_iam_policy_document" "terraformManage" {
       "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:layer:fus-tools-crt-layer:*"
     ]
   }
-  # EventBridge, MediaConvert, IAM roles for thumb pipeline
+  # EventBridge, MediaConvert, IAM roles for thumb pipeline; AWS Backup vaults/
+  # plans/selections (infra/backup.tf, FUNK-80) folded in here (all resource "*")
+  # because a separate statement left only 1 char of headroom under 6,144.
   statement {
     sid       = "TerraformManageEventBridge"
     effect    = "Allow"
-    actions   = ["events:*"]
+    actions   = ["events:*", "backup:*", "backup-storage:*"]
     resources = ["*"]
   }
   statement {
@@ -569,6 +572,35 @@ resource "aws_s3_bucket" "media" {
   bucket = var.mediaBucketName
 }
 
+# FUNK-80: versioning + 35d noncurrent expiry so deletes/overwrites are recoverable
+# (and picked up by AWS Backup, backup.tf).
+resource "aws_s3_bucket_versioning" "media" {
+  bucket = aws_s3_bucket.media.id
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "media" {
+  bucket = aws_s3_bucket.media.id
+
+  # Versioning must exist first or the lifecycle API can reject noncurrent rules.
+  depends_on = [aws_s3_bucket_versioning.media]
+
+  rule {
+    id     = "expire-noncurrent-and-abort-mpu"
+    status = "Enabled"
+    filter {}
+
+    noncurrent_version_expiration {
+      noncurrent_days = 35
+    }
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 7
+    }
+  }
+}
+
 resource "aws_s3_bucket_cors_configuration" "media" {
   bucket = aws_s3_bucket.media.id
 
@@ -588,6 +620,13 @@ resource "aws_dynamodb_table" "main" {
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "PK"
   range_key    = "SK"
+
+  # FUNK-80: 3-day PITR + delete guard; AWS Backup (backup.tf) covers the rest.
+  point_in_time_recovery {
+    enabled                 = true
+    recovery_period_in_days = 3
+  }
+  deletion_protection_enabled = true
 
   attribute {
     name = "PK"
@@ -1267,6 +1306,12 @@ resource "aws_apigatewayv2_route" "highestRated" {
 resource "aws_apigatewayv2_route" "sites" {
   api_id    = aws_apigatewayv2_api.main.id
   route_key = "GET /sites"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+}
+
+resource "aws_apigatewayv2_route" "sitesLatest" {
+  api_id    = aws_apigatewayv2_api.main.id
+  route_key = "GET /sites/latest"
   target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
 }
 

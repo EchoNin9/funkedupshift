@@ -8,6 +8,30 @@ import { LAUNCHER_GROUP_LABELS, getLauncherGroups, type LauncherGroupId } from "
 import { GROUP_HUES } from "../../components/AppPage";
 import { buttonClasses } from "../../components/buttonClasses";
 import { AppCard } from "./AppTile";
+import { SiteTile, SiteTileSkeleton, type LatestSite } from "./SiteTile";
+
+function useLatestSites() {
+  const [state, setState] = React.useState<{ loading: boolean; sites: LatestSite[]; total: number }>({ loading: true, sites: [], total: 0 });
+  React.useEffect(() => {
+    const raw = (window as any).API_BASE_URL as string | undefined;
+    const base = raw ? raw.replace(/\/$/, "") : "";
+    if (!base) {
+      setState({ loading: false, sites: [], total: 0 });
+      return;
+    }
+    let cancelled = false;
+    fetch(`${base}/sites/latest`)
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("failed"))))
+      .then((d) => {
+        if (cancelled) return;
+        const sites: LatestSite[] = Array.isArray(d?.sites) ? d.sites.filter((x: LatestSite) => x && x.PK) : [];
+        setState({ loading: false, sites, total: Number.isFinite(d?.totalSites) ? d.totalSites : sites.length });
+      })
+      .catch(() => !cancelled && setState({ loading: false, sites: [], total: 0 }));
+    return () => { cancelled = true; };
+  }, []);
+  return state;
+}
 
 const GROUP_BLURBS: Record<LauncherGroupId, string> = {
   discover: "Open to everyone.",
@@ -56,6 +80,8 @@ const GuestLanding: React.FC = () => {
   const { hero, siteName } = useBranding();
   const { openLauncher } = useLauncher();
   const groups = getLauncherGroups(user);
+  const latest = useLatestSites();
+  const showLatest = latest.loading || latest.sites.length > 0;
 
   return (
     <div className="relative mx-auto w-full max-w-[1180px]">
@@ -66,7 +92,8 @@ const GuestLanding: React.FC = () => {
           style={{ backgroundImage: `url(${hero.imageUrl})`, opacity: (hero.imageOpacity ?? 25) / 100 }}
         />
       )}
-      <section className="max-w-[880px] pb-10 pt-12 sm:pt-20">
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_440px] lg:items-center lg:gap-10">
+      <section className="max-w-[880px] pb-10 pt-12 sm:pt-20 lg:pb-10">
         <ul className="mb-6 flex flex-wrap gap-2" aria-label="Sections">
           {groups.map((g) => (
             <li key={g.id} className={`hue-${GROUP_HUES[g.id]}`}>
@@ -105,6 +132,26 @@ const GuestLanding: React.FC = () => {
           <kbd className="ml-auto hidden rounded border border-divider px-1.5 text-xs sm:inline">⌘K</kbd>
         </button>
       </section>
+
+      {showLatest && (
+        <section aria-labelledby="latest-additions" className="pb-10 lg:pb-0 lg:pt-20" aria-busy={latest.loading}>
+          {!latest.loading && (
+            <p className="mb-1 text-xs font-bold uppercase tracking-[0.2em] text-accent-text">
+              {latest.total} {latest.total === 1 ? "Site" : "Sites"}
+            </p>
+          )}
+          {latest.loading && <div className="mb-1 h-4" aria-hidden="true" />}
+          <h2 id="latest-additions" className="mb-4 font-display text-2xl font-semibold tracking-[-0.03em] text-text-primary">
+            Latest Additions
+          </h2>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {latest.loading
+              ? Array.from({ length: 6 }, (_, i) => <SiteTileSkeleton key={i} />)
+              : latest.sites.map((s) => <SiteTile key={s.PK} site={s} />)}
+          </div>
+        </section>
+      )}
+      </div>
 
       {groups.map((g) => (
         <section key={g.id} aria-labelledby={`group-${g.id}`} className={`hue-${GROUP_HUES[g.id]} pb-10`}>

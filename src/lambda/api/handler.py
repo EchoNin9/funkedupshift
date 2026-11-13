@@ -315,6 +315,8 @@ def handler(event, context):
             return getHighestRated(event)
         if method == "GET" and path == "/sites":
             return listSites(event)
+        if method == "GET" and path == "/sites/latest":
+            return listLatestSites(event)
         if method == "GET" and path == "/sites/all":
             return listSites(event, forceAll=True)
         if method == "POST" and path == "/sites":
@@ -2461,8 +2463,9 @@ def listSites(event, forceAll=False):
             "KeyConditionExpression": "entityType = :et",
             "ExpressionAttributeValues": {":et": {"S": "SITE"}},
             # List view never uses scrapedContent (up to 100KB/item); project only what is read below.
-            "ProjectionExpression": "#pk, #title, #url, #desc, #descAi, #sum, #cnt, #cats, #logoUrl, #logoKey",
+            "ProjectionExpression": "#pk, #title, #url, #desc, #descAi, #sum, #cnt, #cats, #logoUrl, #logoKey, #createdAt",
             "ExpressionAttributeNames": {
+                "#createdAt": "createdAt",
                 "#pk": "PK", "#title": "title", "#url": "url", "#desc": "description",
                 "#descAi": "descriptionAiGenerated", "#sum": "totalStarsSum", "#cnt": "totalStarsCount",
                 "#cats": "categoryIds", "#logoUrl": "logoUrl", "#logoKey": "logoKey",
@@ -2535,6 +2538,76 @@ def listSites(event, forceAll=False):
             "errorType": type(e).__name__,
             "sites": []
         }, 500)
+
+
+def _ddbItemToSite(item):
+    site = {}
+    for key, val in item.items():
+        if "S" in val:
+            site[key] = val["S"]
+        elif "N" in val:
+            num_str = val["N"]
+            site[key] = int(num_str) if "." not in num_str else float(num_str)
+        elif "L" in val:
+            site[key] = [v.get("S", "") for v in val["L"]]
+        elif "BOOL" in val:
+            site[key] = val["BOOL"]
+    return site
+
+
+def listLatestSites(event):
+    """GET /sites/latest (public): newest sites by createdAt; count from site settings (latestSitesCount, default 6)."""
+    if not TABLE_NAME:
+        return jsonResponse({"sites": [], "error": "TABLE_NAME not set"}, 200)
+    try:
+        import boto3
+        from api.themes import DEFAULT_LATEST_SITES_COUNT, get_settings_safe
+        region = os.environ.get("AWS_REGION", "us-east-1")
+        dynamodb = boto3.client("dynamodb", region_name=region)
+        try:
+            limit = get_settings_safe()["latestSitesCount"]
+        except Exception as e:
+            logger.warning("latest sites: settings read failed: %s", e)
+            limit = DEFAULT_LATEST_SITES_COUNT
+        request_kw = {
+            "TableName": TABLE_NAME,
+            "IndexName": "byEntity",
+            "KeyConditionExpression": "entityType = :et",
+            "ExpressionAttributeValues": {":et": {"S": "SITE"}},
+            "ProjectionExpression": "#pk, #title, #url, #sum, #cnt, #logoUrl, #logoKey, #createdAt",
+            "ExpressionAttributeNames": {
+                "#pk": "PK", "#title": "title", "#url": "url", "#sum": "totalStarsSum",
+                "#cnt": "totalStarsCount", "#logoUrl": "logoUrl", "#logoKey": "logoKey",
+                "#createdAt": "createdAt",
+            },
+        }
+        items = []
+        while True:
+            result = dynamodb.query(**request_kw)
+            items.extend(result.get("Items", []))
+            if not result.get("LastEvaluatedKey"):
+                break
+            request_kw["ExclusiveStartKey"] = result["LastEvaluatedKey"]
+        sites = [_ddbItemToSite(i) for i in items]
+        total = len(sites)
+        # newest first; missing createdAt last; tie-break title (case-insensitive)
+        sites.sort(key=lambda s: (s.get("title") or "").lower())
+        sites.sort(key=lambda s: s.get("createdAt") or "", reverse=True)
+        sites.sort(key=lambda s: 0 if s.get("createdAt") else 1)
+        sites = sites[:limit]
+        _addLogoUrls(sites, region=region)
+        out = []
+        for s in sites:
+            row = {"PK": s.get("PK"), "title": s.get("title"), "url": s.get("url"),
+                   "logoUrl": s.get("logoUrl"), "createdAt": s.get("createdAt")}
+            t_sum, t_cnt = s.get("totalStarsSum"), s.get("totalStarsCount")
+            if isinstance(t_sum, (int, float)) and isinstance(t_cnt, (int, float)) and t_cnt > 0:
+                row["averageRating"] = round(max(1.0, min(5.0, float(t_sum) / float(t_cnt))), 1)
+            out.append(row)
+        return jsonResponse({"sites": out, "totalSites": total, "limit": limit})
+    except Exception as e:
+        logger.error("listLatestSites exception: %s", e, exc_info=True)
+        return jsonResponse({"error": str(e), "sites": []}, 500)
 
 
 def createSite(event):
