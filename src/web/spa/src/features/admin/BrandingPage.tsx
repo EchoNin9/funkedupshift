@@ -53,6 +53,55 @@ const BrandingPage: React.FC = () => {
   const [bannerMessage, setBannerMessage] = useState<string | null>(null);
   const [bannerError, setBannerError] = useState<string | null>(null);
 
+  const [latestCount, setLatestCount] = useState("6");
+  const [latestSaving, setLatestSaving] = useState(false);
+  const [latestMessage, setLatestMessage] = useState<string | null>(null);
+  const [latestError, setLatestError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const base = getApiBaseUrl();
+    if (!base) return;
+    let cancelled = false;
+    fetch(`${base}/site-settings`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!cancelled && d && Number.isInteger(d.latestSitesCount)) setLatestCount(String(d.latestSitesCount));
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
+  const latestValid = /^\d+$/.test(latestCount.trim()) && Number(latestCount) >= 0 && Number(latestCount) <= 24;
+
+  const onLatestSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLatestMessage(null);
+    setLatestError(null);
+    const base = getApiBaseUrl();
+    if (!base) return;
+    if (!latestValid) {
+      setLatestError("Enter a whole number from 0 to 24.");
+      return;
+    }
+    setLatestSaving(true);
+    try {
+      const resp = await fetchWithAuth(`${base}/site-settings`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ latestSitesCount: Number(latestCount) })
+      });
+      if (!resp.ok) {
+        const data = await resp.json().catch(() => ({}));
+        throw new Error((data as any)?.message || `Save failed (${resp.status}).`);
+      }
+      setLatestMessage("Latest additions setting saved.");
+    } catch (err) {
+      setLatestError(err instanceof Error ? err.message : "Save failed.");
+    } finally {
+      setLatestSaving(false);
+    }
+  };
+
   useEffect(() => {
     setHeroTagline(hero.tagline);
     setHeroHeadline(hero.headline);
@@ -540,6 +589,38 @@ const BrandingPage: React.FC = () => {
           <Alert variant="error">{heroError}</Alert>
         )}
       </form>
+
+      {hasRole(user ?? null, "superadmin") && (
+        <form className="card p-6 space-y-4 max-w-2xl" onSubmit={onLatestSave}>
+          <h2 className="text-lg font-display font-semibold tracking-[-0.025em] text-text-primary">Homepage</h2>
+          <div>
+            <label htmlFor="latest-sites-count" className="block text-sm font-semibold text-text-primary">
+              Latest additions shown
+            </label>
+            <input
+              id="latest-sites-count"
+              type="number"
+              inputMode="numeric"
+              min={0}
+              max={24}
+              step={1}
+              value={latestCount}
+              onChange={(e) => setLatestCount(e.target.value)}
+              aria-invalid={!latestValid}
+              aria-describedby="latest-sites-help"
+              className="input-field mt-1 w-28"
+            />
+            <p id="latest-sites-help" className={`mt-1 text-xs ${latestValid ? "text-text-secondary" : "text-danger"}`}>
+              {latestValid ? "0 hides the section. Maximum 24." : "Enter a whole number from 0 to 24."}
+            </p>
+          </div>
+          <button type="submit" disabled={latestSaving || !latestValid} className="btn-primary disabled:opacity-50">
+            {latestSaving ? "Saving…" : "Save homepage settings"}
+          </button>
+          {latestMessage && <Alert variant="success">{latestMessage}</Alert>}
+          {latestError && <Alert variant="error">{latestError}</Alert>}
+        </form>
+      )}
 
       {/* Editable Scrolling Banner (admin/manager). */}
       {hasRole(user ?? null, "manager") && (

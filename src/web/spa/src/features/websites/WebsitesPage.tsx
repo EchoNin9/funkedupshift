@@ -44,9 +44,10 @@ interface Site {
   logoUrl?: string;
   categories?: SiteCategory[];
   categoryIds?: string[];
+  createdAt?: string;
 }
 
-type SortKey = "avgDesc" | "avgAsc" | "alphaAsc" | "alphaDesc";
+type SortKey = "avgDesc" | "avgAsc" | "alphaAsc" | "alphaDesc" | "newDesc" | "newAsc";
 
 function getApiBaseUrl(): string | null {
   if (typeof window === "undefined") return null;
@@ -224,6 +225,15 @@ const WebsitesPage: React.FC = () => {
         if (avgA !== avgB) return avgA - avgB;
         return titleA.localeCompare(titleB);
       }
+      if (sort === "newDesc" || sort === "newAsc") {
+        const tA = a.createdAt ? Date.parse(a.createdAt) : NaN;
+        const tB = b.createdAt ? Date.parse(b.createdAt) : NaN;
+        const hasA = !Number.isNaN(tA);
+        const hasB = !Number.isNaN(tB);
+        if (hasA !== hasB) return hasA ? -1 : 1; // undated always last
+        if (hasA && tA !== tB) return sort === "newDesc" ? tB - tA : tA - tB;
+        return titleA.localeCompare(titleB);
+      }
       if (sort === "alphaAsc") return titleA.localeCompare(titleB);
       if (sort === "alphaDesc") return titleB.localeCompare(titleA);
       return 0;
@@ -334,6 +344,8 @@ const WebsitesPage: React.FC = () => {
             <option value="avgAsc">Stars (low first)</option>
             <option value="alphaAsc">Title A-Z</option>
             <option value="alphaDesc">Title Z-A</option>
+            <option value="newDesc">Newest first</option>
+            <option value="newAsc">Oldest first</option>
           </select>
         </div>
       </form>
