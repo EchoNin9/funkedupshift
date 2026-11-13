@@ -107,7 +107,7 @@ def test_guest_get_themes_and_settings(tbl):
     assert body["defaultThemeId"] == "funk"
     assert isinstance(body["themes"][0]["tint"], (int, float))
     code, body = _call(_ev("/site-settings"))
-    assert code == 200 and body == {"defaultThemeId": "funk", "defaultMode": "dark"}
+    assert code == 200 and body == {"defaultThemeId": "funk", "defaultMode": "dark", "latestSitesCount": 6}
 
 
 def test_guest_get_theme_by_id_and_404(tbl):
@@ -243,9 +243,9 @@ def test_delete_default_409_other_200_missing_404(tbl):
 
 def test_put_site_settings(tbl):
     code, body = _call(_ev("/site-settings", "PUT", {"defaultThemeId": "ember", "defaultMode": "light"}, groups="admin"))
-    assert code == 200 and body == {"defaultThemeId": "ember", "defaultMode": "light"}
+    assert code == 200 and body == {"defaultThemeId": "ember", "defaultMode": "light", "latestSitesCount": 6}
     code, body = _call(_ev("/site-settings", "PUT", {"defaultMode": "dark"}, groups="admin"))
-    assert body == {"defaultThemeId": "ember", "defaultMode": "dark"}
+    assert body == {"defaultThemeId": "ember", "defaultMode": "dark", "latestSitesCount": 6}
     code, body = _call(_ev("/site-settings"))
     assert body["defaultThemeId"] == "ember"
     # can now delete former default, but not the new one
@@ -256,6 +256,38 @@ def test_put_site_settings(tbl):
 @pytest.mark.parametrize("body", [{}, {"defaultThemeId": "ghost"}, {"defaultMode": "blue"}, {"defaultThemeId": 5}])
 def test_put_site_settings_invalid_400(tbl, body):
     assert _call(_ev("/site-settings", "PUT", body, groups="admin"))[0] == 400
+
+
+@pytest.mark.parametrize("bad", [-1, 25, "6", True, 6.5, None])
+def test_put_latest_count_invalid_400(tbl, bad):
+    assert _call(_ev("/site-settings", "PUT", {"latestSitesCount": bad}, groups="admin"))[0] == 400
+
+
+@pytest.mark.parametrize("body", [{"foo": 1}, {"foo": 1, "bar": 2}])
+def test_put_site_settings_unknown_only_400(tbl, body):
+    assert _call(_ev("/site-settings", "PUT", body, groups="admin"))[0] == 400
+
+
+def test_put_latest_count_only_preserves_theme(tbl):
+    _call(_ev("/site-settings", "PUT", {"defaultThemeId": "ember", "defaultMode": "light"}, groups="admin"))
+    code, body = _call(_ev("/site-settings", "PUT", {"latestSitesCount": 12}, groups="admin"))
+    assert code == 200
+    assert body == {"defaultThemeId": "ember", "defaultMode": "light", "latestSitesCount": 12}
+    stored = tbl.items[("SITE", "SETTINGS")]
+    assert type(stored["latestSitesCount"]) is int
+    assert _call(_ev("/site-settings"))[1]["latestSitesCount"] == 12
+    assert _call(_ev("/site-settings", "PUT", {"latestSitesCount": 0}, groups="admin"))[1]["latestSitesCount"] == 0
+
+
+def test_put_theme_only_preserves_count(tbl):
+    _call(_ev("/site-settings", "PUT", {"latestSitesCount": 9}, groups="admin"))
+    code, body = _call(_ev("/site-settings", "PUT", {"defaultMode": "light"}, groups="admin"))
+    assert code == 200 and body["latestSitesCount"] == 9 and body["defaultMode"] == "light"
+
+
+def test_put_latest_count_non_admin_403(tbl):
+    assert _call(_ev("/site-settings", "PUT", {"latestSitesCount": 3}, groups="user"))[0] == 403
+    assert _call(_ev("/site-settings", "PUT", {"latestSitesCount": 3}))[0] in (401, 403)
 
 
 # ---- profile ----
