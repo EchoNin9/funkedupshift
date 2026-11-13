@@ -121,12 +121,30 @@ def ensure_seeded():
     return wrote
 
 
+DEFAULT_LATEST_SITES_COUNT = 6
+MAX_LATEST_SITES_COUNT = 24
+
+
+def _stored_latest_count(v):
+    """Stored value (int/Decimal) -> int in range, else default."""
+    if isinstance(v, bool) or not isinstance(v, (int, Decimal)) or v != int(v):
+        return DEFAULT_LATEST_SITES_COUNT
+    v = int(v)
+    return v if 0 <= v <= MAX_LATEST_SITES_COUNT else DEFAULT_LATEST_SITES_COUNT
+
+
 def _get_settings():
     item = _tbl().get_item(Key={"PK": "SITE", "SK": "SETTINGS"}).get("Item") or {}
     return {
         "defaultThemeId": item.get("defaultThemeId") or SEED_SETTINGS["defaultThemeId"],
         "defaultMode": item.get("defaultMode") or SEED_SETTINGS["defaultMode"],
+        "latestSitesCount": _stored_latest_count(item.get("latestSitesCount")),
     }
+
+
+def get_settings_safe():
+    """Settings with defaults, without seeding (read-only, for public reads)."""
+    return _get_settings()
 
 
 def theme_exists(theme_id):
@@ -351,8 +369,12 @@ def update_site_settings(event, jsonResponse):
     body, err = _parse_body(event)
     if err:
         return jsonResponse({"error": err}, 400)
-    if "defaultThemeId" not in body and "defaultMode" not in body:
-        return jsonResponse({"error": "defaultThemeId or defaultMode is required"}, 400)
+    if not any(k in body for k in ("defaultThemeId", "defaultMode", "latestSitesCount")):
+        return jsonResponse({"error": "defaultThemeId, defaultMode or latestSitesCount is required"}, 400)
+    if "latestSitesCount" in body:
+        n = body["latestSitesCount"]
+        if isinstance(n, bool) or not isinstance(n, int) or not 0 <= n <= MAX_LATEST_SITES_COUNT:
+            return jsonResponse({"error": f"latestSitesCount must be an integer 0-{MAX_LATEST_SITES_COUNT}"}, 400)
     ensure_seeded()
     settings = _get_settings()
     if "defaultThemeId" in body:
@@ -364,5 +386,7 @@ def update_site_settings(event, jsonResponse):
         if body["defaultMode"] not in MODES:
             return jsonResponse({"error": "defaultMode must be 'dark' or 'light'"}, 400)
         settings["defaultMode"] = body["defaultMode"]
+    if "latestSitesCount" in body:
+        settings["latestSitesCount"] = body["latestSitesCount"]
     _tbl().put_item(Item={"PK": "SITE", "SK": "SETTINGS", **settings, "updatedAt": _now()})
     return jsonResponse(settings)
