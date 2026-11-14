@@ -139,6 +139,13 @@ a sandbox without it, run `npx vite build` in `src/web/spa` to check the build.
   parallel agents/sessions from colliding. `development` auto-deploys staging
   (and the env-shared tools platform — i.e. LIVE tools.e9.cx); `main` is
   production. PRs go `development` → `main`. Don't push/merge `main` directly.
+  **Infra caveat:** staging and prod deploys share ONE terraform state and
+  each applies the whole config, so a merge to `development` applies its infra
+  (incl. prod CloudFront/Lambda/API resources) immediately, and the last deploy
+  to run wins. Treat infra changes as live on merge to `development` (FUNK-98
+  tracks splitting state). Deploys serialize on the state lock
+  (`-lock-timeout=30m`). If a killed run leaves the lock stuck, confirm no deploy
+  is running, then `terraform force-unlock <LOCK_ID>` (ID from the error message).
   This applies to Claude Code and Antigravity alike.
 
 - **Scaling note (sites/media):** list endpoints read the whole `byEntity`
