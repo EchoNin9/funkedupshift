@@ -165,7 +165,8 @@ def test_transfers_sealed_transferid_plain_and_mirrored(table):
                          txn_id=legs[0]["id"])
     by_acct = {t["accountId"]: t for t in bpf.list_transactions(U)}
     assert by_acct[a2["id"]]["amount"] == 90.0 and by_acct[a2["id"]]["date"] == "2026-07-04"
-    assert_no_plaintext(table, "90.0", "-90")
+    # quoted needle: a bare "-90" can occur by chance in base64url ciphertext
+    assert_no_plaintext(table, "90.0", "'-90")
     # delete takes the sibling (transferId lookup on plaintext attr)
     moved_id = by_acct[a1["id"]]["id"]  # date change re-keyed the SK
     assert bpf.delete_transaction(U, moved_id) is True
@@ -259,7 +260,7 @@ def test_settings_budgets_rules_sealed(table):
     bpf.save_categories(U, ["Ocelot", "Lemur"])
     bpf.save_budgets(U, [{"category": "Ocelot", "monthlyLimit": 321.5}])
     bpf_rules.save_rules(U, [{"match": "equals", "pattern": "ibex", "category": "Lemur"}])
-    assert_no_plaintext(table, "Ocelot", "Lemur", "ibex", "321.5")
+    assert_no_plaintext(table, "Ocelot", "Lemur", "'ibex'", "321.5")
     for sk, attr in (("BPF#SETTINGS", "categories"), ("BPF#BUDGETS", "budgets"),
                      ("BPF#RULES", "rules")):
         assert bpf_crypto.is_encrypted(table.items[(f"USER#{U}", sk)][attr])
