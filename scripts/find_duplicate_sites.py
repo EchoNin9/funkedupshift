@@ -56,22 +56,31 @@ def main():
     a = ap.parse_args()
     try:
         base = a.api_base.rstrip("/") if a.api_base else discover_api_base(a.site)
-        sites = json.loads(_get(f"{base}/sites")).get("sites", [])
+        body = json.loads(_get(f"{base}/sites"))
     except Exception as e:  # noqa: BLE001
         print(f"error: {e}", file=sys.stderr)
+        return 2
+    sites = body.get("sites") if isinstance(body, dict) else None
+    # listSites can answer 200 with {"sites": [], "error": ...}; never report that as "no duplicates"
+    if not isinstance(sites, list) or (isinstance(body, dict) and body.get("error")) or not sites:
+        print(f"error: unusable /sites response: {str(body)[:300]}", file=sys.stderr)
         return 2
     dupes = group_duplicates(sites)
     if a.json:
         print(json.dumps({"siteCount": len(sites), "groups": [
             {"normalizedUrl": k, "sites": [{"id": s.get("PK"), "title": s.get("title"), "url": s.get("url"),
-                                            "averageRating": s.get("averageRating")} for s in v]}
+                                            "averageRating": s.get("averageRating"),
+                                            "createdAt": s.get("createdAt"),
+                                            "description": s.get("description")} for s in v]}
             for k, v in sorted(dupes.items())]}, indent=2))
     else:
         print(f"{len(sites)} sites, {len(dupes)} duplicate group(s)")
         for k, v in sorted(dupes.items()):
             print(f"\n== {k}")
             for s in v:
-                print(f"  {s.get('PK')}  rating={s.get('averageRating') or '-'}  {s.get('title')!r}  {s.get('url')}")
+                desc = (s.get("description") or "").replace("\n", " ")[:80]
+                print(f"  {s.get('PK')}  rating={s.get('averageRating') or '-'}  created={s.get('createdAt') or '-'}"
+                      f"  {s.get('title')!r}  {s.get('url')}\n      {desc!r}")
     return 1 if dupes else 0
 
 

@@ -32,3 +32,26 @@ def test_discover_api_base_rejects_placeholder(monkeypatch):
     import pytest
     with pytest.raises(RuntimeError):
         fds.discover_api_base("https://funkedupshift.com")
+
+
+def _run_main(monkeypatch, body, argv=("--api-base", "https://api.test")):
+    import json
+    import sys as _sys
+    monkeypatch.setattr(fds, "_get", lambda url: json.dumps(body))
+    monkeypatch.setattr(_sys, "argv", ["find_duplicate_sites.py", *argv])
+    return fds.main()
+
+
+def test_main_exit_codes(monkeypatch, capsys):
+    dup = {"sites": [{"PK": "SITE#1", "url": "a.com"}, {"PK": "SITE#2", "url": "https://www.a.com/"}]}
+    assert _run_main(monkeypatch, dup) == 1
+    assert "1 duplicate group" in capsys.readouterr().out
+    assert _run_main(monkeypatch, {"sites": [{"PK": "SITE#1", "url": "a.com"}]}) == 0
+
+
+def test_main_treats_error_body_and_empty_list_as_errors(monkeypatch, capsys):
+    # listSites can return 200 with an error key; that must not read as "no duplicates"
+    assert _run_main(monkeypatch, {"sites": [], "error": "TABLE_NAME not set"}) == 2
+    assert _run_main(monkeypatch, {"sites": []}) == 2
+    assert _run_main(monkeypatch, {"nope": 1}) == 2
+    assert "unusable /sites response" in capsys.readouterr().err
