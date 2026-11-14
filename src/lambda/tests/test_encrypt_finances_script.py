@@ -59,7 +59,9 @@ def test_apply_encrypts_and_reads_back_and_is_idempotent():
     stats = script.encrypt_items(t, "tbl", apply=True)
     assert stats["updated"] == 6 and stats["skipped_conflict"] == 0
     blob = repr(t.writes)
-    for plain in ("Zebra", "Dining", "12345678", "Chequing", "-45.2", "'zeb'", "Legacy"):  # short value quoted: bare "zeb" can occur in ciphertext
+    # short value quoted both ways (repr 'zeb' and JSON "zeb" inside a sealed rules list):
+    # a bare "zeb" can occur by chance in base64url ciphertext
+    for plain in ("Zebra", "Dining", "12345678", "Chequing", "-45.2", "'zeb'", '"zeb"', "Legacy"):
         assert plain not in blob
     # the unencrypted columns and untouched items survive; updatedAt is not bumped
     raw = t.items[("USER#u1", "BPF#TXN#2026-07-01#t1")]

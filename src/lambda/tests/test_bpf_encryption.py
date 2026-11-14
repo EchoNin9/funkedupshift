@@ -260,7 +260,9 @@ def test_settings_budgets_rules_sealed(table):
     bpf.save_categories(U, ["Ocelot", "Lemur"])
     bpf.save_budgets(U, [{"category": "Ocelot", "monthlyLimit": 321.5}])
     bpf_rules.save_rules(U, [{"match": "equals", "pattern": "ibex", "category": "Lemur"}])
-    assert_no_plaintext(table, "Ocelot", "Lemur", "'ibex'", "321.5")
+    # short needle quoted both ways: repr quotes ('ibex') and JSON-in-list quotes ("ibex");
+    # a bare "ibex" can occur by chance in base64url ciphertext
+    assert_no_plaintext(table, "Ocelot", "Lemur", "'ibex'", '"ibex"', "321.5")
     for sk, attr in (("BPF#SETTINGS", "categories"), ("BPF#BUDGETS", "budgets"),
                      ("BPF#RULES", "rules")):
         assert bpf_crypto.is_encrypted(table.items[(f"USER#{U}", sk)][attr])
