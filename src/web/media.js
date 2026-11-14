@@ -364,7 +364,6 @@
       var qs = params.length ? '?' + params.join('&') : '';
       return base + '/media/all' + qs;
     }
-    params.push('limit=100');
     if (groupByIds.length > 0) params.push('categoryIds=' + encodeURIComponent(groupByIds.join(',')));
     return base + '/media?' + params.join('&');
   }
@@ -474,7 +473,7 @@
       }
     }
     loading.hidden = false;
-    fetch(base + '/media?limit=100')
+    fetch(base + '/media')
       .then(function (r) {
         if (!r.ok) return r.text().then(function (t) { throw new Error(t || 'Request failed'); });
         return r.json();

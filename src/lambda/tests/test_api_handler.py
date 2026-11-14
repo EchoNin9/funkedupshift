@@ -552,6 +552,7 @@ def test_createSite_stores_scrapedContent(mock_boto_client):
     """POST /sites with scrapedContent stores it on the item."""
     from api.handler import handler
     mock_dynamo = MagicMock()
+    mock_dynamo.query.return_value = {"Items": []}
     mock_boto_client.return_value = mock_dynamo
 
     event = _admin_event("/sites", method="POST", body={

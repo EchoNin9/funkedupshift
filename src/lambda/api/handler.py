@@ -2395,7 +2395,7 @@ def _addLogoUrls(sites, region=None):
 
 
 def listSites(event, forceAll=False):
-    """Query DynamoDB byEntity (entityType=SITE). Optional ?id= single site. Query constraints: limit (default 100), categoryIds (comma-separated). forceAll=True (GET /sites/all, JWT) = admin only, no limit."""
+    """Query DynamoDB byEntity (entityType=SITE). Optional ?id= single site. Query constraints: limit (optional cap, applied after filter+sort; default none), categoryIds (comma-separated). forceAll=True (GET /sites/all, JWT) = admin only, no limit."""
     logger.info("listSites called, TABLE_NAME=%s", TABLE_NAME)
     if not TABLE_NAME:
         logger.warning("TABLE_NAME not set")
@@ -2446,16 +2446,17 @@ def listSites(event, forceAll=False):
             use_no_limit = True
         else:
             use_no_limit = False
-        try:
-            limit_param = int((qs.get("limit") or "").strip() or 100)
-        except ValueError:
-            limit_param = 100
-        limit_param = max(1, min(limit_param, 10000))
+        # Cap applies only if the client explicitly asked for one (after filter + sort).
+        limit_param = None
+        if not use_no_limit and (qs.get("limit") or "").strip():
+            try:
+                limit_param = max(1, min(int(qs["limit"].strip()), 10000))
+            except ValueError:
+                limit_param = None
         category_ids_param = (qs.get("categoryIds") or "").strip()
         filter_category_ids = [x.strip() for x in category_ids_param.split(",") if x.strip()]
         category_mode = (qs.get("categoryMode") or "").strip().lower() or "and"
 
-        page_limit = None if use_no_limit else limit_param
         items = []
         request_kw = {
             "TableName": TABLE_NAME,
@@ -2471,14 +2472,13 @@ def listSites(event, forceAll=False):
                 "#cats": "categoryIds", "#logoUrl": "logoUrl", "#logoKey": "logoKey",
             },
         }
-        if page_limit is not None:
-            request_kw["Limit"] = page_limit
-        result = dynamodb.query(**request_kw)
-        items.extend(result.get("Items", []))
-        while use_no_limit and result.get("LastEvaluatedKey"):
-            request_kw["ExclusiveStartKey"] = result["LastEvaluatedKey"]
+        # Always paginate fully: DynamoDB Limit would cut an arbitrary subset before q/category filters run.
+        while True:
             result = dynamodb.query(**request_kw)
             items.extend(result.get("Items", []))
+            if not result.get("LastEvaluatedKey"):
+                break
+            request_kw["ExclusiveStartKey"] = result["LastEvaluatedKey"]
 
         sites = []
         for item in items:
@@ -2526,6 +2526,8 @@ def listSites(event, forceAll=False):
             -(s.get("averageRating") or 0),
             (s.get("title") or s.get("url") or s.get("PK") or "").lower(),
         ))
+        if limit_param is not None:
+            sites = sites[:limit_param]
         logger.info("Found %d items", len(sites))
         return jsonResponse({"sites": sites})
     except Exception as e:
@@ -2610,6 +2612,40 @@ def listLatestSites(event):
         return jsonResponse({"error": str(e), "sites": []}, 500)
 
 
+def _findDuplicateSite(dynamodb, url, exclude_id=None):
+    """Return {"id", "title"} of an existing site whose normalized url equals `url`'s, else None."""
+    from api.site_urls import normalize_site_url
+    target = normalize_site_url(url)
+    if not target:
+        return None
+    request_kw = {
+        "TableName": TABLE_NAME,
+        "IndexName": "byEntity",
+        "KeyConditionExpression": "entityType = :et",
+        "ExpressionAttributeValues": {":et": {"S": "SITE"}},
+        "ProjectionExpression": "#pk, #url, #title",
+        "ExpressionAttributeNames": {"#pk": "PK", "#url": "url", "#title": "title"},
+    }
+    while True:
+        result = dynamodb.query(**request_kw)
+        for it in result.get("Items", []):
+            pk = it.get("PK", {}).get("S", "")
+            if pk == exclude_id:
+                continue
+            if normalize_site_url(it.get("url", {}).get("S", "")) == target:
+                return {"id": pk, "title": it.get("title", {}).get("S", "")}
+        if not result.get("LastEvaluatedKey"):
+            return None
+        request_kw["ExclusiveStartKey"] = result["LastEvaluatedKey"]
+
+
+def _duplicateSiteResponse(dup):
+    body = {"error": "This website has already been added.", "existingId": dup["id"]}
+    if dup.get("title"):
+        body["existingTitle"] = dup["title"]
+    return jsonResponse(body, 409)
+
+
 def createSite(event):
     """Create a new site (manager or admin)."""
     _, err = _requireManagerOrAdmin(event)
@@ -2648,6 +2684,10 @@ def createSite(event):
             scraped_content = scraped_content if isinstance(scraped_content, str) else str(scraped_content)
             if len(scraped_content) > 102400:  # ~100KB
                 return jsonResponse({"error": "scrapedContent exceeds 100KB limit"}, 400)
+
+        dup = _findDuplicateSite(dynamodb, url)
+        if dup:
+            return _duplicateSiteResponse(dup)
 
         item = {
             "PK": {"S": site_id},
@@ -2736,6 +2776,9 @@ def updateSite(event):
         if url is not None:
             url_val = (url if isinstance(url, str) else "").strip()
             if url_val:
+                dup = _findDuplicateSite(dynamodb, url_val, exclude_id=site_id)
+                if dup:
+                    return _duplicateSiteResponse(dup)
                 set_parts.append("#url = :url")
                 names["#url"] = "url"
                 values[":url"] = {"S": url_val}
@@ -4256,7 +4299,7 @@ def _dynamoItemToMedia(item):
 
 
 def listMedia(event, forceAll=False):
-    """List media (public), optional ?id= single, ?q= search, ?categoryIds= filter, ?limit= 100."""
+    """List media (public), optional ?id= single, ?q= search, ?categoryIds= filter, ?limit= optional cap."""
     if not TABLE_NAME:
         return jsonResponse({"media": [], "error": "TABLE_NAME not set"}, 200)
     try:
@@ -4286,16 +4329,17 @@ def listMedia(event, forceAll=False):
             use_no_limit = True
         else:
             use_no_limit = False
-        try:
-            limit_param = int((qs.get("limit") or "").strip() or 100)
-        except ValueError:
-            limit_param = 100
-        limit_param = max(1, min(limit_param, 10000))
+        # Cap applies only if the client explicitly asked for one (after filter + sort).
+        limit_param = None
+        if not use_no_limit and (qs.get("limit") or "").strip():
+            try:
+                limit_param = max(1, min(int(qs["limit"].strip()), 10000))
+            except ValueError:
+                limit_param = None
         category_ids_param = (qs.get("categoryIds") or "").strip()
         filter_category_ids = [x.strip() for x in category_ids_param.split(",") if x.strip()]
         category_mode = (qs.get("categoryMode") or "").strip().lower() or "and"
 
-        page_limit = None if use_no_limit else limit_param
         items = []
         request_kw = {
             "TableName": TABLE_NAME,
@@ -4303,14 +4347,12 @@ def listMedia(event, forceAll=False):
             "KeyConditionExpression": "entityType = :et",
             "ExpressionAttributeValues": {":et": {"S": "MEDIA"}},
         }
-        if page_limit is not None:
-            request_kw["Limit"] = page_limit
-        result = dynamodb.query(**request_kw)
-        items.extend(result.get("Items", []))
-        while use_no_limit and result.get("LastEvaluatedKey"):
-            request_kw["ExclusiveStartKey"] = result["LastEvaluatedKey"]
+        while True:
             result = dynamodb.query(**request_kw)
             items.extend(result.get("Items", []))
+            if not result.get("LastEvaluatedKey"):
+                break
+            request_kw["ExclusiveStartKey"] = result["LastEvaluatedKey"]
 
         media_list = [_dynamoItemToMedia(i) for i in items]
         _resolveCategoriesForMedia(dynamodb, media_list)
@@ -4338,6 +4380,8 @@ def listMedia(event, forceAll=False):
             -(m.get("averageRating") or 0),
             (m.get("title") or m.get("PK") or "").lower(),
         ))
+        if limit_param is not None:
+            media_list = media_list[:limit_param]
         return jsonResponse({"media": media_list})
     except Exception as e:
         logger.exception("listMedia error: %s", e)
