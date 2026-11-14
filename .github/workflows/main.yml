@@ -14,8 +14,10 @@ permissions:
 # FUNK-97: staging and prod share ONE terraform state (funkedupshift/terraform.tfstate).
 # Queue runs of this workflow instead of overlapping (never cancel a deploy mid-apply).
 # Deliberately a per-workflow group: GitHub keeps only one *pending* run per group, so a
-# shared group would let a staging push cancel a pending prod deploy. Cross-workflow
-# overlap is handled by -lock-timeout on plan/apply below.
+# shared group would let a staging push cancel a pending prod deploy. A cross-workflow
+# overlap waits on the state lock (-lock-timeout below; prod CloudFront applies can take
+# 15+ min). This prevents state corruption only: both workflows apply the WHOLE config,
+# so the last apply wins for shared infra (see CLAUDE.md, FUNK-98).
 concurrency:
   group: deploy-production
   cancel-in-progress: false
@@ -61,11 +63,11 @@ jobs:
 
       - name: Terraform plan
         working-directory: infra
-        run: terraform plan -lock-timeout=10m -var="githubOrgRepo=${{ github.repository }}" -no-color
+        run: terraform plan -lock-timeout=30m -var="githubOrgRepo=${{ github.repository }}" -no-color
 
       - name: Terraform apply
         working-directory: infra
-        run: terraform apply -lock-timeout=10m -var="githubOrgRepo=${{ github.repository }}" -auto-approve -no-color
+        run: terraform apply -lock-timeout=30m -var="githubOrgRepo=${{ github.repository }}" -auto-approve -no-color
 
       - name: Set up Node for SPA build
         uses: actions/setup-node@v4
