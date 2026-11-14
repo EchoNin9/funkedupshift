@@ -44,6 +44,7 @@ const EditSitePage: React.FC = () => {
   const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [duplicate, setDuplicate] = useState<{ existingId: string; existingTitle?: string } | null>(null);
 
   const canAccess = hasRole(user ?? null, "manager");
   const siteId = id ? decodeURIComponent(id) : "";
@@ -194,6 +195,7 @@ const EditSitePage: React.FC = () => {
     if (logoFile && logoError) return;
     setIsSubmitting(true);
     setError(null);
+    setDuplicate(null);
     setMessage(null);
     try {
       let logoKey: string | null = null;
@@ -242,6 +244,11 @@ const EditSitePage: React.FC = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
+      if (resp.status === 409) {
+        const dup = (await resp.json().catch(() => ({}))) as { existingId?: string; existingTitle?: string };
+        setDuplicate({ existingId: dup.existingId ?? "", existingTitle: dup.existingTitle });
+        return;
+      }
       if (!resp.ok) throw new Error(await resp.text());
       setMessage("Site updated.");
       if (logoPreview) URL.revokeObjectURL(logoPreview);
@@ -470,6 +477,20 @@ const EditSitePage: React.FC = () => {
           </button>
         </div>
         {message && <Alert variant="success">{message}</Alert>}
+        {duplicate && (
+          <Alert variant="error">
+            This website has already been added
+            {duplicate.existingId && (
+              <>
+                {" "}
+                (<Link to={`/websites/${encodeURIComponent(duplicate.existingId)}`} className="underline">
+                  {duplicate.existingTitle || "view existing"}
+                </Link>)
+              </>
+            )}
+            .
+          </Alert>
+        )}
         {error && <Alert variant="error">{error}</Alert>}
       </form>
     </div>

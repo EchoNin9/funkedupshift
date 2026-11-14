@@ -576,7 +576,7 @@
       }
     }
     loading.hidden = false;
-    fetch(base + '/sites?limit=100')
+    fetch(base + '/sites')
       .then(function (r) {
         if (!r.ok) return r.text().then(function (t) { throw new Error(t || 'Request failed'); });
         return r.json();
