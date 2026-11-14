@@ -159,7 +159,6 @@ const MediaPage: React.FC = () => {
       setError(null);
       try {
         const params = new URLSearchParams();
-        params.set("limit", "100");
         if (debouncedSearch.trim()) params.set("q", debouncedSearch.trim());
         if (selectedCategoryIds.length > 0) {
           params.set("categoryIds", selectedCategoryIds.join(","));

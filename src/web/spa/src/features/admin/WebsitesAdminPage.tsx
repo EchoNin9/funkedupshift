@@ -4,6 +4,7 @@ import { useAuth, hasRole } from "../../shell/AuthContext";
 import { AdminPageHeader } from "./AdminPageHeader";
 import { AdminTabs } from "./AdminTabs";
 import { fetchWithAuth } from "../../utils/api";
+import { findDuplicateSite, type DuplicateSite } from "../../utils/siteUrl";
 import { Alert, FormField, SearchableSelect } from "../../components";
 
 function getApiBaseUrl(): string | null {
@@ -60,6 +61,7 @@ const WebsitesAdminPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [duplicate, setDuplicate] = useState<DuplicateSite | null>(null);
   const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
 
   // Categories tab state
@@ -264,6 +266,7 @@ const WebsitesAdminPage: React.FC = () => {
     if (logoFile && logoError) return;
     setIsSubmitting(true);
     setError(null);
+    setDuplicate(null);
     setMessage(null);
     try {
       let logoKey: string | null = null;
@@ -308,6 +311,11 @@ const WebsitesAdminPage: React.FC = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
+      if (createResp.status === 409) {
+        const dup = (await createResp.json().catch(() => ({}))) as Partial<DuplicateSite>;
+        setDuplicate({ existingId: dup.existingId ?? "", existingTitle: dup.existingTitle });
+        return;
+      }
       if (!createResp.ok) throw new Error(await createResp.text());
       const data = (await createResp.json()) as { title?: string; url?: string };
       setMessage(`Site added: ${data.title || data.url || u}`);
@@ -457,6 +465,14 @@ const WebsitesAdminPage: React.FC = () => {
               onChange={(e) => {
                 setUrl(e.target.value);
                 setSuggestedCategories([]);
+                setDuplicate(null);
+              }}
+              onBlur={async () => {
+                const base = getApiBaseUrl();
+                if (!base || !url.trim()) return;
+                try {
+                  setDuplicate(await findDuplicateSite(base, url));
+                } catch { /* backend 409 is authoritative */ }
               }}
               placeholder="https://example.com"
               required
@@ -558,6 +574,20 @@ const WebsitesAdminPage: React.FC = () => {
             {isSubmitting ? "Adding…" : "Add Site"}
           </button>
           {message && <Alert variant="success">{message}</Alert>}
+          {duplicate && (
+            <Alert variant="error">
+              This website has already been added
+              {duplicate.existingId && (
+                <>
+                  {" "}
+                  (<Link to={`/websites/${encodeURIComponent(duplicate.existingId)}`} className="underline">
+                    {duplicate.existingTitle || "view existing"}
+                  </Link>)
+                </>
+              )}
+              .
+            </Alert>
+          )}
           {error && <Alert variant="error">{error}</Alert>}
         </form>
       )}
