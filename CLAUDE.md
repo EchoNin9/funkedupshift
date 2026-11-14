@@ -68,15 +68,18 @@ Give these to the sidekick so it doesn't run the slow path on every iteration.
 - `npm run typecheck` reports several pre-existing type errors and is **not** the
   gate — use `npm run build`. Any *new* failure you introduce is yours to fix.
 
-**The pytest suite is otherwise fully green** — 896 passing as of 2026-08-17.
-An older note here claimed "2 pre-existing PIL-related failures in
-`test_api_handler.py`"; that is **stale** and those failures no longer occur.
-Treat any pytest failure you see as real rather than waving it through as an
-expected baseline.
+**The pytest suite is otherwise fully green** — 1384 passing as of 2026-11-14.
+There are no expected pytest failures (an old "2 pre-existing PIL failures"
+note is long stale). Treat any pytest failure you see as real.
 
-Run pytest via the project venv: `.venv/bin/python -m pytest src/lambda/tests -q`
-(a bare `pytest`/`python` may hit a pyenv shim that lacks `dnspython` and fails
-at collection on `test_tools_dns.py`).
+Running pytest: use the project venv if it exists
+(`.venv/bin/python -m pytest src/lambda/tests -q`), otherwise
+`python3 -m pytest src/lambda/tests -q` (cloud sessions have no `.venv`).
+A bare `pytest`/`python` may hit a pyenv shim that lacks `dnspython` and fails
+at collection on `test_tools_dns.py`.
+
+`npm run build`'s prebuild step (`fetch-imgly-assets`) needs network access; in
+a sandbox without it, run `npx vite build` in `src/web/spa` to check the build.
 
 ---
 

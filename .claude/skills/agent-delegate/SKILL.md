@@ -42,8 +42,7 @@ Hand the fast command to the sidekick so it doesn't run the slow path each loop.
 
 - Fast — backend: `pytest src/lambda/tests -q`; frontend: `cd src/web/spa && npm run build` (~8s, the CI gate)
 - Full (pre-PR) — backend: `pytest src/lambda/tests -v`; frontend: `cd src/web/spa && npm ci && npm run build`
-- Known baselines (don't chase): 2 pre-existing PIL failures in `test_api_handler.py`;
-  `npm run typecheck` has pre-existing type errors and is not the gate.
+- Known baselines (don't chase): `npm run typecheck` has pre-existing type errors and is not the gate.
 
 ## Reusable brief template
 
