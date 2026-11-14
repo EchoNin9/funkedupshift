@@ -43,7 +43,7 @@ CLI: a claude-sonnet-* id). Behave like a manager with a capable engineer:
 6. The lead owns design decisions, final review, and the commit.
 Fast tests (sidekick, while implementing): `pytest src/lambda/tests -q`; `cd src/web/spa && npm run build`.
 Full verification (before a PR): `pytest src/lambda/tests -v`; `cd src/web/spa && npm ci && npm run build`.
-(Known baselines, don't chase: 2 pre-existing PIL failures in test_api_handler.py; `npm run typecheck` has pre-existing type errors and is not the gate.)
+(Known baselines, don't chase: `npm run typecheck` has pre-existing type errors and is not the gate.)
 EOF
 
 python3 - "$CONTEXT" <<'PY'
