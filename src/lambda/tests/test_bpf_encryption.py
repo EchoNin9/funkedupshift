@@ -1,6 +1,7 @@
 """FUNK-78 data-layer tests: every finance write site seals sensitive fields and every
 reader returns the original values. Uses an in-memory DynamoDB so the serialized
 write arguments can be searched for plaintext (MagicMock tests can't do this)."""
+import re
 import sys
 from pathlib import Path
 
@@ -29,8 +30,13 @@ def table(monkeypatch):
     return t
 
 
+_ISO_TS = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?")
+
+
 def _blob(table):
-    return repr(table.writes)
+    # Mask server-generated timestamps (e.g. updatedAt) so a wall-clock value
+    # like "...T20:15:45.231Z" can't false-positive against a needle like "45.2".
+    return _ISO_TS.sub("<ts>", repr(table.writes))
 
 
 def assert_no_plaintext(table, *needles):
