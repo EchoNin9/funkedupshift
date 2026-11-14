@@ -56,24 +56,31 @@ REPORT BACK: <diff / summary / table> BEFORE finalizing. Do not commit/send/appl
 Codex PR review is **off** for this repo. Instead, before merging ANY PR
 (feature → `development` or `development` → `main`):
 
-1. **Spawn a separate, fresh agent** to review it (web: Agent tool with no
-   `subagent_type: "fork"` so it starts clean; CLI: a new headless session). It must
-   NOT inherit the lead's conversation, hypotheses or the sidekick's report: an
-   anchored reviewer tends to confirm what it was told.
+1. **Spawn a separate, fresh agent** to review it: a new general-purpose agent
+   whose only context is your review brief (web: Agent tool, not a fork of
+   your session; CLI: a new headless session; Antigravity: `invoke_subagent`
+   with fresh context). It must NOT inherit the lead's conversation,
+   hypotheses or the sidekick's report: an anchored reviewer tends to confirm
+   what it was told. Run it on the **lead's model tier**, not the Sonnet
+   sidekick tier. Review is where quality matters.
 2. **Give it the code, not your conclusion:** the PR number/branch and the base,
-   and tell it to read the diff itself (`git diff origin/<base>...<head>`) plus
-   whatever surrounding files it needs. Ask for correctness bugs, regressions,
-   security issues, missing tests, and violations of this file's gotchas.
-   Findings ranked by severity, each with file:line and a concrete failure
-   scenario. Read-only: it changes nothing.
+   and tell it to `git fetch` and read the diff itself
+   (`git diff origin/<base>...origin/<head>`) plus whatever surrounding files it
+   needs. Ask for correctness bugs, regressions, security issues, missing
+   tests, and violations of this file's gotchas. Findings ranked by severity,
+   each with file:line and a concrete failure scenario. Read-only: it changes
+   nothing.
 3. **Verify each finding before acting** (reviewers are wrong sometimes): fix
    real ones on the branch (re-run the review if the fix is non-trivial),
-   and note dismissed ones with the reason in the PR or final report.
-4. Merge only after review findings are resolved **and** PR Check is green.
+   and record dismissed ones with the reason.
+4. **Record it in the PR body:** a line like
+   `Fresh-context review: done, N findings (M fixed, K dismissed: <why>)`.
+5. Merge only after review findings are resolved **and** PR Check is green.
 
 Release PRs (`development` → `main`) that only promote already-reviewed
-commits may use a lighter pass: confirm `git log main..development` contains
-only reviewed PRs; review anything that wasn't.
+commits may use a lighter pass: `git fetch` then check that every PR in
+`git log --merges origin/main..origin/development` has the review line in its
+body; give anything that doesn't a full review.
 
 ---
 

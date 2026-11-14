@@ -19,7 +19,8 @@ carry `scrapedContent` (up to 100 KB). The table is `PAY_PER_REQUEST`.
 return.** `ProjectionExpression` trims the response but **does not** reduce read
 units. So every list request pays for every site's `scrapedContent`.
 
-Rough cost model, GSI reads (eventually consistent, so 0.5 RRU per 4 KB):
+Rough cost model, GSI reads (eventually consistent, so 0.5 RRU per 4 KB;
+excludes the small per-request `batch_get_item` category lookups):
 
 ```
 RRU per list request ≈ (sites × avg item KB) / 4 × 0.5
@@ -47,35 +48,56 @@ projection). They do **not** help substring search (`q`): DynamoDB can't do
 Ranked by value and effort:
 
 1. **Slim list GSI (biggest, cheapest win).** Add a GSI (e.g. `byEntityList`) with
-   `projection_type = "INCLUDE"` and only the list fields: title, url,
-   description, categoryIds, ratings sums/counts, logoKey/logoUrl, createdAt.
-   Switch `listSites`/`listMedia` to it. Read cost drops roughly by the ratio of
-   full item size to list fields size (likely 5-20×). No behaviour change.
+   `projection_type = "INCLUDE"` and only the fields the list readers use.
+   **Build the `non_key_attributes` list from the code, not from this doc:**
+   every attribute in `listSites`' `ProjectionExpression` (today: title, url,
+   description, `descriptionAiGenerated`, `totalStarsSum`/`totalStarsCount`,
+   categoryIds, logoUrl, logoKey) plus `createdAt` for sorting, **and** every
+   attribute `_dynamoItemToMedia` reads for MEDIA items (media has a different
+   shape and currently reads the full item). A GSI query can't return an
+   unprojected attribute, so a missing one silently disappears from the UI.
+   Read cost drops roughly by the ratio of full item size to list fields size
+   (likely 5-20×). Trade-off: each SITE/MEDIA write also writes the new index
+   (extra WRU + storage), which is cheap because writes are rare.
    - Alternative: move `scrapedContent` out of the SITE item (separate
      `SK=SCRAPED` item or S3). That shrinks every read path, not just lists.
 2. **`createdAt` sort key for latest.** A GSI with `entityType` + `createdAt` lets
    `/sites/latest` read N items with `ScanIndexForward=false, Limit=N` instead
    of the whole partition. It also enables true server-side paging for a "newest
-   first" list.
+   first" list. It is a sparse index: items without `createdAt` won't appear
+   (today they sort last but can still show), so backfill `createdAt` first.
 3. **URL-uniqueness item for the dedupe gate.** On create, `TransactWriteItems`:
    put the SITE plus put `PK=SITEURL#<normalized>` with
-   `attribute_not_exists(PK)`. That is O(1) and race-free; two simultaneous adds of
-   the same URL can both pass today's read-then-write check. Needs a one-time
-   backfill and to be maintained on URL edit/delete.
+   `attribute_not_exists(PK)`. That is O(1) and race-free. Today's
+   read-then-write check can let a duplicate through: two simultaneous adds both
+   pass, and because GSI reads are eventually consistent, a site added a moment
+   earlier may not be visible in `byEntity` yet. Needs a one-time backfill and
+   to be maintained on URL edit/delete.
 4. **Cache the public list.** The list changes only on admin edits and ratings.
    Options: CloudFront cache on `GET /sites` with a short TTL, or write a
    precomputed JSON to S3 on change (the existing highlights/highest-rated cache
    generators are a template). This removes DynamoDB from the hot path entirely
    and is the right answer for search at moderate scale (filter client-side or
    in Lambda against the cached blob).
+   - **Logo URL caveat:** `_addLogoUrls` returns presigned S3 GETs that expire
+     after 1 hour when a site has only `logoKey`. Cache `logoKey`, not the
+     presigned URL, and presign (or serve via a CDN path) at response time, or
+     keep any response cache TTL well under an hour.
+   - `GET /sites` works with or without auth (`fetchWithAuthOptional`); make sure
+     the cache key doesn't vary on the Authorization header, or the cache is
+     fragmented per user.
 5. **Real search (only if needed).** At large scale or for fuzzy/relevance search:
    OpenSearch Serverless, or a DynamoDB Streams to search-index pipeline. Likely
    overkill for this site.
 
-**Hot-partition note:** every item in an index lives in one partition key
-(`entityType = SITE`). DynamoDB adaptive capacity handles this fine at this site's
-scale; it only matters at thousands of writes/sec, which is not a realistic
-concern here.
+**Hot-partition note (reads, not writes):** every list request reads the whole
+`entityType = SITE` key value, which lives in one partition. A single partition
+serves about 3,000 RCU/s. DynamoDB may split hot key ranges by sort key under
+load, but don't count on it. At the assumed 20 KB per item a list request costs
+~332 RRU today, so roughly 9 req/s (a few users typing in search) could
+throttle; at 1,000 sites (~2,500 RRU/request) it's 1-2 req/s. Options 1 (slim
+projection) and 4 (cache) remove this risk; that's another reason to do them
+first.
 
 ## Suggested order when the time comes
 
