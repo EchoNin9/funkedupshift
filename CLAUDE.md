@@ -51,6 +51,32 @@ REPORT BACK: <diff / summary / table> BEFORE finalizing. Do not commit/send/appl
 
 ---
 
+## PR review — fresh-context Claude reviewer (required before merge)
+
+Codex PR review is **off** for this repo. Instead, before merging ANY PR
+(feature → `development` or `development` → `main`):
+
+1. **Spawn a separate, fresh agent** to review it (web: Agent tool with no
+   `subagent_type: "fork"` so it starts clean; CLI: a new headless session). It must
+   NOT inherit the lead's conversation, hypotheses or the sidekick's report: an
+   anchored reviewer tends to confirm what it was told.
+2. **Give it the code, not your conclusion:** the PR number/branch and the base,
+   and tell it to read the diff itself (`git diff origin/<base>...<head>`) plus
+   whatever surrounding files it needs. Ask for correctness bugs, regressions,
+   security issues, missing tests, and violations of this file's gotchas.
+   Findings ranked by severity, each with file:line and a concrete failure
+   scenario. Read-only: it changes nothing.
+3. **Verify each finding before acting** (reviewers are wrong sometimes): fix
+   real ones on the branch (re-run the review if the fix is non-trivial),
+   and note dismissed ones with the reason in the PR or final report.
+4. Merge only after review findings are resolved **and** PR Check is green.
+
+Release PRs (`development` → `main`) that only promote already-reviewed
+commits may use a lighter pass: confirm `git log main..development` contains
+only reviewed PRs; review anything that wasn't.
+
+---
+
 ## Fast vs full test commands (for delegated work)
 
 Give these to the sidekick so it doesn't run the slow path on every iteration.
@@ -107,6 +133,10 @@ a sandbox without it, run `npx vite build` in `src/web/spa` to check the build.
   (and the env-shared tools platform — i.e. LIVE tools.e9.cx); `main` is
   production. PRs go `development` → `main`. Don't push/merge `main` directly.
   This applies to Claude Code and Antigravity alike.
+
+- **Scaling note (sites/media):** list endpoints read the whole `byEntity`
+  partition (ALL projection incl. `scrapedContent`) on every request. Fine at
+  ~hundreds of items; see `docs/scaling-sites-media.md` (FUNK-93) before it grows.
 
 Planning briefs and design docs live in `docs/`.
 
