@@ -209,6 +209,7 @@ data "archive_file" "tools" {
     "api/**",
     "mcp/**",
     "thumb/**",
+    "feeds/**",
     "tests/**",
   ]
 }

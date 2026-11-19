@@ -198,16 +198,7 @@ data "aws_iam_policy_document" "terraformManage" {
     resources = [
       "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/github-actions-funkedupshift-staging",
       "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/github-actions-funkedupshift-production",
-      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/fus-api-lambda-role",
-      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/fus-thumb-lambda-role",
-      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/fus-mediaconvert-role",
-      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/fus-tools-lambda-role",
-      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/fus-collector-lambda-role",
-      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/fus-social-lambda-role",
-      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/fus-social-scheduler-role",
-      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/fus-lipsync-lambda-role",
-      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/fus-lipsync-scheduler-role",
-      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/fus-backup-role"
+      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/fus-*"
     ]
   }
   # S3 website buckets – full manage for Terraform (s3:* avoids provider refresh whack-a-mole)
@@ -257,10 +248,8 @@ data "aws_iam_policy_document" "terraformManage" {
     resources = [
       "arn:aws:dynamodb:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:table/${var.dynamoTableName}",
       "arn:aws:dynamodb:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:table/${var.toolsDynamoTableName}",
-      "arn:aws:dynamodb:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:table/fus-social-posts",
-      "arn:aws:dynamodb:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:table/fus-social-posts/index/*",
-      "arn:aws:dynamodb:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:table/fus-lipsync-jobs",
-      "arn:aws:dynamodb:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:table/fus-lipsync-jobs/index/*"
+      "arn:aws:dynamodb:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:table/fus-*",
+      "arn:aws:dynamodb:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:table/fus-*/index/*"
     ]
   }
   # Text-share table (FUNK-40) — Canada data residency, so this table lives
@@ -300,21 +289,9 @@ data "aws_iam_policy_document" "terraformManage" {
     actions = ["lambda:*"]
     resources = [
       "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:function:${var.lambdaApiFunctionName}",
-      "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:function:fus-finances-mcp",
-      "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:function:fus-thumb",
-      "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:function:fus-tools",
-      "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:function:fus-collector",
-      "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:function:fus-social-api",
-      "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:function:fus-social-publisher",
-      "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:function:fus-social-maintenance",
-      "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:function:fus-social-token-refresh",
-      "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:function:fus-lipsync-api",
-      "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:function:fus-lipsync-runner",
-      "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:function:fus-lipsync-maintenance",
-      "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:layer:fus-pillow-layer",
-      "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:layer:fus-pillow-layer:*",
-      "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:layer:fus-tools-crt-layer",
-      "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:layer:fus-tools-crt-layer:*"
+      "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:function:fus-*",
+      "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:layer:fus-*",
+      "arn:aws:lambda:${var.awsRegion}:${data.aws_caller_identity.current.account_id}:layer:fus-*:*"
     ]
   }
   # EventBridge, MediaConvert, IAM roles for thumb pipeline; AWS Backup vaults/

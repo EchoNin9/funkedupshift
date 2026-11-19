@@ -214,6 +214,7 @@ data "archive_file" "lipsync" {
     "collector/**",
     "tools/**",
     "social/**",
+    "feeds/**",
     "tests/**",
     "requirements-test.txt",
   ]
