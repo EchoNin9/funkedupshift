@@ -9,6 +9,7 @@ import {
   canOpenModule,
   getLauncherGroups,
   getVisibleAdminModules,
+  isExternalPath,
   type LauncherGroupId,
 } from "../config/modules";
 import { usePins } from "../hooks/usePins";
@@ -94,7 +95,7 @@ export function resolveAppFrame(rawPath: string): AppFrameInfo | null {
     };
   }
 
-  const mod = PUBLIC_MODULES.filter((m) => under(pathname, m.path)).sort((a, b) => b.path.length - a.path.length)[0];
+  const mod = PUBLIC_MODULES.filter((m) => !m.external && !isExternalPath(m.path) && under(pathname, m.path)).sort((a, b) => b.path.length - a.path.length)[0];
   if (!mod) return null;
   return {
     kind: "public",
@@ -191,7 +192,13 @@ function MoreIn({ info }: { info: AppFrameInfo }) {
             {a.locked && <Lock className="h-3.5 w-3.5" weight="fill" aria-hidden="true" />}
           </>
         );
-        if (!a.locked) return <Link key={a.id} to={a.path} className={chipBase}>{inner}</Link>;
+        if (!a.locked) {
+          return a.external || isExternalPath(a.path) ? (
+            <a key={a.id} href={a.path} target="_blank" rel="noopener noreferrer" className={chipBase}>{inner}</a>
+          ) : (
+            <Link key={a.id} to={a.path} className={chipBase}>{inner}</Link>
+          );
+        }
         if (a.lockReason === "guest") {
           return <Link key={a.id} to="/auth" title={`${a.label} — sign in to use`} className={`${chipBase} is-locked`}>{inner}</Link>;
         }

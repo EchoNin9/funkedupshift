@@ -144,3 +144,36 @@ jobs:
         run: |
           TOOLS_DIST_ID=$(terraform -chdir=infra output -raw toolsSiteCloudfrontId)
           aws cloudfront create-invalidation --distribution-id $TOOLS_DIST_ID --paths "/*"
+
+      - name: Set up Node 22 for feed.e9.cx
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Build feed.e9.cx standalone frontend
+        working-directory: src/web/feed-site
+        run: |
+          npm ci
+          npm test
+          npm run build
+
+      - name: Deploy feed.e9.cx frontend to S3
+        run: |
+          API_URL=$(terraform -chdir=infra output -raw apiInvokeUrl)
+          POOL_ID=$(terraform -chdir=infra output -raw cognitoUserPoolId)
+          CLIENT_ID=$(terraform -chdir=infra output -raw cognitoClientId)
+          cat > src/web/feed-site/dist/config.js <<'CONFIGEOF'
+          window.API_BASE_URL = "API_URL_PLACEHOLDER";
+          window.COGNITO_USER_POOL_ID = "POOL_ID_PLACEHOLDER";
+          window.COGNITO_CLIENT_ID = "CLIENT_ID_PLACEHOLDER";
+          CONFIGEOF
+          sed -i "s|API_URL_PLACEHOLDER|$API_URL|g; s|POOL_ID_PLACEHOLDER|$POOL_ID|g; s|CLIENT_ID_PLACEHOLDER|$CLIENT_ID|g" src/web/feed-site/dist/config.js
+          sed -i "s|API_URL_PLACEHOLDER|$API_URL|g; s|POOL_ID_PLACEHOLDER|$POOL_ID|g; s|CLIENT_ID_PLACEHOLDER|$CLIENT_ID|g" src/web/feed-site/dist/index.html
+          cp src/web/auth.js src/web/feed-site/dist/auth.js
+          FEED_BUCKET=$(terraform -chdir=infra output -raw feedSiteBucketName)
+          aws s3 sync src/web/feed-site/dist s3://$FEED_BUCKET/ --delete
+
+      - name: Invalidate feed.e9.cx CloudFront cache
+        run: |
+          FEED_DIST_ID=$(terraform -chdir=infra output -raw feedSiteCloudfrontId)
+          aws cloudfront create-invalidation --distribution-id $FEED_DIST_ID --paths "/*"

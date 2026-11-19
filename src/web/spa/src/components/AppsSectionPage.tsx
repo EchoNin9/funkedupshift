@@ -1,7 +1,7 @@
 import { Link, Navigate, useParams } from "react-router-dom";
-import { CaretDown, Lock } from "@phosphor-icons/react";
+import { ArrowSquareOut, CaretDown, Lock } from "@phosphor-icons/react";
 import { useAuth } from "../shell/AuthContext";
-import { LAUNCHER_GROUP_LABELS, getLauncherGroups, type LauncherApp, type LauncherGroupId } from "../config/modules";
+import { LAUNCHER_GROUP_LABELS, getLauncherGroups, isExternalPath, type LauncherApp, type LauncherGroupId } from "../config/modules";
 import { Breadcrumb, GROUP_HUES } from "./AppPage";
 
 const GROUP_BLURBS: Record<LauncherGroupId, string> = {
@@ -22,13 +22,22 @@ function AppCard({ app, hue }: { app: LauncherApp; hue: string }) {
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5 text-[15px] font-semibold text-text-primary">
           {app.label}
+          {!app.locked && (app.external || isExternalPath(app.path)) && (
+            <ArrowSquareOut className="h-3.5 w-3.5 shrink-0 text-text-secondary" aria-hidden="true" />
+          )}
           {app.locked && <Lock className="h-3.5 w-3.5 shrink-0" weight="fill" aria-label="Locked" />}
         </span>
         <span className="mt-0.5 block text-[13px] text-text-secondary">{app.description}</span>
       </span>
     </>
   );
-  if (!app.locked) return <Link to={app.path} className={`${cardClass} hover:bg-surface-3`}>{body}</Link>;
+  if (!app.locked) {
+    return app.external || isExternalPath(app.path) ? (
+      <a href={app.path} target="_blank" rel="noopener noreferrer" className={`${cardClass} hover:bg-surface-3`}>{body}</a>
+    ) : (
+      <Link to={app.path} className={`${cardClass} hover:bg-surface-3`}>{body}</Link>
+    );
+  }
   if (app.lockReason === "guest") {
     return <Link to="/auth" title={`${app.label} — sign in to use`} className={`${cardClass} is-locked`}>{body}</Link>;
   }

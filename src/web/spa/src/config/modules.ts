@@ -50,7 +50,13 @@ import {
   Certificate,
   Signpost,
   UploadSimple,
+  Rss,
 } from "@phosphor-icons/react";
+
+/** True when a module points to an external origin (must open via <a target="_blank"> rather than React Router). */
+export function isExternalPath(path: string): boolean {
+  return /^https?:\/\//i.test(path);
+}
 
 /** Public nav modules (sidebar/header links). */
 export interface PublicModule {
@@ -71,6 +77,8 @@ export interface PublicModule {
   description: string;
   /** False = reachable (nav, avatar menu, Squash page) but not a launcher tile. Default true. */
   launcher?: boolean;
+  /** When true (or when path starts with http(s)://), open externally in a new tab. */
+  external?: boolean;
 }
 
 export type LauncherGroupId = "discover" | "tools" | "modules";
@@ -118,6 +126,7 @@ export const PUBLIC_MODULES: PublicModule[] = [
   { id: "textshare", label: "Text Share", path: "/textshare", section: "tools", minRole: "user", authOnly: true, group: "tools", icon: Note, description: "Share text snippets with an expiring link." },
   { id: "converters", label: "Converters", path: "/converters", section: "tools", minRole: "user", authOnly: true, group: "tools", icon: ArrowsLeftRight, description: "Convert units, temperatures, and more." },
   { id: "lipsync", label: "Lipsync Studio", path: "/lipsync", section: "tools", minRole: "user", authOnly: true, group: "tools", icon: VideoCamera, description: "Generate AI talking-head clips from a photo or video plus audio." },
+  { id: "feeds", label: "Feeds", path: "https://feed.e9.cx", section: "tools", minRole: "user", authOnly: true, group: "tools", icon: Rss, description: "Personal RSS reader and daily summary archive.", external: true },
   { id: "highlights", label: "Highlights", path: "/recommended/highlights", section: "recommended", minRole: "guest", group: "discover", icon: Sparkle, description: "Hand-picked properties worth a look." },
   { id: "highest-rated", label: "Highest Rated", path: "/recommended/highest-rated", section: "recommended", minRole: "guest", group: "discover", icon: Star, description: "The top of the index, by rating." },
 ];
@@ -203,6 +212,7 @@ export function getVisibleAdminModules(user: AuthUser | null): AdminModule[] {
 export interface ModuleLink {
   path: string;
   label: string;
+  external?: boolean;
 }
 
 /** Admin Home sidebar modules (Branding, Membership, Websites, etc.) – excludes Squash/Financial which live under Modules. */
@@ -300,6 +310,7 @@ const MODULE_GROUPS: ModuleGroup[] = [
       { path: "/converters", label: "Converters" },
       { path: "/my-info", label: "My Info" },
       { path: "/lipsync", label: "Lipsync Studio" },
+      { path: "https://feed.e9.cx", label: "Feeds", external: true },
     ],
   },
 ];

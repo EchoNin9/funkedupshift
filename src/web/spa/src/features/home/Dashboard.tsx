@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { PushPin, SquaresFour } from "@phosphor-icons/react";
+import { ArrowSquareOut, PushPin, SquaresFour } from "@phosphor-icons/react";
 import { useAuth } from "../../shell/AuthContext";
 import { userDisplayName } from "../../shell/AccountMenu";
-import { LAUNCHER_GROUP_LABELS, PUBLIC_MODULES, canOpenModule, getVisibleAdminModules } from "../../config/modules";
+import { LAUNCHER_GROUP_LABELS, PUBLIC_MODULES, canOpenModule, getVisibleAdminModules, isExternalPath } from "../../config/modules";
 import { GROUP_HUES, resolveAppFrame } from "../../components/AppPage";
 import { buttonClasses } from "../../components/buttonClasses";
 import { CopyButton } from "../../components/CopyButton";
@@ -160,19 +160,32 @@ const Dashboard: React.FC = () => {
           </div>
         ) : (
           <div className="grid gap-2.5 [grid-template-columns:repeat(auto-fill,minmax(min(100%,180px),1fr))]">
-            {pinned.map((m) => (
-              <Link
-                key={m.id}
-                to={m.path}
-                className={`flex items-center gap-3 rounded-ds-md border border-divider bg-surface-2 p-3 motion-safe:transition-colors hover:border-border-strong ${focus}`}
-              >
-                <IconTile icon={m.icon} hue={GROUP_HUES[m.group]} size={38} />
-                <span className="min-w-0">
-                  <span className="block truncate text-sm font-bold text-text-primary">{m.label}</span>
-                  <span className="block text-xs text-text-secondary">{LAUNCHER_GROUP_LABELS[m.group]}</span>
-                </span>
-              </Link>
-            ))}
+            {pinned.map((m) => {
+              const cls = `flex items-center gap-3 rounded-ds-md border border-divider bg-surface-2 p-3 motion-safe:transition-colors hover:border-border-strong ${focus}`;
+              const content = (
+                <>
+                  <IconTile icon={m.icon} hue={GROUP_HUES[m.group]} size={38} />
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center gap-1 truncate text-sm font-bold text-text-primary">
+                      <span className="truncate">{m.label}</span>
+                      {(m.external || isExternalPath(m.path)) && (
+                        <ArrowSquareOut className="h-3.5 w-3.5 shrink-0 text-text-secondary" aria-hidden="true" />
+                      )}
+                    </span>
+                    <span className="block text-xs text-text-secondary">{LAUNCHER_GROUP_LABELS[m.group]}</span>
+                  </span>
+                </>
+              );
+              return m.external || isExternalPath(m.path) ? (
+                <a key={m.id} href={m.path} target="_blank" rel="noopener noreferrer" className={cls}>
+                  {content}
+                </a>
+              ) : (
+                <Link key={m.id} to={m.path} className={cls}>
+                  {content}
+                </Link>
+              );
+            })}
           </div>
         )}
       </section>
