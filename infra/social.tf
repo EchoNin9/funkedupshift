@@ -182,6 +182,7 @@ data "archive_file" "social" {
     "thumb/**",
     "collector/**",
     "tools/**",
+    "feeds/**",
     "tests/**",
     "requirements-test.txt",
   ]

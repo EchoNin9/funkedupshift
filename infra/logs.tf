@@ -17,6 +17,8 @@ locals {
     lipsyncRunner      = aws_lambda_function.lipsyncRunner.function_name
     lipsyncMaintenance = aws_lambda_function.lipsyncMaintenance.function_name
     tools              = aws_lambda_function.tools.function_name
+    feedsApi           = aws_lambda_function.feedsApi.function_name
+    feedsFetcher       = aws_lambda_function.feedsFetcher.function_name
   }
 }
 

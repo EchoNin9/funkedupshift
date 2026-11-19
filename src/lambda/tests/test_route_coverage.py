@@ -43,6 +43,7 @@ HANDLERS: list[tuple[Path, set[tuple[str, str]]]] = [
     (LAMBDA_DIR / "tools" / "handler.py", set()),
     (LAMBDA_DIR / "social" / "routes.py", set()),
     (LAMBDA_DIR / "lipsync" / "routes.py", set()),
+    (LAMBDA_DIR / "feeds" / "routes.py", set()),
 ]
 
 
