@@ -9,7 +9,9 @@ import {
   CurrencyDollar,
   Sparkle,
   SquaresFour,
+  Rss,
 } from "@phosphor-icons/react";
+import { isExternalPath } from "../config/modules";
 import { useMobileModulesCtx } from "./MobileModulesContext";
 
 type TabIcon = React.ComponentType<{ className?: string }>;
@@ -26,6 +28,7 @@ const MODULE_ICONS: Record<string, React.ComponentType<{ className?: string }>> 
   memes: ImageSquare,
   highlights: Sparkle,
   "highest-rated": Sparkle,
+  feeds: Rss,
 };
 
 interface TabDef {
@@ -70,28 +73,45 @@ export function MobileBottomTabs() {
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
       <div className="flex items-center justify-around h-14">
-        {tabs.map((tab) => (
-          <NavLink
-            key={tab.path}
-            to={tab.path}
-            end={tab.path === "/"}
-            className={({ isActive }) =>
-              `flex flex-col items-center justify-center flex-1 h-full transition-colors duration-150 ${
-                isActive ? "text-accent-text" : "text-text-tertiary"
-              }`
-            }
-          >
-            {({ isActive }) => {
-              const Icon = isActive && tab.activeIcon ? tab.activeIcon : tab.icon;
-              return (
-                <>
-                  <Icon className="w-5 h-5" />
-                  <span className="text-[10px] mt-0.5 leading-tight">{tab.label}</span>
-                </>
-              );
-            }}
-          </NavLink>
-        ))}
+        {tabs.map((tab) => {
+          if (isExternalPath(tab.path)) {
+            const Icon = tab.icon;
+            return (
+              <a
+                key={tab.path}
+                href={tab.path}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex flex-col items-center justify-center flex-1 h-full transition-colors duration-150 text-text-tertiary"
+              >
+                <Icon className="w-5 h-5" />
+                <span className="text-[10px] mt-0.5 leading-tight">{tab.label}</span>
+              </a>
+            );
+          }
+          return (
+            <NavLink
+              key={tab.path}
+              to={tab.path}
+              end={tab.path === "/"}
+              className={({ isActive }) =>
+                `flex flex-col items-center justify-center flex-1 h-full transition-colors duration-150 ${
+                  isActive ? "text-accent-text" : "text-text-tertiary"
+                }`
+              }
+            >
+              {({ isActive }) => {
+                const Icon = isActive && tab.activeIcon ? tab.activeIcon : tab.icon;
+                return (
+                  <>
+                    <Icon className="w-5 h-5" />
+                    <span className="text-[10px] mt-0.5 leading-tight">{tab.label}</span>
+                  </>
+                );
+              }}
+            </NavLink>
+          );
+        })}
       </div>
     </nav>
   );

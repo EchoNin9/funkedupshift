@@ -1,7 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { Lock } from "@phosphor-icons/react";
-import type { LauncherApp } from "../../config/modules";
+import { ArrowSquareOut, Lock } from "@phosphor-icons/react";
+import { isExternalPath, type LauncherApp } from "../../config/modules";
 
 export type Hue = "teal" | "violet" | "coral" | "amber";
 
@@ -17,7 +17,12 @@ export function AppCard({ app, hue }: { app: LauncherApp; hue: Hue }) {
         <app.icon className="h-[22px] w-[22px]" />
       </span>
       <span className={`min-w-0 flex-1 ${app.locked ? "pt-4" : ""}`}>
-        <span className="block text-[15px] font-bold text-text-primary">{app.label}</span>
+        <span className="flex items-center gap-1.5 text-[15px] font-bold text-text-primary">
+          {app.label}
+          {(app.external || isExternalPath(app.path)) && !app.locked && (
+            <ArrowSquareOut className="h-3.5 w-3.5 shrink-0 text-text-secondary" aria-hidden="true" />
+          )}
+        </span>
         <span className="mt-0.5 block text-[13px] leading-[1.45] text-text-secondary">{app.description}</span>
       </span>
       {app.locked && (
@@ -28,7 +33,13 @@ export function AppCard({ app, hue }: { app: LauncherApp; hue: Hue }) {
       )}
     </>
   );
-  if (!app.locked) return <Link to={app.path} className={card}>{body}</Link>;
+  if (!app.locked) {
+    return app.external || isExternalPath(app.path) ? (
+      <a href={app.path} target="_blank" rel="noopener noreferrer" className={card}>{body}</a>
+    ) : (
+      <Link to={app.path} className={card}>{body}</Link>
+    );
+  }
   if (app.lockReason === "guest") {
     return <Link to="/auth" title={`${app.label} — sign in to use`} className={`${card} is-locked`}>{body}</Link>;
   }

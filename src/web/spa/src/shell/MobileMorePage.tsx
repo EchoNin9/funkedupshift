@@ -1,11 +1,11 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { CaretRight, ChartBar, CurrencyDollar, Gear, Globe, IdentificationCard, ImageSquare, ShieldCheck, Sparkle, Trophy, Truck } from "@phosphor-icons/react";
+import { ArrowSquareOut, CaretRight, ChartBar, CurrencyDollar, Gear, Globe, IdentificationCard, ImageSquare, Rss, ShieldCheck, Sparkle, Trophy, Truck } from "@phosphor-icons/react";
 
 import { useMobileModulesCtx } from "./MobileModulesContext";
 import { useAuth } from "./AuthContext";
 import { hasRole } from "./AuthContext";
-import { getVisibleModuleGroups } from "../config/modules";
+import { getVisibleModuleGroups, isExternalPath } from "../config/modules";
 
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   websites: Globe,
@@ -21,6 +21,7 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   "general-expenses": Truck,
   highlights: Sparkle,
   "highest-rated": Sparkle,
+  feeds: Rss,
   profile: Gear,
 };
 
@@ -57,15 +58,26 @@ export default function MobileMorePage() {
           <div className="rounded-xl bg-surface-1 overflow-hidden divide-y divide-border-default">
             {standalone.map((mod) => {
               const Icon = ICON_MAP[mod.id] || Globe;
-              return (
-                <Link
-                  key={mod.id}
-                  to={mod.path}
-                  className="flex items-center gap-3 px-4 py-3 min-h-[48px] active:bg-surface-2 transition-colors"
-                >
+              const external = mod.external || isExternalPath(mod.path);
+              const cls = "flex items-center gap-3 px-4 py-3 min-h-[48px] active:bg-surface-2 transition-colors";
+              const rowInner = (
+                <>
                   <Icon className="w-5 h-5 text-text-tertiary flex-shrink-0" />
                   <span className="flex-1 text-sm text-text-primary">{mod.label}</span>
-                  <CaretRight weight="fill" className="w-4 h-4 text-text-tertiary" />
+                  {external ? (
+                    <ArrowSquareOut className="w-4 h-4 text-text-tertiary" />
+                  ) : (
+                    <CaretRight weight="fill" className="w-4 h-4 text-text-tertiary" />
+                  )}
+                </>
+              );
+              return external ? (
+                <a key={mod.id} href={mod.path} target="_blank" rel="noopener noreferrer" className={cls}>
+                  {rowInner}
+                </a>
+              ) : (
+                <Link key={mod.id} to={mod.path} className={cls}>
+                  {rowInner}
                 </Link>
               );
             })}
@@ -87,16 +99,27 @@ export default function MobileMorePage() {
             <div className="rounded-xl bg-surface-1 overflow-hidden divide-y divide-border-default">
               {links.map((link) => {
                 const mod = accessible.find((m) => m.path === link.path);
-                const Icon = mod ? (ICON_MAP[mod.id] || Globe) : Globe;
-                return (
-                  <Link
-                    key={link.path}
-                    to={link.path}
-                    className="flex items-center gap-3 px-4 py-3 min-h-[48px] active:bg-surface-2 transition-colors"
-                  >
+                const Icon = mod ? (ICON_MAP[mod.id] || mod.icon || Globe) : Globe;
+                const external = link.external || isExternalPath(link.path);
+                const cls = "flex items-center gap-3 px-4 py-3 min-h-[48px] active:bg-surface-2 transition-colors";
+                const rowInner = (
+                  <>
                     <Icon className="w-5 h-5 text-text-tertiary flex-shrink-0" />
                     <span className="flex-1 text-sm text-text-primary">{link.label}</span>
-                    <CaretRight weight="fill" className="w-4 h-4 text-text-tertiary" />
+                    {external ? (
+                      <ArrowSquareOut className="w-4 h-4 text-text-tertiary" />
+                    ) : (
+                      <CaretRight weight="fill" className="w-4 h-4 text-text-tertiary" />
+                    )}
+                  </>
+                );
+                return external ? (
+                  <a key={link.path} href={link.path} target="_blank" rel="noopener noreferrer" className={cls}>
+                    {rowInner}
+                  </a>
+                ) : (
+                  <Link key={link.path} to={link.path} className={cls}>
+                    {rowInner}
                   </Link>
                 );
               })}
