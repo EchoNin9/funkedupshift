@@ -1,7 +1,20 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { parseRoute, buildFeedPath, isValidDayString } from "./router.ts";
-import { sortFeeds, reorderFeedList, nudgeFeed, slugifyTitle } from "./feedOrder.ts";
+import {
+  getFeedBlock,
+  groupFeedsByBlock,
+  isBlockVisible,
+  normalizeSoloBlocks,
+  nudgeFeed,
+  readStoredSoloBlocks,
+  reorderFeedList,
+  slugifyTitle,
+  SOLO_BLOCKS_STORAGE_KEY,
+  sortFeeds,
+  toggleSoloBlock,
+  writeStoredSoloBlocks,
+} from "./feedOrder.ts";
 import {
   todayInTz,
   shiftCalendarDay,
@@ -123,4 +136,162 @@ test("sanitizeHtml policy strips images/scripts and blocks unsafe href schemes",
   assert.equal(isSafeHref("mailto:test@example.com"), true);
   assert.equal(isSafeHref("javascript:alert(1)"), false);
   assert.equal(isSafeHref("data:text/html,<script>"), false);
+});
+
+test("groupFeedsByBlock splits feeds into pinned, push, and websites blocks cleanly", () => {
+  const feeds = [
+    { feedId: "w2", title: "Web Two", kind: "atom", pinned: false, sortOrder: 3 },
+    { feedId: "p1", title: "Mox Push", kind: "push", pinned: false, sortOrder: 1 },
+    { feedId: "pin-push", title: "Pinned Push", kind: "push", pinned: true, sortOrder: 2 },
+    { feedId: "w1", title: "Web One", kind: "rss", pinned: false, sortOrder: 0 },
+    { feedId: "p2", title: "Rally Push", kind: "push", pinned: false, sortOrder: 4 },
+    { feedId: "pin-web", title: "Pinned Web", kind: "json", pinned: true, sortOrder: 0 },
+  ];
+
+  assert.equal(getFeedBlock(feeds[2]), "pinned");
+  assert.equal(getFeedBlock(feeds[1]), "push");
+  assert.equal(getFeedBlock(feeds[0]), "websites");
+  assert.equal(getFeedBlock(feeds[3]), "websites");
+
+  const grouped = groupFeedsByBlock(feeds);
+  assert.deepEqual(
+    grouped.pinned.map((f) => f.feedId),
+    ["pin-web", "pin-push"]
+  );
+  assert.deepEqual(
+    grouped.push.map((f) => f.feedId),
+    ["p1", "p2"]
+  );
+  assert.deepEqual(
+    grouped.websites.map((f) => f.feedId),
+    ["w1", "w2"]
+  );
+});
+
+test("solo toggle helpers support single solo, combinations, reset, and all-3 normalization", () => {
+  // Default empty list shows all blocks
+  let active = [];
+  assert.equal(isBlockVisible("pinned", active), true);
+  assert.equal(isBlockVisible("push", active), true);
+  assert.equal(isBlockVisible("websites", active), true);
+
+  // Solo only push
+  active = toggleSoloBlock(active, "push");
+  assert.deepEqual(active, ["push"]);
+  assert.equal(isBlockVisible("pinned", active), false);
+  assert.equal(isBlockVisible("push", active), true);
+  assert.equal(isBlockVisible("websites", active), false);
+
+  // Combine push + pinned -> canonical order ["pinned", "push"]
+  active = toggleSoloBlock(active, "pinned");
+  assert.deepEqual(active, ["pinned", "push"]);
+  assert.equal(isBlockVisible("pinned", active), true);
+  assert.equal(isBlockVisible("push", active), true);
+  assert.equal(isBlockVisible("websites", active), false);
+
+  // Adding the 3rd block normalizes back to [] (All)
+  active = toggleSoloBlock(active, "websites");
+  assert.deepEqual(active, []);
+  assert.equal(isBlockVisible("websites", active), true);
+
+  // Solo websites, then untoggle back to [] (All)
+  active = toggleSoloBlock(active, "websites");
+  assert.deepEqual(active, ["websites"]);
+  active = toggleSoloBlock(active, "websites");
+  assert.deepEqual(active, []);
+
+  assert.deepEqual(normalizeSoloBlocks(["websites", "bogus", "push", "push"]), ["push", "websites"]);
+  assert.deepEqual(normalizeSoloBlocks(["websites", "push", "pinned"]), []);
+});
+
+test("solo block persistence round-trips cleanly via Storage interface", () => {
+  const data = new Map();
+  const fakeStorage = {
+    getItem(k) {
+      return data.has(k) ? data.get(k) : null;
+    },
+    setItem(k, v) {
+      data.set(k, String(v));
+    },
+    removeItem(k) {
+      data.delete(k);
+    },
+  };
+
+  assert.deepEqual(readStoredSoloBlocks(fakeStorage), []);
+
+  writeStoredSoloBlocks(["websites", "pinned"], fakeStorage);
+  assert.equal(data.get(SOLO_BLOCKS_STORAGE_KEY), "pinned,websites");
+  assert.deepEqual(readStoredSoloBlocks(fakeStorage), ["pinned", "websites"]);
+
+  // Unknown tokens ignored on read
+  data.set(SOLO_BLOCKS_STORAGE_KEY, "push,unknown,pinned");
+  assert.deepEqual(readStoredSoloBlocks(fakeStorage), ["pinned", "push"]);
+
+  // All 3 stored collapses to empty ("All")
+  data.set(SOLO_BLOCKS_STORAGE_KEY, "pinned,push,websites");
+  assert.deepEqual(readStoredSoloBlocks(fakeStorage), []);
+
+  // Writing empty or 3-of-3 removes storage key
+  writeStoredSoloBlocks(["pinned", "push", "websites"], fakeStorage);
+  assert.equal(data.has(SOLO_BLOCKS_STORAGE_KEY), false);
+
+  // Restricted privacy contexts where Storage methods throw are handled safely
+  const throwingStorage = {
+    getItem() {
+      throw new Error("SecurityError");
+    },
+    setItem() {
+      throw new Error("QuotaExceededError");
+    },
+    removeItem() {
+      throw new Error("SecurityError");
+    },
+  };
+  assert.deepEqual(readStoredSoloBlocks(throwingStorage), []);
+  assert.doesNotThrow(() => writeStoredSoloBlocks(["push"], throwingStorage));
+  assert.doesNotThrow(() => writeStoredSoloBlocks([], throwingStorage));
+});
+
+test("reorderFeedList blocks cross-block drags cleanly and reorders interleaved push feeds", () => {
+  const feeds = [
+    { feedId: "pin-push", title: "Pinned Push", kind: "push", pinned: true, sortOrder: 0 },
+    { feedId: "p1", title: "Push 1", kind: "push", pinned: false, sortOrder: 1 },
+    { feedId: "w1", title: "Web 1", kind: "rss", pinned: false, sortOrder: 2 },
+    { feedId: "p2", title: "Push 2", kind: "push", pinned: false, sortOrder: 3 },
+    { feedId: "w2", title: "Web 2", kind: "atom", pinned: false, sortOrder: 4 },
+  ];
+
+  // Cross-block drags between push/websites and pinned-push/unpinned-push are refused
+  assert.equal(reorderFeedList(feeds, "p1", "w1"), null);
+  assert.equal(reorderFeedList(feeds, "pin-push", "p1"), null);
+
+  // Direct drag across interleaved Web 1 reorders push feeds cleanly without changing websites order
+  const dragged = reorderFeedList(feeds, "p2", "p1");
+  assert.ok(dragged);
+  const afterDrag = groupFeedsByBlock(dragged);
+  assert.deepEqual(
+    afterDrag.push.map((f) => f.feedId),
+    ["p2", "p1"]
+  );
+  assert.deepEqual(
+    afterDrag.websites.map((f) => f.feedId),
+    ["w1", "w2"]
+  );
+
+  // Nudging Push 2 down jumps past interleaved Web 1 to swap relative order with Push 1
+  const nudgedDown = nudgeFeed(dragged, "p2", 1);
+  assert.ok(nudgedDown);
+  const afterDown = groupFeedsByBlock(nudgedDown);
+  assert.deepEqual(
+    afterDown.push.map((f) => f.feedId),
+    ["p1", "p2"]
+  );
+  assert.deepEqual(
+    afterDown.websites.map((f) => f.feedId),
+    ["w1", "w2"]
+  );
+
+  // Nudging Push 1 up from already first-in-block returns null even with Pinned Push and Web feeds around it
+  assert.equal(nudgeFeed(nudgedDown, "p1", -1), null);
 });

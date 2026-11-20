@@ -10,7 +10,14 @@ import {
 } from "./api";
 import AuthView from "./AuthView";
 import { DEFAULT_TZ } from "./dateFormat";
-import { sortFeeds } from "./feedOrder";
+import {
+  readStoredSoloBlocks,
+  SOLO_BLOCKS_STORAGE_KEY,
+  sortFeeds,
+  toggleSoloBlock,
+  writeStoredSoloBlocks,
+  type FeedBlock,
+} from "./feedOrder";
 import FeedDayView from "./FeedDayView";
 import FeedListView from "./FeedListView";
 import { buildFeedPath, parseRoute, type Route } from "./router";
@@ -44,6 +51,7 @@ const App: React.FC = () => {
   const [addOpen, setAddOpen] = useState(false);
 
   const [themePref, setThemePref] = useState<ThemePreference>(() => readStoredTheme());
+  const [soloBlocks, setSoloBlocks] = useState<FeedBlock[]>(() => readStoredSoloBlocks());
   const [osDark, setOsDark] = useState<boolean>(() =>
     typeof window !== "undefined" && typeof window.matchMedia === "function"
       ? window.matchMedia("(prefers-color-scheme: dark)").matches
@@ -78,6 +86,10 @@ const App: React.FC = () => {
   }, [themePref]);
 
   useEffect(() => {
+    writeStoredSoloBlocks(soloBlocks);
+  }, [soloBlocks]);
+
+  useEffect(() => {
     const mq =
       typeof window !== "undefined" && typeof window.matchMedia === "function"
         ? window.matchMedia("(prefers-color-scheme: dark)")
@@ -93,6 +105,9 @@ const App: React.FC = () => {
     const onStorage = (e: StorageEvent) => {
       if (e.key === THEME_STORAGE_KEY || e.key === null) {
         setThemePref(readStoredTheme());
+      }
+      if (e.key === SOLO_BLOCKS_STORAGE_KEY || e.key === null) {
+        setSoloBlocks(readStoredSoloBlocks());
       }
     };
     window.addEventListener("storage", onStorage);
@@ -174,6 +189,7 @@ const App: React.FC = () => {
     setAddOpen(false);
     setAuth({ checked: true, signedIn: false, email: null });
     setFeeds([]);
+    setSoloBlocks([]);
     setSessionNotice(null);
     navigate("/", true);
   };
@@ -448,6 +464,9 @@ const App: React.FC = () => {
             feeds={feeds}
             loading={feedsLoading}
             error={feedsError}
+            soloBlocks={soloBlocks}
+            onToggleSoloBlock={(block) => setSoloBlocks((prev) => toggleSoloBlock(prev, block))}
+            onResetSoloBlocks={() => setSoloBlocks([])}
             onRetryLoad={() => void loadFeeds()}
             onOpenFeed={(feedId) => navigate(buildFeedPath(feedId))}
             onOpenAdd={() => setAddOpen(true)}
