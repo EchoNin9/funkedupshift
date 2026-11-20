@@ -81,8 +81,12 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Guard feed-site auth.js against drift
-        run: cmp src/web/auth.js src/web/feed-site/public/auth.js
+      - name: Guard feed-site auth.js and pure modules against drift
+        run: |
+          cmp src/web/auth.js src/web/feed-site/public/auth.js
+          for f in feedOrder.ts dateFormat.ts sanitizeHtml.ts; do
+            cmp "src/web/feed-site/src/$f" "src/web/spa/src/features/feeds/$f" || exit 1
+          done
 
       - name: Test and build feed.e9.cx frontend
         working-directory: src/web/feed-site
