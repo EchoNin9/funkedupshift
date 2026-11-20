@@ -10,6 +10,8 @@ Single-table key layout:
   Day count index    PK=FEED#{sub}#{feedId}         SK=DAYIDX#{yyyy-mm-dd}
   Star list row      PK=USER#{sub}                  SK=STAR#{starredAt}#{feedId}#{itemHash}
   Star lookup ref    PK=USER#{sub}                  SK=STARREF#{feedId}#{itemSk}
+  Seen list row      PK=USER#{sub}                  SK=SEEN#{seenAt}#{feedId}#{itemHash}
+  Seen lookup ref    PK=USER#{sub}                  SK=SEENREF#{feedId}#{itemSk}
   API key row        PK=USER#{sub}                  SK=APIKEY#{keyId}
   API key lookup     PK=APIKEYHASH#{sha256}         SK=META
   Rate limit bucket  PK=RATELIMIT#{keyId}#{min}     SK=META
@@ -321,7 +323,7 @@ def _normalizeFeed(raw: dict, todayCount: int = 0) -> dict:
     return out
 
 
-def _normalizeItem(raw: dict, *, starred: bool = False) -> dict:
+def _normalizeItem(raw: dict, *, starred: bool = False, seen: bool = False) -> dict:
     item = _fromDynamo(raw)
     out = {
         "itemSk": item["SK"],
@@ -333,6 +335,7 @@ def _normalizeItem(raw: dict, *, starred: bool = False) -> dict:
         "publishedAt": item.get("publishedAt") or "",
         "fetchedAt": item.get("fetchedAt") or "",
         "starred": bool(starred),
+        "seen": bool(seen),
     }
     for opt in ("link", "author", "guid"):
         if item.get(opt) is not None:
@@ -345,6 +348,25 @@ def _normalizeStar(raw: dict) -> dict:
     out = {
         "starSk": item["SK"],
         "starredAt": item["starredAt"],
+        "feedId": item["feedId"],
+        "itemSk": item["itemSk"],
+        "itemHash": item["itemHash"],
+        "day": item["day"],
+        "title": item["title"],
+        "snippet": item.get("snippet") or "",
+        "feedTitle": item.get("feedTitle") or "",
+        "feedKind": item.get("feedKind") or "rss",
+    }
+    if item.get("link") is not None:
+        out["link"] = item["link"]
+    return out
+
+
+def _normalizeSeen(raw: dict) -> dict:
+    item = _fromDynamo(raw)
+    out = {
+        "seenSk": item["SK"],
+        "seenAt": item["seenAt"],
         "feedId": item["feedId"],
         "itemSk": item["itemSk"],
         "itemHash": item["itemHash"],
@@ -1172,11 +1194,16 @@ def listDayItems(sub: str, feedId: str, day: str) -> tuple[dict, list[dict]]:
         kwargs["ExclusiveStartKey"] = lek
 
     rawItems.sort(key=lambda r: (r.get("publishedAt") or "", r.get("SK") or ""), reverse=True)
-    starRefKeys = [{"PK": _userPk(sub), "SK": f"STARREF#{feedId}#{r['SK']}"} for r in rawItems]
-    starRefs = _batchGetItems(starRefKeys)
-    starredSks = {sr["itemSk"] for sr in starRefs}
+    # One round-trip for BOTH marker kinds: STARREF# and SEENREF# keys share a single
+    # _batchGetItems call, then rows are partitioned by their SK prefix.
+    upk = _userPk(sub)
+    refKeys = [{"PK": upk, "SK": f"STARREF#{feedId}#{r['SK']}"} for r in rawItems]
+    refKeys += [{"PK": upk, "SK": f"SEENREF#{feedId}#{r['SK']}"} for r in rawItems]
+    refRows = _batchGetItems(refKeys)
+    starredSks = {r["itemSk"] for r in refRows if str(r.get("SK", "")).startswith("STARREF#")}
+    seenSks = {r["itemSk"] for r in refRows if str(r.get("SK", "")).startswith("SEENREF#")}
 
-    items = [_normalizeItem(r, starred=(r["SK"] in starredSks)) for r in rawItems]
+    items = [_normalizeItem(r, starred=(r["SK"] in starredSks), seen=(r["SK"] in seenSks)) for r in rawItems]
     return feed, items
 
 
@@ -1312,6 +1339,142 @@ def listStars(sub: str, *, limit: int = 50, cursor: str | None = None) -> dict:
     resp = _tbl().query(**kwargs)
     return {
         "items": [_normalizeStar(r) for r in (resp.get("Items") or [])],
+        "nextCursor": _encodeCursor(resp.get("LastEvaluatedKey")),
+    }
+
+
+# --- Seen (looked-at/reviewed) markers ------------------------------------------
+
+
+def markSeen(sub: str, feedId: str, itemSk: str) -> dict:
+    if not ITEM_SK_RE.match(itemSk or ""):
+        raise ItemNotFoundError("Invalid item key")
+    feed = getFeed(sub, feedId)
+    if feed is None:
+        raise FeedNotFoundError("Feed not found")
+
+    itemResp = _tbl().get_item(Key={"PK": _feedPartitionPk(sub, feedId), "SK": itemSk})
+    item = itemResp.get("Item")
+    if not item:
+        raise ItemNotFoundError("Item not found")
+
+    seenRefSk = f"SEENREF#{feedId}#{itemSk}"
+    tname = _tableName()
+    itemHash = item["itemHash"]
+
+    for attempt in range(2):
+        existingRef = _tbl().get_item(Key={"PK": _userPk(sub), "SK": seenRefSk}).get("Item")
+        if existingRef and existingRef.get("seenSk"):
+            existingSeen = _tbl().get_item(Key={"PK": _userPk(sub), "SK": existingRef["seenSk"]}).get("Item")
+            if existingSeen:
+                return _normalizeSeen(existingSeen)
+
+        seenAt = _isoNowUtc(timespec="milliseconds")
+        seenSk = f"SEEN#{seenAt}#{feedId}#{itemHash}"
+        seenRow = {
+            "PK": _userPk(sub),
+            "SK": seenSk,
+            "seenAt": seenAt,
+            "feedId": feedId,
+            "itemSk": itemSk,
+            "itemHash": itemHash,
+            "day": item["day"],
+            "title": item["title"],
+            "snippet": (item.get("summary") or "")[:240],
+            "feedTitle": feed["title"],
+            "feedKind": feed["kind"],
+        }
+        if item.get("link"):
+            seenRow["link"] = item["link"]
+
+        seenRefRow = {
+            "PK": _userPk(sub),
+            "SK": seenRefSk,
+            "seenSk": seenSk,
+            "feedId": feedId,
+            "itemSk": itemSk,
+            "seenAt": seenAt,
+        }
+
+        try:
+            _transactWithConflictRetry(
+                [
+                    {"Put": {"TableName": tname, "Item": _serItem(seenRow)}},
+                    {"Put": {"TableName": tname, "Item": _serItem(seenRefRow), "ConditionExpression": "attribute_not_exists(SK)"}},
+                ]
+            )
+            return _normalizeSeen(seenRow)
+        except ClientError as e:
+            if not _isConditionFailure(e):
+                raise
+            existingRef = _tbl().get_item(Key={"PK": _userPk(sub), "SK": seenRefSk}).get("Item") or {}
+            if existingRef.get("seenSk"):
+                existingSeen = _tbl().get_item(Key={"PK": _userPk(sub), "SK": existingRef["seenSk"]}).get("Item")
+                if existingSeen:
+                    return _normalizeSeen(existingSeen)
+            if attempt == 0:
+                continue
+            raise
+
+
+def unmarkSeen(sub: str, feedId: str, itemSk: str) -> None:
+    seenRefSk = f"SEENREF#{feedId}#{itemSk}"
+    tname = _tableName()
+
+    for attempt in range(3):
+        ref = _tbl().get_item(Key={"PK": _userPk(sub), "SK": seenRefSk}).get("Item")
+        if not ref:
+            return
+
+        seenRefKey = _serItem({"PK": _userPk(sub), "SK": seenRefSk})
+        if ref.get("seenSk"):
+            txItems = [
+                {
+                    "Delete": {
+                        "TableName": tname,
+                        "Key": seenRefKey,
+                        "ConditionExpression": "seenSk = :expected",
+                        "ExpressionAttributeValues": {":expected": _serVal(ref["seenSk"])},
+                    }
+                },
+                {"Delete": {"TableName": tname, "Key": _serItem({"PK": _userPk(sub), "SK": ref["seenSk"]})}},
+            ]
+        else:
+            txItems = [
+                {
+                    "Delete": {
+                        "TableName": tname,
+                        "Key": seenRefKey,
+                        "ConditionExpression": "attribute_not_exists(seenSk)",
+                    }
+                }
+            ]
+
+        try:
+            _transactWithConflictRetry(txItems)
+            return
+        except ClientError as e:
+            if not _isConditionFailure(e):
+                raise
+            if attempt == 2:
+                if not _tbl().get_item(Key={"PK": _userPk(sub), "SK": seenRefSk}).get("Item"):
+                    return
+                raise
+
+
+def listSeen(sub: str, *, limit: int = 50, cursor: str | None = None) -> dict:
+    upk = _userPk(sub)
+    lek = _decodeCursor(cursor, expectedPk=upk, expectedSkPrefix="SEEN#")
+    kwargs = {
+        "KeyConditionExpression": Key("PK").eq(upk) & Key("SK").begins_with("SEEN#"),
+        "ScanIndexForward": False,
+        "Limit": limit,
+    }
+    if lek:
+        kwargs["ExclusiveStartKey"] = lek
+    resp = _tbl().query(**kwargs)
+    return {
+        "items": [_normalizeSeen(r) for r in (resp.get("Items") or [])],
         "nextCursor": _encodeCursor(resp.get("LastEvaluatedKey")),
     }
 

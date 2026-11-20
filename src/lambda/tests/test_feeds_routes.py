@@ -1,4 +1,4 @@
-"""Unit & integration-style tests for feeds.routes and feeds.storage (all 17 routes + strict Decimal/TypeSerializer checks)."""
+"""Unit & integration-style tests for feeds.routes and feeds.storage (all 20 routes + strict Decimal/TypeSerializer checks)."""
 
 from copy import deepcopy
 from decimal import Decimal
@@ -330,6 +330,9 @@ def test_jwt_required_for_protected_routes(fakeDb):
         ("GET", "/feeds/stars"),
         ("PUT", "/feeds/stars"),
         ("DELETE", "/feeds/stars"),
+        ("GET", "/feeds/seen"),
+        ("PUT", "/feeds/seen"),
+        ("DELETE", "/feeds/seen"),
         ("GET", "/feeds/keys"),
         ("POST", "/feeds/keys"),
         ("DELETE", "/feeds/keys/abc"),
@@ -981,5 +984,247 @@ def test_pass2_review_remediations_races_conflicts_cleanup_and_caps(fakeDb):
         json.dumps({"PK": f"FEED#user-a#{ordId}", "SK": "DAYIDX#" + ("9" * 1100)}).encode()
     ).decode()
     assert _resp(routes.handler(_jwtEvent("GET", f"/feeds/{ordId}/days", sub="user-a", qs={"cursor": longCursor}), None))[0] == 400
+
+
+def test_seen_markers_persist_per_sub_isolate_dedupe_race_and_use_one_batch_get(fakeDb):
+    """FUNK-100: per-item "seen" markers mirror stars (server-side, per Cognito sub)."""
+    import base64
+
+    # 0. Setup: push feed with one link-less item, plus an API key for ingest.
+    _, fResp = _resp(routes.handler(_jwtEvent("POST", "/feeds", sub="user-a", body={"kind": "push", "title": "Seen Feed", "slug": "seen-feed"}), None))
+    feedId = fResp["feed"]["feedId"]
+    feedKind = fResp["feed"]["kind"]
+    _, kResp = _resp(routes.handler(_jwtEvent("POST", "/feeds/keys", sub="user-a", body={"name": "K"}), None))
+    apiKey = kResp["rawKey"]
+    _resp(
+        routes.handler(
+            _ingestEvent(
+                {"feed": "seen-feed", "date": "2026-11-19", "items": [{"guid": "v1", "title": "Item 1", "contentMarkdown": "body text"}]},
+                apiKey=apiKey,
+            ),
+            None,
+        )
+    )
+
+    # "seen" must be a reserved feedId so /feeds/seen is never parsed as /feeds/{id}
+    assert "seen" in routes._RESERVED_FEED_IDS
+    assert _resp(routes.handler(_jwtEvent("POST", "/feeds/seen/refresh", sub="user-a"), None))[0] == 404
+
+    # 1. Day view reports seen False initially
+    code, dayData = _resp(routes.handler(_jwtEvent("GET", f"/feeds/{feedId}/days/2026-11-19", sub="user-a"), None))
+    assert code == 200 and len(dayData["items"]) == 1
+    itemSk = dayData["items"][0]["itemSk"]
+    itemSummary = dayData["items"][0]["summary"]
+    assert dayData["items"][0]["seen"] is False
+    assert dayData["items"][0]["starred"] is False
+    assert "link" not in dayData["items"][0]
+
+    # 2. PUT /feeds/seen marks it; link-less item carries no "link" key
+    cMark, markBody = _resp(routes.handler(_jwtEvent("PUT", "/feeds/seen", sub="user-a", body={"feedId": feedId, "itemSk": itemSk}), None))
+    assert cMark == 200 and markBody["seen"] is True
+    mark = markBody["seenItem"]
+    assert mark["day"] == "2026-11-19"
+    assert mark["title"] == "Item 1"
+    assert mark["feedTitle"] == "Seen Feed"
+    assert mark["feedKind"] == feedKind
+    assert mark["feedId"] == feedId and mark["itemSk"] == itemSk
+    assert mark["snippet"] == itemSummary[:240]
+    assert mark["seenSk"] == f"SEEN#{mark['seenAt']}#{feedId}#{mark['itemHash']}"
+    assert "link" not in mark
+
+    # Both rows live in the USER partition and write only string attributes (no bare floats)
+    seenRows = {k: v for k, v in fakeDb.rows.items() if k[0] == "USER#user-a" and k[1].startswith("SEEN")}
+    assert sorted(k[1].split("#", 1)[0] for k in seenRows) == ["SEEN", "SEENREF"]
+    for rowKey, row in seenRows.items():
+        for attrName, attrVal in row.items():
+            assert isinstance(attrVal, str), f"{rowKey} attr {attrName} is {type(attrVal)}, expected str"
+    refRow = fakeDb.rows[("USER#user-a", f"SEENREF#{feedId}#{itemSk}")]
+    assert refRow["seenSk"] == mark["seenSk"] and refRow["seenAt"] == mark["seenAt"]
+
+    # 3. Re-PUT is idempotent: same seenSk, exactly one SEEN# + one SEENREF# row
+    _, markBody2 = _resp(routes.handler(_jwtEvent("PUT", "/feeds/seen", sub="user-a", body={"feedId": feedId, "itemSk": itemSk}), None))
+    assert markBody2["seen"] is True
+    assert markBody2["seenItem"]["seenSk"] == mark["seenSk"]
+    assert len([k for k in fakeDb.rows if k[0] == "USER#user-a" and k[1].startswith("SEEN#")]) == 1
+    assert len([k for k in fakeDb.rows if k[0] == "USER#user-a" and k[1].startswith("SEENREF#")]) == 1
+
+    # 4. Re-reading the day view shows seen True (persisted server-side, not client state)
+    _, dayAfter = _resp(routes.handler(_jwtEvent("GET", f"/feeds/{feedId}/days/2026-11-19", sub="user-a"), None))
+    assert dayAfter["items"][0]["seen"] is True
+    assert dayAfter["items"][0]["starred"] is False
+
+    # 5. GET /feeds/seen returns the one item and NEVER leaks the SEENREF# row
+    #    ("SEENREF#" does not begin_with "SEEN#": 5th byte 'R' != '#')
+    cList, seenList = _resp(routes.handler(_jwtEvent("GET", "/feeds/seen", sub="user-a"), None))
+    assert cList == 200
+    assert seenList["nextCursor"] is None
+    assert len(seenList["items"]) == 1
+    assert seenList["items"][0]["seenSk"] == mark["seenSk"]
+    assert all(not it["seenSk"].startswith("SEENREF#") for it in seenList["items"])
+    assert ("USER#user-a", f"SEENREF#{feedId}#{itemSk}") in fakeDb.rows  # the ref row really exists
+
+    # 6. Per-sub isolation: user-b sees nothing of user-a's, and cannot mark user-a's item
+    _, seenListB = _resp(routes.handler(_jwtEvent("GET", "/feeds/seen", sub="user-b"), None))
+    assert seenListB["items"] == []
+    validShapeSk = "DAY#2026-11-19#ITEM#" + ("a" * 24)
+    assert _resp(routes.handler(_jwtEvent("PUT", "/feeds/seen", sub="user-b", body={"feedId": feedId, "itemSk": validShapeSk}), None))[0] == 404
+    assert _resp(routes.handler(_jwtEvent("PUT", "/feeds/seen", sub="user-b", body={"feedId": feedId, "itemSk": itemSk}), None))[0] == 404
+    assert _resp(routes.handler(_jwtEvent("DELETE", "/feeds/seen", sub="user-b", qs={"feedId": feedId, "itemSk": itemSk}), None))[0] == 200
+    assert _resp(routes.handler(_jwtEvent("GET", "/feeds/seen", sub="user-a"), None))[1]["items"][0]["seenSk"] == mark["seenSk"]
+
+    # 7. DELETE unsets; day view flips back; list empties; a second DELETE is a 200 no-op
+    cDel, delBody = _resp(routes.handler(_jwtEvent("DELETE", "/feeds/seen", sub="user-a", qs={"feedId": feedId, "itemSk": itemSk}), None))
+    assert cDel == 200 and delBody["seen"] is False
+    assert not [k for k in fakeDb.rows if k[0] == "USER#user-a" and k[1].startswith("SEEN")]
+    _, dayUnseen = _resp(routes.handler(_jwtEvent("GET", f"/feeds/{feedId}/days/2026-11-19", sub="user-a"), None))
+    assert dayUnseen["items"][0]["seen"] is False
+    assert _resp(routes.handler(_jwtEvent("GET", "/feeds/seen", sub="user-a"), None))[1]["items"] == []
+    cDel2, delBody2 = _resp(routes.handler(_jwtEvent("DELETE", "/feeds/seen", sub="user-a", body={"feedId": feedId, "itemSk": itemSk}), None))
+    assert cDel2 == 200 and delBody2["seen"] is False
+
+    # 8. Validation mirrors stars exactly
+    assert _resp(routes.handler(_jwtEvent("PUT", "/feeds/seen", sub="user-a", body={"feedId": feedId, "itemSk": "DAYIDX#2026-11-19"}), None)) == (
+        400,
+        {"error": "Invalid itemSk"},
+    )
+    assert _resp(routes.handler(_jwtEvent("PUT", "/feeds/seen", sub="user-a", body={"feedId": feedId, "itemSk": "GUID#deadbeef"}), None))[0] == 400
+    assert _resp(routes.handler(_jwtEvent("DELETE", "/feeds/seen", sub="user-a", qs={"feedId": feedId, "itemSk": "GUID#deadbeef"}), None))[0] == 400
+    assert _resp(routes.handler(_jwtEvent("PUT", "/feeds/seen", sub="user-a", body={"feedId": feedId}), None)) == (
+        400,
+        {"error": "feedId and itemSk are required"},
+    )
+    assert _resp(routes.handler(_jwtEvent("DELETE", "/feeds/seen", sub="user-a", body={}), None)) == (
+        400,
+        {"error": "feedId and itemSk are required"},
+    )
+    longId = "x" * (routes.MAX_ID_LEN + 1)
+    assert _resp(routes.handler(_jwtEvent("PUT", "/feeds/seen", sub="user-a", body={"feedId": longId, "itemSk": itemSk}), None)) == (
+        400,
+        {"error": "Invalid feedId"},
+    )
+    assert _resp(routes.handler(_jwtEvent("DELETE", "/feeds/seen", sub="user-a", qs={"feedId": longId, "itemSk": itemSk}), None))[0] == 400
+    assert _resp(routes.handler(_jwtEvent("PUT", "/feeds/seen", sub="user-a", body="{not json"), None)) == (400, {"error": "Invalid JSON body"})
+    assert _resp(routes.handler(_jwtEvent("DELETE", "/feeds/seen", sub="user-a", body="{not json"), None)) == (400, {"error": "Invalid JSON body"})
+
+    # 9. Tampered cursors: foreign PK, wrong SK prefix (STAR#/SEENREF#), extra keys -> 400
+    for badCursorObj in [
+        {"PK": "USER#user-b", "SK": f"SEEN#2026-11-19T00:00:00.000Z#{feedId}#" + ("a" * 24)},
+        {"PK": "USER#user-a", "SK": f"STAR#2026-11-19T00:00:00.000Z#{feedId}#" + ("a" * 24)},
+        {"PK": "USER#user-a", "SK": f"SEENREF#{feedId}#{itemSk}"},
+        {"PK": "USER#user-a", "SK": f"SEEN#2026-11-19T00:00:00.000Z#{feedId}#" + ("a" * 24), "extra": 1},
+    ]:
+        tok = base64.urlsafe_b64encode(json.dumps(badCursorObj).encode()).decode()
+        assert _resp(routes.handler(_jwtEvent("GET", "/feeds/seen", sub="user-a", qs={"cursor": tok}), None))[0] == 400
+    assert _resp(routes.handler(_jwtEvent("GET", "/feeds/seen", sub="user-a", qs={"cursor": "bad!!!"}), None))[0] == 400
+
+    # 10. seen and starred are fully independent; an item can be both
+    assert _resp(routes.handler(_jwtEvent("PUT", "/feeds/stars", sub="user-a", body={"feedId": feedId, "itemSk": itemSk}), None))[0] == 200
+    _, dayStarOnly = _resp(routes.handler(_jwtEvent("GET", f"/feeds/{feedId}/days/2026-11-19", sub="user-a"), None))
+    assert dayStarOnly["items"][0]["starred"] is True and dayStarOnly["items"][0]["seen"] is False
+    assert _resp(routes.handler(_jwtEvent("GET", "/feeds/seen", sub="user-a"), None))[1]["items"] == []
+
+    assert _resp(routes.handler(_jwtEvent("PUT", "/feeds/seen", sub="user-a", body={"feedId": feedId, "itemSk": itemSk}), None))[0] == 200
+    _, dayBoth = _resp(routes.handler(_jwtEvent("GET", f"/feeds/{feedId}/days/2026-11-19", sub="user-a"), None))
+    assert dayBoth["items"][0]["starred"] is True and dayBoth["items"][0]["seen"] is True
+
+    # Unmarking seen leaves the star alone, and unstarring leaves seen alone
+    assert _resp(routes.handler(_jwtEvent("DELETE", "/feeds/seen", sub="user-a", qs={"feedId": feedId, "itemSk": itemSk}), None))[0] == 200
+    _, dayStarKept = _resp(routes.handler(_jwtEvent("GET", f"/feeds/{feedId}/days/2026-11-19", sub="user-a"), None))
+    assert dayStarKept["items"][0]["starred"] is True and dayStarKept["items"][0]["seen"] is False
+    assert _resp(routes.handler(_jwtEvent("PUT", "/feeds/seen", sub="user-a", body={"feedId": feedId, "itemSk": itemSk}), None))[0] == 200
+    assert _resp(routes.handler(_jwtEvent("DELETE", "/feeds/stars", sub="user-a", qs={"feedId": feedId, "itemSk": itemSk}), None))[0] == 200
+    _, daySeenKept = _resp(routes.handler(_jwtEvent("GET", f"/feeds/{feedId}/days/2026-11-19", sub="user-a"), None))
+    assert daySeenKept["items"][0]["seen"] is True and daySeenKept["items"][0]["starred"] is False
+    assert _resp(routes.handler(_jwtEvent("GET", "/feeds/stars", sub="user-a"), None))[1]["items"] == []
+    assert len(_resp(routes.handler(_jwtEvent("GET", "/feeds/seen", sub="user-a"), None))[1]["items"]) == 1
+
+    # 11. A day view with BOTH star and seen refs must still cost exactly ONE batch get
+    assert _resp(routes.handler(_jwtEvent("PUT", "/feeds/stars", sub="user-a", body={"feedId": feedId, "itemSk": itemSk}), None))[0] == 200
+    assert ("USER#user-a", f"STARREF#{feedId}#{itemSk}") in fakeDb.rows
+    assert ("USER#user-a", f"SEENREF#{feedId}#{itemSk}") in fakeDb.rows
+    with (
+        patch.object(storage, "_batchGetItems", wraps=storage._batchGetItems) as spyBatch,
+        patch.object(fakeDb, "batch_get_item", wraps=fakeDb.batch_get_item) as spyRawBatch,
+    ):
+        cOne, dayOne = _resp(routes.handler(_jwtEvent("GET", f"/feeds/{feedId}/days/2026-11-19", sub="user-a"), None))
+    assert cOne == 200
+    assert dayOne["items"][0]["starred"] is True and dayOne["items"][0]["seen"] is True
+    assert spyBatch.call_count == 1
+    assert spyRawBatch.call_count == 1
+
+    # 12. DELETE /feeds/seen still works after the owning feed is deleted (mirrors stars)
+    _, fDel = _resp(routes.handler(_jwtEvent("POST", "/feeds", sub="user-a", body={"kind": "push", "title": "Doomed", "slug": "doomed"}), None))
+    delFeedId = fDel["feed"]["feedId"]
+    _resp(
+        routes.handler(
+            _ingestEvent(
+                {"feed": "doomed", "date": "2026-11-19", "items": [{"guid": "d1", "title": "Doomed item", "contentMarkdown": "x"}]},
+                apiKey=apiKey,
+            ),
+            None,
+        )
+    )
+    _, delDay = _resp(routes.handler(_jwtEvent("GET", f"/feeds/{delFeedId}/days/2026-11-19", sub="user-a"), None))
+    delItemSk = delDay["items"][0]["itemSk"]
+    assert _resp(routes.handler(_jwtEvent("PUT", "/feeds/seen", sub="user-a", body={"feedId": delFeedId, "itemSk": delItemSk}), None))[0] == 200
+    assert _resp(routes.handler(_jwtEvent("DELETE", f"/feeds/{delFeedId}", sub="user-a"), None))[0] == 200
+    cPostDel, bPostDel = _resp(routes.handler(_jwtEvent("DELETE", "/feeds/seen", sub="user-a", qs={"feedId": delFeedId, "itemSk": delItemSk}), None))
+    assert cPostDel == 200 and bPostDel["seen"] is False
+    assert not [k for k in fakeDb.rows if k[0] == "USER#user-a" and k[1].endswith(f"#{delFeedId}#{delItemSk}")]
+    assert not [k for k in fakeDb.rows if k[0] == "USER#user-a" and k[1].startswith(f"SEENREF#{delFeedId}#")]
+    assert not [k for k in fakeDb.rows if k[0] == "USER#user-a" and k[1].startswith("SEEN#") and delFeedId in k[1]]
+
+    # 13a. unmarkSeen stale-ref race: a concurrent unmark+remark between read and tx fails the
+    #      CAS, then the retry re-reads the live seenSk and leaves ZERO SEEN#/SEENREF# orphans.
+    origTx = fakeDb.transact_write_items
+    unmarkRace = {"fired": False}
+
+    def raceDuringUnmark(TransactItems):
+        isSeenRefDelete = (
+            len(TransactItems) == 2
+            and "Delete" in TransactItems[0]
+            and _DESER.deserialize(TransactItems[0]["Delete"]["Key"]["SK"]).startswith("SEENREF#")
+        )
+        if isSeenRefDelete and not unmarkRace["fired"]:
+            unmarkRace["fired"] = True
+            origTx([
+                {"Delete": {"TableName": fakeDb.tableName, "Key": TransactItems[0]["Delete"]["Key"]}},
+                {"Delete": {"TableName": fakeDb.tableName, "Key": TransactItems[1]["Delete"]["Key"]}},
+            ])
+            with patch.object(storage, "_isoNowUtc", return_value="2026-11-19T23:59:59.999Z"):
+                storage.markSeen("user-a", feedId, itemSk)
+        return origTx(TransactItems)
+
+    with patch.object(fakeDb, "transact_write_items", side_effect=raceDuringUnmark):
+        storage.unmarkSeen("user-a", feedId, itemSk)
+
+    assert unmarkRace["fired"] is True
+    assert [k for k in fakeDb.rows if k[0] == "USER#user-a" and (k[1].startswith("SEEN#") or k[1].startswith("SEENREF#"))] == []
+
+    # 13b. markSeen race: tx hits ConditionalCheckFailed, the concurrent caller's SEENREF
+    #      vanishes before the fallback read, and attempt 2 retries cleanly to 200.
+    markRace = {"fired": False}
+
+    def raceDuringMark(TransactItems):
+        isSeenRefPut = (
+            len(TransactItems) == 2
+            and "Put" in TransactItems[1]
+            and _DESER.deserialize(TransactItems[1]["Put"]["Item"]["SK"]).startswith("SEENREF#")
+        )
+        if isSeenRefPut and not markRace["fired"]:
+            markRace["fired"] = True
+            seenRefSk = _DESER.deserialize(TransactItems[1]["Put"]["Item"]["SK"])
+            condErr = fakeDb._condErr("TransactionCanceledException", [{"Code": "None"}, {"Code": "ConditionalCheckFailed"}])
+            fakeDb.rows.pop(("USER#user-a", seenRefSk), None)
+            raise condErr
+        return origTx(TransactItems)
+
+    with patch.object(fakeDb, "transact_write_items", side_effect=raceDuringMark):
+        cRace, bRace = _resp(routes.handler(_jwtEvent("PUT", "/feeds/seen", sub="user-a", body={"feedId": feedId, "itemSk": itemSk}), None))
+    assert markRace["fired"] is True
+    assert cRace == 200 and bRace["seen"] is True
+    assert len([k for k in fakeDb.rows if k[0] == "USER#user-a" and k[1].startswith("SEEN#")]) == 1
+    assert len([k for k in fakeDb.rows if k[0] == "USER#user-a" and k[1].startswith("SEENREF#")]) == 1
+    assert _resp(routes.handler(_jwtEvent("GET", f"/feeds/{feedId}/days/2026-11-19", sub="user-a"), None))[1]["items"][0]["seen"] is True
 
 
