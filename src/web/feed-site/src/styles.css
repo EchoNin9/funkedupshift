@@ -1572,4 +1572,18 @@ body {
   .entry-card {
     padding: 0.95rem 1rem;
   }
+
+  .entry-header {
+    flex-wrap: wrap;
+  }
+
+  /* Drop the Seen + star controls onto their own row under the title: without
+     width: 100% the flex-shrink: 0 container keeps its max-content width and the
+     title column is squeezed to ~136px at 320px. Mirrors .feed-actions above. */
+  .entry-actions {
+    width: 100%;
+    justify-content: flex-end;
+    padding-top: 0.45rem;
+    border-top: 1px solid var(--border);
+  }
 }

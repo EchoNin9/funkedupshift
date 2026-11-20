@@ -996,10 +996,13 @@ def test_seen_markers_persist_per_sub_isolate_dedupe_race_and_use_one_batch_get(
     feedKind = fResp["feed"]["kind"]
     _, kResp = _resp(routes.handler(_jwtEvent("POST", "/feeds/keys", sub="user-a", body={"name": "K"}), None))
     apiKey = kResp["rawKey"]
+    # Body is deliberately longer than 240 chars so the snippet truncation is exercised.
+    longBody = ("alpha bravo charlie delta echo foxtrot " * 10).strip()
+    assert len(longBody) > 240
     _resp(
         routes.handler(
             _ingestEvent(
-                {"feed": "seen-feed", "date": "2026-11-19", "items": [{"guid": "v1", "title": "Item 1", "contentMarkdown": "body text"}]},
+                {"feed": "seen-feed", "date": "2026-11-19", "items": [{"guid": "v1", "title": "Item 1", "contentMarkdown": longBody}]},
                 apiKey=apiKey,
             ),
             None,
@@ -1028,9 +1031,27 @@ def test_seen_markers_persist_per_sub_isolate_dedupe_race_and_use_one_batch_get(
     assert mark["feedTitle"] == "Seen Feed"
     assert mark["feedKind"] == feedKind
     assert mark["feedId"] == feedId and mark["itemSk"] == itemSk
+    assert len(itemSummary) > 240  # otherwise the next two assertions are no-ops
+    assert len(mark["snippet"]) == 240
     assert mark["snippet"] == itemSummary[:240]
-    assert mark["seenSk"] == f"SEEN#{mark['seenAt']}#{feedId}#{mark['itemHash']}"
     assert "link" not in mark
+
+    # seenSk is pinned against the ACTUAL stored row key and its component ORDER against
+    # independently-known values (the feedId we created, the itemHash on the item row) --
+    # NOT rebuilt out of the same response, which would still pass if the implementation
+    # emitted SEEN#{seenAt}#{itemHash}#{feedId} and silently broke listSeen ordering.
+    storedItem = fakeDb.rows[(f"FEED#user-a#{feedId}", itemSk)]
+    storedSeenKeys = [k for k in fakeDb.rows if k[0] == "USER#user-a" and k[1].startswith("SEEN#")]
+    assert len(storedSeenKeys) == 1
+    assert mark["seenSk"] == storedSeenKeys[0][1]
+    skParts = mark["seenSk"].split("#")
+    assert len(skParts) == 4
+    assert skParts[0] == "SEEN"
+    assert re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z", skParts[1])
+    assert skParts[1] == fakeDb.rows[storedSeenKeys[0]]["seenAt"]
+    assert feedId != storedItem["itemHash"]  # a feedId/itemHash swap must be detectable
+    assert skParts[2] == feedId
+    assert skParts[3] == storedItem["itemHash"]
 
     # Both rows live in the USER partition and write only string attributes (no bare floats)
     seenRows = {k: v for k, v in fakeDb.rows.items() if k[0] == "USER#user-a" and k[1].startswith("SEEN")}
@@ -1138,21 +1159,70 @@ def test_seen_markers_persist_per_sub_isolate_dedupe_race_and_use_one_batch_get(
     assert _resp(routes.handler(_jwtEvent("GET", "/feeds/stars", sub="user-a"), None))[1]["items"] == []
     assert len(_resp(routes.handler(_jwtEvent("GET", "/feeds/seen", sub="user-a"), None))[1]["items"]) == 1
 
-    # 11. A day view with BOTH star and seen refs must still cost exactly ONE batch get
-    assert _resp(routes.handler(_jwtEvent("PUT", "/feeds/stars", sub="user-a", body={"feedId": feedId, "itemSk": itemSk}), None))[0] == 200
-    assert ("USER#user-a", f"STARREF#{feedId}#{itemSk}") in fakeDb.rows
-    assert ("USER#user-a", f"SEENREF#{feedId}#{itemSk}") in fakeDb.rows
+    # 11. A MULTI-item day resolves both marker kinds in ONE _batchGetItems pass.
+    #     (A one-item day could only ever report 1 call, so it pins nothing.)
+    _resp(
+        routes.handler(
+            _ingestEvent(
+                {
+                    "feed": "seen-feed",
+                    "date": "2026-11-18",
+                    "items": [
+                        {"guid": "m1", "title": "Multi 1", "contentMarkdown": "star only"},
+                        {"guid": "m2", "title": "Multi 2", "contentMarkdown": "seen only"},
+                        {"guid": "m3", "title": "Multi 3", "contentMarkdown": "both"},
+                        {"guid": "m4", "title": "Multi 4", "contentMarkdown": "neither"},
+                    ],
+                },
+                apiKey=apiKey,
+            ),
+            None,
+        )
+    )
+    _, multiDay = _resp(routes.handler(_jwtEvent("GET", f"/feeds/{feedId}/days/2026-11-18", sub="user-a"), None))
+    multiSks = {it["title"]: it["itemSk"] for it in multiDay["items"]}
+    assert len(multiSks) == 4
+    for title in ("Multi 1", "Multi 3"):
+        assert _resp(routes.handler(_jwtEvent("PUT", "/feeds/stars", sub="user-a", body={"feedId": feedId, "itemSk": multiSks[title]}), None))[0] == 200
+    for title in ("Multi 2", "Multi 3"):
+        assert _resp(routes.handler(_jwtEvent("PUT", "/feeds/seen", sub="user-a", body={"feedId": feedId, "itemSk": multiSks[title]}), None))[0] == 200
+
     with (
         patch.object(storage, "_batchGetItems", wraps=storage._batchGetItems) as spyBatch,
         patch.object(fakeDb, "batch_get_item", wraps=fakeDb.batch_get_item) as spyRawBatch,
     ):
-        cOne, dayOne = _resp(routes.handler(_jwtEvent("GET", f"/feeds/{feedId}/days/2026-11-19", sub="user-a"), None))
-    assert cOne == 200
-    assert dayOne["items"][0]["starred"] is True and dayOne["items"][0]["seen"] is True
+        cMulti, dayMulti = _resp(routes.handler(_jwtEvent("GET", f"/feeds/{feedId}/days/2026-11-18", sub="user-a"), None))
+    assert cMulti == 200 and len(dayMulti["items"]) == 4
+    # (a) one pass, (b) carrying 2 keys per item, (c) including BOTH ref kinds for the
+    # same item -- this fails if anyone reintroduces a second batch pass.
     assert spyBatch.call_count == 1
+    batchKeyArg = spyBatch.call_args.args[0]
+    assert len(batchKeyArg) == 2 * len(dayMulti["items"]) == 8
+    bothSk = multiSks["Multi 3"]
+    assert {"PK": "USER#user-a", "SK": f"STARREF#{feedId}#{bothSk}"} in batchKeyArg
+    assert {"PK": "USER#user-a", "SK": f"SEENREF#{feedId}#{bothSk}"} in batchKeyArg
+    # 8 keys is one 100-key chunk, so exactly one raw batch_get_item (a >50-item day
+    # would legitimately cost two chunks).
     assert spyRawBatch.call_count == 1
+    # (d) per-item flags are right
+    assert {it["title"]: (it["starred"], it["seen"]) for it in dayMulti["items"]} == {
+        "Multi 1": (True, False),
+        "Multi 2": (False, True),
+        "Multi 3": (True, True),
+        "Multi 4": (False, False),
+    }
 
-    # 12. DELETE /feeds/seen still works after the owning feed is deleted (mirrors stars)
+    # Clean the 2026-11-18 markers back out so later sections reason about one item only.
+    for title in ("Multi 2", "Multi 3"):
+        assert _resp(routes.handler(_jwtEvent("DELETE", "/feeds/seen", sub="user-a", qs={"feedId": feedId, "itemSk": multiSks[title]}), None))[0] == 200
+    for title in ("Multi 1", "Multi 3"):
+        assert _resp(routes.handler(_jwtEvent("DELETE", "/feeds/stars", sub="user-a", qs={"feedId": feedId, "itemSk": multiSks[title]}), None))[0] == 200
+    assert _resp(routes.handler(_jwtEvent("PUT", "/feeds/stars", sub="user-a", body={"feedId": feedId, "itemSk": itemSk}), None))[0] == 200
+    assert ("USER#user-a", f"STARREF#{feedId}#{itemSk}") in fakeDb.rows
+    assert ("USER#user-a", f"SEENREF#{feedId}#{itemSk}") in fakeDb.rows
+    assert len([k for k in fakeDb.rows if k[0] == "USER#user-a" and k[1].startswith("SEEN#")]) == 1
+
+    # 12. Deleting a feed RECLAIMS its seen markers but deliberately KEEPS its stars.
     _, fDel = _resp(routes.handler(_jwtEvent("POST", "/feeds", sub="user-a", body={"kind": "push", "title": "Doomed", "slug": "doomed"}), None))
     delFeedId = fDel["feed"]["feedId"]
     _resp(
@@ -1167,12 +1237,33 @@ def test_seen_markers_persist_per_sub_isolate_dedupe_race_and_use_one_batch_get(
     _, delDay = _resp(routes.handler(_jwtEvent("GET", f"/feeds/{delFeedId}/days/2026-11-19", sub="user-a"), None))
     delItemSk = delDay["items"][0]["itemSk"]
     assert _resp(routes.handler(_jwtEvent("PUT", "/feeds/seen", sub="user-a", body={"feedId": delFeedId, "itemSk": delItemSk}), None))[0] == 200
+    assert _resp(routes.handler(_jwtEvent("PUT", "/feeds/stars", sub="user-a", body={"feedId": delFeedId, "itemSk": delItemSk}), None))[0] == 200
+    assert [k for k in fakeDb.rows if k[0] == "USER#user-a" and k[1].startswith(f"SEENREF#{delFeedId}#")]
+    assert [k for k in fakeDb.rows if k[0] == "USER#user-a" and k[1].startswith("SEEN#") and delFeedId in k[1]]
+
     assert _resp(routes.handler(_jwtEvent("DELETE", f"/feeds/{delFeedId}", sub="user-a"), None))[0] == 200
-    cPostDel, bPostDel = _resp(routes.handler(_jwtEvent("DELETE", "/feeds/seen", sub="user-a", qs={"feedId": delFeedId, "itemSk": delItemSk}), None))
-    assert cPostDel == 200 and bPostDel["seen"] is False
-    assert not [k for k in fakeDb.rows if k[0] == "USER#user-a" and k[1].endswith(f"#{delFeedId}#{delItemSk}")]
+
+    # Seen rows are garbage once the feed is gone: deleteFeed sweeps BOTH the SEENREF#
+    # lookup and the SEEN# list row out of the USER partition.
     assert not [k for k in fakeDb.rows if k[0] == "USER#user-a" and k[1].startswith(f"SEENREF#{delFeedId}#")]
     assert not [k for k in fakeDb.rows if k[0] == "USER#user-a" and k[1].startswith("SEEN#") and delFeedId in k[1]]
+    assert [it for it in _resp(routes.handler(_jwtEvent("GET", "/feeds/seen", sub="user-a"), None))[1]["items"] if it["feedId"] == delFeedId] == []
+
+    # ...but STARS SURVIVE the same deletion, on purpose: the UI promises "Any items you
+    # starred remain in Starred". This asymmetry is intentional -- do not "unify" it.
+    assert ("USER#user-a", f"STARREF#{delFeedId}#{delItemSk}") in fakeDb.rows
+    assert [k for k in fakeDb.rows if k[0] == "USER#user-a" and k[1].startswith("STAR#") and delFeedId in k[1]]
+    survivingStars = _resp(routes.handler(_jwtEvent("GET", "/feeds/stars", sub="user-a"), None))[1]["items"]
+    assert [s["itemSk"] for s in survivingStars if s["feedId"] == delFeedId] == [delItemSk]
+
+    # DELETE /feeds/seen after the feed is gone is still a 200 -- now a pure no-op,
+    # because the sweep above already removed both rows.
+    cPostDel, bPostDel = _resp(routes.handler(_jwtEvent("DELETE", "/feeds/seen", sub="user-a", qs={"feedId": delFeedId, "itemSk": delItemSk}), None))
+    assert cPostDel == 200 and bPostDel["seen"] is False
+    assert not [k for k in fakeDb.rows if k[0] == "USER#user-a" and k[1].startswith("SEEN") and delFeedId in k[1]]
+    # Unstarring is still what removes the surviving star rows.
+    assert _resp(routes.handler(_jwtEvent("DELETE", "/feeds/stars", sub="user-a", qs={"feedId": delFeedId, "itemSk": delItemSk}), None))[0] == 200
+    assert not [k for k in fakeDb.rows if k[0] == "USER#user-a" and k[1].startswith("STAR") and delFeedId in k[1]]
 
     # 13a. unmarkSeen stale-ref race: a concurrent unmark+remark between read and tx fails the
     #      CAS, then the retry re-reads the live seenSk and leaves ZERO SEEN#/SEENREF# orphans.
@@ -1227,4 +1318,116 @@ def test_seen_markers_persist_per_sub_isolate_dedupe_race_and_use_one_batch_get(
     assert len([k for k in fakeDb.rows if k[0] == "USER#user-a" and k[1].startswith("SEENREF#")]) == 1
     assert _resp(routes.handler(_jwtEvent("GET", f"/feeds/{feedId}/days/2026-11-19", sub="user-a"), None))[1]["items"][0]["seen"] is True
 
+    # 14. Self-heal: deleteFeed's seen sweep is BatchWriteItem (not atomic), so a partial
+    #     failure can leave a SEENREF# whose SEEN# list row is gone. Re-marking must
+    #     compare-and-swap over that stale ref and return 200, not 500 forever.
+    orphanRefKey = ("USER#user-a", f"SEENREF#{feedId}#{itemSk}")
+    staleSeenSk = fakeDb.rows[orphanRefKey]["seenSk"]
+    assert fakeDb.rows.pop(("USER#user-a", staleSeenSk), None) is not None
+    assert orphanRefKey in fakeDb.rows
+    assert not [k for k in fakeDb.rows if k[0] == "USER#user-a" and k[1].startswith("SEEN#")]
 
+    cHeal, bHeal = _resp(routes.handler(_jwtEvent("PUT", "/feeds/seen", sub="user-a", body={"feedId": feedId, "itemSk": itemSk}), None))
+    assert cHeal == 200 and bHeal["seen"] is True
+    healedSeenSk = bHeal["seenItem"]["seenSk"]
+    assert healedSeenSk.startswith("SEEN#") and healedSeenSk.endswith(f"#{feedId}#{storedItem['itemHash']}")
+    healedSeenKeys = [k for k in fakeDb.rows if k[0] == "USER#user-a" and k[1].startswith("SEEN#")]
+    healedRefKeys = [k for k in fakeDb.rows if k[0] == "USER#user-a" and k[1].startswith("SEENREF#")]
+    assert len(healedSeenKeys) == 1 and len(healedRefKeys) == 1
+    assert healedSeenKeys[0][1] == healedSeenSk
+    assert fakeDb.rows[orphanRefKey]["seenSk"] == healedSeenSk
+    assert _resp(routes.handler(_jwtEvent("GET", "/feeds/seen", sub="user-a"), None))[1]["items"][0]["seenSk"] == healedSeenSk
+
+
+def test_seen_list_pagination_cursor_round_trip(fakeDb):
+    """FUNK-100: GET /feeds/seen paginates newest-first through storage.listSeen's ExclusiveStartKey branch."""
+    _, fResp = _resp(routes.handler(_jwtEvent("POST", "/feeds", sub="user-a", body={"kind": "push", "title": "Pager", "slug": "pager"}), None))
+    feedId = fResp["feed"]["feedId"]
+    _, kResp = _resp(routes.handler(_jwtEvent("POST", "/feeds/keys", sub="user-a", body={"name": "K"}), None))
+    _resp(
+        routes.handler(
+            _ingestEvent(
+                {
+                    "feed": "pager",
+                    "date": "2026-11-19",
+                    "items": [{"guid": f"p{i}", "title": f"Page item {i}", "contentMarkdown": "x"} for i in (1, 2, 3)],
+                },
+                apiKey=kResp["rawKey"],
+            ),
+            None,
+        )
+    )
+    _, day = _resp(routes.handler(_jwtEvent("GET", f"/feeds/{feedId}/days/2026-11-19", sub="user-a"), None))
+    sks = {it["title"]: it["itemSk"] for it in day["items"]}
+    assert len(sks) == 3
+
+    # Fixed, distinct seenAt values so newest-first order is deterministic.
+    markedAt = {"Page item 1": "2026-11-19T10:00:00.000Z", "Page item 2": "2026-11-19T10:01:00.000Z", "Page item 3": "2026-11-19T10:02:00.000Z"}
+    for title, stamp in markedAt.items():
+        with patch.object(storage, "_isoNowUtc", return_value=stamp):
+            assert _resp(routes.handler(_jwtEvent("PUT", "/feeds/seen", sub="user-a", body={"feedId": feedId, "itemSk": sks[title]}), None))[0] == 200
+
+    pages = []
+    cursor = None
+    for _ in range(4):
+        qs = {"limit": "1"}
+        if cursor:
+            qs["cursor"] = cursor
+        code, body = _resp(routes.handler(_jwtEvent("GET", "/feeds/seen", sub="user-a", qs=qs), None))
+        assert code == 200
+        pages.append(body["items"])
+        cursor = body["nextCursor"]
+        if not cursor:
+            break
+    assert cursor is None  # final page carries no cursor
+
+    walked = [it for page in pages for it in page]
+    assert [len(p) for p in pages[:3]] == [1, 1, 1]
+    assert [it["title"] for it in walked] == ["Page item 3", "Page item 2", "Page item 1"]  # newest seenAt first
+    assert [it["seenAt"] for it in walked] == [markedAt["Page item 3"], markedAt["Page item 2"], markedAt["Page item 1"]]
+    assert len({it["seenSk"] for it in walked}) == 3  # distinct items, no repeats across pages
+    assert {it["itemSk"] for it in walked} == set(sks.values())  # union is every marked item
+
+    # One unpaginated call returns the same three in the same order.
+    _, allSeen = _resp(routes.handler(_jwtEvent("GET", "/feeds/seen", sub="user-a"), None))
+    assert allSeen["nextCursor"] is None
+    assert [it["seenSk"] for it in allSeen["items"]] == [it["seenSk"] for it in walked]
+
+
+
+
+def test_delete_feed_survives_a_failing_seen_sweep(fakeDb):
+    """FUNK-100: the seen sweep is best-effort garbage collection.
+
+    deleteFeed reclaims SEEN#/SEENREF# rows AFTER the feed itself is already gone, so a
+    DynamoDB failure in that sweep must not turn DELETE /feeds/{id} into a 500 and must
+    not resurrect the feed. The orphan rows are acceptable; a failed delete is not.
+    """
+    _, fResp = _resp(routes.handler(_jwtEvent("POST", "/feeds", sub="user-a", body={"kind": "push", "title": "Doomed", "slug": "doomed"}), None))
+    feedId = fResp["feed"]["feedId"]
+    _, kResp = _resp(routes.handler(_jwtEvent("POST", "/feeds/keys", sub="user-a", body={"name": "K"}), None))
+    _resp(
+        routes.handler(
+            _ingestEvent(
+                {"feed": "doomed", "date": "2026-11-19", "items": [{"guid": "d1", "title": "Doomed item", "contentMarkdown": "x"}]},
+                apiKey=kResp["rawKey"],
+            ),
+            None,
+        )
+    )
+    _, day = _resp(routes.handler(_jwtEvent("GET", f"/feeds/{feedId}/days/2026-11-19", sub="user-a"), None))
+    itemSk = day["items"][0]["itemSk"]
+    assert _resp(routes.handler(_jwtEvent("PUT", "/feeds/seen", sub="user-a", body={"feedId": feedId, "itemSk": itemSk}), None))[0] == 200
+    assert any(sk.startswith("SEENREF#") for (_pk, sk) in fakeDb.rows)
+
+    # Fail only the sweep: the feed row and its FEED# partition are already handled by
+    # the time _sweepFeedSeenRows runs, so raising here isolates the best-effort path.
+    with patch.object(storage, "_sweepFeedSeenRows", side_effect=RuntimeError("DynamoDB batch_write_item left unprocessed items after retries")):
+        code, body = _resp(routes.handler(_jwtEvent("DELETE", f"/feeds/{feedId}", sub="user-a", pathParams={"id": feedId}), None))
+
+    assert code == 200, body
+    # The feed is really gone despite the sweep blowing up...
+    assert _resp(routes.handler(_jwtEvent("GET", "/feeds", sub="user-a"), None))[1]["feeds"] == []
+    assert not any(sk == f"FEED#{feedId}" for (_pk, sk) in fakeDb.rows)
+    # ...and the unreclaimed markers are inert garbage, not an error.
+    assert any(sk.startswith("SEENREF#") for (_pk, sk) in fakeDb.rows)

@@ -144,7 +144,7 @@ No per-user keys exist. CORS already allows the `X-Api-Key` header.
 | Day index | `FEED#{feedId}` | `DAYIDX#{yyyy-mm-dd}` | `count` — cheap "which days have items" query for the day picker |
 | Star | `USER#{sub}` | `STAR#{starredAt}#{feedId}#{itemHash}` | denormalised `title, link, feedTitle` so Starred view is one query |
 | Star lookup | `USER#{sub}` | `STARREF#{feedId}#{itemSk}` | O(1) "is this starred?" + unstar |
-| Seen | `USER#{sub}` | `SEEN#{seenAt}#{feedId}#{itemHash}` | FUNK-100; same denormalised fields as Star so the Seen view is one query |
+| Seen | `USER#{sub}` | `SEEN#{seenAt}#{feedId}#{itemHash}` | FUNK-100; same denormalised fields as Star, so `GET /feeds/seen` is one query. No Seen *view* shipped — the UI is the per-item checkbox in the day view; a Seen list view is a possible follow-up. Reclaimed when the feed is deleted (unlike stars, which survive) |
 | Seen lookup | `USER#{sub}` | `SEENREF#{feedId}#{itemSk}` | O(1) "has this been looked at?" + unmark (fetched in the *same* batch-get as `STARREF#`) |
 | API key | `USER#{sub}` | `APIKEY#{keyId}` | `name, prefix, createdAt, lastUsedAt, revoked` (never the raw key) |
 | API key lookup | `APIKEYHASH#{sha256}` | `META` | `sub, keyId` — ingest resolves key → user in one GetItem |
@@ -325,7 +325,9 @@ necessarily the build machine). Use the `openclaw-*` skills for safety checks.
 - Item retention for polled feeds? [keep forever v1; add TTL later]
 - Read/unread tracking? [landed in FUNK-100: per-item server-side `seen` markers,
   an exact structural parallel of stars (`SEEN#`/`SEENREF#` rows per Cognito sub,
-  `GET|PUT|DELETE /feeds/seen`); items expose `seen` alongside `starred`]
+  `GET|PUT|DELETE /feeds/seen`); items expose `seen` alongside `starred`. The shipped
+  UI is only the per-item checkbox in the day view — there is no Seen list view, though
+  `GET /feeds/seen` exists and a Seen view is a possible follow-up]
 - Should qwer/Rally digests also push? [later — just new feed slugs]
 
 ---

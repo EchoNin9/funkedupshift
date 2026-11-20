@@ -28,6 +28,7 @@ from decimal import Decimal
 import hashlib
 import hmac
 import json
+import logging
 import math
 import os
 import random
@@ -42,6 +43,8 @@ from boto3.dynamodb.types import TypeDeserializer, TypeSerializer
 from botocore.exceptions import ClientError
 
 from feeds.parser import DEFAULT_TZ, computeDay, resolveTimezone
+
+logger = logging.getLogger(__name__)
 
 _SER = TypeSerializer()
 _DESER = TypeDeserializer()
@@ -762,7 +765,62 @@ def deleteFeed(sub: str, feedId: str, *, maxSyncDelete: int = DEFAULT_SYNC_DELET
 
     if not hasMore:
         _tbl().delete_item(Key={"PK": "CLEANUP", "SK": feedPk})
+
+    # Seen markers live in USER#{sub}, NOT in the FEED#{sub}#{feedId} partition swept
+    # above, so they need their own reclaim pass or GET /feeds/seen keeps serving items
+    # from a feed that no longer exists.
+    #
+    # DELIBERATE ASYMMETRY — do NOT "unify" this with stars: STAR#/STARREF# rows are
+    # left untouched on purpose, because the UI promises "Any items you starred remain
+    # in Starred", so stars must outlive their feed. Seen markers carry no such promise
+    # and are pure garbage once the feed is gone, so only they are swept here.
+    #
+    # Best-effort: the feed itself is already deleted at this point, so a failure to
+    # reclaim garbage must NOT turn DELETE /feeds/{id} into a 500. _batchDeleteKeys
+    # raises if DynamoDB leaves items unprocessed after its retries; swallow that and
+    # leave the rows as inert garbage rather than failing a delete that has succeeded.
+    try:
+        _sweepFeedSeenRows(sub, feedId, maxSyncDelete=maxSyncDelete)
+    except Exception:
+        logger.warning("seen-row sweep failed for feed %s; leaving orphan markers", feedId, exc_info=True)
     return True
+
+
+def _sweepFeedSeenRows(sub: str, feedId: str, *, maxSyncDelete: int = DEFAULT_SYNC_DELETE_LIMIT) -> int:
+    """Bounded sweep of one feed's SEEN#/SEENREF# rows from the USER#{sub} partition.
+
+    Walks the SEENREF#{feedId}# range and deletes each ref together with the SEEN# list
+    row it points at. The budget counts marker pairs and is separate from the FEED#
+    partition budget in deleteFeed, because the CLEANUP job only finishes that partition.
+    Returns the number of refs swept; anything past the budget is left as inert garbage.
+
+    No ExclusiveStartKey is needed to walk past the first page: every queried row is
+    deleted, so the next query of the same prefix starts where this one stopped.
+    """
+    upk = _userPk(sub)
+    refPrefix = f"SEENREF#{feedId}#"
+    sweptRefs = 0
+
+    while sweptRefs < maxSyncDelete:
+        pageLimit = min(100, maxSyncDelete - sweptRefs)
+        qresp = _tbl().query(
+            KeyConditionExpression=Key("PK").eq(upk) & Key("SK").begins_with(refPrefix),
+            ProjectionExpression="PK, SK, seenSk",
+            Limit=pageLimit,
+        )
+        rows = qresp.get("Items") or []
+        if not rows:
+            break
+
+        keys: list[dict] = []
+        for r in rows:
+            keys.append({"PK": r["PK"], "SK": r["SK"]})
+            if r.get("seenSk"):  # a ref without seenSk has no list row to reclaim
+                keys.append({"PK": upk, "SK": r["seenSk"]})
+        _batchDeleteKeys(keys)
+        sweptRefs += len(rows)
+
+    return sweptRefs
 
 
 def sweepDeletedFeedCleanup(maxDeletes: int = 250) -> int:
@@ -1194,8 +1252,11 @@ def listDayItems(sub: str, feedId: str, day: str) -> tuple[dict, list[dict]]:
         kwargs["ExclusiveStartKey"] = lek
 
     rawItems.sort(key=lambda r: (r.get("publishedAt") or "", r.get("SK") or ""), reverse=True)
-    # One round-trip for BOTH marker kinds: STARREF# and SEENREF# keys share a single
-    # _batchGetItems call, then rows are partitioned by their SK prefix.
+    # ONE _batchGetItems pass covers BOTH marker kinds instead of two separate passes:
+    # STARREF# and SEENREF# keys go into one key list and rows are partitioned afterwards
+    # by their SK prefix. The two key sets are disjoint, so there is no duplicate-key
+    # error. This is not literally one HTTP call: _batchGetItems chunks at 100 keys and
+    # we build 2 keys per item, so a day with more than 50 items costs an extra chunk.
     upk = _userPk(sub)
     refKeys = [{"PK": upk, "SK": f"STARREF#{feedId}#{r['SK']}"} for r in rawItems]
     refKeys += [{"PK": upk, "SK": f"SEENREF#{feedId}#{r['SK']}"} for r in rawItems]
@@ -1363,11 +1424,16 @@ def markSeen(sub: str, feedId: str, itemSk: str) -> dict:
     itemHash = item["itemHash"]
 
     for attempt in range(2):
+        staleSeenSk: str | None = None
         existingRef = _tbl().get_item(Key={"PK": _userPk(sub), "SK": seenRefSk}).get("Item")
         if existingRef and existingRef.get("seenSk"):
             existingSeen = _tbl().get_item(Key={"PK": _userPk(sub), "SK": existingRef["seenSk"]}).get("Item")
             if existingSeen:
                 return _normalizeSeen(existingSeen)
+            # Ref survived but the SEEN# list row it points at is gone. deleteFeed's
+            # seen sweep uses BatchWriteItem, which is not atomic, so a partial failure
+            # can leave exactly this orphan; self-heal rather than 500 forever.
+            staleSeenSk = existingRef["seenSk"]
 
         seenAt = _isoNowUtc(timespec="milliseconds")
         seenSk = f"SEEN#{seenAt}#{feedId}#{itemHash}"
@@ -1387,6 +1453,18 @@ def markSeen(sub: str, feedId: str, itemSk: str) -> dict:
         if item.get("link"):
             seenRow["link"] = item["link"]
 
+        if staleSeenSk is None:
+            # Genuinely new marker: two simultaneous first-time marks must not both
+            # create a list row.
+            refCondition: dict = {"ConditionExpression": "attribute_not_exists(SK)"}
+        else:
+            # Repair path: compare-and-swap over the stale ref. Still rejects a
+            # concurrent writer, which would have moved seenSk to a different value.
+            refCondition = {
+                "ConditionExpression": "seenSk = :staleSeenSk",
+                "ExpressionAttributeValues": {":staleSeenSk": _serVal(staleSeenSk)},
+            }
+
         seenRefRow = {
             "PK": _userPk(sub),
             "SK": seenRefSk,
@@ -1400,7 +1478,7 @@ def markSeen(sub: str, feedId: str, itemSk: str) -> dict:
             _transactWithConflictRetry(
                 [
                     {"Put": {"TableName": tname, "Item": _serItem(seenRow)}},
-                    {"Put": {"TableName": tname, "Item": _serItem(seenRefRow), "ConditionExpression": "attribute_not_exists(SK)"}},
+                    {"Put": {"TableName": tname, "Item": _serItem(seenRefRow), **refCondition}},
                 ]
             )
             return _normalizeSeen(seenRow)
