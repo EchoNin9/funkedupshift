@@ -487,7 +487,7 @@ body {
   overflow-x: auto;
   scrollbar-width: none;
   scroll-snap-type: x proximity;
-  padding: 4px 2px;
+  padding: 4px;
 }
 
 .feed-filter-toolbar::-webkit-scrollbar {
@@ -585,22 +585,38 @@ body {
 }
 
 @media (forced-colors: active) {
+  .toolbar-sep {
+    border-inline-start-color: ButtonBorder;
+  }
+
   .filter-toggle {
     border-color: ButtonBorder;
     color: ButtonText;
     background: ButtonFace;
   }
 
-  .filter-toggle[aria-pressed="true"] {
+  .filter-toggle:hover {
+    color: Highlight;
+    border-color: Highlight;
+    background: ButtonFace;
+  }
+
+  .filter-toggle[aria-pressed="true"],
+  .filter-toggle[aria-pressed="true"]:hover {
     background: Highlight;
     color: HighlightText;
     border-color: Highlight;
+    filter: none;
     forced-color-adjust: none;
   }
 
   .filter-toggle[aria-pressed="true"] .filter-count {
     background: HighlightText;
     color: Highlight;
+  }
+
+  .filter-toggle:focus-visible {
+    outline-color: Highlight;
   }
 }
 

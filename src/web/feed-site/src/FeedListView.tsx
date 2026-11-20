@@ -412,7 +412,7 @@ const FeedListView: React.FC<FeedListViewProps> = ({
               aria-pressed={soloBlocks.length === 0}
               onClick={onResetSoloBlocks}
             >
-              <span>All</span>
+              <span>All</span>{" "}
               <span className="filter-count">{feeds.length}</span>
             </button>
             <span role="separator" aria-orientation="vertical" className="toolbar-sep" />
@@ -425,7 +425,7 @@ const FeedListView: React.FC<FeedListViewProps> = ({
                   aria-pressed={soloBlocks.includes(block)}
                   onClick={() => onToggleSoloBlock(block)}
                 >
-                  <span>{FEED_BLOCK_LABELS[block]}</span>
+                  <span>{FEED_BLOCK_LABELS[block]}</span>{" "}
                   <span className="filter-count">{grouped[block].length}</span>
                 </button>
               ))}

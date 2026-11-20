@@ -235,32 +235,63 @@ test("solo block persistence round-trips cleanly via Storage interface", () => {
   // Writing empty or 3-of-3 removes storage key
   writeStoredSoloBlocks(["pinned", "push", "websites"], fakeStorage);
   assert.equal(data.has(SOLO_BLOCKS_STORAGE_KEY), false);
+
+  // Restricted privacy contexts where Storage methods throw are handled safely
+  const throwingStorage = {
+    getItem() {
+      throw new Error("SecurityError");
+    },
+    setItem() {
+      throw new Error("QuotaExceededError");
+    },
+    removeItem() {
+      throw new Error("SecurityError");
+    },
+  };
+  assert.deepEqual(readStoredSoloBlocks(throwingStorage), []);
+  assert.doesNotThrow(() => writeStoredSoloBlocks(["push"], throwingStorage));
+  assert.doesNotThrow(() => writeStoredSoloBlocks([], throwingStorage));
 });
 
-test("reorderFeedList blocks push/websites crosses and nudgeFeed moves within interleaved blocks", () => {
+test("reorderFeedList blocks cross-block drags cleanly and reorders interleaved push feeds", () => {
   const feeds = [
-    { feedId: "p1", title: "Push 1", kind: "push", pinned: false, sortOrder: 0 },
-    { feedId: "w1", title: "Web 1", kind: "rss", pinned: false, sortOrder: 1 },
-    { feedId: "p2", title: "Push 2", kind: "push", pinned: false, sortOrder: 2 },
-    { feedId: "w2", title: "Web 2", kind: "atom", pinned: false, sortOrder: 3 },
+    { feedId: "pin-push", title: "Pinned Push", kind: "push", pinned: true, sortOrder: 0 },
+    { feedId: "p1", title: "Push 1", kind: "push", pinned: false, sortOrder: 1 },
+    { feedId: "w1", title: "Web 1", kind: "rss", pinned: false, sortOrder: 2 },
+    { feedId: "p2", title: "Push 2", kind: "push", pinned: false, sortOrder: 3 },
+    { feedId: "w2", title: "Web 2", kind: "atom", pinned: false, sortOrder: 4 },
   ];
 
-  // Cross-block drag between push and websites is refused
+  // Cross-block drags between push/websites and pinned-push/unpinned-push are refused
   assert.equal(reorderFeedList(feeds, "p1", "w1"), null);
+  assert.equal(reorderFeedList(feeds, "pin-push", "p1"), null);
 
-  // Nudging Push 1 down jumps past interleaved Web 1 to swap relative order with Push 2
-  const nudgedDown = nudgeFeed(feeds, "p1", 1);
+  // Direct drag across interleaved Web 1 reorders push feeds cleanly without changing websites order
+  const dragged = reorderFeedList(feeds, "p2", "p1");
+  assert.ok(dragged);
+  const afterDrag = groupFeedsByBlock(dragged);
+  assert.deepEqual(
+    afterDrag.push.map((f) => f.feedId),
+    ["p2", "p1"]
+  );
+  assert.deepEqual(
+    afterDrag.websites.map((f) => f.feedId),
+    ["w1", "w2"]
+  );
+
+  // Nudging Push 2 down jumps past interleaved Web 1 to swap relative order with Push 1
+  const nudgedDown = nudgeFeed(dragged, "p2", 1);
   assert.ok(nudgedDown);
   const afterDown = groupFeedsByBlock(nudgedDown);
   assert.deepEqual(
     afterDown.push.map((f) => f.feedId),
-    ["p2", "p1"]
+    ["p1", "p2"]
   );
   assert.deepEqual(
     afterDown.websites.map((f) => f.feedId),
     ["w1", "w2"]
   );
 
-  // Nudging Push 2 up from already first-in-block returns null even with Web feeds ahead of it
-  assert.equal(nudgeFeed(nudgedDown, "p2", -1), null);
+  // Nudging Push 1 up from already first-in-block returns null even with Pinned Push and Web feeds around it
+  assert.equal(nudgeFeed(nudgedDown, "p1", -1), null);
 });
