@@ -57,7 +57,7 @@ MAX_SORT_ORDER = 1_000_000
 _SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,63}$")
 _DAY_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
-_RESERVED_FEED_IDS = {"ingest", "order", "stars", "keys", "prefs"}
+_RESERVED_FEED_IDS = {"ingest", "order", "stars", "seen", "keys", "prefs"}
 
 _KEY_ID_RE = re.compile(r"^/feeds/keys/([^/]+)$")
 _FEED_REFRESH_RE = re.compile(r"^/feeds/([^/]+)/refresh$")
@@ -427,6 +427,56 @@ def _handleUnstarItem(event: dict, sub: str) -> dict:
     return jsonResponse({"starred": False})
 
 
+def _handleListSeen(event: dict, sub: str) -> dict:
+    qs = event.get("queryStringParameters") or {}
+    limit = _parseIntParam(qs.get("limit"), default=50, minVal=1, maxVal=100)
+    cursor = qs.get("cursor")
+    try:
+        page = storage.listSeen(sub, limit=limit, cursor=cursor)
+    except storage.InvalidCursorError as e:
+        return jsonResponse({"error": str(e)}, 400)
+    return jsonResponse(page)
+
+
+def _handleMarkSeen(event: dict, sub: str) -> dict:
+    body = _jsonBody(event)
+    if body is None:
+        return jsonResponse({"error": "Invalid JSON body"}, 400)
+    feedId = str(body.get("feedId") or "").strip()
+    itemSk = str(body.get("itemSk") or "").strip()
+    if not feedId or not itemSk:
+        return jsonResponse({"error": "feedId and itemSk are required"}, 400)
+    if len(feedId) > MAX_ID_LEN:
+        return jsonResponse({"error": "Invalid feedId"}, 400)
+    if not storage.ITEM_SK_RE.match(itemSk):
+        return jsonResponse({"error": "Invalid itemSk"}, 400)
+    try:
+        mark = storage.markSeen(sub, feedId, itemSk)
+    except (storage.FeedNotFoundError, storage.ItemNotFoundError) as e:
+        return jsonResponse({"error": str(e)}, 404)
+    return jsonResponse({"seen": True, "seenItem": mark})
+
+
+def _handleUnmarkSeen(event: dict, sub: str) -> dict:
+    qs = event.get("queryStringParameters") or {}
+    feedId = str(qs.get("feedId") or "").strip()
+    itemSk = str(qs.get("itemSk") or "").strip()
+    if not feedId or not itemSk:
+        body = _jsonBody(event)
+        if body is None:
+            return jsonResponse({"error": "Invalid JSON body"}, 400)
+        feedId = feedId or str(body.get("feedId") or "").strip()
+        itemSk = itemSk or str(body.get("itemSk") or "").strip()
+    if not feedId or not itemSk:
+        return jsonResponse({"error": "feedId and itemSk are required"}, 400)
+    if len(feedId) > MAX_ID_LEN:
+        return jsonResponse({"error": "Invalid feedId"}, 400)
+    if not storage.ITEM_SK_RE.match(itemSk):
+        return jsonResponse({"error": "Invalid itemSk"}, 400)
+    storage.unmarkSeen(sub, feedId, itemSk)
+    return jsonResponse({"seen": False})
+
+
 def _handleListKeys(sub: str) -> dict:
     return jsonResponse({"keys": storage.listApiKeys(sub)})
 
@@ -655,6 +705,12 @@ def route(event: dict) -> dict:
         return _handleStarItem(event, sub)
     if method == "DELETE" and path == "/feeds/stars":
         return _handleUnstarItem(event, sub)
+    if method == "GET" and path == "/feeds/seen":
+        return _handleListSeen(event, sub)
+    if method == "PUT" and path == "/feeds/seen":
+        return _handleMarkSeen(event, sub)
+    if method == "DELETE" and path == "/feeds/seen":
+        return _handleUnmarkSeen(event, sub)
     if method == "GET" and path == "/feeds/keys":
         return _handleListKeys(sub)
     if method == "POST" and path == "/feeds/keys":

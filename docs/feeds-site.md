@@ -142,8 +142,10 @@ No per-user keys exist. CORS already allows the `X-Api-Key` header.
 | Feed (subscription) | `USER#{sub}` | `FEED#{feedId}` | `title, kind (rss\|atom\|json\|push), url?, siteUrl?, pinned (bool), sortOrder, createdAt, lastFetchedAt, lastError?, etag?, lastModified?` |
 | Item | `FEED#{feedId}` | `DAY#{yyyy-mm-dd}#ITEM#{itemHash}` | `title, link, summary/contentHtml, author?, publishedAt, fetchedAt, guid`; day = published date in the **user's timezone** (default America/Los_Angeles; store tz on user/feed) |
 | Day index | `FEED#{feedId}` | `DAYIDX#{yyyy-mm-dd}` | `count` — cheap "which days have items" query for the day picker |
-| Star | `USER#{sub}` | `STAR#{starredAt}#{feedId}#{itemSk}` | denormalised `title, link, feedTitle` so Starred view is one query |
+| Star | `USER#{sub}` | `STAR#{starredAt}#{feedId}#{itemHash}` | denormalised `title, link, feedTitle` so Starred view is one query |
 | Star lookup | `USER#{sub}` | `STARREF#{feedId}#{itemSk}` | O(1) "is this starred?" + unstar |
+| Seen | `USER#{sub}` | `SEEN#{seenAt}#{feedId}#{itemHash}` | FUNK-100; same denormalised fields as Star, so `GET /feeds/seen` is one query. No Seen *view* shipped — the UI is the per-item checkbox in the day view; a Seen list view is a possible follow-up. Reclaimed when the feed is deleted (unlike stars, which survive) |
+| Seen lookup | `USER#{sub}` | `SEENREF#{feedId}#{itemSk}` | O(1) "has this been looked at?" + unmark (fetched in the *same* batch-get as `STARREF#`) |
 | API key | `USER#{sub}` | `APIKEY#{keyId}` | `name, prefix, createdAt, lastUsedAt, revoked` (never the raw key) |
 | API key lookup | `APIKEYHASH#{sha256}` | `META` | `sub, keyId` — ingest resolves key → user in one GetItem |
 
@@ -170,11 +172,14 @@ No per-user keys exist. CORS already allows the `X-Api-Key` header.
 | `GET /feeds/stars` | my starred items, newest first, paginated |
 | `PUT /feeds/stars` | star `{feedId, itemSk}` |
 | `DELETE /feeds/stars` | unstar `{feedId, itemSk}` |
+| `GET /feeds/seen` | my seen (looked-at) items, newest first, paginated |
+| `PUT /feeds/seen` | mark seen `{feedId, itemSk}` |
+| `DELETE /feeds/seen` | unmark seen `{feedId, itemSk}` |
 | `GET /feeds/keys` / `POST /feeds/keys` / `DELETE /feeds/keys/{keyId}` | manage API keys; POST returns raw key **once** |
 | `POST /feeds/ingest` | **no JWT; `X-Api-Key`**. Body `{feed: "mox-todoist", title?, date?, items:[{title, link?, contentMarkdown?|contentHtml?, guid?, publishedAt?}]}` → auto-creates push feed by slug for the key's user; idempotent on guid |
 
 Notes:
-- Literal routes (`/feeds`, `/feeds/stars`, `/feeds/keys`, `/feeds/ingest`) must
+- Literal routes (`/feeds`, `/feeds/stars`, `/feeds/seen`, `/feeds/keys`, `/feeds/ingest`) must
   be written as `method == "X" and path == "/y"` on one line so
   `test_route_coverage.py` sees them; each needs an `aws_apigatewayv2_route`.
   Path-param routes use `{id}` route keys in terraform.
@@ -318,7 +323,11 @@ necessarily the build machine). Use the `openclaw-*` skills for safety checks.
 
 - Polling interval per feed configurable? [no — hourly global, v1]
 - Item retention for polled feeds? [keep forever v1; add TTL later]
-- Read/unread tracking? [not in v1; stars only]
+- Read/unread tracking? [landed in FUNK-100: per-item server-side `seen` markers,
+  an exact structural parallel of stars (`SEEN#`/`SEENREF#` rows per Cognito sub,
+  `GET|PUT|DELETE /feeds/seen`); items expose `seen` alongside `starred`. The shipped
+  UI is only the per-item checkbox in the day view — there is no Seen list view, though
+  `GET /feeds/seen` exists and a Seen view is a possible follow-up]
 - Should qwer/Rally digests also push? [later — just new feed slugs]
 
 ---
