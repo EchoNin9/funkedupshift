@@ -83,6 +83,12 @@ const SocialCalendarPage = lazy(() => import("../features/social/CalendarPage"))
 const SocialComposerPage = lazy(() => import("../features/social/ComposerPage"));
 const LipsyncPage = lazy(() => import("../features/lipsync/LipsyncPage"));
 const LipsyncBudgetsPage = lazy(() => import("../features/lipsync/LipsyncBudgetsPage"));
+const FeedsGate = lazy(() => import("../features/feeds/FeedsGate"));
+const FeedsLayout = lazy(() => import("../features/feeds/FeedsLayout"));
+const FeedsHomeView = lazy(() => import("../features/feeds/FeedsHomeView"));
+const FeedDayView = lazy(() => import("../features/feeds/FeedDayView"));
+const FeedsStarredView = lazy(() => import("../features/feeds/FeedsStarredView"));
+const FeedsSettingsView = lazy(() => import("../features/feeds/FeedsSettingsView"));
 
 function PageLoader() {
   return (
@@ -211,6 +217,18 @@ const AppLayoutContent: React.FC = () => {
               <Route path="/lipsync" element={<LipsyncGate />}>
                 <Route element={<AppPageLayout />}>
                   <Route index element={<LipsyncPage />} />
+                </Route>
+              </Route>
+              <Route path="/feeds" element={<FeedsGate />}>
+                <Route element={<AppPageLayout />}>
+                  <Route element={<FeedsLayout />}>
+                    <Route index element={<FeedsHomeView />} />
+                    <Route path="feed/:feedId" element={<FeedDayView />} />
+                    <Route path="feed/:feedId/:day" element={<FeedDayView />} />
+                    <Route path="starred" element={<FeedsStarredView />} />
+                    <Route path="settings" element={<FeedsSettingsView />} />
+                    <Route path="*" element={<Navigate to="/feeds" replace />} />
+                  </Route>
                 </Route>
               </Route>
               <Route element={<AppPageLayout />}>
