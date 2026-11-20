@@ -21,6 +21,8 @@
   --accent-tint-dark: #162e2d;
   --star-light: #b45309;
   --star-dark: #fbbf24;
+  --seen-light: #0f766e;
+  --seen-dark: #34d399;
   --danger-light: #b91c1c;
   --danger-dark: #f87171;
   --danger-btn-light: #b91c1c;
@@ -43,6 +45,7 @@
   --accent-ink: var(--accent-ink-light);
   --accent-tint: var(--accent-tint-light);
   --star: var(--star-light);
+  --seen: var(--seen-light);
   --danger: var(--danger-light);
   --danger-btn: var(--danger-btn-light);
   --danger-tint: var(--danger-tint-light);
@@ -74,6 +77,7 @@
     --accent-ink: var(--accent-ink-dark);
     --accent-tint: var(--accent-tint-dark);
     --star: var(--star-dark);
+    --seen: var(--seen-dark);
     --danger: var(--danger-dark);
     --danger-btn: var(--danger-btn-dark);
     --danger-tint: var(--danger-tint-dark);
@@ -95,6 +99,7 @@
     --accent-ink: light-dark(var(--accent-ink-light), var(--accent-ink-dark));
     --accent-tint: light-dark(var(--accent-tint-light), var(--accent-tint-dark));
     --star: light-dark(var(--star-light), var(--star-dark));
+    --seen: light-dark(var(--seen-light), var(--seen-dark));
     --danger: light-dark(var(--danger-light), var(--danger-dark));
     --danger-btn: light-dark(var(--danger-btn-light), var(--danger-btn-dark));
     --danger-tint: light-dark(var(--danger-tint-light), var(--danger-tint-dark));
@@ -988,6 +993,58 @@ body {
   gap: 0.35rem 0.75rem;
   color: var(--text-muted);
   font-size: 0.8rem;
+}
+
+.entry-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+.seen-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-muted);
+  border-radius: 9px;
+  padding: 0.3rem 0.5rem;
+  height: 2.15rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  user-select: none;
+}
+
+.seen-check input[type="checkbox"] {
+  margin: 0;
+  width: 0.95rem;
+  height: 0.95rem;
+  flex-shrink: 0;
+  accent-color: var(--seen);
+  cursor: pointer;
+}
+
+.seen-check:hover {
+  border-color: var(--border-strong);
+  color: var(--seen);
+}
+
+.seen-check.is-seen {
+  color: var(--seen);
+  border-color: color-mix(in srgb, var(--seen) 50%, var(--border));
+  background: color-mix(in srgb, var(--seen) 12%, var(--surface));
+}
+
+.seen-check-text {
+  white-space: nowrap;
 }
 
 .star-btn {

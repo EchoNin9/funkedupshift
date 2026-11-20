@@ -15,7 +15,9 @@ import { buttonClasses, focusRing } from "../../components/buttonClasses";
 import {
   getDayItems,
   listDays,
+  markSeen,
   starItem,
+  unmarkSeen,
   unstarItem,
   type DaySummary,
   type Feed,
@@ -100,6 +102,7 @@ function FeedDayViewInner({ feedId, routeDay: rawDay }: FeedDayViewInnerProps) {
   const [error, setError] = useState<string | null>(null);
   const [errorSource, setErrorSource] = useState<"days" | "items" | "action" | null>(null);
   const [starError, setStarError] = useState<string | null>(null);
+  const [seenError, setSeenError] = useState<string | null>(null);
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
   const [refreshing, setRefreshing] = useState(false);
   const [refreshNote, setRefreshNote] = useState<string | null>(null);
@@ -121,6 +124,7 @@ function FeedDayViewInner({ feedId, routeDay: rawDay }: FeedDayViewInnerProps) {
   const routeDayRef = useRef(routeDay);
   routeDayRef.current = routeDay;
   const pendingStarsRef = useRef<Set<string>>(new Set());
+  const pendingSeenRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     mountedRef.current = true;
@@ -200,6 +204,7 @@ function FeedDayViewInner({ feedId, routeDay: rawDay }: FeedDayViewInnerProps) {
       const reqId = ++itemsReqIdRef.current;
       setItemsLoading(true);
       setStarError(null);
+      setSeenError(null);
       setError(null);
       setErrorSource(null);
 
@@ -426,6 +431,37 @@ function FeedDayViewInner({ feedId, routeDay: rawDay }: FeedDayViewInnerProps) {
     }
   };
 
+  const handleToggleSeen = async (targetItem: FeedItem) => {
+    if (pendingSeenRef.current.has(targetItem.itemSk)) return;
+    const epoch = activeEpochRef.current;
+    pendingSeenRef.current.add(targetItem.itemSk);
+    setSeenError(null);
+    const nextSeen = !targetItem.seen;
+    setItems((prev) =>
+      prev.map((it) => (it.itemSk === targetItem.itemSk ? { ...it, seen: nextSeen } : it))
+    );
+
+    try {
+      if (nextSeen) {
+        await markSeen(feedId, targetItem.itemSk);
+      } else {
+        await unmarkSeen(feedId, targetItem.itemSk);
+      }
+    } catch (err: unknown) {
+      if (!mountedRef.current || activeEpochRef.current !== epoch) return;
+      setItems((prev) =>
+        prev.map((it) => (it.itemSk === targetItem.itemSk ? { ...it, seen: targetItem.seen } : it))
+      );
+      if (isAuthExpired(err)) {
+        handleAuthError();
+        return;
+      }
+      setSeenError((err as { message?: string })?.message || "Could not update seen status.");
+    } finally {
+      pendingSeenRef.current.delete(targetItem.itemSk);
+    }
+  };
+
   const tz = feed?.tz || userTz;
   const activeIndex = routeDay ? days.findIndex((d) => d.day === routeDay) : -1;
   const newerDay = activeIndex > 0 ? days[activeIndex - 1].day : null;
@@ -617,6 +653,8 @@ function FeedDayViewInner({ feedId, routeDay: rawDay }: FeedDayViewInnerProps) {
 
       {starError && <Alert variant="error">{starError}</Alert>}
 
+      {seenError && <Alert variant="error">{seenError}</Alert>}
+
       <section
         className="flex flex-col gap-2.5 rounded-ds-lg border border-[color:var(--color-divider)] bg-surface-1 p-3 sm:flex-row sm:items-center sm:justify-between"
         aria-label="Archive days"
@@ -800,24 +838,46 @@ function FeedDayViewInner({ feedId, routeDay: rawDay }: FeedDayViewInnerProps) {
                         </div>
                       </div>
 
-                      <button
-                        type="button"
-                        aria-pressed={item.starred}
-                        aria-label={item.starred ? `Unstar ${item.title}` : `Star ${item.title}`}
-                        title={item.starred ? "Remove star" : "Star item"}
-                        onClick={() => void handleToggleStar(item)}
-                        className={`grid h-9 w-9 shrink-0 place-items-center rounded-ds-md border transition-colors ${focusRing} ${
-                          item.starred
-                            ? "border-warning/40 bg-warning/15 text-warning hover:bg-warning/25"
-                            : "border-[color:var(--color-divider)] bg-surface-1 text-text-tertiary hover:border-[color:var(--color-border-strong)] hover:bg-surface-3 hover:text-text-primary"
-                        }`}
-                      >
-                        <Star
-                          size={17}
-                          weight={item.starred ? "fill" : "regular"}
-                          aria-hidden="true"
-                        />
-                      </button>
+                      <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+                        <label
+                          title={item.seen ? "Mark as not seen" : "Mark as seen"}
+                          className={`inline-flex h-9 cursor-pointer select-none items-center gap-1.5 rounded-ds-md border px-2 text-xs font-semibold transition-colors ${
+                            item.seen
+                              ? "border-success/40 bg-success/15 text-success hover:bg-success/25"
+                              : "border-[color:var(--color-divider)] bg-surface-1 text-text-tertiary hover:border-[color:var(--color-border-strong)] hover:bg-surface-3 hover:text-text-primary"
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={item.seen}
+                            aria-label={
+                              item.seen ? `Mark ${item.title} unseen` : `Mark ${item.title} seen`
+                            }
+                            onChange={() => void handleToggleSeen(item)}
+                            className={`h-4 w-4 shrink-0 cursor-pointer rounded-sm accent-[rgb(var(--color-success))] ${focusRing}`}
+                          />
+                          <span className="whitespace-nowrap">Seen</span>
+                        </label>
+
+                        <button
+                          type="button"
+                          aria-pressed={item.starred}
+                          aria-label={item.starred ? `Unstar ${item.title}` : `Star ${item.title}`}
+                          title={item.starred ? "Remove star" : "Star item"}
+                          onClick={() => void handleToggleStar(item)}
+                          className={`grid h-9 w-9 shrink-0 place-items-center rounded-ds-md border transition-colors ${focusRing} ${
+                            item.starred
+                              ? "border-warning/40 bg-warning/15 text-warning hover:bg-warning/25"
+                              : "border-[color:var(--color-divider)] bg-surface-1 text-text-tertiary hover:border-[color:var(--color-border-strong)] hover:bg-surface-3 hover:text-text-primary"
+                          }`}
+                        >
+                          <Star
+                            size={17}
+                            weight={item.starred ? "fill" : "regular"}
+                            aria-hidden="true"
+                          />
+                        </button>
+                      </div>
                     </header>
 
                     {item.contentHtml ? (
