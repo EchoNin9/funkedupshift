@@ -40,6 +40,7 @@ export const FeedsSettingsView: React.FC = () => {
   const [keys, setKeys] = useState<ApiKeyMeta[]>([]);
   const [keysLoading, setKeysLoading] = useState(true);
   const [keyName, setKeyName] = useState("");
+  const [keyError, setKeyError] = useState<string | null>(null);
   const [creatingKey, setCreatingKey] = useState(false);
   const [newRawKey, setNewRawKey] = useState<string | null>(null);
   const [revokeTarget, setRevokeTarget] = useState<ApiKeyMeta | null>(null);
@@ -146,8 +147,12 @@ export const FeedsSettingsView: React.FC = () => {
   const handleCreateKey: React.FormEventHandler = async (e) => {
     e.preventDefault();
     const trimmed = keyName.trim();
-    if (!trimmed) return;
+    if (!trimmed) {
+      setKeyError("Key name cannot be blank.");
+      return;
+    }
     setCreatingKey(true);
+    setKeyError(null);
     setError(null);
     setNewRawKey(null);
     try {
@@ -162,7 +167,7 @@ export const FeedsSettingsView: React.FC = () => {
         handleAuthError();
         return;
       }
-      setError((err as { message?: string })?.message || "Failed to create API key.");
+      setKeyError((err as { message?: string })?.message || "Failed to create API key.");
     } finally {
       if (mountedRef.current) setCreatingKey(false);
     }
@@ -176,9 +181,9 @@ export const FeedsSettingsView: React.FC = () => {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="font-display text-xl font-semibold text-text-primary sm:text-2xl">
+        <h2 className="font-display text-xl font-semibold text-text-primary sm:text-2xl">
           Settings
-        </h1>
+        </h2>
         <p className="mt-1 text-sm text-text-secondary">
           Day-bucketing timezone and ingest API keys.
         </p>
@@ -191,12 +196,12 @@ export const FeedsSettingsView: React.FC = () => {
         aria-labelledby="feeds-pref-timezone"
       >
         <div>
-          <h2
+          <h3
             id="feeds-pref-timezone"
             className="font-display text-base font-semibold text-text-primary"
           >
             Archive timezone
-          </h2>
+          </h3>
           <p className="mt-1 text-sm text-text-secondary">
             Feed items and Mox daily summaries are grouped into calendar days using this timezone.
           </p>
@@ -237,12 +242,12 @@ export const FeedsSettingsView: React.FC = () => {
         aria-labelledby="feeds-pref-keys"
       >
         <div>
-          <h2
+          <h3
             id="feeds-pref-keys"
             className="font-display text-base font-semibold text-text-primary"
           >
             Ingest API keys (Mox / qwer / Rally)
-          </h2>
+          </h3>
           <p className="mt-1 text-sm text-text-secondary">
             Each key grants{" "}
             <code className="rounded bg-surface-3 px-1 py-0.5 font-mono text-xs text-text-primary">
@@ -262,7 +267,10 @@ export const FeedsSettingsView: React.FC = () => {
             maxLength={80}
             placeholder="Key label (e.g. openclaw-mox)"
             value={keyName}
-            onChange={(e) => setKeyName(e.target.value)}
+            onChange={(e) => {
+              setKeyName(e.target.value);
+              if (keyError) setKeyError(null);
+            }}
             disabled={creatingKey}
             className="input sm:max-w-xs"
             required
@@ -276,6 +284,8 @@ export const FeedsSettingsView: React.FC = () => {
             <span>{creatingKey ? "Creating…" : "Create API key"}</span>
           </button>
         </form>
+
+        {keyError && <Alert variant="error">{keyError}</Alert>}
 
         {newRawKey && (
           <div
@@ -335,7 +345,9 @@ export const FeedsSettingsView: React.FC = () => {
               >
                 <div className="min-w-0 flex-1 space-y-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <strong className="text-sm font-semibold text-text-primary">{k.name}</strong>
+                    <strong className="min-w-0 [overflow-wrap:anywhere] text-sm font-semibold text-text-primary">
+                      {k.name}
+                    </strong>
                     <code className="rounded bg-surface-3 px-1.5 py-0.5 font-mono text-xs text-text-secondary">
                       {k.prefix}…
                     </code>
@@ -383,8 +395,8 @@ export const FeedsSettingsView: React.FC = () => {
         title="Revoke API key?"
         closedBy={revoking ? "none" : "closerequest"}
       >
-        <p className="m-0 text-sm text-text-secondary">
-          Revoke <strong className="text-text-primary">{revokeTarget?.name}</strong> (
+        <p className="m-0 text-sm text-text-secondary [overflow-wrap:anywhere]">
+          Revoke <strong className="text-text-primary [overflow-wrap:anywhere]">{revokeTarget?.name}</strong> (
           <code className="rounded bg-surface-3 px-1 py-0.5 font-mono text-xs text-text-primary">
             {revokeTarget?.prefix}…
           </code>

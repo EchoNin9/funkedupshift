@@ -60,8 +60,20 @@ function isAuthExpired(err: unknown): boolean {
   return (err as { name?: string } | null | undefined)?.name === "AuthExpiredError";
 }
 
-export const FeedDayView: React.FC = () => {
-  const { feedId: rawFeedId, day: rawDay } = useParams<{ feedId: string; day?: string }>();
+export function FeedDayView() {
+  const { feedId, day } = useParams<{ feedId: string; day?: string }>();
+  if (!feedId) {
+    return <Navigate to="/feeds" replace />;
+  }
+  return <FeedDayViewInner key={feedId} feedId={feedId} routeDay={day ?? null} />;
+}
+
+interface FeedDayViewInnerProps {
+  feedId: string;
+  routeDay: string | null;
+}
+
+function FeedDayViewInner({ feedId, routeDay: rawDay }: FeedDayViewInnerProps) {
   const navigate = useNavigate();
   const {
     feeds,
@@ -74,7 +86,6 @@ export const FeedDayView: React.FC = () => {
     handleAuthError,
   } = useFeedsContext();
 
-  const feedId = rawFeedId ?? "";
   const routeDay = rawDay && isValidDayString(rawDay) ? rawDay : null;
   const knownFeed = feeds.find((f) => f.feedId === feedId) ?? null;
 
@@ -102,14 +113,19 @@ export const FeedDayView: React.FC = () => {
 
   const renameInputId = useId();
   const mountedRef = useRef(true);
+  const activeEpochRef = useRef(0);
+  const daysReqIdRef = useRef(0);
+  const refreshReqIdRef = useRef(0);
   const routeDayRef = useRef(routeDay);
   routeDayRef.current = routeDay;
   const pendingStarsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     mountedRef.current = true;
+    activeEpochRef.current += 1;
     return () => {
       mountedRef.current = false;
+      activeEpochRef.current += 1;
     };
   }, []);
 
@@ -132,16 +148,30 @@ export const FeedDayView: React.FC = () => {
 
   const loadDays = useCallback(async () => {
     if (!feedId) return null;
+    const epoch = activeEpochRef.current;
+    const reqId = ++daysReqIdRef.current;
     setDaysLoading(true);
     setError(null);
     try {
       const page = await listDays(feedId);
-      if (!mountedRef.current) return null;
+      if (
+        !mountedRef.current ||
+        activeEpochRef.current !== epoch ||
+        daysReqIdRef.current !== reqId
+      ) {
+        return null;
+      }
       setDays(page.days);
       setDaysCursor(page.nextCursor);
       return page.days;
     } catch (err: unknown) {
-      if (!mountedRef.current) return null;
+      if (
+        !mountedRef.current ||
+        activeEpochRef.current !== epoch ||
+        daysReqIdRef.current !== reqId
+      ) {
+        return null;
+      }
       if (isAuthExpired(err)) {
         handleAuthError();
         return null;
@@ -149,13 +179,21 @@ export const FeedDayView: React.FC = () => {
       setError((err as { message?: string })?.message || "Failed to load feed days.");
       return null;
     } finally {
-      if (mountedRef.current) setDaysLoading(false);
+      if (
+        mountedRef.current &&
+        activeEpochRef.current === epoch &&
+        daysReqIdRef.current === reqId
+      ) {
+        setDaysLoading(false);
+      }
     }
   }, [feedId, handleAuthError]);
 
   useEffect(() => {
     if (!feedId) return;
     let cancelled = false;
+    const epoch = activeEpochRef.current;
+    const reqId = ++daysReqIdRef.current;
     setDays([]);
     setItems([]);
     setExpandedItems({});
@@ -166,18 +204,36 @@ export const FeedDayView: React.FC = () => {
         setDaysLoading(true);
         setError(null);
         const page = await listDays(feedId);
-        if (cancelled) return;
+        if (
+          cancelled ||
+          activeEpochRef.current !== epoch ||
+          daysReqIdRef.current !== reqId
+        ) {
+          return;
+        }
         setDays(page.days);
         setDaysCursor(page.nextCursor);
       } catch (err: unknown) {
-        if (cancelled) return;
+        if (
+          cancelled ||
+          activeEpochRef.current !== epoch ||
+          daysReqIdRef.current !== reqId
+        ) {
+          return;
+        }
         if (isAuthExpired(err)) {
           handleAuthError();
           return;
         }
         setError((err as { message?: string })?.message || "Failed to load feed days.");
       } finally {
-        if (!cancelled) setDaysLoading(false);
+        if (
+          !cancelled &&
+          activeEpochRef.current === epoch &&
+          daysReqIdRef.current === reqId
+        ) {
+          setDaysLoading(false);
+        }
       }
     })();
 
@@ -198,19 +254,20 @@ export const FeedDayView: React.FC = () => {
       return;
     }
     let cancelled = false;
+    const epoch = activeEpochRef.current;
     setItemsLoading(true);
     setStarError(null);
     setError(null);
 
     void getDayItems(feedId, routeDay)
       .then((res) => {
-        if (cancelled) return;
+        if (cancelled || activeEpochRef.current !== epoch) return;
         setFeed(res.feed);
         handleFeedUpdated(res.feed);
         setItems(res.items);
       })
       .catch((err: unknown) => {
-        if (cancelled) return;
+        if (cancelled || activeEpochRef.current !== epoch) return;
         if (isAuthExpired(err)) {
           handleAuthError();
           return;
@@ -218,7 +275,7 @@ export const FeedDayView: React.FC = () => {
         setError((err as { message?: string })?.message || "Failed to load day items.");
       })
       .finally(() => {
-        if (!cancelled) setItemsLoading(false);
+        if (!cancelled && activeEpochRef.current === epoch) setItemsLoading(false);
       });
 
     return () => {
@@ -226,53 +283,85 @@ export const FeedDayView: React.FC = () => {
     };
   }, [feedId, routeDay, handleFeedUpdated, handleAuthError]);
 
-  if (!rawFeedId) {
-    return <Navigate to="/feeds" replace />;
-  }
-
   const handleLoadMoreDays = async () => {
     if (!daysCursor || loadingMoreDays) return;
+    const epoch = activeEpochRef.current;
+    const daysReqId = daysReqIdRef.current;
     setLoadingMoreDays(true);
     try {
       const next = await listDays(feedId, daysCursor);
-      if (!mountedRef.current) return;
+      if (
+        !mountedRef.current ||
+        activeEpochRef.current !== epoch ||
+        daysReqIdRef.current !== daysReqId
+      ) {
+        return;
+      }
       setDays((prev) => {
         const seen = new Set(prev.map((d) => d.day));
         return [...prev, ...next.days.filter((d) => !seen.has(d.day))];
       });
       setDaysCursor(next.nextCursor);
     } catch (err: unknown) {
-      if (!mountedRef.current) return;
+      if (
+        !mountedRef.current ||
+        activeEpochRef.current !== epoch ||
+        daysReqIdRef.current !== daysReqId
+      ) {
+        return;
+      }
       if (isAuthExpired(err)) {
         handleAuthError();
         return;
       }
       setError((err as { message?: string })?.message || "Failed to load older days.");
     } finally {
-      if (mountedRef.current) setLoadingMoreDays(false);
+      if (mountedRef.current && activeEpochRef.current === epoch) {
+        setLoadingMoreDays(false);
+      }
     }
   };
 
   const handleRefreshNow = async () => {
     if (!feed || feed.kind === "push" || refreshing) return;
+    const epoch = activeEpochRef.current;
+    const refreshReqId = ++refreshReqIdRef.current;
     const dayAtStart = routeDayRef.current;
     setRefreshing(true);
     setRefreshNote(null);
     setError(null);
     try {
       const res = await refreshFeed(feed);
-      if (!mountedRef.current || !res) return;
+      if (
+        !mountedRef.current ||
+        activeEpochRef.current !== epoch ||
+        refreshReqIdRef.current !== refreshReqId ||
+        !res
+      ) {
+        return;
+      }
       setFeed(res.feed);
       setRefreshNote(res.itemsAdded > 0 ? `+${res.itemsAdded} new items` : "Up to date");
       const freshDays = await loadDays();
-      if (!mountedRef.current) return;
+      if (
+        !mountedRef.current ||
+        activeEpochRef.current !== epoch ||
+        refreshReqIdRef.current !== refreshReqId
+      ) {
+        return;
+      }
       const targetDay = routeDayRef.current || freshDays?.[0]?.day || null;
       if (targetDay) {
         if (targetDay !== routeDayRef.current) {
           selectDay(targetDay, true);
         } else {
           const refreshedDay = await getDayItems(feedId, targetDay);
-          if (!mountedRef.current || (routeDayRef.current && routeDayRef.current !== targetDay)) {
+          if (
+            !mountedRef.current ||
+            activeEpochRef.current !== epoch ||
+            refreshReqIdRef.current !== refreshReqId ||
+            (routeDayRef.current && routeDayRef.current !== targetDay)
+          ) {
             return;
           }
           if (!dayAtStart || routeDayRef.current === dayAtStart) {
@@ -282,19 +371,32 @@ export const FeedDayView: React.FC = () => {
         }
       }
     } catch (err: unknown) {
-      if (!mountedRef.current) return;
+      if (
+        !mountedRef.current ||
+        activeEpochRef.current !== epoch ||
+        refreshReqIdRef.current !== refreshReqId
+      ) {
+        return;
+      }
       if (isAuthExpired(err)) {
         handleAuthError();
         return;
       }
       setError((err as { message?: string })?.message || "Feed refresh failed.");
     } finally {
-      if (mountedRef.current) setRefreshing(false);
+      if (
+        mountedRef.current &&
+        activeEpochRef.current === epoch &&
+        refreshReqIdRef.current === refreshReqId
+      ) {
+        setRefreshing(false);
+      }
     }
   };
 
   const handleToggleStar = async (targetItem: FeedItem) => {
     if (pendingStarsRef.current.has(targetItem.itemSk)) return;
+    const epoch = activeEpochRef.current;
     pendingStarsRef.current.add(targetItem.itemSk);
     setStarError(null);
     const nextStarred = !targetItem.starred;
@@ -309,7 +411,7 @@ export const FeedDayView: React.FC = () => {
         await unstarItem(feedId, targetItem.itemSk);
       }
     } catch (err: unknown) {
-      if (!mountedRef.current) return;
+      if (!mountedRef.current || activeEpochRef.current !== epoch) return;
       setItems((prev) =>
         prev.map((it) =>
           it.itemSk === targetItem.itemSk ? { ...it, starred: targetItem.starred } : it
@@ -349,9 +451,9 @@ export const FeedDayView: React.FC = () => {
         <header className="flex flex-col gap-3 rounded-ds-lg border border-[color:var(--color-divider)] bg-surface-2 p-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 flex-1 space-y-1.5">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="break-words font-display text-xl font-semibold text-text-primary sm:text-2xl">
+              <h2 className="min-w-0 break-words [overflow-wrap:anywhere] font-display text-xl font-semibold text-text-primary sm:text-2xl">
                 {feed.title}
-              </h1>
+              </h2>
               <span
                 className={`inline-flex items-center rounded-full border px-2 py-0.5 font-mono text-[11px] font-semibold uppercase tracking-wide ${
                   feed.kind === "push"
@@ -370,7 +472,7 @@ export const FeedDayView: React.FC = () => {
 
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-text-secondary">
               {feed.kind === "push" ? (
-                <span className="font-mono text-[11px] text-text-tertiary">
+                <span className="min-w-0 [overflow-wrap:anywhere] font-mono text-[11px] text-text-tertiary">
                   slug: {feed.slug}
                 </span>
               ) : (
@@ -462,9 +564,11 @@ export const FeedDayView: React.FC = () => {
           role="alert"
           className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-warning/60 bg-warning/10 px-3 py-2 text-sm text-warning"
         >
-          <span className="flex items-center gap-2">
+          <span className="flex min-w-0 flex-1 items-center gap-2 [overflow-wrap:anywhere]">
             <Warning size={16} weight="fill" className="shrink-0" aria-hidden="true" />
-            <span>Last fetch failed: {feed.lastError}</span>
+            <span className="min-w-0 [overflow-wrap:anywhere]">
+              Last fetch failed: {feed.lastError}
+            </span>
           </span>
           {feed.kind !== "push" && (
             <button
@@ -535,7 +639,7 @@ export const FeedDayView: React.FC = () => {
           )}
         </div>
 
-        <label className="shrink-0">
+        <label className="w-full shrink-0 sm:w-auto">
           <span className="sr-only">Jump to date</span>
           <input
             type="date"
@@ -547,7 +651,7 @@ export const FeedDayView: React.FC = () => {
                 selectDay(val);
               }
             }}
-            className="input !min-h-[36px] !w-auto !py-1.5 text-xs"
+            className="input feeds-date-input !min-h-[36px] w-full !py-1.5 text-xs sm:!w-auto"
           />
         </label>
       </section>
@@ -561,7 +665,7 @@ export const FeedDayView: React.FC = () => {
         </div>
       ) : !error && days.length === 0 && !routeDay ? (
         <section className="space-y-2 rounded-ds-lg border border-[color:var(--color-divider)] bg-surface-2 p-6">
-          <h2 className="font-display text-lg font-semibold text-text-primary">No items yet</h2>
+          <h3 className="font-display text-lg font-semibold text-text-primary">No items yet</h3>
           {feed?.kind === "push" ? (
             <p className="m-0 text-sm text-text-secondary">
               This push archive is ready. Send summaries to{" "}
@@ -584,9 +688,9 @@ export const FeedDayView: React.FC = () => {
       ) : routeDay ? (
         <>
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="font-display text-lg font-semibold text-text-primary">
+            <h3 className="font-display text-lg font-semibold text-text-primary">
               {formatDayHeading(routeDay)}
-            </h2>
+            </h3>
             <div className="flex items-center gap-1.5">
               <button
                 type="button"
@@ -616,9 +720,9 @@ export const FeedDayView: React.FC = () => {
             </div>
           ) : items.length === 0 ? (
             <section className="space-y-3 rounded-ds-lg border border-[color:var(--color-divider)] bg-surface-2 p-6">
-              <h3 className="font-display text-base font-semibold text-text-primary">
+              <h4 className="font-display text-base font-semibold text-text-primary">
                 No items on {routeDay}
-              </h3>
+              </h4>
               <p className="m-0 text-sm text-text-secondary">
                 Nothing was published or archived on this date.
               </p>
@@ -649,7 +753,7 @@ export const FeedDayView: React.FC = () => {
                   >
                     <header className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1 space-y-1">
-                        <h3 className="break-words font-display text-lg font-semibold leading-snug text-text-primary">
+                        <h4 className="break-words [overflow-wrap:anywhere] font-display text-lg font-semibold leading-snug text-text-primary">
                           {item.link && isSafeHref(item.link) ? (
                             <a
                               href={item.link}
@@ -662,7 +766,7 @@ export const FeedDayView: React.FC = () => {
                           ) : (
                             item.title
                           )}
-                        </h3>
+                        </h4>
                         <div className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-xs text-text-secondary">
                           {timeStr && <span>{timeStr}</span>}
                           {item.author && <span>by {item.author}</span>}
@@ -703,7 +807,7 @@ export const FeedDayView: React.FC = () => {
                         <SafeHtml html={item.contentHtml} className="feeds-entry-body" />
                       </div>
                     ) : item.summary ? (
-                      <p className="mt-3 whitespace-pre-wrap text-sm text-text-secondary">
+                      <p className="mt-3 min-w-0 whitespace-pre-wrap [overflow-wrap:anywhere] text-sm text-text-secondary">
                         {item.summary}
                       </p>
                     ) : null}
@@ -747,21 +851,31 @@ export const FeedDayView: React.FC = () => {
             e.preventDefault();
             if (!feed) return;
             const t = renameVal.trim();
-            if (!t || t.length > 120) return;
+            if (!t) {
+              setRenameError("Title cannot be blank.");
+              return;
+            }
+            if (t.length > 120) {
+              setRenameError("Title must be 120 characters or fewer.");
+              return;
+            }
+            const epoch = activeEpochRef.current;
             setRenameSaving(true);
             setRenameError(null);
             try {
               await renameFeed(feed, t);
-              if (mountedRef.current) {
+              if (mountedRef.current && activeEpochRef.current === epoch) {
                 setFeed((prev) => (prev ? { ...prev, title: t } : prev));
                 setRenameOpen(false);
               }
             } catch (err: unknown) {
-              if (mountedRef.current) {
+              if (mountedRef.current && activeEpochRef.current === epoch) {
                 setRenameError((err as { message?: string })?.message || "Could not rename feed.");
               }
             } finally {
-              if (mountedRef.current) setRenameSaving(false);
+              if (mountedRef.current && activeEpochRef.current === epoch) {
+                setRenameSaving(false);
+              }
             }
           }}
         >
@@ -811,8 +925,8 @@ export const FeedDayView: React.FC = () => {
         title="Delete feed?"
         closedBy={deleteSaving ? "none" : "closerequest"}
       >
-        <p className="m-0 text-sm text-text-secondary">
-          Delete <strong className="text-text-primary">{feed?.title}</strong> and its archived
+        <p className="m-0 text-sm text-text-secondary [overflow-wrap:anywhere]">
+          Delete <strong className="text-text-primary [overflow-wrap:anywhere]">{feed?.title}</strong> and its archived
           items? Any items you starred remain in Starred.
         </p>
         {deleteError && <Alert variant="error">{deleteError}</Alert>}
@@ -835,22 +949,24 @@ export const FeedDayView: React.FC = () => {
             className={`inline-flex items-center justify-center gap-2 rounded-ds-md bg-danger px-3.5 py-2 text-sm font-semibold text-on-danger transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45 ${focusRing}`}
             onClick={async () => {
               if (!feed) return;
+              const epoch = activeEpochRef.current;
               setDeleteSaving(true);
               setDeleteError(null);
               try {
-                await deleteFeed(feed);
-                if (mountedRef.current) {
+                const deleted = await deleteFeed(feed);
+                if (deleted && mountedRef.current && activeEpochRef.current === epoch) {
                   setDeleteOpen(false);
-                  navigate("/feeds");
                 }
               } catch (err: unknown) {
-                if (mountedRef.current) {
+                if (mountedRef.current && activeEpochRef.current === epoch) {
                   setDeleteError(
                     (err as { message?: string })?.message || "Could not delete feed."
                   );
                 }
               } finally {
-                if (mountedRef.current) setDeleteSaving(false);
+                if (mountedRef.current && activeEpochRef.current === epoch) {
+                  setDeleteSaving(false);
+                }
               }
             }}
             disabled={deleteSaving}
@@ -861,6 +977,6 @@ export const FeedDayView: React.FC = () => {
       </FeedModal>
     </div>
   );
-};
+}
 
 export default FeedDayView;

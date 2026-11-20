@@ -31,7 +31,7 @@ export interface FeedsContextValue {
   userTz: string;
   soloBlocks: FeedBlock[];
   addOpen: boolean;
-  loadFeeds: () => Promise<void>;
+  loadFeeds: (options?: { preserveError?: boolean }) => Promise<void>;
   toggleSoloBlock: (block: FeedBlock) => void;
   resetSoloBlocks: () => void;
   togglePin: (target: Feed) => Promise<void>;
@@ -40,7 +40,7 @@ export interface FeedsContextValue {
     target: Feed
   ) => Promise<{ feed: Feed; notModified: boolean; itemsAdded: number } | null>;
   renameFeed: (target: Feed, newTitle: string) => Promise<void>;
-  deleteFeed: (target: Feed) => Promise<void>;
+  deleteFeed: (target: Feed) => Promise<boolean>;
   handleFeedUpdated: (updated: Feed) => void;
   handleTimezoneUpdated: (tz: string) => void;
   openAddModal: () => void;
@@ -64,13 +64,17 @@ function isAuthExpired(err: unknown): boolean {
   );
 }
 
-export const FeedsLayout: React.FC = () => {
+export interface FeedsLayoutProps {
+  showMobileHeading?: boolean;
+}
+
+export const FeedsLayout: React.FC<FeedsLayoutProps> = ({ showMobileHeading = false }) => {
   const { user, refreshAuth } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
   const [feeds, setFeeds] = useState<Feed[]>([]);
-  const [feedsLoading, setFeedsLoading] = useState(false);
+  const [feedsLoading, setFeedsLoading] = useState(true);
   const [feedsError, setFeedsError] = useState<string | null>(null);
   const [userTz, setUserTz] = useState<string>(DEFAULT_TZ);
   const [soloBlocks, setSoloBlocks] = useState<FeedBlock[]>(() => readStoredSoloBlocks());
@@ -101,26 +105,31 @@ export const FeedsLayout: React.FC = () => {
     navigate("/auth");
   }, [navigate, refreshAuth]);
 
-  const loadFeeds = useCallback(async () => {
-    const epoch = authEpochRef.current;
-    setFeedsLoading(true);
-    setFeedsError(null);
-    try {
-      const res = await listFeeds();
-      if (authEpochRef.current !== epoch) return;
-      setFeeds(sortFeeds(res.feeds));
-      setUserTz(res.tz || DEFAULT_TZ);
-    } catch (err: unknown) {
-      if (authEpochRef.current !== epoch) return;
-      if (isAuthExpired(err)) {
-        handleAuthError();
-        return;
+  const loadFeeds = useCallback(
+    async (options?: { preserveError?: boolean }) => {
+      const epoch = authEpochRef.current;
+      setFeedsLoading(true);
+      if (!options?.preserveError) {
+        setFeedsError(null);
       }
-      setFeedsError((err as { message?: string })?.message || "Failed to load feeds.");
-    } finally {
-      if (authEpochRef.current === epoch) setFeedsLoading(false);
-    }
-  }, [handleAuthError]);
+      try {
+        const res = await listFeeds();
+        if (authEpochRef.current !== epoch) return;
+        setFeeds(sortFeeds(res.feeds));
+        setUserTz(res.tz || DEFAULT_TZ);
+      } catch (err: unknown) {
+        if (authEpochRef.current !== epoch) return;
+        if (isAuthExpired(err)) {
+          handleAuthError();
+          return;
+        }
+        setFeedsError((err as { message?: string })?.message || "Failed to load feeds.");
+      } finally {
+        if (authEpochRef.current === epoch) setFeedsLoading(false);
+      }
+    },
+    [handleAuthError]
+  );
 
   useEffect(() => {
     if (user?.userId) {
@@ -196,7 +205,7 @@ export const FeedsLayout: React.FC = () => {
         }
         if (orderSeqRef.current === seq) {
           setFeedsError((err as { message?: string })?.message || "Could not save feed order.");
-          void loadFeeds();
+          void loadFeeds({ preserveError: true });
         }
       }
     },
@@ -221,7 +230,7 @@ export const FeedsLayout: React.FC = () => {
           return null;
         }
         setFeedsError((err as { message?: string })?.message || "Feed refresh failed.");
-        void loadFeeds();
+        void loadFeeds({ preserveError: true });
         throw err;
       }
     },
@@ -252,12 +261,12 @@ export const FeedsLayout: React.FC = () => {
   );
 
   const deleteFeed = useCallback(
-    async (target: Feed) => {
+    async (target: Feed): Promise<boolean> => {
       const epoch = authEpochRef.current;
       setFeedsError(null);
       try {
         await deleteFeedApi(target.feedId);
-        if (authEpochRef.current !== epoch) return;
+        if (authEpochRef.current !== epoch) return false;
         setFeeds((prev) => prev.filter((f) => f.feedId !== target.feedId));
         const match = /^\/feeds\/feed\/([^/]+)/.exec(location.pathname);
         if (match) {
@@ -271,11 +280,12 @@ export const FeedsLayout: React.FC = () => {
             navigate("/feeds");
           }
         }
+        return true;
       } catch (err: unknown) {
-        if (authEpochRef.current !== epoch) return;
+        if (authEpochRef.current !== epoch) return false;
         if (isAuthExpired(err)) {
           handleAuthError();
-          return;
+          return false;
         }
         setFeedsError((err as { message?: string })?.message || "Could not delete feed.");
         throw err;
@@ -364,6 +374,9 @@ export const FeedsLayout: React.FC = () => {
   return (
     <FeedsContext.Provider value={contextValue}>
       <div className="space-y-5">
+        {showMobileHeading && (
+          <h1 className="font-heading text-2xl font-bold text-text-primary">Feeds</h1>
+        )}
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-divider pb-3">
           <nav className="flex flex-wrap items-center gap-1.5" aria-label="Feeds navigation">
             <Link

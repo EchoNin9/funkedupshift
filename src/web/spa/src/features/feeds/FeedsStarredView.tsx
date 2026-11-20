@@ -110,9 +110,9 @@ export const FeedsStarredView: React.FC = () => {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="font-display text-xl font-semibold text-text-primary sm:text-2xl">
+        <h2 className="font-display text-xl font-semibold text-text-primary sm:text-2xl">
           Starred
-        </h1>
+        </h2>
         <p className="mt-1 text-sm text-text-secondary">
           Saved articles and daily digest highlights.
         </p>
@@ -140,9 +140,9 @@ export const FeedsStarredView: React.FC = () => {
         </div>
       ) : items.length === 0 ? (
         <section className="space-y-2 rounded-ds-lg border border-[color:var(--color-divider)] bg-surface-2 p-6">
-          <h2 className="font-display text-lg font-semibold text-text-primary">
+          <h3 className="font-display text-lg font-semibold text-text-primary">
             No starred items yet
-          </h2>
+          </h3>
           <p className="m-0 text-sm text-text-secondary">
             Click the star button on any feed item or Mox digest to save it here.
           </p>
@@ -181,7 +181,7 @@ export const FeedsStarredView: React.FC = () => {
                         </span>
                       </div>
 
-                      <h2 className="break-words font-display text-lg font-semibold leading-snug text-text-primary">
+                      <h3 className="break-words [overflow-wrap:anywhere] font-display text-lg font-semibold leading-snug text-text-primary">
                         {star.link && isSafeHref(star.link) ? (
                           <a
                             href={star.link}
@@ -199,7 +199,7 @@ export const FeedsStarredView: React.FC = () => {
                             {star.title}
                           </Link>
                         )}
-                      </h2>
+                      </h3>
                     </div>
 
                     <button
@@ -215,7 +215,9 @@ export const FeedsStarredView: React.FC = () => {
                   </header>
 
                   {star.snippet && (
-                    <p className="mt-2.5 text-sm text-text-secondary">{star.snippet}</p>
+                    <p className="mt-2.5 min-w-0 [overflow-wrap:anywhere] text-sm text-text-secondary">
+                      {star.snippet}
+                    </p>
                   )}
 
                   <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-[color:var(--color-divider)] pt-2.5 text-xs text-text-tertiary">

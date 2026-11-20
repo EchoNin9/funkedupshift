@@ -163,7 +163,7 @@ export function MobileAppShell() {
                     <Route path="/auth" element={<AuthPage />} />
                     <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
                     <Route path="/feeds" element={<FeedsGate />}>
-                      <Route element={<FeedsLayout />}>
+                      <Route element={<FeedsLayout showMobileHeading />}>
                         <Route index element={<FeedsHomeView />} />
                         <Route path="feed/:feedId" element={<FeedDayView />} />
                         <Route path="feed/:feedId/:day" element={<FeedDayView />} />

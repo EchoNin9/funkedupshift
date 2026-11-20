@@ -176,7 +176,14 @@ export const FeedsHomeView: React.FC = () => {
     e.preventDefault();
     if (!renameTarget) return;
     const trimmed = renameValue.trim();
-    if (!trimmed || trimmed.length > 120) return;
+    if (!trimmed) {
+      setRenameError("Title cannot be blank.");
+      return;
+    }
+    if (trimmed.length > 120) {
+      setRenameError("Title must be 120 characters or fewer.");
+      return;
+    }
     setRenameSaving(true);
     setRenameError(null);
     try {
@@ -198,8 +205,8 @@ export const FeedsHomeView: React.FC = () => {
     setDeleteSaving(true);
     setDeleteError(null);
     try {
-      await deleteFeed(deleteTarget);
-      if (mountedRef.current) {
+      const deleted = await deleteFeed(deleteTarget);
+      if (deleted && mountedRef.current) {
         setDeleteTarget(null);
       }
     } catch (err: unknown) {
@@ -282,10 +289,10 @@ export const FeedsHomeView: React.FC = () => {
                     >
                       <DotsSixVertical size={16} weight="bold" />
                     </span>
-                    <div className="flex flex-col gap-0.5">
+                    <div className="feeds-nudge-group">
                       <button
                         type="button"
-                        className={`grid h-6 w-6 place-items-center rounded border border-[color:var(--color-divider)] bg-surface-1 text-text-secondary transition-colors hover:border-[color:var(--color-border-strong)] hover:bg-surface-3 hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-35 ${focusRing}`}
+                        className={`feeds-nudge-btn rounded border border-[color:var(--color-divider)] bg-surface-1 text-text-secondary transition-colors hover:border-[color:var(--color-border-strong)] hover:bg-surface-3 hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-35 ${focusRing}`}
                         onClick={() => void handleNudge(feed.feedId, -1)}
                         disabled={!canMoveUp}
                         aria-label={`Move ${feed.title} up`}
@@ -295,7 +302,7 @@ export const FeedsHomeView: React.FC = () => {
                       </button>
                       <button
                         type="button"
-                        className={`grid h-6 w-6 place-items-center rounded border border-[color:var(--color-divider)] bg-surface-1 text-text-secondary transition-colors hover:border-[color:var(--color-border-strong)] hover:bg-surface-3 hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-35 ${focusRing}`}
+                        className={`feeds-nudge-btn rounded border border-[color:var(--color-divider)] bg-surface-1 text-text-secondary transition-colors hover:border-[color:var(--color-border-strong)] hover:bg-surface-3 hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-35 ${focusRing}`}
                         onClick={() => void handleNudge(feed.feedId, 1)}
                         disabled={!canMoveDown}
                         aria-label={`Move ${feed.title} down`}
@@ -594,8 +601,8 @@ export const FeedsHomeView: React.FC = () => {
         title="Delete feed?"
         closedBy={deleteSaving ? "none" : "closerequest"}
       >
-        <p className="m-0 text-sm text-text-secondary">
-          Delete <strong className="text-text-primary">{deleteTarget?.title}</strong> and its
+        <p className="m-0 text-sm text-text-secondary [overflow-wrap:anywhere]">
+          Delete <strong className="text-text-primary [overflow-wrap:anywhere]">{deleteTarget?.title}</strong> and its
           archived items? Any items you starred remain in your Starred list.
         </p>
         {deleteError && <Alert variant="error">{deleteError}</Alert>}

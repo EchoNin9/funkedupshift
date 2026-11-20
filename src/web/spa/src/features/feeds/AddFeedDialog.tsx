@@ -81,9 +81,14 @@ export const AddFeedDialog: React.FC<AddFeedDialogProps> = ({
         setError("Enter a website or feed URL.");
         return;
       }
+      const trimmedCustomTitle = title.trim();
+      if (trimmedCustomTitle.length > 120) {
+        setError("Custom title must be 120 characters or fewer.");
+        return;
+      }
       setSubmitting(true);
       try {
-        const res = await createPolledFeed(trimmedUrl, title);
+        const res = await createPolledFeed(trimmedUrl, trimmedCustomTitle || undefined);
         if (!mountedRef.current) return;
         onCreated(res.feed, res.itemsAdded);
         onClose();

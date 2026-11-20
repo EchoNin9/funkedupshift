@@ -395,3 +395,38 @@ dialog.feeds-dialog::backdrop {
   border-top: 1px solid var(--color-divider);
   margin: 1rem 0;
 }
+
+/* Reorder nudge buttons (compact on pointer:fine, 40px touch targets on pointer:coarse) */
+.feeds-nudge-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.feeds-nudge-btn {
+  display: grid;
+  place-items: center;
+  min-inline-size: 1.75rem;
+  min-block-size: 1.75rem;
+  padding: 0;
+}
+
+@media (pointer: coarse) {
+  .feeds-nudge-group {
+    gap: 0.375rem;
+  }
+
+  .feeds-nudge-btn {
+    min-inline-size: 2.5rem;
+    min-block-size: 2.5rem;
+  }
+}
+
+/* Native date-picker popup follows active SPA theme */
+.feeds-date-input {
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] .feeds-date-input {
+  color-scheme: light;
+}
