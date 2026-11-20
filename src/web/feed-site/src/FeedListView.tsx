@@ -1,13 +1,25 @@
-import React, { useState } from "react";
+import React, { useEffect, useId, useRef, useState } from "react";
 import type { Feed } from "./api";
 import { extractHost, formatRelativeTime } from "./dateFormat";
 import Dialog from "./Dialog";
-import { nudgeFeed, reorderFeedList } from "./feedOrder";
+import {
+  FEED_BLOCK_LABELS,
+  FEED_BLOCK_ORDER,
+  getFeedBlock,
+  groupFeedsByBlock,
+  isBlockVisible,
+  nudgeFeed,
+  reorderFeedList,
+  type FeedBlock,
+} from "./feedOrder";
 
 interface FeedListViewProps {
   feeds: Feed[];
   loading: boolean;
   error: string | null;
+  soloBlocks: readonly FeedBlock[];
+  onToggleSoloBlock: (block: FeedBlock) => void;
+  onResetSoloBlocks: () => void;
   onRetryLoad: () => void;
   onOpenFeed: (feedId: string) => void;
   onOpenAdd: () => void;
@@ -23,6 +35,9 @@ const FeedListView: React.FC<FeedListViewProps> = ({
   feeds,
   loading,
   error,
+  soloBlocks,
+  onToggleSoloBlock,
+  onResetSoloBlocks,
   onRetryLoad,
   onOpenFeed,
   onOpenAdd,
@@ -45,8 +60,69 @@ const FeedListView: React.FC<FeedListViewProps> = ({
   const [deleteSaving, setDeleteSaving] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  const pinnedFeeds = feeds.filter((f) => f.pinned);
-  const regularFeeds = feeds.filter((f) => !f.pinned);
+  const listRegionId = useId();
+  const toolbarRef = useRef<HTMLDivElement | null>(null);
+  const hasFeeds = feeds.length > 0;
+
+  // Roving-tabindex fallback strictly when native `focusgroup` is unsupported.
+  useEffect(() => {
+    const bar = toolbarRef.current;
+    if (!hasFeeds || !bar || "focusGroup" in HTMLElement.prototype) return;
+
+    const items = Array.from(bar.querySelectorAll<HTMLButtonElement>("button"));
+    if (items.length === 0) return;
+
+    const existingZero = items.findIndex((b) => b.tabIndex === 0);
+    const activeIdx = existingZero >= 0 ? existingZero : 0;
+    items.forEach((b, i) => {
+      b.tabIndex = i === activeIdx ? 0 : -1;
+    });
+
+    const onFocusIn = (e: FocusEvent) => {
+      const target = e.target;
+      if (target instanceof HTMLButtonElement && items.includes(target)) {
+        items.forEach((b) => {
+          b.tabIndex = b === target ? 0 : -1;
+        });
+      }
+    };
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.altKey || e.ctrlKey || e.metaKey) return;
+      const active = document.activeElement;
+      const idx = active instanceof HTMLButtonElement ? items.indexOf(active) : -1;
+      if (idx < 0) return;
+
+      const rtl = getComputedStyle(bar).direction === "rtl";
+      let nextIdx = -1;
+      if (e.key === "ArrowRight") {
+        nextIdx = (idx + (rtl ? -1 : 1) + items.length) % items.length;
+      } else if (e.key === "ArrowLeft") {
+        nextIdx = (idx + (rtl ? 1 : -1) + items.length) % items.length;
+      } else if (e.key === "Home") {
+        nextIdx = 0;
+      } else if (e.key === "End") {
+        nextIdx = items.length - 1;
+      }
+
+      if (nextIdx >= 0) {
+        e.preventDefault();
+        items[nextIdx].focus();
+      }
+    };
+
+    bar.addEventListener("focusin", onFocusIn);
+    bar.addEventListener("keydown", onKeyDown);
+    return () => {
+      bar.removeEventListener("focusin", onFocusIn);
+      bar.removeEventListener("keydown", onKeyDown);
+    };
+  }, [hasFeeds]);
+
+  const grouped = groupFeedsByBlock(feeds);
+  const visibleBlocks = FEED_BLOCK_ORDER.filter(
+    (block) => isBlockVisible(block, soloBlocks) && grouped[block].length > 0
+  );
 
   const handleDropOn = async (targetFeed: Feed) => {
     const sourceId = dragId;
@@ -112,8 +188,8 @@ const FeedListView: React.FC<FeedListViewProps> = ({
     }
   };
 
-  const renderGroup = (groupFeeds: Feed[], sectionLabel?: string) => (
-    <section className="feed-group" aria-label={sectionLabel || "Feeds"}>
+  const renderGroup = (groupFeeds: Feed[], sectionLabel?: string, blockKey?: FeedBlock) => (
+    <section key={blockKey} className="feed-group" aria-label={sectionLabel || "Feeds"}>
       {sectionLabel && <h2 className="section-label">{sectionLabel}</h2>}
       <ul className="feed-list">
         {groupFeeds.map((feed, idx) => {
@@ -141,7 +217,7 @@ const FeedListView: React.FC<FeedListViewProps> = ({
               onDragOver={(e) => {
                 if (!dragId) return;
                 const dragged = feeds.find((f) => f.feedId === dragId);
-                if (!dragged || dragged.pinned !== feed.pinned) return;
+                if (!dragged || getFeedBlock(dragged) !== getFeedBlock(feed)) return;
                 e.preventDefault();
                 e.dataTransfer.dropEffect = "move";
                 if (overId !== feed.feedId) setOverId(feed.feedId);
@@ -322,9 +398,59 @@ const FeedListView: React.FC<FeedListViewProps> = ({
         </section>
       ) : (
         <>
-          {pinnedFeeds.length > 0 && renderGroup(pinnedFeeds, "Pinned")}
-          {regularFeeds.length > 0 &&
-            renderGroup(regularFeeds, pinnedFeeds.length > 0 ? "All feeds" : undefined)}
+          <div
+            ref={toolbarRef}
+            role="toolbar"
+            {...({ focusgroup: "toolbar wrap" } as Record<string, string>)}
+            aria-label="Filter feed blocks"
+            aria-controls={listRegionId}
+            className="feed-filter-toolbar"
+          >
+            <button
+              type="button"
+              className="filter-toggle"
+              aria-pressed={soloBlocks.length === 0}
+              onClick={onResetSoloBlocks}
+            >
+              <span>All</span>{" "}
+              <span className="filter-count">{feeds.length}</span>
+            </button>
+            <span role="separator" aria-orientation="vertical" className="toolbar-sep" />
+            <div role="group" aria-label="Solo feed blocks" className="filter-toggle-group">
+              {FEED_BLOCK_ORDER.map((block) => (
+                <button
+                  key={block}
+                  type="button"
+                  className="filter-toggle"
+                  aria-pressed={soloBlocks.includes(block)}
+                  onClick={() => onToggleSoloBlock(block)}
+                >
+                  <span>{FEED_BLOCK_LABELS[block]}</span>{" "}
+                  <span className="filter-count">{grouped[block].length}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div id={listRegionId} className="feed-blocks">
+            {visibleBlocks.length > 0 ? (
+              visibleBlocks.map((block) =>
+                renderGroup(grouped[block], FEED_BLOCK_LABELS[block], block)
+              )
+            ) : (
+              <section className="empty-card empty-filter-card">
+                <h2>No matching feeds</h2>
+                <p>
+                  No feeds in {soloBlocks.map((b) => FEED_BLOCK_LABELS[b]).join(" + ")} yet.
+                </p>
+                <div className="empty-actions">
+                  <button type="button" className="btn btn-ghost" onClick={onResetSoloBlocks}>
+                    Show all feeds
+                  </button>
+                </div>
+              </section>
+            )}
+          </div>
         </>
       )}
 

@@ -49,6 +49,12 @@ const MemeGeneratorPage = lazy(() => import("../features/memes/MemeGeneratorPage
 const MemeDetailPage = lazy(() => import("../features/memes/MemeDetailPage"));
 const EditMemePage = lazy(() => import("../features/memes/EditMemePage"));
 const PrivacyPolicyPage = lazy(() => import("../features/legal/PrivacyPolicyPage"));
+const FeedsGate = lazy(() => import("../features/feeds/FeedsGate"));
+const FeedsLayout = lazy(() => import("../features/feeds/FeedsLayout"));
+const FeedsHomeView = lazy(() => import("../features/feeds/FeedsHomeView"));
+const FeedDayView = lazy(() => import("../features/feeds/FeedDayView"));
+const FeedsStarredView = lazy(() => import("../features/feeds/FeedsStarredView"));
+const FeedsSettingsView = lazy(() => import("../features/feeds/FeedsSettingsView"));
 
 function PageLoader() {
   return (
@@ -156,6 +162,16 @@ export function MobileAppShell() {
                     <Route path="/mobile-settings" element={<MobileSettingsPage />} />
                     <Route path="/auth" element={<AuthPage />} />
                     <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+                    <Route path="/feeds" element={<FeedsGate />}>
+                      <Route element={<FeedsLayout showMobileHeading />}>
+                        <Route index element={<FeedsHomeView />} />
+                        <Route path="feed/:feedId" element={<FeedDayView />} />
+                        <Route path="feed/:feedId/:day" element={<FeedDayView />} />
+                        <Route path="starred" element={<FeedsStarredView />} />
+                        <Route path="settings" element={<FeedsSettingsView />} />
+                        <Route path="*" element={<Navigate to="/feeds" replace />} />
+                      </Route>
+                    </Route>
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>
                 </Suspense>

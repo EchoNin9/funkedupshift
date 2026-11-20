@@ -478,6 +478,159 @@ body {
   color: var(--accent);
 }
 
+/* Block filter toolbar */
+.feed-filter-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  scroll-snap-type: x proximity;
+  padding: 4px;
+}
+
+.feed-filter-toolbar::-webkit-scrollbar {
+  display: none;
+}
+
+.filter-toggle-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-shrink: 0;
+}
+
+.toolbar-sep {
+  display: inline-block;
+  align-self: center;
+  block-size: 1.35rem;
+  border-inline-start: 1px solid var(--border-strong);
+  flex-shrink: 0;
+}
+
+.filter-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-inline-size: 2.5rem;
+  min-block-size: 2.25rem;
+  padding: 0.35rem 0.78rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  scroll-snap-align: start;
+}
+
+.filter-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.filter-toggle[aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+}
+
+.filter-count {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1;
+  padding: 0.16rem 0.42rem;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-muted);
+}
+
+.filter-toggle[aria-pressed="true"] .filter-count {
+  background: var(--surface);
+  color: var(--text);
+}
+
+@media (hover: hover) {
+  .filter-toggle:hover {
+    color: var(--text);
+    border-color: var(--border-strong);
+    background: var(--surface-2);
+  }
+
+  .filter-toggle[aria-pressed="true"]:hover {
+    color: var(--accent-ink);
+    border-color: var(--accent);
+    background: var(--accent);
+    filter: brightness(1.06);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .filter-toggle {
+    transition: background-color 140ms ease, color 140ms ease, border-color 140ms ease;
+  }
+}
+
+@media (pointer: coarse) {
+  .filter-toggle {
+    min-block-size: 2.65rem;
+    padding-inline: 0.9rem;
+  }
+}
+
+@media (forced-colors: active) {
+  .toolbar-sep {
+    border-inline-start-color: ButtonBorder;
+  }
+
+  .filter-toggle {
+    border-color: ButtonBorder;
+    color: ButtonText;
+    background: ButtonFace;
+  }
+
+  .filter-toggle:hover {
+    color: Highlight;
+    border-color: Highlight;
+    background: ButtonFace;
+  }
+
+  .filter-toggle[aria-pressed="true"],
+  .filter-toggle[aria-pressed="true"]:hover {
+    background: Highlight;
+    color: HighlightText;
+    border-color: Highlight;
+    filter: none;
+    forced-color-adjust: none;
+  }
+
+  .filter-toggle[aria-pressed="true"] .filter-count {
+    background: HighlightText;
+    color: Highlight;
+  }
+
+  .filter-toggle:focus-visible {
+    outline-color: Highlight;
+  }
+}
+
+.feed-blocks {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  min-width: 0;
+}
+
+.empty-filter-card {
+  padding: 1.5rem 1.25rem;
+}
+
 /* Feed list */
 .section-label {
   margin: 0 0 0.55rem;
