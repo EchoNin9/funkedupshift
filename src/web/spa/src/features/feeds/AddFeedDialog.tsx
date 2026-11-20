@@ -167,7 +167,7 @@ export const AddFeedDialog: React.FC<AddFeedDialogProps> = ({
           <>
             <p className="m-0 text-sm text-text-secondary">
               Paste a blog homepage or direct RSS, Atom, or JSON Feed URL. If you enter a homepage,
-              feed.e9.cx discovers the feed link automatically and fetches recent items right away.
+              Feeds discovers the feed link automatically and fetches recent items right away.
             </p>
             <div className="field">
               <label htmlFor={pollUrlId}>Website or feed URL</label>

@@ -98,6 +98,7 @@ function FeedDayViewInner({ feedId, routeDay: rawDay }: FeedDayViewInnerProps) {
   const [items, setItems] = useState<FeedItem[]>([]);
   const [itemsLoading, setItemsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorSource, setErrorSource] = useState<"days" | "items" | "action" | null>(null);
   const [starError, setStarError] = useState<string | null>(null);
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
   const [refreshing, setRefreshing] = useState(false);
@@ -115,6 +116,7 @@ function FeedDayViewInner({ feedId, routeDay: rawDay }: FeedDayViewInnerProps) {
   const mountedRef = useRef(true);
   const activeEpochRef = useRef(0);
   const daysReqIdRef = useRef(0);
+  const itemsReqIdRef = useRef(0);
   const refreshReqIdRef = useRef(0);
   const routeDayRef = useRef(routeDay);
   routeDayRef.current = routeDay;
@@ -152,6 +154,7 @@ function FeedDayViewInner({ feedId, routeDay: rawDay }: FeedDayViewInnerProps) {
     const reqId = ++daysReqIdRef.current;
     setDaysLoading(true);
     setError(null);
+    setErrorSource(null);
     try {
       const page = await listDays(feedId);
       if (
@@ -177,6 +180,7 @@ function FeedDayViewInner({ feedId, routeDay: rawDay }: FeedDayViewInnerProps) {
         return null;
       }
       setError((err as { message?: string })?.message || "Failed to load feed days.");
+      setErrorSource("days");
       return null;
     } finally {
       if (
@@ -189,35 +193,33 @@ function FeedDayViewInner({ feedId, routeDay: rawDay }: FeedDayViewInnerProps) {
     }
   }, [feedId, handleAuthError]);
 
-  useEffect(() => {
-    if (!feedId) return;
-    let cancelled = false;
-    const epoch = activeEpochRef.current;
-    const reqId = ++daysReqIdRef.current;
-    setDays([]);
-    setItems([]);
-    setExpandedItems({});
-    setRefreshNote(null);
+  const loadItems = useCallback(
+    async (targetDay: string) => {
+      if (!feedId || !targetDay) return;
+      const epoch = activeEpochRef.current;
+      const reqId = ++itemsReqIdRef.current;
+      setItemsLoading(true);
+      setStarError(null);
+      setError(null);
+      setErrorSource(null);
 
-    void (async () => {
       try {
-        setDaysLoading(true);
-        setError(null);
-        const page = await listDays(feedId);
+        const res = await getDayItems(feedId, targetDay);
         if (
-          cancelled ||
+          !mountedRef.current ||
           activeEpochRef.current !== epoch ||
-          daysReqIdRef.current !== reqId
+          itemsReqIdRef.current !== reqId
         ) {
           return;
         }
-        setDays(page.days);
-        setDaysCursor(page.nextCursor);
+        setFeed(res.feed);
+        handleFeedUpdated(res.feed);
+        setItems(res.items);
       } catch (err: unknown) {
         if (
-          cancelled ||
+          !mountedRef.current ||
           activeEpochRef.current !== epoch ||
-          daysReqIdRef.current !== reqId
+          itemsReqIdRef.current !== reqId
         ) {
           return;
         }
@@ -225,22 +227,33 @@ function FeedDayViewInner({ feedId, routeDay: rawDay }: FeedDayViewInnerProps) {
           handleAuthError();
           return;
         }
-        setError((err as { message?: string })?.message || "Failed to load feed days.");
+        setError((err as { message?: string })?.message || "Failed to load day items.");
+        setErrorSource("items");
       } finally {
         if (
-          !cancelled &&
+          mountedRef.current &&
           activeEpochRef.current === epoch &&
-          daysReqIdRef.current === reqId
+          itemsReqIdRef.current === reqId
         ) {
-          setDaysLoading(false);
+          setItemsLoading(false);
         }
       }
-    })();
+    },
+    [feedId, handleFeedUpdated, handleAuthError]
+  );
+
+  useEffect(() => {
+    if (!feedId) return;
+    setDays([]);
+    setItems([]);
+    setExpandedItems({});
+    setRefreshNote(null);
+    void loadDays();
 
     return () => {
-      cancelled = true;
+      daysReqIdRef.current += 1;
     };
-  }, [feedId, handleAuthError]);
+  }, [feedId, loadDays]);
 
   useEffect(() => {
     if (!routeDay && !daysLoading && days.length > 0) {
@@ -250,38 +263,17 @@ function FeedDayViewInner({ feedId, routeDay: rawDay }: FeedDayViewInnerProps) {
 
   useEffect(() => {
     if (!feedId || !routeDay) {
+      itemsReqIdRef.current += 1;
       setItems([]);
+      setItemsLoading(false);
       return;
     }
-    let cancelled = false;
-    const epoch = activeEpochRef.current;
-    setItemsLoading(true);
-    setStarError(null);
-    setError(null);
-
-    void getDayItems(feedId, routeDay)
-      .then((res) => {
-        if (cancelled || activeEpochRef.current !== epoch) return;
-        setFeed(res.feed);
-        handleFeedUpdated(res.feed);
-        setItems(res.items);
-      })
-      .catch((err: unknown) => {
-        if (cancelled || activeEpochRef.current !== epoch) return;
-        if (isAuthExpired(err)) {
-          handleAuthError();
-          return;
-        }
-        setError((err as { message?: string })?.message || "Failed to load day items.");
-      })
-      .finally(() => {
-        if (!cancelled && activeEpochRef.current === epoch) setItemsLoading(false);
-      });
+    void loadItems(routeDay);
 
     return () => {
-      cancelled = true;
+      itemsReqIdRef.current += 1;
     };
-  }, [feedId, routeDay, handleFeedUpdated, handleAuthError]);
+  }, [feedId, routeDay, loadItems]);
 
   const handleLoadMoreDays = async () => {
     if (!daysCursor || loadingMoreDays) return;
@@ -315,6 +307,7 @@ function FeedDayViewInner({ feedId, routeDay: rawDay }: FeedDayViewInnerProps) {
         return;
       }
       setError((err as { message?: string })?.message || "Failed to load older days.");
+      setErrorSource("action");
     } finally {
       if (mountedRef.current && activeEpochRef.current === epoch) {
         setLoadingMoreDays(false);
@@ -330,8 +323,9 @@ function FeedDayViewInner({ feedId, routeDay: rawDay }: FeedDayViewInnerProps) {
     setRefreshing(true);
     setRefreshNote(null);
     setError(null);
+    setErrorSource(null);
     try {
-      const res = await refreshFeed(feed);
+      const res = await refreshFeed(feed, { suppressLayoutError: true });
       if (
         !mountedRef.current ||
         activeEpochRef.current !== epoch ||
@@ -341,7 +335,11 @@ function FeedDayViewInner({ feedId, routeDay: rawDay }: FeedDayViewInnerProps) {
         return;
       }
       setFeed(res.feed);
-      setRefreshNote(res.itemsAdded > 0 ? `+${res.itemsAdded} new items` : "Up to date");
+      setRefreshNote(
+        res.itemsAdded > 0
+          ? `+${res.itemsAdded} new ${res.itemsAdded === 1 ? "item" : "items"}`
+          : "Up to date"
+      );
       const freshDays = await loadDays();
       if (
         !mountedRef.current ||
@@ -383,6 +381,7 @@ function FeedDayViewInner({ feedId, routeDay: rawDay }: FeedDayViewInnerProps) {
         return;
       }
       setError((err as { message?: string })?.message || "Feed refresh failed.");
+      setErrorSource("action");
     } finally {
       if (
         mountedRef.current &&
@@ -511,7 +510,20 @@ function FeedDayViewInner({ feedId, routeDay: rawDay }: FeedDayViewInnerProps) {
                   : chipBtnClass
               }
               aria-pressed={feed.pinned}
-              onClick={() => void togglePin(feed)}
+              onClick={() => {
+                const epoch = activeEpochRef.current;
+                if (errorSource === "action") {
+                  setError(null);
+                  setErrorSource(null);
+                }
+                void togglePin(feed, { suppressLayoutError: true }).then((errMsg) => {
+                  if (!mountedRef.current || activeEpochRef.current !== epoch) return;
+                  if (errMsg) {
+                    setError(errMsg);
+                    setErrorSource("action");
+                  }
+                });
+              }}
             >
               <PushPin size={13} weight={feed.pinned ? "fill" : "regular"} aria-hidden="true" />
               <span>{feed.pinned ? "Pinned" : "Pin"}</span>
@@ -585,13 +597,21 @@ function FeedDayViewInner({ feedId, routeDay: rawDay }: FeedDayViewInnerProps) {
       {error && (
         <Alert variant="error" className="flex flex-wrap items-center justify-between gap-2">
           <span>{error}</span>
-          <button
-            type="button"
-            className="font-semibold underline underline-offset-2 hover:opacity-80"
-            onClick={() => void loadDays()}
-          >
-            Retry
-          </button>
+          {(days.length === 0 || errorSource === "days" || (errorSource === "items" && routeDay)) && (
+            <button
+              type="button"
+              className="font-semibold underline underline-offset-2 hover:opacity-80"
+              onClick={() => {
+                if (days.length === 0 || errorSource === "days") {
+                  void loadDays();
+                } else if (errorSource === "items" && routeDay) {
+                  void loadItems(routeDay);
+                }
+              }}
+            >
+              Retry
+            </button>
+          )}
         </Alert>
       )}
 
@@ -769,7 +789,9 @@ function FeedDayViewInner({ feedId, routeDay: rawDay }: FeedDayViewInnerProps) {
                         </h4>
                         <div className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-xs text-text-secondary">
                           {timeStr && <span>{timeStr}</span>}
-                          {item.author && <span>by {item.author}</span>}
+                          {item.author && (
+                            <span className="min-w-0 [overflow-wrap:anywhere]">by {item.author}</span>
+                          )}
                           {itemHost && (
                             <span className="font-mono text-[11px] text-text-tertiary">
                               {itemHost}
@@ -815,6 +837,7 @@ function FeedDayViewInner({ feedId, routeDay: rawDay }: FeedDayViewInnerProps) {
                     {isVeryLong && (
                       <button
                         type="button"
+                        aria-expanded={isExpanded}
                         className={`mt-2.5 inline-flex items-center text-xs font-semibold text-accent-text hover:underline ${focusRing} rounded-sm`}
                         onClick={() =>
                           setExpandedItems((prev) => ({

@@ -172,7 +172,7 @@ export const FeedsStarredView: React.FC = () => {
                         </span>
                         <Link
                           to={archivePath}
-                          className={`font-medium text-accent-text hover:underline ${focusRing} rounded-sm`}
+                          className={`min-w-0 [overflow-wrap:anywhere] font-medium text-accent-text hover:underline ${focusRing} rounded-sm`}
                         >
                           {star.feedTitle}
                         </Link>

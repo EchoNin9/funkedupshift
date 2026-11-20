@@ -34,10 +34,11 @@ export interface FeedsContextValue {
   loadFeeds: (options?: { preserveError?: boolean }) => Promise<void>;
   toggleSoloBlock: (block: FeedBlock) => void;
   resetSoloBlocks: () => void;
-  togglePin: (target: Feed) => Promise<void>;
+  togglePin: (target: Feed, options?: { suppressLayoutError?: boolean }) => Promise<string | null>;
   commitOrder: (nextFeeds: Feed[]) => Promise<void>;
   refreshFeed: (
-    target: Feed
+    target: Feed,
+    options?: { suppressLayoutError?: boolean }
   ) => Promise<{ feed: Feed; notModified: boolean; itemsAdded: number } | null>;
   renameFeed: (target: Feed, newTitle: string) => Promise<void>;
   deleteFeed: (target: Feed) => Promise<boolean>;
@@ -147,24 +148,30 @@ export const FeedsLayout: React.FC<FeedsLayoutProps> = ({ showMobileHeading = fa
   }, []);
 
   const togglePin = useCallback(
-    async (target: Feed) => {
-      if (pendingPinsRef.current.has(target.feedId)) return;
+    async (
+      target: Feed,
+      options?: { suppressLayoutError?: boolean }
+    ): Promise<string | null> => {
+      if (pendingPinsRef.current.has(target.feedId)) return null;
       const epoch = authEpochRef.current;
       pendingPinsRef.current.add(target.feedId);
       const nextPinned = !target.pinned;
-      setFeedsError(null);
+      if (!options?.suppressLayoutError) {
+        setFeedsError(null);
+      }
       setFeeds((prev) =>
         sortFeeds(prev.map((f) => (f.feedId === target.feedId ? { ...f, pinned: nextPinned } : f)))
       );
 
       try {
         const res = await updateFeed(target.feedId, { pinned: nextPinned });
-        if (authEpochRef.current !== epoch) return;
+        if (authEpochRef.current !== epoch) return null;
         setFeeds((prev) =>
           sortFeeds(prev.map((f) => (f.feedId === target.feedId ? res.feed : f)))
         );
+        return null;
       } catch (err: unknown) {
-        if (authEpochRef.current !== epoch) return;
+        if (authEpochRef.current !== epoch) return null;
         setFeeds((prev) =>
           sortFeeds(
             prev.map((f) => (f.feedId === target.feedId ? { ...f, pinned: target.pinned } : f))
@@ -172,9 +179,13 @@ export const FeedsLayout: React.FC<FeedsLayoutProps> = ({ showMobileHeading = fa
         );
         if (isAuthExpired(err)) {
           handleAuthError();
-          return;
+          return null;
         }
-        setFeedsError((err as { message?: string })?.message || "Could not update pin.");
+        const msg = (err as { message?: string })?.message || "Could not update pin.";
+        if (!options?.suppressLayoutError) {
+          setFeedsError(msg);
+        }
+        return msg;
       } finally {
         pendingPinsRef.current.delete(target.feedId);
       }
@@ -213,9 +224,11 @@ export const FeedsLayout: React.FC<FeedsLayoutProps> = ({ showMobileHeading = fa
   );
 
   const refreshFeed = useCallback(
-    async (target: Feed) => {
+    async (target: Feed, options?: { suppressLayoutError?: boolean }) => {
       const epoch = authEpochRef.current;
-      setFeedsError(null);
+      if (!options?.suppressLayoutError) {
+        setFeedsError(null);
+      }
       try {
         const res = await refreshFeedApi(target.feedId);
         if (authEpochRef.current !== epoch) return null;
@@ -229,8 +242,10 @@ export const FeedsLayout: React.FC<FeedsLayoutProps> = ({ showMobileHeading = fa
           handleAuthError();
           return null;
         }
-        setFeedsError((err as { message?: string })?.message || "Feed refresh failed.");
-        void loadFeeds({ preserveError: true });
+        if (!options?.suppressLayoutError) {
+          setFeedsError((err as { message?: string })?.message || "Feed refresh failed.");
+          void loadFeeds({ preserveError: true });
+        }
         throw err;
       }
     },
@@ -240,7 +255,6 @@ export const FeedsLayout: React.FC<FeedsLayoutProps> = ({ showMobileHeading = fa
   const renameFeed = useCallback(
     async (target: Feed, newTitle: string) => {
       const epoch = authEpochRef.current;
-      setFeedsError(null);
       try {
         const res = await updateFeed(target.feedId, { title: newTitle });
         if (authEpochRef.current !== epoch) return;
@@ -253,7 +267,6 @@ export const FeedsLayout: React.FC<FeedsLayoutProps> = ({ showMobileHeading = fa
           handleAuthError();
           return;
         }
-        setFeedsError((err as { message?: string })?.message || "Could not rename feed.");
         throw err;
       }
     },
@@ -263,7 +276,6 @@ export const FeedsLayout: React.FC<FeedsLayoutProps> = ({ showMobileHeading = fa
   const deleteFeed = useCallback(
     async (target: Feed): Promise<boolean> => {
       const epoch = authEpochRef.current;
-      setFeedsError(null);
       try {
         await deleteFeedApi(target.feedId);
         if (authEpochRef.current !== epoch) return false;
@@ -287,7 +299,6 @@ export const FeedsLayout: React.FC<FeedsLayoutProps> = ({ showMobileHeading = fa
           handleAuthError();
           return false;
         }
-        setFeedsError((err as { message?: string })?.message || "Could not delete feed.");
         throw err;
       }
     },
