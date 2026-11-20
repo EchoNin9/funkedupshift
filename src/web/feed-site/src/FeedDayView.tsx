@@ -2,7 +2,9 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   getDayItems,
   listDays,
+  markSeen,
   starItem,
+  unmarkSeen,
   unstarItem,
   type DaySummary,
   type Feed,
@@ -61,6 +63,7 @@ const FeedDayView: React.FC<FeedDayViewProps> = ({
   const [itemsLoading, setItemsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [starError, setStarError] = useState<string | null>(null);
+  const [seenError, setSeenError] = useState<string | null>(null);
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
   const [refreshing, setRefreshing] = useState(false);
   const [refreshNote, setRefreshNote] = useState<string | null>(null);
@@ -77,6 +80,7 @@ const FeedDayView: React.FC<FeedDayViewProps> = ({
   const routeDayRef = useRef(routeDay);
   routeDayRef.current = routeDay;
   const pendingStarsRef = useRef<Set<string>>(new Set());
+  const pendingSeenRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     mountedRef.current = true;
@@ -157,6 +161,7 @@ const FeedDayView: React.FC<FeedDayViewProps> = ({
     let cancelled = false;
     setItemsLoading(true);
     setStarError(null);
+    setSeenError(null);
     setError(null);
 
     void getDayItems(feedId, routeDay)
@@ -275,6 +280,38 @@ const FeedDayView: React.FC<FeedDayViewProps> = ({
       setStarError((err as { message?: string })?.message || "Could not update star status.");
     } finally {
       pendingStarsRef.current.delete(targetItem.itemSk);
+    }
+  };
+
+  const handleToggleSeen = async (targetItem: FeedItem) => {
+    if (pendingSeenRef.current.has(targetItem.itemSk)) return;
+    pendingSeenRef.current.add(targetItem.itemSk);
+    setSeenError(null);
+    const nextSeen = !targetItem.seen;
+    setItems((prev) =>
+      prev.map((it) => (it.itemSk === targetItem.itemSk ? { ...it, seen: nextSeen } : it))
+    );
+
+    try {
+      if (nextSeen) {
+        await markSeen(feedId, targetItem.itemSk);
+      } else {
+        await unmarkSeen(feedId, targetItem.itemSk);
+      }
+    } catch (err: unknown) {
+      if (!mountedRef.current) return;
+      setItems((prev) =>
+        prev.map((it) =>
+          it.itemSk === targetItem.itemSk ? { ...it, seen: targetItem.seen } : it
+        )
+      );
+      if ((err as { name?: string })?.name === "AuthExpiredError") {
+        onAuthError();
+        return;
+      }
+      setSeenError((err as { message?: string })?.message || "Could not update seen status.");
+    } finally {
+      pendingSeenRef.current.delete(targetItem.itemSk);
     }
   };
 
@@ -398,6 +435,8 @@ const FeedDayView: React.FC<FeedDayViewProps> = ({
       )}
 
       {starError && <div className="banner banner-error">{starError}</div>}
+
+      {seenError && <div className="banner banner-error">{seenError}</div>}
 
       <section className="day-picker-bar" aria-label="Archive days">
         <div className="day-strip">
@@ -538,16 +577,33 @@ const FeedDayView: React.FC<FeedDayViewProps> = ({
                         </div>
                       </div>
 
-                      <button
-                        type="button"
-                        className={item.starred ? "star-btn is-starred" : "star-btn"}
-                        aria-pressed={item.starred}
-                        aria-label={item.starred ? `Unstar ${item.title}` : `Star ${item.title}`}
-                        title={item.starred ? "Remove star" : "Star item"}
-                        onClick={() => void handleToggleStar(item)}
-                      >
-                        {item.starred ? "★" : "☆"}
-                      </button>
+                      <div className="entry-actions">
+                        <label
+                          className={item.seen ? "seen-check is-seen" : "seen-check"}
+                          title={item.seen ? "Mark as not seen" : "Mark as seen"}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={item.seen}
+                            aria-label={
+                              item.seen ? `Mark ${item.title} unseen` : `Mark ${item.title} seen`
+                            }
+                            onChange={() => void handleToggleSeen(item)}
+                          />
+                          <span className="seen-check-text">Seen</span>
+                        </label>
+
+                        <button
+                          type="button"
+                          className={item.starred ? "star-btn is-starred" : "star-btn"}
+                          aria-pressed={item.starred}
+                          aria-label={item.starred ? `Unstar ${item.title}` : `Star ${item.title}`}
+                          title={item.starred ? "Remove star" : "Star item"}
+                          onClick={() => void handleToggleStar(item)}
+                        >
+                          {item.starred ? "★" : "☆"}
+                        </button>
+                      </div>
                     </header>
 
                     {item.contentHtml ? (

@@ -40,6 +40,7 @@ export interface FeedItem {
   publishedAt: string;
   fetchedAt: string;
   starred: boolean;
+  seen: boolean;
   link?: string;
   author?: string;
   guid?: string;
@@ -67,6 +68,25 @@ export interface StarItem {
 
 export interface StarsPage {
   items: StarItem[];
+  nextCursor: string | null;
+}
+
+export interface SeenItem {
+  seenSk: string;
+  seenAt: string;
+  feedId: string;
+  itemSk: string;
+  itemHash: string;
+  day: string;
+  title: string;
+  snippet: string;
+  feedTitle: string;
+  feedKind: FeedKind;
+  link?: string;
+}
+
+export interface SeenPage {
+  items: SeenItem[];
   nextCursor: string | null;
 }
 
@@ -245,6 +265,29 @@ export function starItem(
 export function unstarItem(feedId: string, itemSk: string): Promise<{ starred: boolean }> {
   const qs = new URLSearchParams({ feedId, itemSk });
   return fetchJson<{ starred: boolean }>(`/feeds/stars?${qs.toString()}`, {
+    method: "DELETE",
+  });
+}
+
+export function listSeen(cursor?: string | null, limit: number = 50): Promise<SeenPage> {
+  const qs = new URLSearchParams({ limit: String(limit) });
+  if (cursor) qs.set("cursor", cursor);
+  return fetchJson<SeenPage>(`/feeds/seen?${qs.toString()}`);
+}
+
+export function markSeen(
+  feedId: string,
+  itemSk: string
+): Promise<{ seen: boolean; seenItem: SeenItem }> {
+  return fetchJson<{ seen: boolean; seenItem: SeenItem }>("/feeds/seen", {
+    method: "PUT",
+    body: JSON.stringify({ feedId, itemSk }),
+  });
+}
+
+export function unmarkSeen(feedId: string, itemSk: string): Promise<{ seen: boolean }> {
+  const qs = new URLSearchParams({ feedId, itemSk });
+  return fetchJson<{ seen: boolean }>(`/feeds/seen?${qs.toString()}`, {
     method: "DELETE",
   });
 }

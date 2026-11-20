@@ -214,7 +214,7 @@ resource "aws_lambda_permission" "allowEventbridgeFeedsPoll" {
 }
 
 # ------------------------------------------------------------------------------
-# API Gateway HTTP API routes (16 JWT-protected + POST /feeds/ingest via X-Api-Key).
+# API Gateway HTTP API routes (19 JWT-protected + POST /feeds/ingest via X-Api-Key).
 # ------------------------------------------------------------------------------
 resource "aws_apigatewayv2_integration" "feeds" {
   api_id                 = aws_apigatewayv2_api.main.id
@@ -306,6 +306,30 @@ resource "aws_apigatewayv2_route" "feedsStarsPut" {
 resource "aws_apigatewayv2_route" "feedsStarsDelete" {
   api_id             = aws_apigatewayv2_api.main.id
   route_key          = "DELETE /feeds/stars"
+  target             = "integrations/${aws_apigatewayv2_integration.feeds.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "feedsSeenList" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /feeds/seen"
+  target             = "integrations/${aws_apigatewayv2_integration.feeds.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "feedsSeenPut" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "PUT /feeds/seen"
+  target             = "integrations/${aws_apigatewayv2_integration.feeds.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "feedsSeenDelete" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "DELETE /feeds/seen"
   target             = "integrations/${aws_apigatewayv2_integration.feeds.id}"
   authorization_type = "JWT"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
