@@ -91,6 +91,7 @@ resource "aws_backup_selection" "dr" {
     aws_dynamodb_table.main.arn,
     aws_dynamodb_table.tools.arn,
     aws_dynamodb_table.socialPosts.arn,
+    aws_dynamodb_table.feeds.arn,
     aws_s3_bucket.media.arn,
   ]
 }

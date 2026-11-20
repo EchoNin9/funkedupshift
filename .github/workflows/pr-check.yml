@@ -69,3 +69,24 @@ jobs:
           for p in codec:encode/codec hashing:hash/hashing cidr:cidr/cidr crontime:cron/crontime datafmt:json/datafmt filedrop:files/filedrop; do
             cmp "src/web/tools-site/src/${p%%:*}.ts" "src/web/spa/src/features/${p#*:}.ts" || exit 1
           done
+
+  feed-site-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Guard feed-site auth.js against drift
+        run: cmp src/web/auth.js src/web/feed-site/public/auth.js
+
+      - name: Test and build feed.e9.cx frontend
+        working-directory: src/web/feed-site
+        run: |
+          npm ci
+          npm test
+          npm run build

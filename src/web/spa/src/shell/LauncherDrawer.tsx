@@ -4,6 +4,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { CaretDown, House, Lock, MagnifyingGlass, PushPin, X } from "@phosphor-icons/react";
 import {
   getLauncherGroups,
+  isExternalPath,
   type LauncherApp,
   type LauncherGroup,
   type LauncherGroupId,
@@ -41,6 +42,7 @@ function AppTile({ app, hue, current, canPin, pinned, onTogglePin, onNavigate }:
   const Icon = app.icon;
   const guestLocked = app.locked && app.lockReason === "guest";
   const inert = app.locked && app.lockReason === "no-access";
+  const external = !guestLocked && (app.external || isExternalPath(app.path));
   const target = guestLocked ? "/auth" : app.path;
   const inner = (
     <>
@@ -69,6 +71,17 @@ function AppTile({ app, hue, current, canPin, pinned, onTogglePin, onNavigate }:
         >
           {inner}
         </div>
+      ) : external ? (
+        <a
+          href={target}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={() => onNavigate(target)}
+          className={`${base} ${state}`}
+          title={app.description}
+        >
+          {inner}
+        </a>
       ) : (
         <Link
           to={target}
@@ -177,7 +190,8 @@ export function LauncherDrawer() {
   const showHome = !q || "home dashboard".includes(q);
   const matchCount = visibleGroups.reduce((n, g) => n + g.apps.length, 0);
 
-  const isCurrent = (path: string) => location.pathname === path || location.pathname.startsWith(path + "/");
+  const isCurrent = (path: string) =>
+    !isExternalPath(path) && (location.pathname === path || location.pathname.startsWith(path + "/"));
 
   // Reset the search each time the drawer opens; focus the field (or the panel) once it mounts.
   useEffect(() => {
@@ -236,6 +250,10 @@ export function LauncherDrawer() {
     const guestLocked = first.locked && first.lockReason === "guest";
     if (first.locked && !guestLocked) return;
     closeLauncher();
+    if (!guestLocked && (first.external || isExternalPath(first.path))) {
+      window.open(first.path, "_blank", "noopener,noreferrer");
+      return;
+    }
     navigate(guestLocked ? "/auth" : first.path);
   };
 

@@ -1,7 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { Wrench } from "@phosphor-icons/react";
-import { PUBLIC_MODULES } from "../../config/modules";
+import { ArrowSquareOut, Wrench } from "@phosphor-icons/react";
+import { PUBLIC_MODULES, isExternalPath } from "../../config/modules";
 import { Breadcrumb, GROUP_HUES } from "../../components/AppPage";
 import { focusRing } from "../../components/buttonClasses";
 
@@ -37,15 +37,28 @@ export default function ToolsIndexPage() {
       <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr))]">
         {TOOL_CARDS.map((mod) => {
           const Icon = mod.icon ?? Wrench;
-          return (
-            <Link key={mod.id} to={mod.path} className={cardClass}>
+          const external = mod.external || isExternalPath(mod.path);
+          const inner = (
+            <>
               <span className={`app-icon hue-${hue}`} style={{ width: 46, height: 46, borderRadius: 13 }}>
                 <Icon className="h-[23px] w-[23px]" />
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block text-[15px] font-semibold text-text-primary">{mod.label}</span>
+                <span className="flex items-center gap-1.5 text-[15px] font-semibold text-text-primary">
+                  {mod.label}
+                  {external && <ArrowSquareOut className="h-3.5 w-3.5 shrink-0 text-text-secondary" aria-hidden="true" />}
+                </span>
                 <span className="mt-0.5 block text-[13px] text-text-secondary">{mod.description}</span>
               </span>
+            </>
+          );
+          return external ? (
+            <a key={mod.id} href={mod.path} target="_blank" rel="noopener noreferrer" className={cardClass}>
+              {inner}
+            </a>
+          ) : (
+            <Link key={mod.id} to={mod.path} className={cardClass}>
+              {inner}
             </Link>
           );
         })}
