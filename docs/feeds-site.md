@@ -214,7 +214,9 @@ shared `src/web/auth.js` for Cognito).
 - **Feed view:** day picker (date strip of days that have items, from
   `/days`; jump-to-date calendar), newest day selected by default.
 - **Day view:** items with clickable title links (open in new tab), source
-  snippet / rendered Mox summary, star toggle on each item.
+  snippet / rendered Mox summary, star toggle and **Seen checkbox on each item**
+  (so publishers must split a digest into one item per line item — see
+  `openclaw-home-feeds.md`).
 - **Starred view.**
 - **Settings:** API keys (create → show once with copy button; revoke; last used).
 - Mobile-first layout (phone width, no horizontal scroll); light/dark.
@@ -227,21 +229,24 @@ already have precedent); if not, add minimal support.
 
 ### 3.5 OpenClaw / Mox wiring (last phase)
 
-1. Create an API key in feed.e9.cx settings → save to `~/.openclaw/feeds.token`
-   (chmod 600; same pattern as `todoist.token`). Never commit it, never put it
+1. Create an API key in feed.e9.cx settings → save to `~/.openclaw/e9_feed.token`
+   (chmod 600; shell-style kv with `E9_FEED_API_URL` + `E9_FEED_API_TOKEN`). Never commit it, never put it
    in the backup repo's secrets in plaintext.
 2. Append a final step to each of the three cron prompts (edit the **live**
    cron via `openclaw` CLI, not the backup JSON): *after the Slack post
    succeeds*, publish the same summary text:
    ```bash
    curl -sS -X POST "$FEEDS_API/feeds/ingest" \
-     -H "X-Api-Key: $(cat ~/.openclaw/feeds.token)" \
+     -H "X-Api-Key: $E9_FEED_API_TOKEN" \
      -H "Content-Type: application/json" \
      --data @/tmp/mox-feed-payload.json
    ```
    with payload `{feed: "mox-todoist" | "mox-jinks-email" | "mox-family-email",
-   title: "Mox · <name>", items: [{guid: "<job>-<yyyy-mm-dd>", title:
-   "<name> — <date>", contentMarkdown: "<the posted Slack text>"}]}`.
+   title: "Mox · <name>", items: [...]}` — **one item per line item** of the
+   digest, each with a content-hashed `guid` of
+   `<slug>-<yyyy-mm-dd>-<sha1(item text)[:10]>` so per-item Seen/star state
+   survives a same-day re-publish. In practice this is
+   `feed_publish.py --split-items`, not a hand-written curl.
    Publishing failure must **not** fail the run or block the Slack post — log
    and continue.
 3. Verify next morning: three items appear under their feeds for today.
@@ -252,8 +257,8 @@ already have precedent); if not, add minimal support.
 
 Script (not a Lambda) that reads Slack history of `#claw-mox` and
 `#family-email` since 2026-09-20, classifies each Mox post into the three feeds
-(by header/shape), and POSTs to `/feeds/ingest` with `guid = <job>-<date>` and
-`publishedAt` = post time. Idempotent so it can be re-run.
+(by header/shape), and POSTs to `/feeds/ingest` with one item per line item,
+`guid = <job>-<date>-<sha1(item text)[:10]>`, and `publishedAt` = post time. Idempotent so it can be re-run.
 
 ---
 
